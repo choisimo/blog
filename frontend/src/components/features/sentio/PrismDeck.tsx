@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
-import type { LensCard as LensCardData } from "@/services/chat";
-import { cn } from "@/lib/utils";
-import LensCard from "./LensCard";
-import { useLensDeck, type LensDeckSource } from "./hooks/useLensDeck";
-import AsyncArtifactStatusChip from "./AsyncArtifactStatusChip";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import type { LensCard as LensCardData } from '@/services/chat';
+import { cn } from '@/lib/utils';
+import LensCard from './LensCard';
+import { useLensDeck, type LensDeckSource } from './hooks/useLensDeck';
+import AsyncArtifactStatusChip from './AsyncArtifactStatusChip';
 
 type PrismDeckProps = {
   paragraph: string;
@@ -27,6 +27,7 @@ export default function PrismDeck({
     currentIndex,
     loading,
     loadingMore,
+    appendWarming,
     status,
     canGoPrev,
     canGoNext,
@@ -46,7 +47,7 @@ export default function PrismDeck({
 
   const visibleCards = useMemo(
     () => cards.slice(currentIndex, currentIndex + 3),
-    [cards, currentIndex],
+    [cards, currentIndex]
   );
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export default function PrismDeck({
       dragMovedRef.current = false;
       return;
     }
-    setShowEvidence((prev) => !prev);
+    setShowEvidence(prev => !prev);
   }, []);
 
   const handlePointerDown = useCallback(
@@ -79,7 +80,7 @@ export default function PrismDeck({
       dragStartYRef.current = event.clientY;
       dragMovedRef.current = false;
     },
-    [],
+    []
   );
 
   const handlePointerMove = useCallback(
@@ -92,7 +93,7 @@ export default function PrismDeck({
         dragMovedRef.current = true;
       }
     },
-    [],
+    []
   );
 
   const handlePointerUp = useCallback(
@@ -109,20 +110,20 @@ export default function PrismDeck({
       if (deltaX < 0 && canGoNext) handleGoNext();
       if (deltaX > 0 && canGoPrev) handleGoPrev();
     },
-    [canGoNext, canGoPrev, handleGoNext, handleGoPrev],
+    [canGoNext, canGoPrev, handleGoNext, handleGoPrev]
   );
 
   if (loading) {
     return (
-      <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
-          <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+      <div className='flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center'>
+        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm'>
+          <Loader2 className='h-6 w-6 animate-spin text-violet-500' />
         </div>
         <div>
-          <p className="text-sm font-medium text-foreground">
+          <p className='text-sm font-medium text-foreground'>
             렌즈 카드를 불러오는 중입니다
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className='text-xs text-muted-foreground'>
             관점 스택을 구성하고 있어요.
           </p>
         </div>
@@ -131,17 +132,17 @@ export default function PrismDeck({
   }
 
   if (!activeCard) {
-    if (status === "warming") {
+    if (status === 'warming') {
       return (
-        <div className="flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm">
-            <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+        <div className='flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center'>
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm'>
+            <Loader2 className='h-6 w-6 animate-spin text-violet-500' />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">
+            <p className='text-sm font-medium text-foreground'>
               렌즈 카드를 생성 중입니다
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className='text-xs text-muted-foreground'>
               임시 스택을 보여주고 있고, 준비되면 자동으로 갱신합니다.
             </p>
           </div>
@@ -150,7 +151,7 @@ export default function PrismDeck({
     }
 
     return (
-      <div className="rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground">
+      <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
         아직 표시할 lens 카드가 없습니다.
       </div>
     );
@@ -158,25 +159,25 @@ export default function PrismDeck({
 
   return (
     <>
-      <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-violet-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
+      <div className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
+        <div className='flex items-start justify-between gap-3'>
+          <div className='space-y-1'>
+            <div className='flex items-center gap-2'>
+              <span className='rounded-full bg-violet-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700'>
                 Prism Deck
               </span>
               <AsyncArtifactStatusChip status={status} />
             </div>
-            <p className="text-sm font-medium text-foreground">
+            <p className='text-sm font-medium text-foreground'>
               Lens {currentIndex + 1} / {cards.length}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className='text-xs text-muted-foreground'>
               하단 화살표나 스와이프로 다음 관점을 이어서 소비합니다.
             </p>
           </div>
         </div>
 
-        <div className="relative h-[24rem]">
+        <div className='relative h-[24rem]'>
           {visibleCards
             .slice()
             .reverse()
@@ -200,44 +201,44 @@ export default function PrismDeck({
             })}
         </div>
 
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3">
+        <div className='flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3'>
           <button
-            type="button"
+            type='button'
             onClick={handleGoPrev}
             disabled={!canGoPrev}
             className={cn(
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors",
+              'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors',
               canGoPrev
-                ? "border-border/70 bg-background hover:bg-muted"
-                : "cursor-not-allowed border-border/40 bg-muted/40 text-muted-foreground/40",
+                ? 'border-border/70 bg-background hover:bg-muted'
+                : 'cursor-not-allowed border-border/40 bg-muted/40 text-muted-foreground/40'
             )}
-            aria-label="이전 관점"
+            aria-label='이전 관점'
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className='h-4 w-4' />
           </button>
 
-          <div className="flex min-w-0 flex-1 items-center justify-center gap-2 text-sm font-medium text-foreground">
+          <div className='flex min-w-0 flex-1 items-center justify-center gap-2 text-sm font-medium text-foreground'>
             <span>Lens {currentIndex + 1}</span>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-muted-foreground">{cards.length}</span>
+            <span className='text-muted-foreground'>/</span>
+            <span className='text-muted-foreground'>{cards.length}</span>
           </div>
 
           <button
-            type="button"
+            type='button'
             onClick={handleGoNext}
             disabled={!canGoNext}
             className={cn(
-              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors",
+              'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors',
               canGoNext
-                ? "border-border/70 bg-background hover:bg-muted"
-                : "cursor-not-allowed border-border/40 bg-muted/40 text-muted-foreground/40",
+                ? 'border-border/70 bg-background hover:bg-muted'
+                : 'cursor-not-allowed border-border/40 bg-muted/40 text-muted-foreground/40'
             )}
-            aria-label="다음 관점"
+            aria-label='다음 관점'
           >
-            {loadingMore && !canGoNext ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+            {(loadingMore || appendWarming) && !canGoNext ? (
+              <Loader2 className='h-4 w-4 animate-spin' />
             ) : (
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className='h-4 w-4' />
             )}
           </button>
         </div>

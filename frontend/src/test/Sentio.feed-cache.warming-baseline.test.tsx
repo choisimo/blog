@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FALLBACK_DATA } from '@/config/defaults';
 import { useLensDeck } from '@/components/features/sentio/hooks/useLensDeck';
@@ -457,6 +463,7 @@ describe('sentio feed warming baseline', () => {
   });
 
   it('keeps the current lens feed state ready when append returns an empty warming response', async () => {
+    vi.useFakeTimers();
     const lensCardsBeforeAppend = [
       ...lensItems,
       {
@@ -500,16 +507,26 @@ describe('sentio feed warming baseline', () => {
       <LensStateHarness cacheKey='lens:append-warming' enabled={true} />
     );
 
-    await waitFor(() => {
-      expect(invokeLensFeed).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
     });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'next-card' }));
-    fireEvent.click(screen.getByRole('button', { name: 'next-card' }));
-
-    await waitFor(() => {
-      expect(invokeLensFeed).toHaveBeenCalledTimes(3);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'next-card' }));
+      fireEvent.click(screen.getByRole('button', { name: 'next-card' }));
+      await Promise.resolve();
+      await Promise.resolve();
     });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+      await Promise.resolve();
+    });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(3);
+
     expect(screen.getByTestId('lens-source')).toHaveTextContent('feed');
     expect(screen.getByTestId('lens-status')).toHaveTextContent('ready');
     expect(screen.getByTestId('lens-index')).toHaveTextContent('2');
@@ -524,10 +541,79 @@ describe('sentio feed warming baseline', () => {
       <LensStateHarness cacheKey='lens:append-warming' enabled={true} />
     );
 
-    await waitFor(() => {
-      expect(invokeLensFeed).toHaveBeenCalledTimes(3);
-    });
+    expect(invokeLensFeed).toHaveBeenCalledTimes(3);
     expect(screen.getByTestId('lens-source')).toHaveTextContent('feed');
+  });
+
+  it('throttles thought append warming responses before retrying the same cursor', async () => {
+    vi.useFakeTimers();
+    vi.mocked(invokeThoughtFeed)
+      .mockResolvedValueOnce({
+        items: thoughtItems,
+        nextCursor,
+        exhausted: false,
+        source: 'snapshot',
+      } satisfies ThoughtFeedResponse)
+      .mockResolvedValueOnce({
+        items: [],
+        nextCursor,
+        exhausted: false,
+        warming: true,
+        source: 'warming',
+      } satisfies ThoughtFeedResponse)
+      .mockResolvedValueOnce({
+        items: [
+          {
+            id: 'thought-3',
+            trackKey: 'thought-3',
+            title: 'Thought 3',
+            body: 'Body 3',
+            tags: ['feed'],
+          },
+        ],
+        nextCursor: null,
+        exhausted: true,
+        source: 'snapshot',
+      } satisfies ThoughtFeedResponse);
+
+    render(
+      <ThoughtStateHarness
+        cacheKey='thought:append-warming-throttle'
+        enabled={true}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'load-more' }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'load-more' }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(invokeThoughtFeed).toHaveBeenCalledTimes(3);
+    expect(screen.getByTestId('thought-cards')).toHaveTextContent(
+      'Thought 1,Thought 2,Thought 3'
+    );
   });
 
   it('keeps the current thought feed state ready when append returns an empty warming response', async () => {

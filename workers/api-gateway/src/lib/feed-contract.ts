@@ -44,7 +44,7 @@ export type LensFeedRequest = {
 
 export type ThoughtFeedRequest = LensFeedRequest;
 
-export type FeedResponseSource = 'snapshot' | 'snapshot-stale' | 'warming';
+export type FeedResponseSource = 'snapshot' | 'snapshot-stale' | 'warming' | 'warming-fallback';
 
 export type LensFeedResponse = {
   items: LensCard[];

@@ -325,6 +325,26 @@ async function getArtifactVersionByGenerationHash(
   );
 }
 
+async function getArtifactVersionByGenerationHashAnyStatus(
+  db: D1Database,
+  artifactType: AiArtifactFeedType,
+  scopeKey: string,
+  generationVersionHash: string
+): Promise<ArtifactVersionRow | null> {
+  return queryOne<ArtifactVersionRow>(
+    db,
+    `SELECT * FROM ai_artifact_versions
+      WHERE artifact_type = ?
+        AND scope_key = ?
+        AND generation_version_hash = ?
+      ORDER BY ready_at DESC, updated_at DESC
+      LIMIT 1`,
+    artifactType,
+    scopeKey,
+    generationVersionHash
+  );
+}
+
 async function getLatestReadyVersion(
   db: D1Database,
   artifactType: AiArtifactFeedType,
@@ -436,9 +456,15 @@ export async function storeReadyArtifactPages<T>(
   }
 ) {
   await ensureAiArtifactSchema(db);
-  const versionId = `afv_${crypto.randomUUID()}`;
   const now = nowIso();
   const latestPage = input.pages.reduce((max, page) => Math.max(max, page.pageNo), -1);
+  const existing = await getArtifactVersionByGenerationHashAnyStatus(
+    db,
+    input.artifactType,
+    input.scopeKey,
+    input.generationVersionHash
+  );
+  const versionId = existing?.id ?? `afv_${crypto.randomUUID()}`;
 
   await execute(
     db,
@@ -448,42 +474,81 @@ export async function storeReadyArtifactPages<T>(
             updated_at = ?
       WHERE artifact_type = ?
         AND scope_key = ?
-        AND active = 1`,
+        AND active = 1
+        AND id <> ?`,
     now,
-    input.artifactType,
-    input.scopeKey
-  );
-
-  await execute(
-    db,
-    `INSERT INTO ai_artifact_versions (
-       id, artifact_type, scope_key, scope_type, source_ref, source_hash,
-       prompt_version, schema_version, model_route, generation_version_hash,
-       status, active, latest_page, meta_json, created_at, updated_at, ready_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', 1, ?, ?, ?, ?, ?)`,
-    versionId,
     input.artifactType,
     input.scopeKey,
-    input.scopeType,
-    input.sourceRef,
-    input.sourceHash,
-    input.promptVersion,
-    input.schemaVersion,
-    input.modelRoute,
-    input.generationVersionHash,
-    latestPage,
-    JSON.stringify(input.meta ?? {}),
-    now,
-    now,
-    now
+    versionId
   );
+
+  if (existing) {
+    await execute(
+      db,
+      `UPDATE ai_artifact_versions
+          SET scope_type = ?,
+              source_ref = ?,
+              source_hash = ?,
+              prompt_version = ?,
+              schema_version = ?,
+              model_route = ?,
+              status = 'ready',
+              active = 1,
+              latest_page = MAX(latest_page, ?),
+              meta_json = ?,
+              updated_at = ?,
+              ready_at = COALESCE(ready_at, ?)
+        WHERE id = ?`,
+      input.scopeType,
+      input.sourceRef,
+      input.sourceHash,
+      input.promptVersion,
+      input.schemaVersion,
+      input.modelRoute,
+      latestPage,
+      JSON.stringify(input.meta ?? {}),
+      now,
+      now,
+      versionId
+    );
+  } else {
+    await execute(
+      db,
+      `INSERT INTO ai_artifact_versions (
+         id, artifact_type, scope_key, scope_type, source_ref, source_hash,
+         prompt_version, schema_version, model_route, generation_version_hash,
+         status, active, latest_page, meta_json, created_at, updated_at, ready_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', 1, ?, ?, ?, ?, ?)`,
+      versionId,
+      input.artifactType,
+      input.scopeKey,
+      input.scopeType,
+      input.sourceRef,
+      input.sourceHash,
+      input.promptVersion,
+      input.schemaVersion,
+      input.modelRoute,
+      input.generationVersionHash,
+      latestPage,
+      JSON.stringify(input.meta ?? {}),
+      now,
+      now,
+      now
+    );
+  }
 
   for (const page of input.pages) {
     await execute(
       db,
       `INSERT INTO ai_artifact_pages (
          id, version_id, page_no, logical_keys_json, item_hashes_json, payload_json, exhausted, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(version_id, page_no)
+       DO UPDATE SET
+         logical_keys_json = excluded.logical_keys_json,
+         item_hashes_json = excluded.item_hashes_json,
+         payload_json = excluded.payload_json,
+         exhausted = excluded.exhausted`,
       `afp_${crypto.randomUUID()}`,
       versionId,
       page.pageNo,
@@ -588,7 +653,7 @@ function parseSchedulerSnapshot(raw: string): Record<string, unknown> | null {
 
 export async function getLatestSchedulerDecision(
   db: D1Database,
-  schedulerId: string,
+  schedulerId: string
 ): Promise<SchedulerDecision | null> {
   await ensureAiArtifactSchema(db);
 
@@ -600,7 +665,7 @@ export async function getLatestSchedulerDecision(
       WHERE scheduler_id = ?
       ORDER BY created_at DESC
       LIMIT 1`,
-    schedulerId,
+    schedulerId
   );
 
   if (!row) {

@@ -1,12 +1,12 @@
-import { useCallback } from "react";
+import { useCallback } from 'react';
 import type {
   ChatMessage,
   ChatMessageAttachment,
   LiveReplyTarget,
   UploadedChatImage,
-} from "../types";
-import type { PageContext } from "@/services/chat/types";
-import type { SelectedBlockAttachment } from "@/services/chat";
+} from '../types';
+import type { PageContext } from '@/services/chat/types';
+import type { SelectedBlockAttachment } from '@/services/chat';
 import {
   createChatIdempotencyKey,
   streamChatEvents,
@@ -15,16 +15,16 @@ import {
   startNewSession,
   getLiveRooms,
   getLiveRoomStats,
-} from "@/services/chat";
+} from '@/services/chat';
 import {
   getMemoryContextForChat,
   extractAndSaveMemories,
-} from "@/services/personal/memory";
+} from '@/services/personal/memory';
 
 function formatLiveRoomName(room: string): string {
-  return String(room || "room:lobby")
-    .replace(/^room:/, "")
-    .replace(/:/g, "/");
+  return String(room || 'room:lobby')
+    .replace(/^room:/, '')
+    .replace(/:/g, '/');
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -49,7 +49,7 @@ type UseChatActionsProps = {
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   isAggregatePrompt: boolean;
   setIsAggregatePrompt: (value: boolean) => void;
-  questionMode: "article" | "general";
+  questionMode: 'article' | 'general';
   lastPromptRef: React.MutableRefObject<string>;
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
@@ -67,7 +67,7 @@ type UseChatActionsProps = {
   setLiveReplyTarget: React.Dispatch<
     React.SetStateAction<LiveReplyTarget | null>
   >;
-  currentPost?: PageContext["article"];
+  currentPost?: PageContext['article'];
 };
 
 export function useChatActions({
@@ -112,7 +112,7 @@ export function useChatActions({
           source,
           truncated,
         }) => ({
-          kind: "selected-block",
+          kind: 'selected-block',
           id,
           name,
           contentType,
@@ -120,9 +120,9 @@ export function useChatActions({
           sizeBytes,
           source,
           truncated,
-        }),
+        })
       ),
-    [],
+    []
   );
 
   const buildLiveReplyMeta = useCallback(() => {
@@ -136,7 +136,7 @@ export function useChatActions({
     return {
       replyToName: liveReplyTarget.name,
       mentionedAgents:
-        liveReplyTarget.senderType === "agent"
+        liveReplyTarget.senderType === 'agent'
           ? [liveReplyTarget.name.toLowerCase()]
           : undefined,
     };
@@ -147,7 +147,7 @@ export function useChatActions({
       liveReplyTarget
         ? `[Live → ${liveReplyTarget.name}] ${text}`
         : `[Live] ${text}`,
-    [liveReplyTarget],
+    [liveReplyTarget]
   );
 
   const sendDirectLiveMessage = useCallback(
@@ -155,10 +155,10 @@ export function useChatActions({
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const liveMeta = buildLiveReplyMeta();
 
-      setInput("");
+      setInput('');
       push({
         id,
-        role: "user",
+        role: 'user',
         text: getOutgoingLiveLabel(text),
       });
 
@@ -172,9 +172,9 @@ export function useChatActions({
       } catch (e) {
         push({
           id: `${id}_live_err`,
-          role: "system",
-          text: getErrorMessage(e, "Live message delivery failed"),
-          systemLevel: "error",
+          role: 'system',
+          text: getErrorMessage(e, 'Live message delivery failed'),
+          systemLevel: 'error',
         });
       }
     },
@@ -185,7 +185,7 @@ export function useChatActions({
       sendVisitorMessage,
       setInput,
       setLiveReplyTarget,
-    ],
+    ]
   );
 
   const send = useCallback(async () => {
@@ -194,76 +194,76 @@ export function useChatActions({
 
     const pushLiveSystem = (
       text: string,
-      level: "info" | "warn" | "error" = "info",
+      level: 'info' | 'warn' | 'error' = 'info'
     ) => {
       push({
         id: `live_cmd_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        role: "system",
+        role: 'system',
         text,
         systemLevel: level,
-        systemKind: level === "error" ? "error" : "status",
-        statusSource: "command",
+        systemKind: level === 'error' ? 'error' : 'status',
+        statusSource: 'command',
       });
     };
 
     if (
-      trimmed.toLowerCase() === "/live" ||
-      trimmed.toLowerCase().startsWith("/live ")
+      trimmed.toLowerCase() === '/live' ||
+      trimmed.toLowerCase().startsWith('/live ')
     ) {
       const payload = trimmed.slice(5).trim();
       const command = payload.toLowerCase();
 
-      if (!payload || command === "help" || command === "?") {
-        setInput("");
+      if (!payload || command === 'help' || command === '?') {
+        setInput('');
         pushLiveSystem(
           [
-            "[Live] Commands",
-            "- /live <message> : 현재 방에 메시지 전송",
-            "- /live on | off : live 고정 모드 켜기/끄기",
-            "- /live pin | unpin : live 고정 모드 켜기/끄기",
-            "- /live status : 현재 고정 모드 상태",
-            "- /live list : 활성 방 목록 보기",
-            "- /live room : 현재 접속 방 확인",
-            "- /live room <room> : 방 이동 (예: /live room lobby)",
-            "- /live join <room> : room 명령과 동일",
-            "- /live lobby : 로비(room:lobby)로 이동",
-          ].join("\n"),
+            '[Live] Commands',
+            '- /live <message> : 현재 방에 메시지 전송',
+            '- /live on | off : live 고정 모드 켜기/끄기',
+            '- /live pin | unpin : live 고정 모드 켜기/끄기',
+            '- /live status : 현재 고정 모드 상태',
+            '- /live list : 활성 방 목록 보기',
+            '- /live room : 현재 접속 방 확인',
+            '- /live room <room> : 방 이동 (예: /live room lobby)',
+            '- /live join <room> : room 명령과 동일',
+            '- /live lobby : 로비(room:lobby)로 이동',
+          ].join('\n')
         );
         return;
       }
 
-      if (command === "status") {
-        setInput("");
+      if (command === 'status') {
+        setInput('');
         pushLiveSystem(
-          `[Live] 고정 모드: ${livePinned ? "ON" : "OFF"} · room: ${formatLiveRoomName(currentLiveRoom)}`,
+          `[Live] 고정 모드: ${livePinned ? 'ON' : 'OFF'} · room: ${formatLiveRoomName(currentLiveRoom)}`
         );
         return;
       }
 
-      if (command === "on" || command === "pin" || command === "fixed") {
-        setInput("");
+      if (command === 'on' || command === 'pin' || command === 'fixed') {
+        setInput('');
         setLivePinned(true);
         pushLiveSystem(
-          `[Live] 고정 모드가 켜졌습니다. 이제 일반 입력은 /live 없이 ${formatLiveRoomName(currentLiveRoom)} 방으로 전송됩니다.`,
+          `[Live] 고정 모드가 켜졌습니다. 이제 일반 입력은 /live 없이 ${formatLiveRoomName(currentLiveRoom)} 방으로 전송됩니다.`
         );
         return;
       }
 
-      if (command === "off" || command === "unpin") {
-        setInput("");
+      if (command === 'off' || command === 'unpin') {
+        setInput('');
         setLivePinned(false);
         pushLiveSystem(
-          "[Live] 고정 모드가 꺼졌습니다. 일반 AI 채팅으로 복귀합니다.",
+          '[Live] 고정 모드가 꺼졌습니다. 일반 AI 채팅으로 복귀합니다.'
         );
         return;
       }
 
-      if (command === "list" || command === "rooms") {
-        setInput("");
+      if (command === 'list' || command === 'rooms') {
+        setInput('');
         try {
           const rooms = await getLiveRooms();
           if (rooms.length === 0) {
-            pushLiveSystem("[Live] 현재 활성 방이 없습니다.");
+            pushLiveSystem('[Live] 현재 활성 방이 없습니다.');
             return;
           }
 
@@ -273,62 +273,62 @@ export function useChatActions({
               `[Live] Active rooms (${rooms.length})`,
               ...top.map(
                 (r, idx) =>
-                  `${idx + 1}. ${formatLiveRoomName(r.room)} · ${r.onlineCount} online`,
+                  `${idx + 1}. ${formatLiveRoomName(r.room)} · ${r.onlineCount} online`
               ),
-              "",
-              "Use /live room <name> to move.",
-            ].join("\n"),
+              '',
+              'Use /live room <name> to move.',
+            ].join('\n')
           );
         } catch (e) {
           try {
             const stats = await getLiveRoomStats(currentLiveRoom);
             pushLiveSystem(
               [
-                "[Live] 전체 방 목록 API를 사용할 수 없어 현재 방만 표시합니다.",
+                '[Live] 전체 방 목록 API를 사용할 수 없어 현재 방만 표시합니다.',
                 `- ${formatLiveRoomName(stats.room)} · ${stats.onlineCount} online`,
-              ].join("\n"),
-              "warn",
+              ].join('\n'),
+              'warn'
             );
           } catch {
             pushLiveSystem(
-              getErrorMessage(e, "[Live] 방 목록을 가져오지 못했습니다."),
-              "error",
+              getErrorMessage(e, '[Live] 방 목록을 가져오지 못했습니다.'),
+              'error'
             );
           }
         }
         return;
       }
 
-      if (command === "room") {
-        setInput("");
+      if (command === 'room') {
+        setInput('');
         pushLiveSystem(
-          `[Live] 현재 방: ${formatLiveRoomName(currentLiveRoom)}`,
+          `[Live] 현재 방: ${formatLiveRoomName(currentLiveRoom)}`
         );
         return;
       }
 
-      if (command === "lobby") {
-        setInput("");
-        switchLiveRoom("room:lobby");
-        pushLiveSystem("[Live] room:lobby 로 이동합니다. 재연결 중...");
+      if (command === 'lobby') {
+        setInput('');
+        switchLiveRoom('room:lobby');
+        pushLiveSystem('[Live] room:lobby 로 이동합니다. 재연결 중...');
         return;
       }
 
-      if (command.startsWith("room ") || command.startsWith("join ")) {
-        const nextRoom = payload.split(/\s+/).slice(1).join(" ").trim();
+      if (command.startsWith('room ') || command.startsWith('join ')) {
+        const nextRoom = payload.split(/\s+/).slice(1).join(' ').trim();
         if (!nextRoom) {
-          setInput("");
+          setInput('');
           pushLiveSystem(
-            "[Live] 방 이름이 필요합니다. 예: /live room lobby",
-            "warn",
+            '[Live] 방 이름이 필요합니다. 예: /live room lobby',
+            'warn'
           );
           return;
         }
 
-        setInput("");
+        setInput('');
         switchLiveRoom(nextRoom);
         pushLiveSystem(
-          `[Live] ${formatLiveRoomName(nextRoom)} 방으로 이동합니다. 재연결 중...`,
+          `[Live] ${formatLiveRoomName(nextRoom)} 방으로 이동합니다. 재연결 중...`
         );
         return;
       }
@@ -343,7 +343,7 @@ export function useChatActions({
     if (
       liveReplyTarget &&
       trimmed &&
-      !trimmed.startsWith("/") &&
+      !trimmed.startsWith('/') &&
       attachedImage === null &&
       selectedBlockAttachments.length === 0
     ) {
@@ -354,7 +354,7 @@ export function useChatActions({
     if (
       livePinned &&
       trimmed &&
-      !trimmed.startsWith("/") &&
+      !trimmed.startsWith('/') &&
       attachedImage === null &&
       selectedBlockAttachments.length === 0
     ) {
@@ -389,26 +389,26 @@ export function useChatActions({
       const baseText =
         trimmed ||
         (imageToUpload
-          ? "첨부한 이미지에 대해 설명해줘."
+          ? '첨부한 이미지에 대해 설명해줘.'
           : selectedBlocksToSend.length > 0
-            ? "이 선택한 블록을 현재 글의 문맥에 맞게 설명해줘."
-            : "");
+            ? '이 선택한 블록을 현재 글의 문맥에 맞게 설명해줘.'
+            : '');
 
       const lines: string[] = [baseText];
 
       if (uploaded && imageToUpload) {
         const sizeKb = Math.max(1, Math.round(uploaded.size / 1024));
         lines.push(
-          "",
-          "[첨부 이미지]",
+          '',
+          '[첨부 이미지]',
           `URL: ${uploaded.url}`,
           `파일명: ${imageToUpload.name}`,
-          `크기: ${sizeKb}KB`,
+          `크기: ${sizeKb}KB`
         );
 
         // Show AI image analysis result if available
         if (uploaded.imageAnalysis) {
-          lines.push("", "📷 **AI 이미지 분석:**", uploaded.imageAnalysis);
+          lines.push('', '📷 **AI 이미지 분석:**', uploaded.imageAnalysis);
         }
 
         const entry: UploadedChatImage = {
@@ -417,19 +417,19 @@ export function useChatActions({
           name: imageToUpload.name,
           size: uploaded.size,
         };
-        setUploadedImages((prev) => [entry, ...prev].slice(0, 12));
+        setUploadedImages(prev => [entry, ...prev].slice(0, 12));
       }
 
-      const text = lines.join("\n");
+      const text = lines.join('\n');
       lastPromptRef.current = text;
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      setInput("");
+      setInput('');
       setAttachedImage(null);
       setSelectedBlockAttachments([]);
       setAttachedPreviewUrl(null);
       push({
         id,
-        role: "user",
+        role: 'user',
         text: baseText,
         attachments: redactSelectedBlockAttachments(selectedBlocksToSend),
       });
@@ -441,7 +441,7 @@ export function useChatActions({
           prompt: text,
           signal: controller.signal,
         });
-        push({ id: aiId, role: "assistant", text: aggregated });
+        push({ id: aiId, role: 'assistant', text: aggregated });
       } else {
         let memoryContext: string | null = null;
 
@@ -450,49 +450,51 @@ export function useChatActions({
         } catch (error) {
           push({
             id: `${aiId}_memory_search_warn`,
-            role: "system",
-            text: `저장된 사용자 메모리를 불러오지 못해 개인화 없이 답변합니다: ${getErrorMessage(error, "memory subsystem unavailable")}`,
-            systemLevel: "warn",
-            systemKind: "status",
-            statusSource: "memory",
+            role: 'system',
+            text: `저장된 사용자 메모리를 불러오지 못해 개인화 없이 답변합니다: ${getErrorMessage(error, 'memory subsystem unavailable')}`,
+            systemLevel: 'warn',
+            systemKind: 'status',
+            statusSource: 'memory',
           });
         }
 
-        let acc = "";
-        let finalSources: ChatMessage["sources"] | undefined;
-        let finalFollowups: ChatMessage["followups"] | undefined;
+        let acc = '';
+        let finalSources: ChatMessage['sources'] | undefined;
+        let finalFollowups: ChatMessage['followups'] | undefined;
         const idempotencyKey = createChatIdempotencyKey();
 
         push({
           id: aiId,
-          role: "assistant",
-          text: "",
+          role: 'assistant',
+          text: '',
           pending: true,
-          typingLabel: "AI가 작성 중...",
+          typingLabel: 'AI가 작성 중...',
         });
         for await (const ev of streamChatEvents({
           text: baseText,
           signal: controller.signal,
           idempotencyKey,
-          onFirstToken: (ms) => setFirstTokenMs(ms),
-          useArticleContext: questionMode === "article",
+          onFirstToken: ms => setFirstTokenMs(ms),
+          useArticleContext: questionMode === 'article',
           currentPost,
           selectedBlockAttachments: selectedBlocksToSend,
           imageUrl: uploaded?.url,
           imageAnalysis: uploaded?.imageAnalysis,
           memoryContext,
-          enableRag: questionMode === "general",
+          enableRag: questionMode === 'general',
         })) {
-          if (ev.type === "text") {
+          if (ev.type === 'text') {
             acc += ev.text;
-          } else if (ev.type === "sources") {
+          } else if (ev.type === 'session') {
+            setSessionKey(ev.sessionId);
+          } else if (ev.type === 'sources') {
             finalSources = ev.sources;
-          } else if (ev.type === "followups") {
+          } else if (ev.type === 'followups') {
             finalFollowups = ev.questions;
           }
         }
-        setMessages((prev) =>
-          prev.map((m) =>
+        setMessages(prev =>
+          prev.map(m =>
             m.id === aiId
               ? {
                   ...m,
@@ -502,34 +504,34 @@ export function useChatActions({
                   sources: finalSources,
                   followups: finalFollowups,
                 }
-              : m,
-          ),
+              : m
+          )
         );
 
         // Extract and save memories from conversation (fire and forget)
         if (acc) {
-          extractAndSaveMemories(baseText, acc).catch((error) => {
+          extractAndSaveMemories(baseText, acc).catch(error => {
             push({
               id: `${aiId}_memory_save_warn`,
-              role: "system",
-              text: `개인화 메모리를 저장하지 못했습니다: ${getErrorMessage(error, "memory subsystem unavailable")}`,
-              systemLevel: "warn",
-              systemKind: "status",
-              statusSource: "memory",
+              role: 'system',
+              text: `개인화 메모리를 저장하지 못했습니다: ${getErrorMessage(error, 'memory subsystem unavailable')}`,
+              systemLevel: 'warn',
+              systemKind: 'status',
+              statusSource: 'memory',
             });
           });
         }
       }
     } catch (e) {
       if (aiId) {
-        setMessages((prev) => prev.filter((m) => m.id !== aiId));
+        setMessages(prev => prev.filter(m => m.id !== aiId));
       }
-      const msg = getErrorMessage(e, "Chat failed");
+      const msg = getErrorMessage(e, 'Chat failed');
       const errId =
         aiId != null
           ? `${aiId}_err`
           : `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_err`;
-      push({ id: errId, role: "system", text: msg, systemLevel: "error" });
+      push({ id: errId, role: 'system', text: msg, systemLevel: 'error' });
     } finally {
       setBusy(false);
     }
@@ -552,6 +554,7 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
+    setSessionKey,
     redactSelectedBlockAttachments,
     currentLiveRoom,
     switchLiveRoom,
@@ -595,7 +598,7 @@ export function useChatActions({
       setIsAggregatePrompt,
       setLiveReplyTarget,
       setSessionKey,
-    ],
+    ]
   );
 
   return { send, stop, clearAll };

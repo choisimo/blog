@@ -48,6 +48,7 @@ function expectHarnessBindings() {
 const outboxMocks = {
   enqueueFeedArtifactGeneration: vi.fn(),
   generateAndStoreInitialFeedArtifact: vi.fn(),
+  getWarmResourceSnapshot: vi.fn(),
   getServeableFeedPage: vi.fn(),
 };
 
@@ -55,13 +56,14 @@ async function loadChatRouter() {
   vi.resetModules();
   vi.doMock('../src/lib/ai-artifact-outbox', async () => {
     const actual = await vi.importActual<typeof import('../src/lib/ai-artifact-outbox')>(
-      '../src/lib/ai-artifact-outbox',
+      '../src/lib/ai-artifact-outbox'
     );
 
     return {
       ...actual,
       enqueueFeedArtifactGeneration: outboxMocks.enqueueFeedArtifactGeneration,
       generateAndStoreInitialFeedArtifact: outboxMocks.generateAndStoreInitialFeedArtifact,
+      getWarmResourceSnapshot: outboxMocks.getWarmResourceSnapshot,
       getServeableFeedPage: outboxMocks.getServeableFeedPage,
     };
   });
@@ -78,21 +80,25 @@ async function createUserToken() {
       username: 'user',
       type: 'access',
     },
-    env,
+    env
   );
 }
 
 async function postFeed(path: string, body: object) {
   const chat = await loadChatRouter();
   const token = await createUserToken();
-  return chat.request(`https://example.com${path}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      Authorization: `Bearer ${token}`,
+  return chat.request(
+    `https://example.com${path}`,
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  }, env);
+    env
+  );
 }
 
 describe('prism/chain warming transport baseline', () => {
@@ -101,9 +107,21 @@ describe('prism/chain warming transport baseline', () => {
     vi.clearAllMocks();
     outboxMocks.enqueueFeedArtifactGeneration.mockReset();
     outboxMocks.generateAndStoreInitialFeedArtifact.mockReset();
+    outboxMocks.getWarmResourceSnapshot.mockReset();
     outboxMocks.getServeableFeedPage.mockReset();
     outboxMocks.enqueueFeedArtifactGeneration.mockResolvedValue(undefined);
     outboxMocks.generateAndStoreInitialFeedArtifact.mockResolvedValue(undefined);
+    outboxMocks.getWarmResourceSnapshot.mockResolvedValue({
+      redisUp: true,
+      queueEnabled: true,
+      asyncMode: true,
+      queueLength: 0,
+      dlqLength: 0,
+      allowWarm: true,
+      reason: 'ok',
+      providerHealth: [],
+      timestamp: new Date().toISOString(),
+    });
   });
 
   it.each([
@@ -181,9 +199,9 @@ describe('prism/chain warming transport baseline', () => {
       expect(outboxMocks.enqueueFeedArtifactGeneration).toHaveBeenCalledTimes(1);
       expect(outboxMocks.enqueueFeedArtifactGeneration).toHaveBeenCalledWith(
         env,
-        expect.objectContaining({ artifactType }),
+        expect.objectContaining({ artifactType })
       );
-    },
+    }
   );
 
   it.each([
@@ -235,8 +253,77 @@ describe('prism/chain warming transport baseline', () => {
       expect(outboxMocks.enqueueFeedArtifactGeneration).toHaveBeenCalledTimes(1);
       expect(outboxMocks.enqueueFeedArtifactGeneration).toHaveBeenCalledWith(
         env,
-        expect.objectContaining({ artifactType }),
+        expect.objectContaining({ artifactType })
       );
+    }
+  );
+
+  it.each([
+    {
+      artifactType: 'feed.lens',
+      path: '/session/session-3/lens-feed',
+      itemKey: 'angleKey',
     },
+    {
+      artifactType: 'feed.thought',
+      path: '/session/session-3/thought-feed',
+      itemKey: 'trackKey',
+    },
+  ])(
+    'returns warming-fallback cards when %s warming resources are unavailable',
+    async ({ artifactType, path, itemKey }) => {
+      outboxMocks.getServeableFeedPage.mockResolvedValue({
+        page: null,
+        scopeKey: 'scope-key',
+        sourceHash: 'source-hash',
+        generationVersionHash: 'generation-hash-3',
+        readState: { unreadCount: 0, itemStates: [] },
+        stale: false,
+        warming: true,
+      });
+      outboxMocks.getWarmResourceSnapshot.mockResolvedValueOnce({
+        redisUp: false,
+        queueEnabled: false,
+        asyncMode: false,
+        queueLength: 0,
+        dlqLength: 0,
+        allowWarm: false,
+        reason: 'queue-unavailable',
+        providerHealth: [],
+        timestamp: new Date().toISOString(),
+      });
+
+      const response = await postFeed(path, {
+        paragraph: 'Fallback cards should still be grounded in this paragraph.',
+        postTitle: 'Fallback post',
+        count: 4,
+        cursor: { seed: 'fd-warm-fallback', page: 0, seenKeys: [] },
+      });
+      const json = await response.json<{
+        ok: boolean;
+        data: {
+          items: Array<Record<string, unknown>>;
+          source: string;
+          stale: boolean;
+          warming: boolean;
+          warmBlockedReason: string;
+        };
+      }>();
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Retry-After')).toBe('30');
+      expect(json.ok).toBe(true);
+      expect(json.data.source).toBe('warming-fallback');
+      expect(json.data.stale).toBe(false);
+      expect(json.data.warming).toBe(true);
+      expect(json.data.warmBlockedReason).toBe('queue-unavailable');
+      expect(json.data.items.length).toBeGreaterThan(0);
+      expect(json.data.items[0]?.[itemKey]).toEqual(expect.any(String));
+      expect(outboxMocks.enqueueFeedArtifactGeneration).not.toHaveBeenCalled();
+      expect(outboxMocks.generateAndStoreInitialFeedArtifact).toHaveBeenCalledWith(
+        env,
+        expect.objectContaining({ artifactType })
+      );
+    }
   );
 });

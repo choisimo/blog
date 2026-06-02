@@ -10,10 +10,16 @@ import type { HonoEnv } from '../types';
 import { success, badRequest } from '../lib/response';
 import { requireAdmin, requireAuth } from '../middleware/auth';
 import type { LensCard, ThoughtCard } from '../lib/feed-contract';
-import { normalizeLensFeedRequest, normalizeThoughtFeedRequest } from '../lib/feed-normalizers';
+import {
+  buildLensFeedFallback,
+  buildThoughtFeedFallback,
+  normalizeLensFeedRequest,
+  normalizeThoughtFeedRequest,
+} from '../lib/feed-normalizers';
 import {
   enqueueFeedArtifactGeneration,
   generateAndStoreInitialFeedArtifact,
+  getWarmResourceSnapshot,
   getServeableFeedPage,
 } from '../lib/ai-artifact-outbox';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
@@ -171,6 +177,28 @@ chat.post('/session/:sessionId/lens-feed', requireAuth, async (c: Context<HonoEn
     }
   }
 
+  const resource = await getWarmResourceSnapshot(c.env).catch((err) => {
+    console.warn('[lens-feed] warm resource snapshot failed', err);
+    return null;
+  });
+  if (resource && !resource.allowWarm) {
+    const fallback = buildLensFeedFallback(input);
+    c.header('Retry-After', '30');
+    return success(c, {
+      ...fallback,
+      snapshotId: null,
+      generationVersionHash: served.generationVersionHash,
+      warming: true,
+      stale: false,
+      unreadCount: 0,
+      itemStates: [],
+      source: 'warming-fallback',
+      warmBlockedReason: resource.reason,
+      exhausted: true,
+      nextCursor: null,
+    });
+  }
+
   await enqueueFeedArtifactGeneration(c.env, {
     artifactType: 'feed.lens',
     sessionId,
@@ -271,6 +299,28 @@ chat.post('/session/:sessionId/thought-feed', requireAuth, async (c: Context<Hon
     } catch (err) {
       console.warn('[thought-feed] inline generation failed, falling back to async', err);
     }
+  }
+
+  const resource = await getWarmResourceSnapshot(c.env).catch((err) => {
+    console.warn('[thought-feed] warm resource snapshot failed', err);
+    return null;
+  });
+  if (resource && !resource.allowWarm) {
+    const fallback = buildThoughtFeedFallback(input);
+    c.header('Retry-After', '30');
+    return success(c, {
+      ...fallback,
+      snapshotId: null,
+      generationVersionHash: served.generationVersionHash,
+      warming: true,
+      stale: false,
+      unreadCount: 0,
+      itemStates: [],
+      source: 'warming-fallback',
+      warmBlockedReason: resource.reason,
+      exhausted: true,
+      nextCursor: null,
+    });
   }
 
   await enqueueFeedArtifactGeneration(c.env, {
