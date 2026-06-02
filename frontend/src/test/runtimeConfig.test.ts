@@ -54,6 +54,38 @@ describe('runtime config preload', () => {
     });
   });
 
+  it('loads public runtime config from the configured API base URL', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/');
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            env: 'production',
+            apiBaseUrl: 'https://api.example.com',
+            features: {
+              commentsEnabled: true,
+            },
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await preloadRuntimeConfig(fetchMock);
+
+    expect(fetchMock).toHaveBeenCalledWith('https://api.example.com/api/v1/public/config', {
+      cache: 'no-store',
+    });
+    expect((window as Window & { APP_CONFIG?: Record<string, unknown> }).APP_CONFIG).toMatchObject({
+      env: 'production',
+      apiBaseUrl: 'https://api.example.com',
+      features: {
+        commentsEnabled: true,
+      },
+    });
+  });
+
   it('keeps bootstrap resilient when runtime-config.json is unavailable', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('network down'));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

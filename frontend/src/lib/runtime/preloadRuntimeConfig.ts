@@ -11,10 +11,34 @@ type RuntimeWindow = Window & {
   APP_CONFIG?: RuntimeConfigPatch;
 };
 
-const RUNTIME_CONFIG_PATH = '/runtime-config.json';
+const STATIC_RUNTIME_CONFIG_PATH = '/runtime-config.json';
+const API_RUNTIME_CONFIG_PATH = '/api/v1/public/config';
 
 function isRuntimeConfig(value: unknown): value is Partial<PublicRuntimeConfig> {
   return typeof value === 'object' && value !== null;
+}
+
+function unwrapRuntimeConfigPayload(value: unknown): unknown {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'data' in value &&
+    typeof (value as { data?: unknown }).data === 'object' &&
+    (value as { data?: unknown }).data !== null
+  ) {
+    return (value as { data: unknown }).data;
+  }
+
+  return value;
+}
+
+function resolveRuntimeConfigPath(runtimeWindow: RuntimeWindow): string {
+  const apiBaseUrl = runtimeWindow.APP_CONFIG?.apiBaseUrl;
+  if (typeof apiBaseUrl === 'string' && apiBaseUrl.trim()) {
+    return `${apiBaseUrl.trim().replace(/\/+$/, '')}${API_RUNTIME_CONFIG_PATH}`;
+  }
+
+  return STATIC_RUNTIME_CONFIG_PATH;
 }
 
 function readBooleanEnv(value: string | boolean | undefined): boolean | undefined {
@@ -105,20 +129,20 @@ export async function preloadRuntimeConfig(
     return;
   }
 
-  applyBuildTimeRuntimeConfig();
+  const runtimeWindow = window as RuntimeWindow;
+  applyBuildTimeRuntimeConfig(runtimeWindow);
 
   try {
-    const response = await fetchImpl(RUNTIME_CONFIG_PATH, { cache: 'no-store' });
+    const response = await fetchImpl(resolveRuntimeConfigPath(runtimeWindow), { cache: 'no-store' });
     if (!response.ok) {
       return;
     }
 
-    const json = (await response.json().catch(() => null)) as unknown;
+    const json = unwrapRuntimeConfigPayload(await response.json().catch(() => null));
     if (!isRuntimeConfig(json)) {
       return;
     }
 
-    const runtimeWindow = window as RuntimeWindow;
     const runtimeConfig = json as RuntimeConfigPatch;
 
     runtimeWindow.APP_CONFIG = {
