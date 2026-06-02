@@ -7,6 +7,7 @@ import {
 
 describe('runtime config preload', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_API_BASE_URL', '');
     delete (window as Window & { APP_CONFIG?: unknown }).APP_CONFIG;
   });
 
