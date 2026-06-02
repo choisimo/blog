@@ -1,4 +1,15 @@
-export const WORKER_DEPLOYMENTS = Object.freeze([
+import { CONFIG_REGISTRY } from './config-registry.js';
+
+function listRequiredWorkerSecrets(workerId) {
+  return CONFIG_REGISTRY
+    .filter((entry) => entry.scopes.includes(workerId))
+    .filter((entry) => entry.classification === 'secret' || entry.delivery.includes('wrangler-secret'))
+    .filter((entry) => entry.requiredIn.includes(workerId))
+    .map((entry) => entry.key)
+    .sort();
+}
+
+const BASE_WORKER_DEPLOYMENTS = [
   {
     id: 'api-gateway',
     name: 'Blog API Gateway',
@@ -6,13 +17,6 @@ export const WORKER_DEPLOYMENTS = Object.freeze([
     path: 'api-gateway',
     wranglerPath: 'api-gateway/wrangler.toml',
     hasProduction: true,
-    requiredSecrets: [
-      'BACKEND_ORIGIN',
-      'BACKEND_KEY',
-      'GATEWAY_SIGNING_SECRET',
-      'JWT_SECRET',
-      'SECRETS_ENCRYPTION_KEY',
-    ],
   },
   {
     id: 'r2-gateway',
@@ -21,7 +25,6 @@ export const WORKER_DEPLOYMENTS = Object.freeze([
     path: 'r2-gateway',
     wranglerPath: 'r2-gateway/wrangler.toml',
     hasProduction: true,
-    requiredSecrets: ['INTERNAL_KEY'],
   },
   {
     id: 'terminal-gateway',
@@ -30,7 +33,6 @@ export const WORKER_DEPLOYMENTS = Object.freeze([
     path: 'terminal-gateway',
     wranglerPath: 'terminal-gateway/wrangler.toml',
     hasProduction: true,
-    requiredSecrets: ['JWT_SECRET', 'TERMINAL_SESSION_SECRET'],
   },
   {
     id: 'seo-gateway',
@@ -39,9 +41,17 @@ export const WORKER_DEPLOYMENTS = Object.freeze([
     path: 'seo-gateway',
     wranglerPath: 'seo-gateway/wrangler.toml',
     hasProduction: true,
-    requiredSecrets: [],
   },
-]);
+];
+
+export const WORKER_DEPLOYMENTS = Object.freeze(
+  BASE_WORKER_DEPLOYMENTS.map((worker) =>
+    Object.freeze({
+      ...worker,
+      requiredSecrets: Object.freeze(listRequiredWorkerSecrets(worker.id)),
+    }),
+  ),
+);
 
 export function getWorkerDeployment(id) {
   return WORKER_DEPLOYMENTS.find((item) => item.id === id) || null;

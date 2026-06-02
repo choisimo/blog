@@ -33,7 +33,6 @@ export { ChatError } from "./types";
 // Config
 export {
   getChatBaseUrl,
-  getChatApiKey,
   isUnifiedTasksEnabled,
   buildChatUrl,
   buildChatHeaders,

@@ -384,6 +384,16 @@ function validateVariable(variable, value) {
 router.post("/export", requireAdmin, (req, res) => {
   const { format = "env", includeSecrets = false } = req.body;
 
+  if (includeSecrets && config.security?.protectedEnvironment) {
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "SECRET_EXPORT_DISABLED",
+        message: "Secret-inclusive config export is disabled in protected environments.",
+      },
+    });
+  }
+
   let output = "";
 
   if (format === "env") {

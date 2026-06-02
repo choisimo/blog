@@ -91,3 +91,35 @@ test("readiness checks fail closed when a dependency probe throws", async () => 
   assert.equal(dependency.status, "failed");
   assert.equal(dependency.detail, "connection refused");
 });
+
+test("security config rejects protected placeholder secrets and image proxy gaps", async () => {
+  process.env.AI_DEFAULT_MODEL ||= "gpt-test";
+  const { getSecurityConfigurationErrors: getConfigSecurityErrors } = await import("../src/config/index.js");
+  const errors = getConfigSecurityErrors({
+    security: {
+      protectedEnvironment: true,
+      allowInsecureDevAuth: false,
+      gatewaySigningSecret: "replace-me",
+    },
+    backendKey: "replace-me",
+    auth: { jwtSecret: "jwt-secret" },
+    admin: {},
+    oauth: {},
+    ai: {
+      apiKey: "sk-placeholder",
+      image: {
+        proxyBaseUrl: "https://ai.example/v1",
+        proxyApiKey: "",
+      },
+    },
+    features: {
+      aiEnabled: true,
+      adminAiImageEnabled: true,
+    },
+  });
+
+  assert.ok(errors.some((error) => error.includes("BACKEND_KEY")));
+  assert.ok(errors.some((error) => error.includes("GATEWAY_SIGNING_SECRET")));
+  assert.ok(errors.some((error) => error.includes("AI_API_KEY")));
+  assert.ok(errors.some((error) => error.includes("AI_IMAGE_PROXY_API_KEY")));
+});

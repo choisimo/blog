@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { buildPublicRuntimeConfig } from '../../../shared/src/contracts/public-runtime-config.js';
+import { isPlaceholderConfigValue } from '../../../shared/src/contracts/config-registry.js';
 import { configSchema } from './schema.js';
 import { loadConsulConfig, consulGet } from './env.js';
 import { CONSUL } from './constants.js';
@@ -233,25 +234,28 @@ export function getSecurityConfigurationErrors(currentConfig = config) {
   const protectedEnvironment = currentConfig.security?.protectedEnvironment === true;
   const allowInsecureDevAuth = currentConfig.security?.allowInsecureDevAuth === true;
 
-  if (!currentConfig.backendKey && (protectedEnvironment || !allowInsecureDevAuth)) {
+  const missingOrPlaceholder = (value) =>
+    !value || (protectedEnvironment && isPlaceholderConfigValue(value));
+
+  if (missingOrPlaceholder(currentConfig.backendKey) && (protectedEnvironment || !allowInsecureDevAuth)) {
     errors.push(
       protectedEnvironment
-        ? 'BACKEND_KEY is required in protected environments'
+        ? 'BACKEND_KEY is required and cannot be a placeholder in protected environments'
         : 'BACKEND_KEY is required unless ALLOW_INSECURE_DEV_AUTH=true'
     );
   }
 
-  if (!currentConfig.auth?.jwtSecret && (protectedEnvironment || !allowInsecureDevAuth)) {
+  if (missingOrPlaceholder(currentConfig.auth?.jwtSecret) && (protectedEnvironment || !allowInsecureDevAuth)) {
     errors.push(
       protectedEnvironment
-        ? 'JWT_SECRET is required in protected environments'
+        ? 'JWT_SECRET is required and cannot be a placeholder in protected environments'
         : 'JWT_SECRET is required unless ALLOW_INSECURE_DEV_AUTH=true'
     );
   }
 
   if (
-    !currentConfig.admin?.bearerToken &&
-    !currentConfig.auth?.jwtSecret &&
+    missingOrPlaceholder(currentConfig.admin?.bearerToken) &&
+    missingOrPlaceholder(currentConfig.auth?.jwtSecret) &&
     (protectedEnvironment || !allowInsecureDevAuth)
   ) {
     errors.push(
@@ -261,8 +265,8 @@ export function getSecurityConfigurationErrors(currentConfig = config) {
     );
   }
 
-  if (!currentConfig.security?.gatewaySigningSecret && protectedEnvironment) {
-    errors.push('GATEWAY_SIGNING_SECRET is required in protected environments');
+  if (missingOrPlaceholder(currentConfig.security?.gatewaySigningSecret) && protectedEnvironment) {
+    errors.push('GATEWAY_SIGNING_SECRET is required and cannot be a placeholder in protected environments');
   }
 
   const oauthConfigured = Boolean(
@@ -273,6 +277,19 @@ export function getSecurityConfigurationErrors(currentConfig = config) {
   );
   if (protectedEnvironment && oauthConfigured && !currentConfig.oauth?.allowedEmails) {
     errors.push('ADMIN_ALLOWED_EMAILS is required for OAuth in protected environments');
+  }
+
+  if (protectedEnvironment && currentConfig.features?.aiEnabled && missingOrPlaceholder(currentConfig.ai?.apiKey)) {
+    errors.push('AI_API_KEY or OPENAI_API_KEY is required and cannot be a placeholder when AI is enabled in protected environments');
+  }
+
+  if (protectedEnvironment && currentConfig.features?.adminAiImageEnabled) {
+    if (!currentConfig.ai?.image?.proxyBaseUrl) {
+      errors.push('AI_IMAGE_PROXY_BASE_URL is required when admin AI image generation is enabled');
+    }
+    if (missingOrPlaceholder(currentConfig.ai?.image?.proxyApiKey)) {
+      errors.push('AI_IMAGE_PROXY_API_KEY is required and cannot be a placeholder when admin AI image generation is enabled in protected environments');
+    }
   }
 
   return errors;

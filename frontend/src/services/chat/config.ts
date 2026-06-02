@@ -3,12 +3,10 @@ import { getApiBaseUrl } from '@/utils/network/apiBase';
 type ChatWindow = Window & {
   APP_CONFIG?: {
     chatBaseUrl?: string;
-    chatApiKey?: string;
     aiUnified?: unknown;
   };
   __APP_CONFIG?: {
     chatBaseUrl?: string;
-    chatApiKey?: string;
     aiUnified?: unknown;
   };
 };
@@ -26,17 +24,6 @@ export function getChatBaseUrl(): string {
   if (typeof env === 'string' && env) return env;
 
   return getApiBaseUrl();
-}
-
-export function getChatApiKey(): string | null {
-  const w = getChatWindow();
-  const runtime = w?.APP_CONFIG?.chatApiKey ?? w?.__APP_CONFIG?.chatApiKey;
-  if (typeof runtime === 'string' && runtime) return runtime;
-
-  const env = import.meta.env.VITE_CHAT_API_KEY as string | undefined;
-  if (typeof env === 'string' && env) return env;
-
-  return null;
 }
 
 export function getChatWebSocketBaseUrl(): string | null {

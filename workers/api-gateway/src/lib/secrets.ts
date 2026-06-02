@@ -161,6 +161,8 @@ export async function getAiServeApiKey(env: Env): Promise<string | undefined> {
   }
 
   try {
+    // Read-only compatibility for pre-registry deployments. The config route no
+    // longer permits writing this key to KV.
     const kvValue = await env.KV.get('config:ai_serve_api_key');
     if (kvValue) {
       return kvValue;

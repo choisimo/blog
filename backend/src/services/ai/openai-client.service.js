@@ -29,6 +29,7 @@
 
 import OpenAI from "openai";
 import { config } from "../../config.js";
+import { isPlaceholderConfigValue } from "../../../../shared/src/contracts/config-registry.js";
 import {
   AI_MODELS,
   TIMEOUTS,
@@ -71,12 +72,17 @@ export class OpenAICompatClient {
     }
 
     this.baseUrl = baseURL;
-    this.apiKey =
+    const resolvedApiKey =
       options.apiKey ||
       config.ai?.apiKey ||
       process.env.AI_API_KEY ||
-      process.env.OPENAI_API_KEY ||
-      "sk-placeholder";
+      process.env.OPENAI_API_KEY;
+    if (config.security?.protectedEnvironment && isPlaceholderConfigValue(resolvedApiKey)) {
+      throw new Error(
+        "AI API key is required and cannot be a placeholder in protected environments"
+      );
+    }
+    this.apiKey = resolvedApiKey || "sk-placeholder";
     this.defaultModel =
       options.model ||
       config.ai?.defaultModel ||

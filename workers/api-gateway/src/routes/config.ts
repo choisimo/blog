@@ -18,6 +18,7 @@ import {
   getAllConfig,
   clearConfigCache,
 } from '../lib/config';
+import { isSecretLikeConfigKey } from '@blog/shared/contracts/config-registry';
 
 const config = new Hono<HonoEnv>();
 
@@ -53,6 +54,9 @@ config.put('/:key', requireAdmin, async (c) => {
   const validKeys = Object.keys(CONFIG_KEYS) as Array<keyof typeof CONFIG_KEYS>;
   if (!key || !validKeys.includes(key as keyof typeof CONFIG_KEYS)) {
     return badRequest(c, `Invalid config key: ${key}. Valid keys: ${validKeys.join(', ')}`);
+  }
+  if (isSecretLikeConfigKey(key)) {
+    return badRequest(c, `Config key ${key} is secret-like and must be stored through the encrypted secrets route`);
   }
 
   // Validate value
@@ -93,6 +97,9 @@ config.delete('/:key', requireAdmin, async (c) => {
   const validKeys = Object.keys(CONFIG_KEYS) as Array<keyof typeof CONFIG_KEYS>;
   if (!key || !validKeys.includes(key as keyof typeof CONFIG_KEYS)) {
     return badRequest(c, `Invalid config key: ${key}. Valid keys: ${validKeys.join(', ')}`);
+  }
+  if (isSecretLikeConfigKey(key)) {
+    return badRequest(c, `Config key ${key} is secret-like and must be managed through the encrypted secrets route`);
   }
 
   try {

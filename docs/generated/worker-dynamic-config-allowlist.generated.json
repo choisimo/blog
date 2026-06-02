@@ -1,0 +1,66 @@
+{
+  "generatedBy": "tools/config-registry/generate.mjs",
+  "keys": [
+    {
+      "key": "AI_DEFAULT_MODEL",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend",
+        "k3s"
+      ],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ]
+    },
+    {
+      "key": "AI_SERVER_URL",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ]
+    },
+    {
+      "key": "AI_VISION_MODEL",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend"
+      ],
+      "delivery": [
+        "process-env",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ]
+    },
+    {
+      "key": "API_BASE_URL",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend",
+        "k3s"
+      ],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "kv-dynamic-config",
+        "frontend-runtime-json"
+      ]
+    }
+  ]
+}

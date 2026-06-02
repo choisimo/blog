@@ -8,7 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_CHAT_BASE_URL?: string;
   readonly VITE_CHAT_WS_BASE_URL?: string;
-  readonly VITE_CHAT_API_KEY?: string;
   readonly VITE_CHAT_WS_URL?: string;
   readonly VITE_CHAT_WS_ENABLED?: string;
   readonly VITE_AI_UNIFIED?: string;

@@ -1,0 +1,7207 @@
+{
+  "generatedBy": "tools/config-registry/generate.mjs",
+  "valueCollection": false,
+  "totalKeys": 310,
+  "keys": [
+    {
+      "key": "APP_ENV",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "frontend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "frontend-runtime-json"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "NODE_ENV",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "vite-build-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SITE_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PUBLIC_SITE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "API_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "kv-dynamic-config",
+        "frontend-runtime-json"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": true,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_WS_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_GATEWAY_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "backend",
+        "terminal-gateway",
+        "frontend",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "frontend-runtime-json"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_DEFAULT_MODEL",
+      "owner": "frontend-platform",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": true,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_VISION_MODEL",
+      "owner": "frontend-platform",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": true,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_AI_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_RAG_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_TERMINAL_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_AI_INLINE",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_CODE_EXECUTION_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_COMMENTS_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FEATURE_ADMIN_AI_IMAGE_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_SITE_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_API_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_CHAT_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_CHAT_WS_BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_TERMINAL_GATEWAY_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_AI_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_RAG_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_TERMINAL_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_AI_INLINE",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_CODE_EXECUTION_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_COMMENTS_ENABLED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_FEATURE_FAB",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_AI_UNIFIED",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_SITE_NAME",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_AUTHOR_NAME",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SITE_NAME",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_EMAILJS_SERVICE_ID",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_EMAILJS_TEMPLATE_ID",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_EMAILJS_PUBLIC_KEY",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": "EmailJS browser public token; not an authentication secret."
+    },
+    {
+      "key": "BASE_URL",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEV",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PROD",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MODE",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SSR",
+      "owner": "frontend-platform",
+      "classification": "public-config",
+      "scopes": [
+        "frontend",
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "frontend-runtime-json",
+        "vite-build-var",
+        "process-env",
+        "wrangler-var"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "JWT_SECRET",
+      "owner": "platform-security",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "terminal-gateway"
+      ],
+      "requiredIn": [
+        "backend",
+        "api-gateway",
+        "terminal-gateway"
+      ],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "rotate-on-credential-compromise-or-release",
+      "deprecatedAliases": [],
+      "description": "JWT signing and verification secret.",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BACKEND_KEY",
+      "owner": "platform-security",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [
+        "backend",
+        "api-gateway"
+      ],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "rotate-on-credential-compromise-or-release",
+      "deprecatedAliases": [],
+      "description": "Shared Worker to backend authentication key.",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GATEWAY_SIGNING_SECRET",
+      "owner": "platform-security",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [
+        "backend",
+        "api-gateway"
+      ],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "rotate-on-credential-compromise-or-release",
+      "deprecatedAliases": [
+        "BACKEND_GATEWAY_SIGNING_SECRET"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BACKEND_GATEWAY_SIGNING_SECRET",
+      "owner": "platform-security",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-alias",
+      "deprecatedAliases": [
+        "GATEWAY_SIGNING_SECRET"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "INTERNAL_KEY",
+      "owner": "platform-security",
+      "classification": "secret",
+      "scopes": [
+        "r2-gateway"
+      ],
+      "requiredIn": [
+        "r2-gateway"
+      ],
+      "delivery": [
+        "github-secret",
+        "wrangler-secret"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "rotate-on-credential-compromise-or-release",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SECRETS_ENCRYPTION_KEY",
+      "owner": "worker-platform",
+      "classification": "secret",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [
+        "api-gateway"
+      ],
+      "delivery": [
+        "github-secret",
+        "wrangler-secret"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "requires-d1-re-encryption-runbook",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_SESSION_SECRET",
+      "owner": "platform-security",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "terminal-gateway",
+        "terminal-server",
+        "k3s"
+      ],
+      "requiredIn": [
+        "terminal-gateway",
+        "terminal-server"
+      ],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "rotate-on-credential-compromise-or-release",
+      "deprecatedAliases": [],
+      "description": "HMAC signing secret for terminal admission and session tokens.",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BACKEND_ORIGIN",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [
+        "api-gateway"
+      ],
+      "delivery": [
+        "github-secret",
+        "wrangler-secret"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_ALLOWED_EMAILS",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [
+        "backend:oauth-enabled",
+        "api-gateway:oauth-enabled"
+      ],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "membership-change",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_SETUP_TOKEN",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual-with-audit",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_BEARER_TOKEN",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual-with-audit",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_PASSWORD",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-local-only",
+      "deprecatedAliases": [
+        "ADMIN_USERNAME"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TOTP_SECRET",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual-with-audit",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GITHUB_CLIENT_SECRET",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual-with-audit",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GOOGLE_CLIENT_SECRET",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual-with-audit",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPENCODE_AUTH_TOKEN",
+      "owner": "identity-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual-with-audit",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_USERNAME",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_EMAIL",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GITHUB_CLIENT_ID",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GOOGLE_CLIENT_ID",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OAUTH_REDIRECT_BASE_URL",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SECRET_PLAINTEXT_ACCESS_ENABLED",
+      "owner": "security-operations",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "break-glass-window-only",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ADMIN_WORKER_MUTATIONS",
+      "owner": "identity-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "Local guard for backend worker-admin mutation routes.",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPENAI_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [
+        "AI_API_KEY"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_PROXY_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_EMBEDDING_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PERPLEXITY_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TAVILY_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BRAVE_SEARCH_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SERPER_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GEMINI_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "wrangler-secret",
+        "process-env",
+        "d1-secret-vault"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-backend-managed",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_SERVER_URL",
+      "owner": "ai-platform",
+      "classification": "runtime-mutable-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": true,
+      "rotation": "not-secret",
+      "deprecatedAliases": [
+        "OPENAI_API_BASE_URL",
+        "AI_SERVE_URL"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPENAI_API_BASE_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-alias",
+      "deprecatedAliases": [
+        "AI_SERVER_URL"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_PROXY_BASE_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_EMBEDDING_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_MODEL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_TIMEOUT_MS",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_MAX_COUNT",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_MAX_PROMPT_LENGTH",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_MAX_OUTPUT_BYTES",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_IMAGE_STORAGE_SUBDIR",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_EMBED_MODEL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PERPLEXITY_MODEL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PERPLEXITY_API_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TAVILY_API_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BRAVE_SEARCH_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SERPER_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SEARCH_API_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "QUERY_EXPANDER_MODEL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPENAI_DEFAULT_MODEL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DATABASE_URL",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "POSTGRES_PASSWORD",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "REDIS_URL",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "REDIS_PASSWORD",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SURREALDB_ROOT_PASSWORD",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONTENT_GIT_REPO_AUTH",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GITHUB_TOKEN",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "github-actions",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GITHUB_REPO_OWNER",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GITHUB_REPO_NAME",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GIT_USER_NAME",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GIT_USER_EMAIL",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CLOUDFLARE_API_TOKEN",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CLOUDFLARE_ACCOUNT_ID",
+      "owner": "infrastructure",
+      "classification": "deployment-only",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret-account-identifier",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VERCEL_DEPLOY_HOOK_URL",
+      "owner": "infrastructure",
+      "classification": "secret",
+      "scopes": [
+        "backend",
+        "k3s",
+        "github-actions",
+        "infra",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-secret",
+        "github-secret",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "infrastructure-credential-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "POSTGRES_DB",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "POSTGRES_USER",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SQLITE_PATH",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SQLITE_MIGRATIONS_DIR",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHROMA_URL",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHROMA_COLLECTION",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHROMA_DATABASE",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHROMA_MEMORY_COLLECTION",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHROMA_TENANT",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DB_PATH",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DB_TABLE_MEMORIES",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DB_TABLE_PREFERENCES",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONTENT_GIT_REPO",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONTENT_GIT_REF",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONTENT_PUBLIC_DIR",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONTENT_POSTS_DIR",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONTENT_IMAGES_DIR",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "REPO_ROOT",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "POSTS_SOURCE",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPEN_NOTEBOOK_URL",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPEN_NOTEBOOK_ENABLED",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SANDBOX_IMAGE",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PISTON_URL",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WORKSPACE_PATH",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "HOST",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PORT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TRUST_PROXY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LOG_LEVEL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ALLOWED_ORIGINS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ASSETS_BASE_URL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "api-gateway",
+        "frontend",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var",
+        "frontend-runtime-json"
+      ],
+      "publicExposure": true,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": "Public base URL for static assets."
+    },
+    {
+      "key": "RATE_LIMIT_MAX",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RATE_LIMIT_WINDOW_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_ASYNC_MODE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "JWT_EXPIRES_IN",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ALLOW_INSECURE_DEV_AUTH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "INTERNAL_API_URL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WORKER_API_URL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_WS_ENABLED",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_SERVER_URL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_CONNECT_TOKEN_TTL_SECONDS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "terminal-gateway",
+        "terminal-server",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_SESSION_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_BLOCKED_COUNTRIES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "terminal-gateway",
+        "k3s"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ENABLE_LEGACY_BACKEND_AUTH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "USE_CONSUL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONSUL_HOST",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONSUL_PORT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONSUL_PREFIX",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CONSUL_CACHE_TTL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "READINESS_CHECK_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SMOKE_BASE_URL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SMOKE_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "k3s-configmap",
+        "consul-kv",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_MAX_CONTEXT_MESSAGES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_MAX_TOOL_ITERATIONS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_MEMORY_LIMIT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_MEMORY_MIN_SCORE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_MEMORY_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_MODEL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_STREAM_CHUNK_DELAY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_STREAM_CHUNK_SIZE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_SYSTEM_PROMPT_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_TOOL_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AGENT_USER_PREFERENCE_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_DLQ_ALARM_THRESHOLD",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_ENABLE_LEGACY_COMPLETIONS_FALLBACK",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_FALLBACK_MODELS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_LEGACY_COMPLETIONS_MODEL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_RATE_LIMIT_MAX",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_RATE_LIMIT_WINDOW_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_REDIS_CHECK_TTL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_STATIC_MODEL_LIST",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TASK_STREAM_MAXLEN",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TASK_WAIT_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_AGGREGATE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_CATALYST",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_CHAIN",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_CUSTOM",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_DEFAULT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_GENERATE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_PLAYGROUND",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_PRISM",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_QUIZ",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_SKETCH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_SUMMARY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_TEMP_TEMPLATE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_WORKER_BATCH_SIZE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_WORKER_BLOCK_TIME",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_WORKER_NAME",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BACKEND_DOMAIN_OUTBOX_ENABLED",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BACKEND_DOMAIN_OUTBOX_INTERVAL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "BACKEND_STATE_MODE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_IDEMPOTENCY_TTL_SECONDS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_LIVE_CONTEXT_MESSAGES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_NOTEBOOK_CONTEXT_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_RAG_CONTEXT_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_RESPONSE_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CIRCUIT_BREAKER_RESET_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CIRCUIT_BREAKER_THRESHOLD",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CODE_EXEC_TIMEOUT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_ALLOWED_FAILS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_CONVERSATION_TYPE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_COOLDOWN_TIME",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_MEMORY_LIMIT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_MEMORY_TYPE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_MODEL_PRIORITY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_NUM_RETRIES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_PERSONA",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_ROUTING_STRATEGY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_SEARCH_LIMIT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DEFAULT_TIMEOUT_SECONDS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DISABLE_MCP",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FALLBACK_FACETS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FALLBACK_MOOD",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FALLBACK_QUESTIONS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FALLBACK_SEARCH_SCORE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "FALLBACK_SUMMARY_LENGTH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "HEALTH_CHECK_CACHE_TTL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "HEALTH_CHECK_PROMPT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "HEALTH_CHECK_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "HEALTH_STATUS_UNKNOWN",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "IMAGE_DEFAULT_MIME",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "IMAGE_FETCH_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "IMAGE_MAX_SIZE_BYTES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_AGENT_MAX_DELAY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_AGENT_MAX_REPLY_CHARS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_AGENT_MIN_DELAY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_AGENT_SILENCE_PROBABILITY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_AGENT_TEMPERATURE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_CONFIG_KEY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_CONTEXT_MAX_MESSAGES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_CONTEXT_MAX_SESSIONS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_CONTEXT_MAX_TEXT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_REDIS_BRIDGE_BASE_RETRY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_REDIS_BRIDGE_MAX_RETRY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_REDIS_PRESENCE_TTL_SEC",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_RESEARCH_RAG_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LIVE_RESEARCH_WEB_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LONG_CONTEXT_THRESHOLD",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "LONG_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MAX_SESSION_HISTORY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MCP_CONFIG_PATH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MODEL_LIST_CACHE_TTL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MODEL_TEST_PROMPT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MODEL_TEST_RESPONSE_LIMIT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MODEL_TEST_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPENAI_MAX_RETRIES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "PERPLEXITY_RECENCY_FILTER",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_BLOG_ASSISTANT_PROMPT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_CONTEXT_TEMPLATE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_DEFAULT_RESULTS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_KEYWORDS_ENGLISH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_KEYWORDS_KOREAN",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_MIN_SCORE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAG_RECOMMENDATION_INSTRUCTION",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SEARCH_DEFAULT_ENGINE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SEARCH_DEFAULT_LIMIT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SESSION_CACHE_TTL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SESSION_CLEANUP_INTERVAL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SESSION_TTL",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "SSE_PING_INTERVAL_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "STREAM_CHUNK_DELAY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "STREAM_CHUNK_SIZE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TAVILY_SEARCH_DEPTH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEXT_LIMIT_BULLET",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEXT_LIMIT_FALLBACK",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEXT_LIMIT_MEMORY",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEXT_LIMIT_TASK_PARAGRAPH",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEXT_LIMIT_TASK_TITLE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEXT_LIMIT_WEB_PAGE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TOOL_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TRANSLATE_PROXY_TIMEOUT_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "USAGE_DEFAULT_DAYS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "USAGE_DEFAULT_PERIOD_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VALID_TASK_MODES",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VECTOR_SEARCH_DEFAULT_LIMIT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VECTOR_SEARCH_MIN_SCORE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VISION_DEFAULT_PROMPT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WEB_SCRAPER_USER_AGENT",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WEB_SEARCH_ENGINE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WS_STREAM_CHUNK_DELAY_MS",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WS_STREAM_CHUNK_SIZE",
+      "owner": "backend-platform",
+      "classification": "private-config",
+      "scopes": [
+        "backend"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env",
+        "default"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "ENV",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CF_ACCESS_AUD",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CF_TEAM_DOMAIN",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_RATE_LIMIT_PER_MINUTE",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "CHAT_RATE_LIMIT_PER_MINUTE",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_WARM_MAX_QUEUE_LENGTH",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_WARM_MAX_DLQ_LENGTH",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_WARM_SCAN_INTERVAL_MS",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "NOTIFY_FROM_EMAIL",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "NOTIFY_TO_EMAILS",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RESEND_API_KEY",
+      "owner": "worker-platform",
+      "classification": "secret",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-secret",
+        "github-secret"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "provider-key-rotation",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TERMINAL_ORIGIN",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "GITHUB_PAGES_ORIGIN",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "RAW_CONTENT_ORIGIN",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "terminal-gateway",
+        "r2-gateway",
+        "seo-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "MY_BUCKET",
+      "owner": "worker-platform",
+      "classification": "infra-only",
+      "scopes": [
+        "r2-gateway",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "R2",
+      "owner": "worker-platform",
+      "classification": "infra-only",
+      "scopes": [
+        "r2-gateway",
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "KV",
+      "owner": "worker-platform",
+      "classification": "infra-only",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "DB",
+      "owner": "worker-platform",
+      "classification": "infra-only",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "TEST_MIGRATIONS",
+      "owner": "worker-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway",
+        "ci"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "VITE_CHAT_API_KEY",
+      "owner": "frontend-platform",
+      "classification": "secret",
+      "scopes": [
+        "frontend",
+        "github-actions"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "github-secret",
+        "vite-build-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-remove-from-browser",
+      "deprecatedAliases": [],
+      "description": "Deprecated browser-exposed chat API key path. Chat requests no longer use it.",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_SERVE_API_KEY",
+      "owner": "ai-platform",
+      "classification": "secret",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "d1-secret-vault",
+        "wrangler-secret"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-alias",
+      "deprecatedAliases": [
+        "AI_API_KEY"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "AI_SERVE_URL",
+      "owner": "ai-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "kv-dynamic-config"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "deprecated-alias",
+      "deprecatedAliases": [
+        "AI_SERVER_URL"
+      ],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    }
+  ]
+}

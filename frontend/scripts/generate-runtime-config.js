@@ -4,6 +4,10 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { buildPublicRuntimeConfig } from '../../shared/src/contracts/public-runtime-config.js';
+import {
+  getConfigRegistryEntry,
+  isSecretLikeConfigKey,
+} from '../../shared/src/contracts/config-registry.js';
 import { resolveSiteBaseUrl } from './lib/resolve-site-url.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,10 +27,26 @@ function readFlag(env, directKey, viteKey) {
   return env[directKey] === 'true' || env[viteKey] === 'true';
 }
 
+function assertNoSecretLikeBrowserEnv(env) {
+  const blocked = Object.keys(env)
+    .filter((key) => key.startsWith('VITE_'))
+    .filter((key) => {
+      const registryEntry = getConfigRegistryEntry(key);
+      return isSecretLikeConfigKey(key) && registryEntry?.publicExposure !== true;
+    });
+  if (blocked.length > 0) {
+    throw new Error(
+      `Secret-like Vite env keys are not allowed in browser runtime config: ${blocked.join(', ')}`
+    );
+  }
+}
+
 export function buildRuntimeConfigFromEnv(
   env = process.env,
   options = {}
 ) {
+  assertNoSecretLikeBrowserEnv(env);
+
   const siteBaseUrl = options.siteBaseUrl || resolveSiteBaseUrl();
   const apiBaseUrl =
     env.API_BASE_URL ||

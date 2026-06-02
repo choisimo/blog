@@ -18,6 +18,7 @@ import { validateIapJwt } from './middleware/iap';
 import { success } from './lib/response';
 import { getCorsHeadersForRequest } from './lib/cors';
 import { getApiBaseUrl, getAiDefaultModel, getAiVisionModel } from './lib/config';
+import { buildConfigReadiness } from './lib/config-readiness';
 import {
   OriginSignatureConfigurationError,
   attachOriginSignatureHeaders,
@@ -291,6 +292,16 @@ app.get('/health', async (c) => {
 
 app.get('/api/v1/readiness', async (c) => {
   return proxyToBackend(c.req.raw, c.env);
+});
+
+app.get('/readiness/config', (c) => {
+  const readiness = buildConfigReadiness(c.env);
+  return c.json(readiness, readiness.ok ? 200 : 503);
+});
+
+app.get('/api/v1/readiness/config', (c) => {
+  const readiness = buildConfigReadiness(c.env);
+  return c.json(readiness, readiness.ok ? 200 : 503);
 });
 
 // Do not expose origin metrics through the public edge.

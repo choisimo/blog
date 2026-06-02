@@ -6,17 +6,20 @@
  *
  * KV Keys:
  * - config:ai_serve_url     - AI 서버 URL (api.nodove.com)
- * - config:ai_serve_api_key - AI 서버 API 키
  * - config:api_base_url     - 백엔드 API URL (api.nodove.com)
  * - config:ai_default_model - 백엔드 강제 기본 모델
  * - config:ai_vision_model  - 비전 강제 모델
  * - config:perplexity_model - 웹 검색 기본 모델
  *
  * Priority:
- * 1. D1 Secret (if set)
- * 2. KV value (if set)
- * 3. Environment variable
- * 4. Hardcoded default
+ * Priority for non-secret dynamic config:
+ * 1. KV value (if set)
+ * 2. Environment variable
+ * 3. Hardcoded default
+ *
+ * Secrets are intentionally excluded from CONFIG_KEYS and must use D1 encrypted
+ * secrets or Worker env bindings. Legacy KV secret reads remain read-only in
+ * secrets.ts during migration, but new writes are denied by the config route.
  */
 
 import type { Env } from '../types';
@@ -25,7 +28,6 @@ import { getSecret } from './secrets';
 // KV key constants
 export const CONFIG_KEYS = {
   AI_SERVE_URL: 'config:ai_serve_url',
-  AI_SERVE_API_KEY: 'config:ai_serve_api_key',
   API_BASE_URL: 'config:api_base_url',
   AI_DEFAULT_MODEL: 'config:ai_default_model',
   AI_VISION_MODEL: 'config:ai_vision_model',
@@ -136,12 +138,9 @@ export async function getAiServeUrl(env: Env): Promise<string> {
  * Get AI Serve API Key (optional)
  */
 export async function getAiServeApiKey(env: Env): Promise<string | undefined> {
-  return getOptionalConfigWithSecret(
-    env,
-    'AI_API_KEY',
-    CONFIG_KEYS.AI_SERVE_API_KEY,
-    env.AI_API_KEY
-  );
+  const secretValue = await getSecret(env, 'AI_API_KEY');
+  if (secretValue) return secretValue;
+  return env.AI_API_KEY;
 }
 
 /**
@@ -220,7 +219,7 @@ export async function deleteConfigValue(
 export async function getAllConfig(env: Env): Promise<{
   aiServeUrl: { value: string; source: 'db' | 'kv' | 'env' | 'default' };
   apiBaseUrl: { value: string; source: 'db' | 'kv' | 'env' | 'default' };
-  aiServeApiKey: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
+  aiServeApiKey: { value: string; source: 'db' | 'env' | 'legacy-kv' | 'none' } | null;
   aiDefaultModel: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
   aiVisionModel: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
   perplexityModel: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
@@ -257,13 +256,13 @@ export async function getAllConfig(env: Env): Promise<{
 
   // AI API Key - check D1 first
   const aiKeyDb = await getSecret(env, 'AI_API_KEY');
-  let aiServeApiKey: { value: string; source: 'db' | 'kv' | 'env' | 'none' } | null;
+  let aiServeApiKey: { value: string; source: 'db' | 'env' | 'legacy-kv' | 'none' } | null;
   if (aiKeyDb) {
     aiServeApiKey = { value: '***' + aiKeyDb.slice(-4), source: 'db' as const };
   } else {
-    const aiServeApiKeyKv = await kv.get(CONFIG_KEYS.AI_SERVE_API_KEY);
+    const aiServeApiKeyKv = await kv.get('config:ai_serve_api_key');
     aiServeApiKey = aiServeApiKeyKv
-      ? { value: '***' + aiServeApiKeyKv.slice(-4), source: 'kv' as const }
+      ? { value: '***' + aiServeApiKeyKv.slice(-4), source: 'legacy-kv' as const }
       : env.AI_API_KEY
         ? { value: '***' + env.AI_API_KEY.slice(-4), source: 'env' as const }
         : null;

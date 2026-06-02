@@ -136,14 +136,14 @@ test("protected security configuration requires backend and JWT secrets", () => 
     auth: { jwtSecret: undefined },
   });
 
-  assert.ok(errors.includes("BACKEND_KEY is required in protected environments"));
-  assert.ok(errors.includes("JWT_SECRET is required in protected environments"));
+  assert.ok(errors.some((error) => error.startsWith("BACKEND_KEY is required")));
+  assert.ok(errors.some((error) => error.startsWith("JWT_SECRET is required")));
   assert.ok(
     errors.includes(
       "ADMIN_BEARER_TOKEN or JWT_SECRET is required for admin routes in protected environments",
     ),
   );
-  assert.ok(errors.includes("GATEWAY_SIGNING_SECRET is required in protected environments"));
+  assert.ok(errors.some((error) => error.startsWith("GATEWAY_SIGNING_SECRET is required")));
 });
 
 test("gateway signature guard can reject backend-key-only origin requests", async () => {

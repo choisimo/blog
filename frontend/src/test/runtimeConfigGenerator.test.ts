@@ -41,4 +41,17 @@ describe("runtime config generator", () => {
     expect(runtimeConfig.terminalGatewayUrl).toBeNull();
     expect(runtimeConfig.capabilities.hasTerminalGatewayUrl).toBe(false);
   });
+
+  it("rejects deprecated secret-like Vite env keys", () => {
+    expect(() =>
+      buildRuntimeConfigFromEnv(
+        {
+          APP_ENV: "production",
+          API_BASE_URL: "https://api.example.com",
+          VITE_CHAT_API_KEY: "secret",
+        },
+        { siteBaseUrl: "https://blog.example.com" }
+      )
+    ).toThrow(/VITE_CHAT_API_KEY/);
+  });
 });

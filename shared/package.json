@@ -24,6 +24,13 @@
       "default": "./src/contracts/service-boundaries.js"
     },
     "./contracts/platform-config": "./src/contracts/platform-config.js",
+    "./contracts/config-classification": "./src/contracts/config-classification.js",
+    "./contracts/config-scopes": "./src/contracts/config-scopes.js",
+    "./contracts/config-delivery": "./src/contracts/config-delivery.js",
+    "./contracts/config-registry": {
+      "types": "./src/contracts/config-registry.d.ts",
+      "default": "./src/contracts/config-registry.js"
+    },
     "./contracts/public-runtime-config": {
       "types": "./src/contracts/public-runtime-config.d.ts",
       "default": "./src/contracts/public-runtime-config.js"

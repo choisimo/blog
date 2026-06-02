@@ -36,7 +36,6 @@ jobs:
       # Configure this as a repository secret named VITE_API_BASE_URL
       VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
       VITE_CHAT_BASE_URL: ${{ secrets.VITE_CHAT_BASE_URL }}
-      VITE_CHAT_API_KEY: ${{ secrets.VITE_CHAT_API_KEY }}
       # Feature flags for frontend (configure as repository secrets)
       # Set VITE_FEATURE_FAB to 'true' to enable FAB by default
       VITE_FEATURE_FAB: ${{ secrets.VITE_FEATURE_FAB }}

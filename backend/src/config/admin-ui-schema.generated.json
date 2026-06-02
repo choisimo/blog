@@ -1,0 +1,2610 @@
+{
+  "generatedBy": "tools/config-registry/generate.mjs",
+  "categories": [
+    {
+      "id": "frontend-platform",
+      "name": "frontend-platform",
+      "variables": [
+        {
+          "key": "AI_DEFAULT_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "runtime-mutable-config",
+          "publicExposure": true,
+          "mutableAtRuntime": true,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_VISION_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "runtime-mutable-config",
+          "publicExposure": true,
+          "mutableAtRuntime": true,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "API_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "runtime-mutable-config",
+          "publicExposure": true,
+          "mutableAtRuntime": true,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "APP_ENV",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_WS_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEV",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_ADMIN_AI_IMAGE_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_AI_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_AI_INLINE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_CODE_EXECUTION_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_COMMENTS_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_RAG_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FEATURE_TERMINAL_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MODE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "NODE_ENV",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PROD",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PUBLIC_SITE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SITE_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SITE_NAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SSR",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TERMINAL_GATEWAY_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_AI_UNIFIED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_API_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_AUTHOR_NAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_CHAT_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_CHAT_WS_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_EMAILJS_PUBLIC_KEY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_EMAILJS_SERVICE_ID",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_EMAILJS_TEMPLATE_ID",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_AI_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_AI_INLINE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_CODE_EXECUTION_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_COMMENTS_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_FAB",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_RAG_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_FEATURE_TERMINAL_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_SITE_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_SITE_NAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VITE_TERMINAL_GATEWAY_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "public-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        }
+      ]
+    },
+    {
+      "id": "platform-security",
+      "name": "platform-security",
+      "variables": [
+        {
+          "key": "BACKEND_GATEWAY_SIGNING_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": [
+            "GATEWAY_SIGNING_SECRET"
+          ]
+        },
+        {
+          "key": "BACKEND_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GATEWAY_SIGNING_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": [
+            "BACKEND_GATEWAY_SIGNING_SECRET"
+          ]
+        },
+        {
+          "key": "JWT_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TERMINAL_SESSION_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        }
+      ]
+    },
+    {
+      "id": "identity-platform",
+      "name": "identity-platform",
+      "variables": [
+        {
+          "key": "ADMIN_ALLOWED_EMAILS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ADMIN_BEARER_TOKEN",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ADMIN_EMAIL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ADMIN_PASSWORD",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": [
+            "ADMIN_USERNAME"
+          ]
+        },
+        {
+          "key": "ADMIN_SETUP_TOKEN",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ADMIN_USERNAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ADMIN_WORKER_MUTATIONS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GITHUB_CLIENT_ID",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GITHUB_CLIENT_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GOOGLE_CLIENT_ID",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GOOGLE_CLIENT_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OAUTH_REDIRECT_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OPENCODE_AUTH_TOKEN",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TOTP_SECRET",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        }
+      ]
+    },
+    {
+      "id": "ai-platform",
+      "name": "ai-platform",
+      "variables": [
+        {
+          "key": "AI_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_EMBED_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_EMBEDDING_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_EMBEDDING_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_MAX_COUNT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_MAX_OUTPUT_BYTES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_MAX_PROMPT_LENGTH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_PROXY_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_PROXY_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_STORAGE_SUBDIR",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_IMAGE_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_SERVER_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "runtime-mutable-config",
+          "publicExposure": false,
+          "mutableAtRuntime": true,
+          "deprecatedAliases": [
+            "OPENAI_API_BASE_URL",
+            "AI_SERVE_URL"
+          ]
+        },
+        {
+          "key": "BRAVE_SEARCH_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "BRAVE_SEARCH_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GEMINI_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OPENAI_API_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": [
+            "AI_SERVER_URL"
+          ]
+        },
+        {
+          "key": "OPENAI_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": [
+            "AI_API_KEY"
+          ]
+        },
+        {
+          "key": "OPENAI_DEFAULT_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PERPLEXITY_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PERPLEXITY_API_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PERPLEXITY_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "QUERY_EXPANDER_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SEARCH_API_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SERPER_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SERPER_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TAVILY_API_KEY",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TAVILY_API_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        }
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "name": "infrastructure",
+      "variables": [
+        {
+          "key": "CHROMA_COLLECTION",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHROMA_DATABASE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHROMA_MEMORY_COLLECTION",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHROMA_TENANT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHROMA_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CLOUDFLARE_ACCOUNT_ID",
+          "type": "string",
+          "isSecret": false,
+          "classification": "deployment-only",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CLOUDFLARE_API_TOKEN",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONTENT_GIT_REF",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONTENT_GIT_REPO",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONTENT_GIT_REPO_AUTH",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONTENT_IMAGES_DIR",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONTENT_POSTS_DIR",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONTENT_PUBLIC_DIR",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DATABASE_URL",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DB_PATH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DB_TABLE_MEMORIES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DB_TABLE_PREFERENCES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GIT_USER_EMAIL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GIT_USER_NAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GITHUB_REPO_NAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GITHUB_REPO_OWNER",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "GITHUB_TOKEN",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OPEN_NOTEBOOK_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OPEN_NOTEBOOK_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PISTON_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "POSTGRES_DB",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "POSTGRES_PASSWORD",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "POSTGRES_USER",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "POSTS_SOURCE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "REDIS_PASSWORD",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "REDIS_URL",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "REPO_ROOT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SANDBOX_IMAGE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SQLITE_MIGRATIONS_DIR",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SQLITE_PATH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SURREALDB_ROOT_PASSWORD",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VERCEL_DEPLOY_HOOK_URL",
+          "type": "password",
+          "isSecret": true,
+          "classification": "secret",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "WORKSPACE_PATH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        }
+      ]
+    },
+    {
+      "id": "backend-platform",
+      "name": "backend-platform",
+      "variables": [
+        {
+          "key": "AGENT_MAX_CONTEXT_MESSAGES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_MAX_TOOL_ITERATIONS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_MEMORY_LIMIT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_MEMORY_MIN_SCORE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_MEMORY_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_STREAM_CHUNK_DELAY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_STREAM_CHUNK_SIZE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_SYSTEM_PROMPT_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_TOOL_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AGENT_USER_PREFERENCE_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_ASYNC_MODE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_DLQ_ALARM_THRESHOLD",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_ENABLE_LEGACY_COMPLETIONS_FALLBACK",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_FALLBACK_MODELS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_LEGACY_COMPLETIONS_MODEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_RATE_LIMIT_MAX",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_RATE_LIMIT_WINDOW_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_REDIS_CHECK_TTL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_STATIC_MODEL_LIST",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TASK_STREAM_MAXLEN",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TASK_WAIT_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_AGGREGATE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_CATALYST",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_CHAIN",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_CUSTOM",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_DEFAULT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_GENERATE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_PLAYGROUND",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_PRISM",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_QUIZ",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_SKETCH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_SUMMARY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_TEMP_TEMPLATE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_WORKER_BATCH_SIZE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_WORKER_BLOCK_TIME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "AI_WORKER_NAME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ALLOW_INSECURE_DEV_AUTH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ALLOWED_ORIGINS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ASSETS_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": true,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "BACKEND_DOMAIN_OUTBOX_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "BACKEND_DOMAIN_OUTBOX_INTERVAL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "BACKEND_STATE_MODE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_IDEMPOTENCY_TTL_SECONDS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_LIVE_CONTEXT_MESSAGES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_NOTEBOOK_CONTEXT_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_RAG_CONTEXT_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_RESPONSE_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CHAT_WS_ENABLED",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CIRCUIT_BREAKER_RESET_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CIRCUIT_BREAKER_THRESHOLD",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CODE_EXEC_TIMEOUT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONSUL_CACHE_TTL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONSUL_HOST",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONSUL_PORT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "CONSUL_PREFIX",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_ALLOWED_FAILS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_CONVERSATION_TYPE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_COOLDOWN_TIME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_MEMORY_LIMIT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_MEMORY_TYPE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_MODEL_PRIORITY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_NUM_RETRIES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_PERSONA",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_ROUTING_STRATEGY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_SEARCH_LIMIT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DEFAULT_TIMEOUT_SECONDS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "DISABLE_MCP",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "ENABLE_LEGACY_BACKEND_AUTH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FALLBACK_FACETS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FALLBACK_MOOD",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FALLBACK_QUESTIONS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FALLBACK_SEARCH_SCORE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "FALLBACK_SUMMARY_LENGTH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "HEALTH_CHECK_CACHE_TTL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "HEALTH_CHECK_PROMPT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "HEALTH_CHECK_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "HEALTH_STATUS_UNKNOWN",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "HOST",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "IMAGE_DEFAULT_MIME",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "IMAGE_FETCH_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "IMAGE_MAX_SIZE_BYTES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "INTERNAL_API_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "JWT_EXPIRES_IN",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_AGENT_MAX_DELAY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_AGENT_MAX_REPLY_CHARS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_AGENT_MIN_DELAY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_AGENT_SILENCE_PROBABILITY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_AGENT_TEMPERATURE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_CONFIG_KEY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_CONTEXT_MAX_MESSAGES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_CONTEXT_MAX_SESSIONS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_CONTEXT_MAX_TEXT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_REDIS_BRIDGE_BASE_RETRY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_REDIS_BRIDGE_MAX_RETRY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_REDIS_PRESENCE_TTL_SEC",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_RESEARCH_RAG_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LIVE_RESEARCH_WEB_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LOG_LEVEL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LONG_CONTEXT_THRESHOLD",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "LONG_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MAX_SESSION_HISTORY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MCP_CONFIG_PATH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MODEL_LIST_CACHE_TTL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MODEL_TEST_PROMPT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MODEL_TEST_RESPONSE_LIMIT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "MODEL_TEST_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OPEN_NOTEBOOK_MODEL_CACHE_TTL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "OPENAI_MAX_RETRIES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PERPLEXITY_RECENCY_FILTER",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "PORT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_BLOG_ASSISTANT_PROMPT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_CONTEXT_TEMPLATE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_DEFAULT_RESULTS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_KEYWORDS_ENGLISH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_KEYWORDS_KOREAN",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_MIN_SCORE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RAG_RECOMMENDATION_INSTRUCTION",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RATE_LIMIT_MAX",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "RATE_LIMIT_WINDOW_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "READINESS_CHECK_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SEARCH_DEFAULT_ENGINE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SEARCH_DEFAULT_LIMIT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SESSION_CACHE_TTL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SESSION_CLEANUP_INTERVAL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SESSION_TTL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SMOKE_BASE_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SMOKE_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "SSE_PING_INTERVAL_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "STREAM_CHUNK_DELAY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "STREAM_CHUNK_SIZE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TAVILY_SEARCH_DEPTH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TERMINAL_BLOCKED_COUNTRIES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TERMINAL_CONNECT_TOKEN_TTL_SECONDS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TERMINAL_SERVER_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TERMINAL_SESSION_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TEXT_LIMIT_BULLET",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TEXT_LIMIT_FALLBACK",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TEXT_LIMIT_MEMORY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TEXT_LIMIT_TASK_PARAGRAPH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TEXT_LIMIT_TASK_TITLE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TEXT_LIMIT_WEB_PAGE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TOOL_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TRANSLATE_PROXY_TIMEOUT_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "TRUST_PROXY",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "USAGE_DEFAULT_DAYS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "USAGE_DEFAULT_PERIOD_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "USE_CONSUL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VALID_TASK_MODES",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VECTOR_SEARCH_DEFAULT_LIMIT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VECTOR_SEARCH_MIN_SCORE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "VISION_DEFAULT_PROMPT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "WEB_SCRAPER_USER_AGENT",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "WEB_SEARCH_ENGINE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "WORKER_API_URL",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "WS_STREAM_CHUNK_DELAY_MS",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
+          "key": "WS_STREAM_CHUNK_SIZE",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        }
+      ]
+    }
+  ]
+}

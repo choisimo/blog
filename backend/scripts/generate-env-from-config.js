@@ -180,9 +180,17 @@ function generateWranglerVars(includeSecrets = false) {
 
 async function main() {
   const args = process.argv.slice(2);
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log('Usage: node backend/scripts/generate-env-from-config.js [--env|--docker|--wrangler] [--include-secrets] [output-path]');
+    console.log('Secret-inclusive output is disabled when APP_ENV is production or staging.');
+    return;
+  }
   const format = args.find(a => ['--env', '--docker', '--wrangler'].includes(a)) || '--env';
   const outputPath = args.find(a => !a.startsWith('-'));
   const includeSecrets = args.includes('--include-secrets');
+  if (includeSecrets && config.security?.protectedEnvironment) {
+    throw new Error('Secret-inclusive env generation is disabled in protected environments');
+  }
 
   let content;
   let defaultFilename;
