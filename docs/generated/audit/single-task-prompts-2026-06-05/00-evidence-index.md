@@ -1,0 +1,104 @@
+# Single Task Prompt Reports - Evidence Index
+
+- Run date: 2026-06-05 KST
+- Prompt source: `/home/nodove/workspace/secret/프롬프트/프로젝트_작업_프롬프트_라이브러리/single-task-prompts`
+- Target repo: `/home/nodove/workspace/blog`
+- Deployed site/API: `https://noblog.nodove.com`, `https://api.nodove.com`
+- SSH target: `blog`
+
+## Core Evidence
+- `curl -sS -D - https://noblog.nodove.com/` => HTTP 200, Cloudflare/GitHub Pages frontend shell served.
+- `curl -sS https://api.nodove.com/api/v1/healthz` => `{ ok: true, status: "ok", env: "production" }`.
+- `curl -sS https://api.nodove.com/api/v1/readiness` => ready; postgres, redis, d1, chroma, ai, worker, domain_outbox all `ok`; domain outbox storage `d1`, deadLetter 0, stuck 0.
+- `curl -sS https://api.nodove.com/api/v1/public/config` => production config uses `siteBaseUrl=https://noblog.nodove.com`, `apiBaseUrl=https://api.nodove.com`, AI/RAG/comments enabled, terminal/code execution disabled.
+- `ssh blog kubectl get pods -n blog -o wide` => api, ai-worker(2), cloudflared(2), postgres, redis, chromadb, open-notebook, piston, surrealdb all Running.
+- `ssh blog kubectl exec -n blog deploy/api -- wget -qO- http://127.0.0.1:5080/api/v1/readiness` => direct in-pod readiness ready with the same dependency checks.
+- `ssh blog kubectl exec -n blog deploy/api -- wget -qO- http://127.0.0.1:5080/api/v1/public/config` => 401 Unauthorized, proving origin public config is gated by gateway signature when bypassing the worker.
+- `node Playwright deployed-client-e2e` => PASS; home, blog, first manifest post, projects, about rendered; blog search for `kubernetes` exposed 10 blog links; API public config/health/readiness returned 200.
+- Saved E2E evidence: `docs/generated/audit/single-task-prompts-2026-06-05/evidence/deployed-client-e2e.json` and screenshots under `evidence/screenshots/`.
+- `npm run contracts:check` => pass; `npm run routes:check` => fail, route-governance snapshot drift; `npm run routes:check:orphans` => pass.
+- `npm test` in `backend` => 63 subtests / 65 tests reported, 64 pass, 1 skip, 0 fail.
+- `npm run type-check` in `frontend` => pass; `npm run test:run` in `frontend` => 47 files, 183 tests, all pass.
+- `npm test` in `workers/api-gateway` => 33 files, 113 tests, all pass; workerd logged a non-fatal `backend.example` DNS warning.
+- `npm audit --omit=dev --json` in `backend` => 8 prod advisories: 3 high, 5 moderate.
+- `npm audit --omit=dev --json` in `frontend` => 29 prod advisories: 2 critical, 9 high, 17 moderate, 1 low.
+- `wc -l docs/generated/audit/endpoint-map-full.csv` => 371 lines, i.e. 370 endpoint rows plus header.
+
+## Source Evidence
+- `backend/src/index.js:204-397` Express startup, readiness, route mounting, gateway signature, metrics, graceful shutdown, outbox worker.
+- `backend/src/routes/registry.js:1-83` backend route registry and boundary headers.
+- `workers/api-gateway/src/index.ts:267-476` worker middleware, health/readiness proxy, public config, route registration, cron scheduler.
+- `workers/api-gateway/src/routes/registry.ts:1-113` worker route registry and proxyability rules.
+- `shared/src/contracts/service-boundaries.js:1-136` route/service ownership and explicit backend-vs-worker boundaries.
+- `frontend/src/App.tsx:156-338` feature flags, heartbeat, notification SSE gating, public/admin route table.
+- `frontend/src/utils/network/apiBase.ts:39-128` runtime API base resolution and production fail-closed behavior.
+- `frontend/src/services/content/analytics.ts:72-180` analytics view/stats/editor-picks/trending client calls.
+- `backend/src/services/ai/task-queue.service.js:1-374` Redis stream AI queue, retries, DLQ, queue stats.
+- `backend/src/services/backend-outbox.service.js:561-632` backend domain outbox claim/process/mark and interval worker.
+- `backend/docker-compose.yml:37-320` local service topology for API, Redis, Postgres, ChromaDB, open-notebook, Piston.
+- `k3s/ingress.yaml:1-23` production Traefik ingress for `api.nodove.com`.
+- `frontend/playwright.config.ts:1-18` Playwright config for E2E runner.
+- `frontend/e2e/live-chat.spec.ts:1-220` existing live-chat E2E spec uses stubs for live endpoints, not production.
+- `docs/generated/audit/endpoint-map-full.csv` endpoint map, 370 endpoint rows.
+
+## Report Files
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/01-codebase-structure-inventory-system-map-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/02-endpoint-map-io-contracts-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/03-e2e-data-change-tracing-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/04-service-state-machine-invariants-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/05-domain-model-business-rules-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/06-db-orm-query-migration-consistency-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/07-auth-session-token-security-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/08-file-transfer-storage-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/09-external-api-webhook-queue-event-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/10-frontend-api-contract-state-sync-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/11-test-coverage-verification-strategy-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/12-operations-observability-incident-readiness-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/13-deployment-infra-env-secret-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/14-performance-scalability-cost-bottlenecks-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/15-security-threat-modeling-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/16-refactoring-migration-roadmap-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/17-documentation-handover-adr-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/18-legacy-modernization-module-decomposition-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/19-billing-plan-permission-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/20-ai-llm-prompt-tool-cost-security-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/21-data-pipeline-batch-scheduler-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/22-premortem-runbook-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/23-production-readiness-gate-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/24-bug-reproduction-root-cause-patch-plan-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/25-pr-review-risk-tracking-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/26-api-documentation-openapi-sdk-contracts-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/27-multi-tenancy-permission-boundary-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/28-monorepo-package-dependency-boundary-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/29-privacy-compliance-data-flow-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/30-product-scenario-ux-api-state-contract-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/31-feature-flag-release-toggle-lifecycle-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/32-dependency-sbom-license-supply-chain-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/33-cache-coherency-invalidation-strategy-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/34-search-indexing-relevance-consistency-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/35-notification-delivery-preference-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/36-mobile-offline-sync-conflict-resolution-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/37-localization-i18n-timezone-accessibility-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/38-fraud-abuse-rate-limit-policy-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/39-logging-privacy-redaction-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/40-admin-backoffice-audit-trail-permission-review-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/41-analytics-experiment-event-schema-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/42-incident-retrospective-action-item-analysis-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/43-backup-restore-disaster-recovery-drill-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/44-data-retention-deletion-legal-hold-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/45-config-drift-environment-parity-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/46-queue-backpressure-load-shedding-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/47-scheduler-cron-idempotency-replay-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/48-service-deprecation-contract-sunset-plan-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/49-design-system-token-component-governance-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/50-repository-structure-maintenance-cleanup-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/51-knowledge-base-information-architecture-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/52-model-evaluation-guardrail-observability-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/53-edge-cdn-routing-cache-security-audit-report.md`
+- `docs/generated/audit/single-task-prompts-2026-06-05/reports/54-developer-experience-onboarding-toolchain-audit-report.md`
+
+## Global Findings
+- Public read-path and deployed API readiness are healthy at the time of the run.
+- Browser E2E passed core rendering checks but recorded background request aborts and console issues.
+- Backend/frontend/worker tests passed locally.
+- Route governance drift and npm audit advisories remain unresolved.

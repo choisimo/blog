@@ -210,7 +210,14 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
           {activeTab === 'rag' && <RAGManager />}
           {activeTab === 'analytics' && <AnalyticsManager />}
           {activeTab === 'logs' && <LogViewer />}
-          {activeTab === 'content' && <ContentManager />}
+          {activeTab === 'content' && (
+            <ContentManager
+              subtab={subtab}
+              onSubtabChange={nextSubtab =>
+                navigate(`/admin/config/content/${nextSubtab}`, { replace: true })
+              }
+            />
+          )}
           {activeTab === 'ai' && (
             <AIManager
               subtab={subtab}

@@ -1,13 +1,15 @@
 import type { SiteContentBlock } from '@/services/content/site-content';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { RefreshCw, Save } from 'lucide-react';
+import { FileText, Megaphone, RefreshCw, Save } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
+import { AdminSubtabs, type AdminSubtabsTab } from '@/components/molecules/AdminSubtabs';
 import { SafeDescriptionMarkdown } from '@/components/features/blog/SafeDescriptionMarkdown';
+import { PostEditorWorkspace } from '@/components/features/admin/content/PostEditorWorkspace';
 import {
   DEFAULT_HOME_AI_CTA_BLOCK,
   getAdminSiteContentBlock,
@@ -16,19 +18,46 @@ import {
   type SiteContentBlockDraft,
 } from '@/services/content/site-content';
 
+type ContentSubtab = 'editor' | 'home-cta';
+
+const CONTENT_SUBTABS: AdminSubtabsTab[] = [
+  {
+    id: 'editor',
+    label: 'Post Editor',
+    icon: <FileText className='h-3.5 w-3.5' />,
+  },
+  {
+    id: 'home-cta',
+    label: 'Home CTA',
+    icon: <Megaphone className='h-3.5 w-3.5' />,
+  },
+];
+
 export interface ContentManagerProps {
   initialHomeCtaBlock?: SiteContentBlock | null;
+  subtab?: string;
+  onSubtabChange?: (subtab: ContentSubtab) => void;
 }
 
 export function ContentManager({
   initialHomeCtaBlock = null,
+  subtab,
+  onSubtabChange,
 }: ContentManagerProps = {}) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [localSubtab, setLocalSubtab] = useState<ContentSubtab>('editor');
   const [markdown, setMarkdown] = useState('');
   const [ctaLabel, setCtaLabel] = useState('');
   const [ctaHref, setCtaHref] = useState('');
   const [enabled, setEnabled] = useState(true);
+
+  const activeSubtab: ContentSubtab =
+    subtab === 'home-cta' || subtab === 'editor' ? subtab : localSubtab;
+  const setActiveSubtab = (nextSubtab: ContentSubtab) => {
+    setLocalSubtab(nextSubtab);
+    onSubtabChange?.(nextSubtab);
+  };
 
   const query = useQuery({
     queryKey: ['site-content', HOME_AI_CTA_BLOCK_KEY],
@@ -71,8 +100,21 @@ export function ContentManager({
   };
 
   return (
-    <div className='grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]'>
-      <section className='rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'>
+    <div className='space-y-4'>
+      <section className='overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'>
+        <AdminSubtabs
+          tabs={CONTENT_SUBTABS}
+          activeTab={activeSubtab}
+          onTabChange={setActiveSubtab}
+          className='bg-white dark:bg-zinc-900'
+        />
+      </section>
+
+      {activeSubtab === 'editor' ? (
+        <PostEditorWorkspace />
+      ) : (
+        <div className='grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]'>
+          <section className='rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'>
         <div className='flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800'>
           <div>
             <h2 className='text-sm font-semibold text-zinc-800 dark:text-zinc-100'>
@@ -194,7 +236,9 @@ export function ContentManager({
             </span>
           </p>
         )}
-      </aside>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

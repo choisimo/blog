@@ -1,0 +1,1247 @@
+{
+  "checkedAt": "2026-06-04T17:43:13.574Z",
+  "base": "https://noblog.nodove.com",
+  "api": "https://api.nodove.com",
+  "summary": {
+    "pass": true,
+    "pagesChecked": 5,
+    "screenshots": 6,
+    "apiResponses": 28,
+    "failedRequests": 8,
+    "consoleIssues": 2,
+    "pageErrors": 0,
+    "residualSymptoms": [
+      "Cloudflare RUM, analytics view, comments stream, translation, and RAG requests were captured as net::ERR_ABORTED during navigation.",
+      "Two console entries were captured for failed analytics view recording and translation fetch.",
+      "No browser page errors were captured."
+    ]
+  },
+  "pages": [
+    {
+      "label": "home",
+      "path": "/",
+      "url": "https://noblog.nodove.com/",
+      "screenshot": "docs/generated/audit/single-task-prompts-2026-06-05/evidence/screenshots/home.png",
+      "title": "nodove-blog",
+      "h1": [
+        "ArchitectingIntelligence"
+      ],
+      "bodyLength": 1338,
+      "bodySample": "Nodove Home Blog About Explore Toggle theme WELCOME TO Architecting Intelligence AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그 Explore Posts About Me Editor's Picks 전체 보기 기술 2026년 3월 22일 [C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까? 7 min read Mindset 2026년 3월 31일 약점으로 오해되는 예민함, HSP 9 min read 기술 2026년 3월 31일 [쿠버네티스-1] 이데아와 현실의 끝없는 투쟁 13 min read Browse Categories 전체 보기 기술 26 Posts DevOps 19 Posts AI Engineering 11 Posts",
+      "links": [
+        {
+          "href": "/",
+          "text": "Nodove"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/blog",
+          "text": "Explore Posts"
+        },
+        {
+          "href": "/about",
+          "text": "About Me"
+        },
+        {
+          "href": "/blog",
+          "text": "전체 보기"
+        },
+        {
+          "href": "/blog/2026/c-lang-1",
+          "text": "기술2026년 3월 22일[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?7 min read"
+        },
+        {
+          "href": "/blog/2026/hsp",
+          "text": "Mindset2026년 3월 31일약점으로 오해되는 예민함, HSP9 min read"
+        },
+        {
+          "href": "/blog/2026/k8s-start",
+          "text": "기술2026년 3월 31일[쿠버네티스-1] 이데아와 현실의 끝없는 투쟁13 min read"
+        },
+        {
+          "href": "/blog",
+          "text": "전체 보기"
+        },
+        {
+          "href": "/blog?category=%EA%B8%B0%EC%88%A0",
+          "text": "기술26 Posts"
+        },
+        {
+          "href": "/blog?category=DevOps",
+          "text": "DevOps19 Posts"
+        },
+        {
+          "href": "/blog?category=AI%20Engineering",
+          "text": "AI Engineering11 Posts"
+        },
+        {
+          "href": "/blog?category=Linux",
+          "text": "Linux11 Posts"
+        },
+        {
+          "href": "/blog?category=Network",
+          "text": "Network9 Posts"
+        },
+        {
+          "href": "/blog?category=Java",
+          "text": "Java8 Posts"
+        },
+        {
+          "href": "/blog",
+          "text": "전체 보기"
+        },
+        {
+          "href": "/blog/2026/argocd-github-dns-failure",
+          "text": "Kubernetes2026년 4월 5일6 min readArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다."
+        },
+        {
+          "href": "/blog/2026/hsp",
+          "text": "Mindset2026년 3월 31일9 min read약점으로 오해되는 예민함, HSPHSP는 유난이나 결함이 아니라, 더 깊게 받아들이고 더 쉽게 과부하되는 처리 방식에 가깝다."
+        },
+        {
+          "href": "/blog/2026/k8s-start",
+          "text": "기술2026년 3월 31일12 min read[쿠버네티스-1] 이데아와 현실의 끝없는 투쟁단순한 오케스트레이션 도구가 아닌, 쿠버네티스가 리눅스 커널 위에서 선언적 상태와 제어 루프를 통해 어떻게 시스템을 지배하는지 알아보기"
+        },
+        {
+          "href": "/blog?tag=DevOps",
+          "text": "#DevOps18"
+        },
+        {
+          "href": "/blog?tag=Kubernetes",
+          "text": "#Kubernetes9"
+        },
+        {
+          "href": "/blog?tag=Java",
+          "text": "#Java8"
+        },
+        {
+          "href": "/blog?tag=AI",
+          "text": "#AI7"
+        }
+      ],
+      "buttons": [
+        "Explore",
+        "언어 변경: 현재 EN",
+        "Toggle theme",
+        "Open main menu",
+        "Subscribe",
+        "AI Chat",
+        "Memo",
+        "Visited Stack",
+        "Insight"
+      ],
+      "inputs": [
+        {
+          "placeholder": "Search posts, tags, categories...",
+          "aria": null,
+          "type": "text",
+          "value": ""
+        },
+        {
+          "placeholder": "Enter your email",
+          "aria": null,
+          "type": "email",
+          "value": ""
+        }
+      ],
+      "appConfig": {
+        "siteBaseUrl": "https://noblog.nodove.com",
+        "apiBaseUrl": "https://api.nodove.com",
+        "chatBaseUrl": "https://api.nodove.com",
+        "chatWsBaseUrl": null,
+        "terminalGatewayUrl": null,
+        "env": "production",
+        "capabilities": {
+          "supportsChatWebSocket": false,
+          "hasTerminalGatewayUrl": false
+        },
+        "ai": {
+          "modelSelectionEnabled": false,
+          "defaultModel": "gpt-5-mini",
+          "visionModel": null
+        },
+        "features": {
+          "aiEnabled": true,
+          "ragEnabled": true,
+          "terminalEnabled": false,
+          "aiInline": true,
+          "codeExecutionEnabled": false,
+          "commentsEnabled": true
+        }
+      }
+    },
+    {
+      "label": "blog-list",
+      "path": "/blog",
+      "url": "https://noblog.nodove.com/blog",
+      "screenshot": "docs/generated/audit/single-task-prompts-2026-06-05/evidence/screenshots/blog-list.png",
+      "title": "Blog | nodove-blog",
+      "h1": [
+        "Blog Posts"
+      ],
+      "bodyLength": 1920,
+      "bodySample": "Nodove Home Blog About Explore Toggle theme DISCOVER Blog Posts All AI AI Engineering AI/ML Architecture Backend More tags (546) No cover Kubernetes 2026년 4월 5일 6 min read ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다 ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다. MINDSET 2026년 3월 31일 9 MIN READ 약점으로 오해되는 예민함, HSP HSP는 유",
+      "links": [
+        {
+          "href": "/",
+          "text": "Nodove"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/blog/2026/argocd-github-dns-failure",
+          "text": "No coverKubernetes2026년 4월 5일6 min readArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다."
+        },
+        {
+          "href": "/blog/2026/hsp",
+          "text": "Mindset2026년 3월 31일9 min read약점으로 오해되는 예민함, HSPHSP는 유난이나 결함이 아니라, 더 깊게 받아들이고 더 쉽게 과부하되는 처리 방식에 가깝다."
+        },
+        {
+          "href": "/blog/2026/k8s-start",
+          "text": "기술2026년 3월 31일12 min read[쿠버네티스-1] 이데아와 현실의 끝없는 투쟁단순한 오케스트레이션 도구가 아닌, 쿠버네티스가 리눅스 커널 위에서 선언적 상태와 제어 루프를 통해 어떻게 시스템을 지배하는지 알아보기"
+        },
+        {
+          "href": "/blog/2026/haircut",
+          "text": "Life2026년 3월 30일3 min read누구나 외롭다.고독과 바흐로 채운 어느 미용실 원장님과의 대화."
+        },
+        {
+          "href": "/blog/2026/c-lang-2",
+          "text": "기술2026년 3월 26일8 min read[C 언어 2부] 같은 함수 안의 지역변수와 포인터는 메모리에서 어떻게 연결될까?같은 함수의 지역변수와 포인터가 같은 스택 프레임 안에서 어떠한 주소 변경이 일어나는지 추적해보기"
+        },
+        {
+          "href": "/blog/2026/c-lang-1",
+          "text": "기술2026년 3월 22일7 min read[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?배열 선언 한 줄이 실제로 어떻게 동작하며, 인덱싱이 왜 포인터 연산으로 환원되는지 추적해보기"
+        },
+        {
+          "href": "/blog/2026/algorithm-1",
+          "text": "기술2026년 3월 20일7 min read[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유"
+        },
+        {
+          "href": "/blog/2026/algorithm-2",
+          "text": "기술2026년 3월 20일7 min read[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각시간 복잡도가 실제 실행 시간 대신 성장률을 보는 이유"
+        },
+        {
+          "href": "/blog/2026/python-3",
+          "text": "기술2026년 3월 20일4 min read[파이썬 3부] 동적 객체와 타협하는 방법동적 객체와의 거래, CPython 내부를 직접 따라가보기"
+        },
+        {
+          "href": "/blog/2026/python-2",
+          "text": "기술2026년 3월 17일5 min read[파이썬 2부] 파이썬의 모든 것은 객체이다.모든 것이 객체라면, 어떻게 관리될까? CPython 내부를 직접 따라가보기"
+        },
+        {
+          "href": "/blog/2026/git-history-rewrite-reset-rebase-reflog",
+          "text": "No imageGit2026년 3월 16일7 min readforce push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지커밋 메시지 수정이나 rebase 뒤에 왜 해시가 연쇄적으로 바뀌는지, reset과 rebase는 무엇이 다른지, hard reset으로 날린 커밋을 reflog로 어떻게 되살리는지 정리한다."
+        },
+        {
+          "href": "/blog/2026/python-1",
+          "text": "기술2026년 3월 15일5 min read[파이썬 1부] 파이썬의 변수 조회는 단순한 딕셔너리 검색일까?소스 코드가 어떻게 토큰·AST·바이트코드로 변환되고, 런타임에 적응형 최적화가 일어나는지 CPython 내부를 직접 따라가보기"
+        },
+        {
+          "href": "https://github.com/choisimo",
+          "text": "GitHub"
+        },
+        {
+          "href": "https://twitter.com",
+          "text": "Twitter"
+        },
+        {
+          "href": "https://linkedin.com",
+          "text": "LinkedIn"
+        },
+        {
+          "href": "mailto:nodove@nodove.com",
+          "text": "Email"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/projects",
+          "text": "Projects"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/blog?category=ai",
+          "text": "AI & Machine Learning"
+        }
+      ],
+      "buttons": [
+        "Explore",
+        "Open search",
+        "언어 변경: 현재 EN",
+        "Toggle theme",
+        "Open main menu",
+        "All",
+        "AI",
+        "AI Engineering",
+        "AI/ML",
+        "Architecture",
+        "Backend",
+        "More tags (546)",
+        "First page",
+        "Previous page",
+        "1",
+        "2",
+        "3",
+        "12",
+        "Next page",
+        "Last page",
+        "Subscribe"
+      ],
+      "inputs": [
+        {
+          "placeholder": "Search posts, tags, or content...",
+          "aria": "Search posts",
+          "type": "text",
+          "value": ""
+        },
+        {
+          "placeholder": "Enter your email",
+          "aria": null,
+          "type": "email",
+          "value": ""
+        }
+      ],
+      "appConfig": {
+        "siteBaseUrl": "https://noblog.nodove.com",
+        "apiBaseUrl": "https://api.nodove.com",
+        "chatBaseUrl": "https://api.nodove.com",
+        "chatWsBaseUrl": null,
+        "terminalGatewayUrl": null,
+        "env": "production",
+        "capabilities": {
+          "supportsChatWebSocket": false,
+          "hasTerminalGatewayUrl": false
+        },
+        "ai": {
+          "modelSelectionEnabled": false,
+          "defaultModel": "gpt-5-mini",
+          "visionModel": null
+        },
+        "features": {
+          "aiEnabled": true,
+          "ragEnabled": true,
+          "terminalEnabled": false,
+          "aiInline": true,
+          "codeExecutionEnabled": false,
+          "commentsEnabled": true
+        }
+      }
+    },
+    {
+      "label": "blog-post-first",
+      "path": "/blog/2026/argocd-github-dns-failure",
+      "url": "https://noblog.nodove.com/blog/2026/argocd-github-dns-failure",
+      "screenshot": "docs/generated/audit/single-task-prompts-2026-06-05/evidence/screenshots/blog-post-first.png",
+      "title": "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다 | nodove-blog",
+      "h1": [
+        "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다"
+      ],
+      "bodyLength": 954,
+      "bodySample": "Nodove Home Blog About Explore Toggle theme Blog Kubernetes ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다 Back to Blog Share KUBERNETES ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다 ArgoCD에서 GitHub repository 연결이 실패하면 대개 가장 먼저 SSH 키나 Git 인증부터 의심하게 된다. 실제로 나 역시 처음에는 Deploy Key 등록, private key 입력, repo URL, known_hosts 같은 전형적인 원인... April 5, 2026 7 min read Admin READING LANGUAGE 한국어 English",
+      "links": [
+        {
+          "href": "/",
+          "text": "Nodove"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/blog?category=Kubernetes",
+          "text": "Kubernetes"
+        },
+        {
+          "href": "https://github.com/choisimo",
+          "text": "GitHub"
+        },
+        {
+          "href": "https://twitter.com",
+          "text": "Twitter"
+        },
+        {
+          "href": "https://linkedin.com",
+          "text": "LinkedIn"
+        },
+        {
+          "href": "mailto:nodove@nodove.com",
+          "text": "Email"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/projects",
+          "text": "Projects"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/blog?category=ai",
+          "text": "AI & Machine Learning"
+        },
+        {
+          "href": "/blog?category=web",
+          "text": "Web Development"
+        },
+        {
+          "href": "/blog?category=devops",
+          "text": "DevOps"
+        },
+        {
+          "href": "/blog?category=algorithms",
+          "text": "Algorithms"
+        }
+      ],
+      "buttons": [
+        "Explore",
+        "Open search",
+        "언어 변경: 현재 EN",
+        "Toggle theme",
+        "Open main menu",
+        "Back to Blog",
+        "Share",
+        "한국어",
+        "English",
+        "학습 모드 OFF (배치당 2문제)",
+        "퀴즈 시작하기",
+        "AI Off",
+        "토론에 참여하기Post",
+        "맨 위로 이동",
+        "목차 열기",
+        "Subscribe",
+        "AI Chat",
+        "Memo",
+        "Visited Stack",
+        "Insight"
+      ],
+      "inputs": [
+        {
+          "placeholder": "Enter your email",
+          "aria": null,
+          "type": "email",
+          "value": ""
+        }
+      ],
+      "appConfig": {
+        "siteBaseUrl": "https://noblog.nodove.com",
+        "apiBaseUrl": "https://api.nodove.com",
+        "env": "production",
+        "chatBaseUrl": "https://api.nodove.com",
+        "terminalGatewayUrl": null,
+        "ai": {
+          "modelSelectionEnabled": false,
+          "defaultModel": "gpt-5-mini",
+          "visionModel": null
+        },
+        "features": {
+          "aiEnabled": true,
+          "ragEnabled": true,
+          "terminalEnabled": false,
+          "aiInline": true,
+          "codeExecutionEnabled": false,
+          "commentsEnabled": true
+        },
+        "capabilities": {
+          "supportsChatWebSocket": false,
+          "hasTerminalGatewayUrl": false
+        }
+      }
+    },
+    {
+      "label": "projects",
+      "path": "/projects",
+      "url": "https://noblog.nodove.com/projects",
+      "screenshot": "docs/generated/audit/single-task-prompts-2026-06-05/evidence/screenshots/projects.png",
+      "title": "Projects | nodove-blog",
+      "h1": [
+        "Projects"
+      ],
+      "bodyLength": 4561,
+      "bodySample": "Nodove Home Blog About Explore Toggle theme ✨ New Project Hub Projects markdown 파일 기반 manifest에서 프로젝트를 동적으로 로드합니다. 가능한 서비스는 페이지 내 Preview로 즉시 체험할 수 있습니다. Featured Project Blog Platform Edge Computing 기반 풀스택 블로그 플랫폼. Cloudflare Workers + D1 + R2, React SPA, Node.js 백엔드, AI/RAG 서비스, CI/CD 자동화까지 포함한 프로덕션 수준 아키텍처. Visit Preview Code All AI AI Agent AI Gateway Automation Backend Bytewax CI/CD Community",
+      "links": [
+        {
+          "href": "/",
+          "text": "Nodove"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "https://github.com/choisimo/blog",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/blog",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/blog",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/Capstone",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/Capstone",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/CBT-latest",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/CBT-latest",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/MAGI-Agent",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/MAGI-Agent",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/AI-server",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/AI-server",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/auth-dev",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/auth-dev",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/Auth-Server_Spring-Security",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/Auth-Server_Spring-Security",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/community",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/community",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/composeAI",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/composeAI",
+          "text": "Code"
+        },
+        {
+          "href": "https://github.com/choisimo/cosmos-weave",
+          "text": "Visit"
+        },
+        {
+          "href": "https://github.com/choisimo/cosmos-weave",
+          "text": "Code"
+        }
+      ],
+      "buttons": [
+        "Explore",
+        "Open search",
+        "언어 변경: 현재 EN",
+        "Toggle theme",
+        "Open main menu",
+        "Visit",
+        "Preview",
+        "All",
+        "AI",
+        "AI Agent",
+        "AI Gateway",
+        "Automation",
+        "Backend",
+        "Bytewax",
+        "CI/CD",
+        "Community",
+        "Dashboard",
+        "Data Visualization",
+        "Database",
+        "Docker",
+        "Docker Compose",
+        "Edge Computing",
+        "Education",
+        "Fintech",
+        "Fullstack"
+      ],
+      "inputs": [
+        {
+          "placeholder": "Enter your email",
+          "aria": null,
+          "type": "email",
+          "value": ""
+        }
+      ],
+      "appConfig": {
+        "siteBaseUrl": "https://noblog.nodove.com",
+        "apiBaseUrl": "https://api.nodove.com",
+        "env": "production",
+        "chatBaseUrl": "https://api.nodove.com",
+        "terminalGatewayUrl": null,
+        "ai": {
+          "modelSelectionEnabled": false,
+          "defaultModel": "gpt-5-mini",
+          "visionModel": null
+        },
+        "features": {
+          "aiEnabled": true,
+          "ragEnabled": true,
+          "terminalEnabled": false,
+          "aiInline": true,
+          "codeExecutionEnabled": false,
+          "commentsEnabled": true
+        },
+        "capabilities": {
+          "supportsChatWebSocket": false,
+          "hasTerminalGatewayUrl": false
+        }
+      }
+    },
+    {
+      "label": "about",
+      "path": "/about",
+      "url": "https://noblog.nodove.com/about",
+      "screenshot": "docs/generated/audit/single-task-prompts-2026-06-05/evidence/screenshots/about.png",
+      "title": "About | nodove-blog",
+      "h1": [
+        "About"
+      ],
+      "bodyLength": 2071,
+      "bodySample": "Nodove Home Blog About Explore Toggle theme About 개발자로서의 정체성과 연락 창구를 한 페이지로 통합했습니다. CS 전공 기반 위에서 AI와 시스템 아키텍처를 중심으로 실전형 프로젝트를 만들고 있습니다. ND Nodove CS 전공, AI & System Architecture에 관심 있는 개발자 2026년 졸업 예정이며, 백엔드/인프라/AI 경계를 넘나드는 제품 지향 개발을 선호합니다. 문제를 구조화하고, 자동화 가능한 시스템으로 바꾸는 과정을 즐깁니다. HISTORY 2024 CS 전공 심화 알고리즘, 운영체제, 네트워크 중심으로 기반을 강화했습니다. 2025 AI + 시스템 아키텍처 프로젝트 RAG 기반 도구와 홈랩 인프라 자동화 프로젝트를 병행했습니다. 2026",
+      "links": [
+        {
+          "href": "/",
+          "text": "Nodove"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "https://github.com/choisimo",
+          "text": "GitHub"
+        },
+        {
+          "href": "https://linkedin.com",
+          "text": "LinkedIn"
+        },
+        {
+          "href": "mailto:nodove@nodove.com",
+          "text": "Email"
+        },
+        {
+          "href": "https://github.com/choisimo",
+          "text": "GitHub"
+        },
+        {
+          "href": "https://twitter.com",
+          "text": "Twitter"
+        },
+        {
+          "href": "https://linkedin.com",
+          "text": "LinkedIn"
+        },
+        {
+          "href": "mailto:nodove@nodove.com",
+          "text": "Email"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/projects",
+          "text": "Projects"
+        },
+        {
+          "href": "/blog",
+          "text": "Blog"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/blog?category=ai",
+          "text": "AI & Machine Learning"
+        },
+        {
+          "href": "/blog?category=web",
+          "text": "Web Development"
+        },
+        {
+          "href": "/blog?category=devops",
+          "text": "DevOps"
+        },
+        {
+          "href": "/blog?category=algorithms",
+          "text": "Algorithms"
+        }
+      ],
+      "buttons": [
+        "Explore",
+        "Open search",
+        "언어 변경: 현재 EN",
+        "Toggle theme",
+        "Open main menu",
+        "Send Message",
+        "Subscribe",
+        "AI Chat",
+        "Memo",
+        "Visited Stack",
+        "Insight"
+      ],
+      "inputs": [
+        {
+          "placeholder": "Your name",
+          "aria": null,
+          "type": null,
+          "value": ""
+        },
+        {
+          "placeholder": "you@domain.com",
+          "aria": null,
+          "type": "email",
+          "value": ""
+        },
+        {
+          "placeholder": "What would you like to discuss?",
+          "aria": null,
+          "type": null,
+          "value": ""
+        },
+        {
+          "placeholder": "Write your message here...",
+          "aria": null,
+          "type": null,
+          "value": ""
+        },
+        {
+          "placeholder": "Enter your email",
+          "aria": null,
+          "type": "email",
+          "value": ""
+        }
+      ],
+      "appConfig": {
+        "siteBaseUrl": "https://noblog.nodove.com",
+        "apiBaseUrl": "https://api.nodove.com",
+        "env": "production",
+        "chatBaseUrl": "https://api.nodove.com",
+        "terminalGatewayUrl": null,
+        "ai": {
+          "modelSelectionEnabled": false,
+          "defaultModel": "gpt-5-mini",
+          "visionModel": null
+        },
+        "features": {
+          "aiEnabled": true,
+          "ragEnabled": true,
+          "terminalEnabled": false,
+          "aiInline": true,
+          "codeExecutionEnabled": false,
+          "commentsEnabled": true
+        },
+        "capabilities": {
+          "supportsChatWebSocket": false,
+          "hasTerminalGatewayUrl": false
+        }
+      }
+    }
+  ],
+  "apiResponses": [
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json?ts=1780595007439",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/analytics/editor-picks?limit=4",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/site-content/home_ai_cta",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/analytics/heartbeat",
+      "status": 200,
+      "method": "POST",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts/2026/k8s-start.md",
+      "status": 200,
+      "method": "GET",
+      "contentType": "text/markdown; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts/2026/hsp.md",
+      "status": 200,
+      "method": "GET",
+      "contentType": "text/markdown; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts/2026/c-lang-1.md",
+      "status": 200,
+      "method": "GET",
+      "contentType": "text/markdown; charset=utf-8"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json?ts=1780595021818",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/analytics/heartbeat",
+      "status": 200,
+      "method": "POST",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts/2026/argocd-github-dns-failure.md",
+      "status": 200,
+      "method": "GET",
+      "contentType": "text/markdown; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts/2026/manifest.json",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/comments?postId=2026%2Fargocd-github-dns-failure",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json?ts=1780595023688",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/analytics/heartbeat",
+      "status": 200,
+      "method": "POST",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://noblog.nodove.com/posts-manifest.json?ts=1780595025374",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/config",
+      "status": 200,
+      "method": "GET",
+      "contentType": "application/json"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/analytics/heartbeat",
+      "status": 200,
+      "method": "POST",
+      "contentType": "application/json"
+    }
+  ],
+  "failedRequests": [
+    {
+      "url": "https://noblog.nodove.com/cdn-cgi/rum?",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://noblog.nodove.com/cdn-cgi/rum?",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://noblog.nodove.com/cdn-cgi/rum?",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/analytics/view",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/comments/stream?postId=2026%2Fargocd-github-dns-failure&since=2026-06-04T17%3A43%3A42.671Z",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/public/posts/2026/argocd-github-dns-failure/translations/en",
+      "method": "GET",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://api.nodove.com/api/v1/rag/search",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://noblog.nodove.com/cdn-cgi/rum?",
+      "method": "POST",
+      "failure": "net::ERR_ABORTED"
+    }
+  ],
+  "console": [
+    {
+      "type": "warning",
+      "text": "Failed to record view: TypeError: Failed to fetch\n    at recordView (https://noblog.nodove.com/assets/main-ByQfiEu8.js:175:189974)\n    at https://noblog.nodove.com/assets/BlogPost-Xgf8R0M_.js:246:2164",
+      "location": {
+        "url": "https://noblog.nodove.com/assets/main-ByQfiEu8.js",
+        "lineNumber": 174,
+        "columnNumber": 190198
+      }
+    },
+    {
+      "type": "error",
+      "text": "Translation failed: TypeError: Failed to fetch\n    at fk (https://noblog.nodove.com/assets/BlogPost-Xgf8R0M_.js:237:21264)\n    at Si (https://noblog.nodove.com/assets/BlogPost-Xgf8R0M_.js:246:3557)\n    at https://noblog.nodove.com/assets/BlogPost-Xgf8R0M_.js:246:3919\n    at gl (https://noblog.nodove.com/assets/vendor-D7jv_ly0.js:32:24177)\n    at en (https://noblog.nodove.com/assets/vendor-D7jv_ly0.js:32:42076)\n    at ra (https://noblog.nodove.com/assets/vendor-D7jv_ly0.js:32:36408)\n    at gt (ht",
+      "location": {
+        "url": "https://noblog.nodove.com/assets/BlogPost-Xgf8R0M_.js",
+        "lineNumber": 245,
+        "columnNumber": 3740
+      }
+    }
+  ],
+  "pageErrors": [],
+  "interactions": [
+    {
+      "action": "goto_home",
+      "status": 200,
+      "url": "https://noblog.nodove.com/"
+    },
+    {
+      "action": "click_nav_blog",
+      "url": "https://noblog.nodove.com/blog"
+    },
+    {
+      "action": "blog_search_fill",
+      "query": "kubernetes",
+      "visibleBlogLinks": 10
+    },
+    {
+      "action": "fetch_manifest",
+      "status": 200,
+      "total": 278,
+      "firstPost": {
+        "year": "2026",
+        "slug": "argocd-github-dns-failure",
+        "title": "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다"
+      }
+    },
+    {
+      "action": "goto_first_post",
+      "path": "/blog/2026/argocd-github-dns-failure",
+      "status": 200
+    },
+    {
+      "action": "inspect_post",
+      "h1": [
+        "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다"
+      ],
+      "bodyLength": 954,
+      "commentsTextMatches": 0
+    },
+    {
+      "action": "goto_projects",
+      "status": 200
+    },
+    {
+      "action": "goto_about",
+      "status": 200
+    },
+    {
+      "action": "api_public_config",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "data": {
+          "env": "production",
+          "siteBaseUrl": "https://noblog.nodove.com",
+          "apiBaseUrl": "https://api.nodove.com",
+          "chatBaseUrl": "https://api.nodove.com",
+          "chatWsBaseUrl": null,
+          "terminalGatewayUrl": null,
+          "ai": {
+            "modelSelectionEnabled": false,
+            "defaultModel": "gpt-5-mini",
+            "visionModel": null
+          },
+          "features": {
+            "aiEnabled": true,
+            "ragEnabled": true,
+            "terminalEnabled": false,
+            "aiInline": true,
+            "codeExecutionEnabled": false,
+            "commentsEnabled": true
+          },
+          "capabilities": {
+            "supportsChatWebSocket": false,
+            "hasTerminalGatewayUrl": false
+          }
+        }
+      }
+    },
+    {
+      "action": "api_healthz",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "status": "ok",
+        "degraded": false,
+        "degradedReasons": [],
+        "env": "production",
+        "uptime": 167953.547452859
+      }
+    },
+    {
+      "action": "api_readiness",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "status": "ready",
+        "degraded": false,
+        "degradedReasons": [],
+        "dependencies": [
+          {
+            "name": "postgres",
+            "ok": true,
+            "required": true,
+            "status": "ok",
+            "detail": null,
+            "checkedAt": "2026-06-04T17:43:52.853Z"
+          },
+          {
+            "name": "redis",
+            "ok": true,
+            "required": true,
+            "status": "ok",
+            "detail": null,
+            "checkedAt": "2026-06-04T17:43:52.852Z"
+          },
+          {
+            "name": "d1",
+            "ok": true,
+            "required": true,
+            "status": "ok",
+            "detail": null,
+            "checkedAt": "2026-06-04T17:43:52.852Z"
+          },
+          {
+            "name": "chroma",
+            "ok": true,
+            "required": true,
+            "status": "ok",
+            "detail": null,
+            "checkedAt": "2026-06-04T17:43:52.852Z"
+          },
+          {
+            "name": "ai",
+            "ok": true,
+            "required": false,
+            "status": "ok",
+            "detail": null,
+            "checkedAt": "2026-06-04T17:43:52.852Z"
+          },
+          {
+            "name": "worker",
+            "ok": true,
+            "required": true,
+            "status": "ok",
+            "detail": null,
+            "checkedAt": "2026-06-04T17:43:53.475Z"
+          },
+          {
+            "name": "domain_outbox",
+            "ok": true,
+            "required": true,
+            "status": "ok",
+            "detail": {
+              "storageMode": "d1",
+              "deadLetter": 0,
+              "stuck": 0
+            },
+            "checkedAt": "2026-06-04T17:43:52.852Z"
+          }
+        ],
+        "env": "production",
+        "uptime": 167954.495693713,
+        "liveRedisBridge": {
+          "enabled": true,
+          "failed": false,
+          "retryCount": 0,
+          "nextRetryAt": null,
+          "lastError": null
+        },
+        "processLocalState": {
+          "mode": "single-instance",
+          "durable": false,
+          "constraint": "See docs/operational-state.md before horizontal scaling"
+        }
+      }
+    }
+  ]
+}

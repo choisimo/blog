@@ -27,6 +27,7 @@ import {
   type GeneratedPostImageItem,
 } from '@/services/session/adminImages';
 import { cn } from '@/lib/utils';
+import { buildFinalImagePrompt, buildSuggestedPrompt } from './aiImagePrompt';
 
 const IMAGE_SIZES: Array<{ value: AdminAiImageSize; label: string }> = [
   { value: '1024x1024', label: '1:1 square' },
@@ -57,41 +58,6 @@ type AiImageGeneratorPanelProps = {
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
-}
-
-function compactContent(value: string): string {
-  return value.replace(/\s+/g, ' ').trim().slice(0, 900);
-}
-
-function buildSuggestedPrompt({
-  title,
-  category,
-  tags,
-  content,
-}: Pick<AiImageGeneratorPanelProps, 'title' | 'category' | 'tags' | 'content'>): string {
-  const normalizedTitle = title.trim() || 'Untitled blog post';
-  const normalizedCategory = category.trim() || 'General';
-  const normalizedTags = tags
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .slice(0, 8)
-    .join(', ');
-  const body = compactContent(content);
-  const context = [
-    `Title: ${normalizedTitle}`,
-    `Category: ${normalizedCategory}`,
-    normalizedTags ? `Tags: ${normalizedTags}` : '',
-    body ? `Article excerpt: ${body}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  return [
-    'Create a polished editorial blog image for the article below.',
-    'Use a clean modern tech-blog style, strong composition, crisp raster details, no visible text, no logos, no watermark.',
-    context,
-  ].join('\n\n');
 }
 
 function getImageUrl(item: GeneratedPostImageItem): string {
@@ -139,7 +105,7 @@ export default function AiImageGeneratorPanel({
         {
           year,
           slug: slug.trim(),
-          prompt: prompt.trim() || suggestedPrompt,
+          prompt: buildFinalImagePrompt(prompt, suggestedPrompt),
           n: Number.parseInt(count, 10),
           size,
           quality,
@@ -199,7 +165,7 @@ export default function AiImageGeneratorPanel({
         </Button>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mt-4 grid grid-cols-1 gap-4">
         <div className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="ai-image-prompt">프롬프트</Label>

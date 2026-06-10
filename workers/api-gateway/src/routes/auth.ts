@@ -84,6 +84,8 @@ const KV_TOTP_SECRET_KEY = 'totp:secret';
 const KV_TOTP_SETUP_KEY = 'totp:setup:complete';
 const KV_CHALLENGE_PREFIX = 'auth:challenge:';
 const KV_OAUTH_STATE_PREFIX = 'auth:oauth:state:';
+const TOTP_CHALLENGE_VERSION = 'totp-challenge-v1';
+const textEncoder = new TextEncoder();
 
 // Anonymous token expiry (30 days)
 const ANONYMOUS_TOKEN_EXPIRY = 30 * 24 * 3600;
@@ -133,6 +135,115 @@ function getProviderCallbackUrl(requestUrl: string, provider: 'github' | 'google
 
 function buildFrontendRedirect(frontendCallbackUrl: string, params: URLSearchParams): string {
   return `${frontendCallbackUrl}#${params.toString()}`;
+}
+
+function base64UrlEncode(data: Uint8Array): string {
+  return btoa(String.fromCharCode(...data))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+function base64UrlDecode(input: string): Uint8Array {
+  let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) base64 += '=';
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+  if (left.length !== right.length) return false;
+
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
+async function signTotpChallengePayload(payload: string, env: HonoEnv['Bindings']): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    textEncoder.encode(env.JWT_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(payload));
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+async function createTotpChallengeToken(env: HonoEnv['Bindings']): Promise<string> {
+  const payload = base64UrlEncode(
+    textEncoder.encode(
+      JSON.stringify({
+        nonce: generateSecureToken(24),
+        exp: Math.floor(Date.now() / 1000) + CHALLENGE_TTL,
+      })
+    )
+  );
+  const signature = await signTotpChallengePayload(
+    `${TOTP_CHALLENGE_VERSION}.${payload}`,
+    env
+  );
+  return `${TOTP_CHALLENGE_VERSION}.${payload}.${signature}`;
+}
+
+async function verifyStatelessTotpChallenge(
+  challengeId: string,
+  env: HonoEnv['Bindings']
+): Promise<boolean> {
+  const parts = challengeId.split('.');
+  if (parts.length !== 3 || parts[0] !== TOTP_CHALLENGE_VERSION) {
+    return false;
+  }
+
+  const [, payload, signature] = parts;
+  if (!payload || !signature) {
+    return false;
+  }
+
+  const expectedSignature = await signTotpChallengePayload(
+    `${TOTP_CHALLENGE_VERSION}.${payload}`,
+    env
+  );
+  if (!constantTimeEqual(signature, expectedSignature)) {
+    return false;
+  }
+
+  try {
+    const decoded = new TextDecoder().decode(base64UrlDecode(payload));
+    const parsed = JSON.parse(decoded) as { nonce?: unknown; exp?: unknown };
+    if (typeof parsed.nonce !== 'string' || typeof parsed.exp !== 'number') {
+      return false;
+    }
+    return parsed.exp >= Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
+async function consumeTotpChallenge(
+  challengeId: string,
+  env: HonoEnv['Bindings']
+): Promise<boolean> {
+  if (await verifyStatelessTotpChallenge(challengeId, env)) {
+    return true;
+  }
+
+  const challengeKey = `${KV_CHALLENGE_PREFIX}${challengeId}`;
+  const challengeData = await env.KV.get(challengeKey);
+  if (!challengeData) {
+    return false;
+  }
+
+  try {
+    await env.KV.delete(challengeKey);
+  } catch (err) {
+    console.warn('Failed to delete legacy TOTP challenge from KV:', err);
+  }
+
+  return true;
 }
 
 async function issueOAuthRedirectHandoff(
@@ -444,8 +555,8 @@ auth.post('/totp/setup/verify', async (c) => {
 
 /**
  * POST /auth/totp/challenge
- * Creates a short-lived challenge ID (5 min) that must be passed to /totp/verify.
- * Stateless — no user identity needed yet.
+ * Creates a short-lived signed challenge ID (5 min) that must be passed to /totp/verify.
+ * Stateless — no user identity or KV write needed yet.
  */
 auth.post('/totp/challenge', async (c) => {
   const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
@@ -453,12 +564,7 @@ auth.post('/totp/challenge', async (c) => {
     return error(c, 'TOTP not configured — complete setup first', 400);
   }
 
-  const challengeId = generateSecureToken(32);
-  await c.env.KV.put(
-    `${KV_CHALLENGE_PREFIX}${challengeId}`,
-    JSON.stringify({ id: challengeId, createdAt: new Date().toISOString() }),
-    { expirationTtl: CHALLENGE_TTL }
-  );
+  const challengeId = await createTotpChallengeToken(c.env);
 
   return success(c, {
     challengeId,
@@ -482,12 +588,11 @@ auth.post('/totp/verify', async (c) => {
     return badRequest(c, 'challengeId and code required');
   }
 
-  // Validate challenge (consume it — single use)
-  const challengeData = await c.env.KV.get(`${KV_CHALLENGE_PREFIX}${challengeId}`);
-  if (!challengeData) {
+  // Validate challenge. New challenges are stateless; legacy KV-backed
+  // challenges are consumed as a compatibility fallback.
+  if (!(await consumeTotpChallenge(challengeId, c.env))) {
     return unauthorized(c, 'Invalid or expired challenge');
   }
-  await c.env.KV.delete(`${KV_CHALLENGE_PREFIX}${challengeId}`);
 
   // Verify TOTP code
   const secret = await c.env.KV.get(KV_TOTP_SECRET_KEY);

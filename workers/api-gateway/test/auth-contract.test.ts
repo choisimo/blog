@@ -27,6 +27,8 @@ beforeEach(async () => {
   env.GITHUB_CLIENT_ID = 'github-client-id';
   env.GITHUB_CLIENT_SECRET = 'github-client-secret';
   env.OAUTH_REDIRECT_BASE_URL = 'https://blog.example';
+  await env.KV.delete('totp:setup:complete');
+  await env.KV.delete('totp:secret');
   await env.DB.prepare('DELETE FROM oauth_handoffs').run();
   await env.DB.prepare('DELETE FROM auth_refresh_tokens').run();
   await env.DB.prepare('DELETE FROM auth_refresh_families').run();
@@ -34,6 +36,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  await env.KV.delete('totp:setup:complete');
+  await env.KV.delete('totp:secret');
   await env.DB.prepare('DELETE FROM oauth_handoffs').run();
   await env.DB.prepare('DELETE FROM auth_refresh_tokens').run();
   await env.DB.prepare('DELETE FROM auth_refresh_families').run();
@@ -339,5 +343,24 @@ describe('auth contract', () => {
       .bind(handoff)
       .first();
     expect(handoffRow).toBeNull();
+  });
+
+  it('issues TOTP challenges without persisting per-login KV challenge keys', async () => {
+    await env.KV.put('totp:setup:complete', 'true');
+
+    const response = await SELF.fetch('https://example.com/api/v1/auth/totp/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      ok: boolean;
+      data: { challengeId: string; expiresIn: number };
+    };
+    expect(payload.ok).toBe(true);
+    expect(payload.data.expiresIn).toBe(300);
+    expect(payload.data.challengeId).toMatch(/^totp-challenge-v1\./);
+    await expect(env.KV.get(`auth:challenge:${payload.data.challengeId}`)).resolves.toBeNull();
   });
 });
