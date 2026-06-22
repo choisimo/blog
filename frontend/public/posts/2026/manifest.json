@@ -29,6 +29,7 @@
     "hsp.md",
     "io-redirection-pipeline.md",
     "k8s-start.md",
+    "knowledge.md",
     "limitation_of_bestcases.md",
     "nobel1-kursk-tanks.md",
     "personalized-readability-ux.md",
@@ -49,7 +50,7 @@
     "opnsense-policy-step-simulator.html",
     "vim-simulator.html"
   ],
-  "generatedAt": "2026-06-03T16:44:31.628Z",
-  "totalFiles": 44,
+  "generatedAt": "2026-06-22T01:48:08.309Z",
+  "totalFiles": 45,
   "excludedFiles": 0
 }

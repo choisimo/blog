@@ -1,6 +1,27 @@
 {
-  "total": 278,
+  "total": 279,
   "items": [
+    {
+      "path": "/posts/2026/knowledge.md",
+      "year": "2026",
+      "slug": "knowledge",
+      "title": "AI 에 대한 이해",
+      "description": "언어의 한계",
+      "snippet": "언어의 한계",
+      "date": "2026-06-22",
+      "tags": [
+        "ai",
+        "insight",
+        "infra",
+        "idea",
+        "system-architecture"
+      ],
+      "category": "ai",
+      "author": "Admin",
+      "readingTime": "18 min read",
+      "published": true,
+      "url": "/blog/2026/knowledge"
+    },
     {
       "path": "/posts/2026/argocd-github-dns-failure.md",
       "year": "2026",
@@ -5901,13 +5922,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-06-03T16:44:31.683Z",
+  "generatedAt": "2026-06-22T01:48:08.355Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
+    "ai": 1,
     "Kubernetes": 2,
     "Mindset": 1,
     "기술": 26,
