@@ -602,6 +602,7 @@ export function WorkersManager({
                                   copyToClipboard(copyValue);
                                 }}
                                 aria-label={`Copy ${label}`}
+                                title={`Copy ${label}`}
                                 className="h-5 w-5 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
                               >
                                 <Copy
