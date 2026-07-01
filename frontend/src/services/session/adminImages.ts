@@ -1,4 +1,4 @@
-import { bearerAuth } from '@/lib/auth';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 export type AdminAiImageQuality = 'low' | 'medium' | 'high' | 'standard' | 'hd' | 'auto';
@@ -87,15 +87,14 @@ function getErrorMessage(payload: unknown, fallback: string): string {
 
 export async function generatePostImages(
   payload: GeneratePostImagesPayload,
-  token: string,
+  _token: string,
 ): Promise<GeneratePostImagesResponse> {
   const base = getApiBaseUrl();
-  const response = await fetch(`${base}/api/v1/admin/ai-images/generate`, {
+  const response = await adminFetchRaw(`${base}/api/v1/admin/ai-images/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Idempotency-Key': createIdempotencyKey(),
-      ...bearerAuth(token),
     },
     body: JSON.stringify({
       ...payload,
@@ -114,12 +113,10 @@ export async function generatePostImages(
 }
 
 export async function getAdminAiImagesHealth(
-  token: string,
+  _token: string,
 ): Promise<AdminAiImagesHealth> {
   const base = getApiBaseUrl();
-  const response = await fetch(`${base}/api/v1/admin/ai-images/health`, {
-    headers: bearerAuth(token),
-  });
+  const response = await adminFetchRaw(`${base}/api/v1/admin/ai-images/health`);
   const json = await response.json().catch(() => ({}));
   if (!response.ok || !json?.ok) {
     throw new Error(getErrorMessage(json, 'Failed to load AI image health'));
