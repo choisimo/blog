@@ -111,6 +111,7 @@ export async function connectLogStream({
   pausedRef,
   reconnect,
   setConnected,
+  setConnectionError,
   setLogs,
 }: {
   abortRef: AbortControllerRef;
@@ -119,15 +120,18 @@ export async function connectLogStream({
   pausedRef: BooleanRef;
   reconnect: () => void;
   setConnected: (connected: boolean) => void;
+  setConnectionError?: (error: string | null) => void;
   setLogs: LogStateSetter;
 }) {
   if (abortRef.current) {
     abortRef.current.abort();
   }
 
+  setConnectionError?.(null);
   const token = await getValidAccessToken();
   if (!token) {
     setConnected(false);
+    setConnectionError?.("Not authenticated. Please log in again.");
     reconnect();
     return;
   }
@@ -148,17 +152,20 @@ export async function connectLogStream({
 
     if (!response.ok) {
       setConnected(false);
+      setConnectionError?.(`Log stream request failed with HTTP ${response.status}`);
       reconnect();
       return;
     }
 
     if (!response.body) {
       setConnected(false);
+      setConnectionError?.("Log stream response did not include a body.");
       reconnect();
       return;
     }
 
     setConnected(true);
+    setConnectionError?.(null);
     const reader = response.body.getReader();
     await parseLogStream(reader, { pausedRef, setLogs });
 
@@ -171,6 +178,9 @@ export async function connectLogStream({
       return;
     }
     setConnected(false);
+    setConnectionError?.(
+      err instanceof Error ? err.message : "Failed to connect to log stream",
+    );
     reconnect();
   }
 }
@@ -245,6 +255,7 @@ export function LogViewer() {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [serviceFilter, setServiceFilter] = useState("");
   const [connected, setConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const pausedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -275,6 +286,7 @@ export function LogViewer() {
       pausedRef,
       reconnect: scheduleReconnect,
       setConnected,
+      setConnectionError,
       setLogs,
     });
   }, [getValidAccessToken, scheduleReconnect]);
@@ -377,8 +389,12 @@ export function LogViewer() {
       </div>
       <div className="h-[500px] overflow-y-auto font-mono bg-white">
         {filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-xs text-zinc-400">
-            {connected ? "Waiting for logs..." : "Connecting..."}
+          <div
+            className={`flex items-center justify-center h-full text-xs ${
+              connectionError ? "text-red-600" : "text-zinc-400"
+            }`}
+          >
+            {connectionError || (connected ? "Waiting for logs..." : "Connecting...")}
           </div>
         ) : (
           filtered.map((entry, i) => (

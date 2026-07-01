@@ -100,6 +100,7 @@ describe("LogViewer stream controller", () => {
 
     const state = createLogState();
     const setConnected = vi.fn();
+    const setConnectionError = vi.fn();
 
     await connectLogStream({
       abortRef: { current: null },
@@ -108,6 +109,7 @@ describe("LogViewer stream controller", () => {
       pausedRef: { current: false },
       reconnect: vi.fn(),
       setConnected,
+      setConnectionError,
       setLogs: state.setLogs,
     });
 
@@ -121,6 +123,7 @@ describe("LogViewer stream controller", () => {
         }),
       }),
     );
+    expect(setConnectionError).toHaveBeenCalledWith(null);
   });
 
   it("retries on non-ok responses without entering the stream parser", async () => {
@@ -143,6 +146,7 @@ describe("LogViewer stream controller", () => {
 
     const state = createLogState();
     const setConnected = vi.fn();
+    const setConnectionError = vi.fn();
     const abortRef = { current: null as AbortController | null };
 
     async function connect() {
@@ -157,6 +161,7 @@ describe("LogViewer stream controller", () => {
           }, 3000);
         },
         setConnected,
+        setConnectionError,
         setLogs: state.setLogs,
       });
     }
@@ -166,6 +171,9 @@ describe("LogViewer stream controller", () => {
     expect(firstGetReader).not.toHaveBeenCalled();
     expect(state.getLogs()).toEqual([]);
     expect(setConnected).toHaveBeenCalledWith(false);
+    expect(setConnectionError).toHaveBeenCalledWith(
+      "Log stream request failed with HTTP 401",
+    );
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(3000);
