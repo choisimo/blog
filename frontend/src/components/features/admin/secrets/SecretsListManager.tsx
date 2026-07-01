@@ -384,8 +384,14 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={() => fetchSecrets()} variant="outline" size="icon">
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        <Button
+          onClick={() => fetchSecrets()}
+          variant="outline"
+          size="icon"
+          aria-label="Refresh secrets list"
+          title="Refresh secrets list"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
         </Button>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />

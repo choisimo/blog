@@ -77,4 +77,14 @@ describe('SecretsListManager', () => {
       expect(mockFetchSecrets).toHaveBeenCalled();
     });
   });
+
+  it('labels the secrets list refresh control', async () => {
+    render(<SecretsListManager categories={[]} />);
+
+    expect(screen.getByRole('button', { name: 'Refresh secrets list' }))
+      .toHaveAttribute('title', 'Refresh secrets list');
+    await waitFor(() => {
+      expect(mockFetchSecrets).toHaveBeenCalled();
+    });
+  });
 });
