@@ -4,13 +4,19 @@ import {
   AllPostsSection,
   EditorPicksSection,
   getAllPostStats,
+  RealtimeVisitorsSection,
   StatsRefreshSection,
   TrendingPostsSection,
 } from "./AnalyticsManager";
 
-const { mockAdminApiFetch, mockAdminFetchRaw } = vi.hoisted(() => ({
+const {
+  mockAdminApiFetch,
+  mockAdminFetchRaw,
+  mockGetRealtimeVisitorsSnapshot,
+} = vi.hoisted(() => ({
   mockAdminApiFetch: vi.fn(),
   mockAdminFetchRaw: vi.fn(),
+  mockGetRealtimeVisitorsSnapshot: vi.fn(),
 }));
 
 vi.mock("@/services/admin/apiClient", () => ({
@@ -20,6 +26,10 @@ vi.mock("@/services/admin/apiClient", () => ({
 
 vi.mock("@/utils/network/apiBase", () => ({
   getApiBaseUrl: () => "https://admin.example.com",
+}));
+
+vi.mock("@/services/content/analytics", () => ({
+  getRealtimeVisitorsSnapshot: mockGetRealtimeVisitorsSnapshot,
 }));
 
 describe("getAllPostStats", () => {
@@ -161,6 +171,28 @@ describe("getAllPostStats", () => {
 
     expect(
       screen.queryByText(/No trending data for this period/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows realtime visitor degraded messages without reporting zero visitors", async () => {
+    mockGetRealtimeVisitorsSnapshot.mockResolvedValue({
+      data: { activeVisitors: 0, timestamp: null },
+      degraded: true,
+      errorMessage: "Realtime KV unavailable",
+    });
+
+    render(<RealtimeVisitorsSection />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Realtime KV unavailable/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/visitor count unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^0$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Last updated:/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Best-effort signal backed by heartbeat writes/i),
     ).not.toBeInTheDocument();
   });
 

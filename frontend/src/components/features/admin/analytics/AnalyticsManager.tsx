@@ -154,7 +154,7 @@ async function refreshStats(): Promise<StatsRefreshResult> {
   }
 }
 
-function RealtimeVisitorsSection() {
+export function RealtimeVisitorsSection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeVisitors, setActiveVisitors] = useState(0);
@@ -170,10 +170,13 @@ function RealtimeVisitorsSection() {
       }
 
       const result = await getRealtimeVisitorsSnapshot();
+      const realtimeUnavailable = Boolean(result.degraded);
       setActiveVisitors(result.data.activeVisitors);
-      setLastUpdated(result.data.timestamp ?? Date.now());
+      setLastUpdated(
+        realtimeUnavailable ? null : result.data.timestamp ?? Date.now(),
+      );
       setDegradedMessage(
-        result.degraded
+        realtimeUnavailable
           ? result.errorMessage || "Realtime visitor analytics unavailable"
           : null
       );
@@ -262,17 +265,27 @@ function RealtimeVisitorsSection() {
         ) : (
           <>
             <div className="flex items-end gap-2">
-              <span className="font-mono text-2xl font-semibold text-zinc-900">
-                {activeVisitors.toLocaleString()}
+              <span
+                className={`font-mono text-2xl font-semibold ${
+                  degradedMessage ? "text-zinc-500" : "text-zinc-900"
+                }`}
+              >
+                {degradedMessage
+                  ? "Unavailable"
+                  : activeVisitors.toLocaleString()}
               </span>
               <span className="pb-0.5 text-xs text-zinc-400">
-                active within 60s
+                {degradedMessage
+                  ? "visitor count unavailable"
+                  : "active within 60s"}
               </span>
             </div>
-            <p className="text-xs text-zinc-400">
-              Best-effort signal backed by heartbeat writes and KV-based reads.
-            </p>
-            {lastUpdated && (
+            {!degradedMessage && (
+              <p className="text-xs text-zinc-400">
+                Best-effort signal backed by heartbeat writes and KV-based reads.
+              </p>
+            )}
+            {!degradedMessage && lastUpdated && (
               <p className="text-xs text-zinc-400">
                 Last updated:{" "}
                 <span className="font-mono">
