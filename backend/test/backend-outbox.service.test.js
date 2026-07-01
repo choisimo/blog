@@ -78,7 +78,7 @@ test("backend outbox creates GitHub PRs with idempotent branch/file/PR operation
       eventType: "github.pr.create-post",
       payload: {
         branch: "post/2026-test-202604270101",
-        path: "frontend/public/posts/2026/test.md",
+        path: "frontend/public/posts/2026/한글-post.md",
         markdown: "# Test\n",
         commitMessage: "feat(post): add test",
         prTitle: "Add test",
@@ -129,6 +129,85 @@ test("backend outbox creates GitHub PRs with idempotent branch/file/PR operation
   assert.equal(result.processed, 1);
   assert.equal(result.results[0].result.prUrl, "https://github.example/pr/1");
   assert.deepEqual(calls.map(([kind]) => kind), ["branch", "file", "pr"]);
+  assert.equal(calls[1][1].path, "frontend/public/posts/2026/한글-post.md");
+});
+
+test("backend outbox rejects GitHub PR paths outside post content", async () => {
+  const repository = new FakeRepository([
+    {
+      id: "dout-pr-bad-path",
+      stream: GITHUB_PR_STREAM,
+      aggregateId: "post:2026:test",
+      eventType: "github.pr.create-post",
+      payload: {
+        branch: "post/2026-test-202604270101",
+        path: "package.json",
+        markdown: "# Test\n",
+        commitMessage: "feat(post): add test",
+        prTitle: "Add test",
+        prBody: "body",
+      },
+    },
+  ]);
+
+  const result = await flushBackendDomainOutbox({
+    repository,
+    streams: GITHUB_PR_STREAM,
+    octokitFactory: () => {
+      throw new Error("Octokit should not be created for invalid paths");
+    },
+  });
+
+  assert.equal(result.processed, 0);
+  assert.equal(result.failed, 1);
+  assert.match(result.results[0].error, /GitHub PR path is not allowed/);
+  assert.deepEqual(repository.succeeded, []);
+  assert.deepEqual(repository.failed, [
+    {
+      id: "dout-pr-bad-path",
+      error: "GitHub PR path is not allowed",
+    },
+  ]);
+});
+
+test("backend outbox rejects comment archive paths outside archive data", async () => {
+  const repository = new FakeRepository([
+    {
+      id: "dout-comments-bad-path",
+      stream: GITHUB_PR_STREAM,
+      aggregateId: "comments-archive:test",
+      eventType: "github.comments.archive",
+      payload: {
+        archives: [
+          {
+            postId: "2026/test",
+            path: "frontend/src/data/comments/../../package.json",
+            content: "{}\n",
+            commentIds: ["comment-1"],
+          },
+        ],
+      },
+    },
+  ]);
+
+  const result = await flushBackendDomainOutbox({
+    repository,
+    streams: GITHUB_PR_STREAM,
+    octokitFactory: () => {
+      throw new Error("Octokit should not be created for invalid archive paths");
+    },
+  });
+
+  assert.equal(result.processed, 0);
+  assert.equal(result.failed, 1);
+  assert.match(result.results[0].error, /Comment archive path is not allowed/);
+  assert.deepEqual(repository.succeeded, []);
+  assert.deepEqual(repository.failed, [
+    {
+      id: "dout-comments-bad-path",
+      error: "Comment archive path is not allowed",
+    },
+  ]);
 });
 
 test("backend outbox broadcasts notifications and marks the notification outbox row", async () => {

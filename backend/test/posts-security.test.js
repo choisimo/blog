@@ -42,6 +42,17 @@ date: 2026-01-02
 Draft body
 `,
 );
+await fs.writeFile(
+  path.join(postsDir, "2026", "한글-post.md"),
+  `---
+title: Korean Slug Post
+published: true
+date: 2026-01-03
+---
+
+Korean slug body
+`,
+);
 
 const [{ default: postsRouter }, { signJwt }, { closeRedis }] = await Promise.all([
   import("../src/routes/posts.js"),
@@ -106,7 +117,7 @@ test("public post list never includes drafts by default", async () => {
     assert.equal(payload.ok, true);
     assert.deepEqual(
       payload.data.items.map((item) => item.slug).sort(),
-      ["public-post"],
+      ["public-post", "한글-post"],
     );
   });
 });
@@ -135,7 +146,7 @@ test("admin post list can include drafts", async () => {
     assert.equal(payload.ok, true);
     assert.deepEqual(
       payload.data.items.map((item) => item.slug).sort(),
-      ["draft-post", "public-post"],
+      ["draft-post", "public-post", "한글-post"],
     );
   });
 });
@@ -162,6 +173,19 @@ test("admin single-post lookup can read unpublished markdown", async () => {
     assert.equal(payload.data.item.slug, "draft-post");
     assert.equal(payload.data.item.published, false);
     assert.match(payload.data.markdown, /Draft body/);
+  });
+});
+
+test("single-post lookup allows existing unicode slugs without path separators", async () => {
+  await withServer(async (baseUrl) => {
+    const slug = encodeURIComponent("한글-post");
+    const response = await fetch(`${baseUrl}/api/v1/posts/2026/${slug}`);
+    assert.equal(response.status, 200);
+
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.equal(payload.data.item.slug, "한글-post");
+    assert.match(payload.data.markdown, /Korean slug body/);
   });
 });
 

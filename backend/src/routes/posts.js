@@ -88,7 +88,7 @@ async function isFilesystemAvailable() {
 
 
 function validateFilename(filename) {
-  const validFilenamePattern = /^[a-zA-Z0-9][a-zA-Z0-9\-_]*\.md$/;
+  const validFilenamePattern = /^[\p{L}\p{N}][\p{L}\p{N}\-_]*\.md$/u;
   return validFilenamePattern.test(filename);
 }
 
