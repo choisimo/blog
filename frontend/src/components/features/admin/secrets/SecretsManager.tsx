@@ -158,9 +158,7 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
               <div className="px-4 py-3 border-b border-zinc-100">
                 <span className="text-xs font-semibold text-zinc-700">Categories</span>
               </div>
-              {!overview?.categories || overview.categories.length === 0 ? (
-                <p className="px-4 py-3 text-xs text-zinc-400">No categories found.</p>
-              ) : (
+              {overview?.categories && overview.categories.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
                   {overview.categories.map((cat) => (
                     <button
@@ -187,16 +185,16 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
                     </button>
                   ))}
                 </div>
-              )}
+              ) : !error ? (
+                <p className="px-4 py-3 text-xs text-zinc-400">No categories found.</p>
+              ) : null}
             </div>
 
             <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-zinc-100">
                 <span className="text-xs font-semibold text-zinc-700">Recent Activity</span>
               </div>
-              {!overview?.recentActivity || overview.recentActivity.length === 0 ? (
-                <p className="px-4 py-4 text-xs text-zinc-400 text-center">No recent activity.</p>
-              ) : (
+              {overview?.recentActivity && overview.recentActivity.length > 0 ? (
                 <div className="divide-y divide-zinc-100">
                   {overview.recentActivity.map((log) => (
                     <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
@@ -222,7 +220,9 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
                     </div>
                   ))}
                 </div>
-              )}
+              ) : !error ? (
+                <p className="px-4 py-4 text-xs text-zinc-400 text-center">No recent activity.</p>
+              ) : null}
             </div>
           </div>
         )}
