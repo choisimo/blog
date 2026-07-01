@@ -164,3 +164,61 @@ test("admin single-post lookup can read unpublished markdown", async () => {
     assert.match(payload.data.markdown, /Draft body/);
   });
 });
+
+test("single-post lookup rejects encoded traversal slugs", async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/posts/2026/..%2Foutside`);
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "Invalid slug",
+    });
+  });
+});
+
+test("admin post update rejects encoded traversal slugs before filesystem writes", async () => {
+  const outsidePath = path.join(postsDir, "outside.md");
+  await fs.writeFile(outsidePath, "keep-update", "utf8");
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/posts/2026/..%2Foutside`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${createAdminToken()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ markdown: "changed" }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "Invalid slug",
+    });
+  });
+
+  assert.equal(await fs.readFile(outsidePath, "utf8"), "keep-update");
+});
+
+test("admin post delete rejects encoded traversal slugs before filesystem deletes", async () => {
+  const outsidePath = path.join(postsDir, "outside.md");
+  await fs.writeFile(outsidePath, "keep-delete", "utf8");
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/posts/2026/..%2Foutside`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${createAdminToken()}`,
+      },
+    });
+
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "Invalid slug",
+    });
+  });
+
+  assert.equal(await fs.readFile(outsidePath, "utf8"), "keep-delete");
+});

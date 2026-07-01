@@ -92,6 +92,11 @@ function validateFilename(filename) {
   return validFilenamePattern.test(filename);
 }
 
+function buildValidatedPostFilename(slug) {
+  const filename = `${String(slug || '')}.md`;
+  return validateFilename(filename) ? filename : null;
+}
+
 
 function computeItem(year, file, fm, body) {
   const filename = path.basename(file, '.md');
@@ -306,7 +311,9 @@ router.get('/:year/:slug', httpCache({ ttl: 600, prefix: 'posts', skip: hasAutho
     if (!/^\d{4}$/.test(year))
       return res.status(400).json({ ok: false, error: 'Invalid year' });
 
-    const file = `${slug}.md`;
+    const file = buildValidatedPostFilename(slug);
+    if (!file)
+      return res.status(400).json({ ok: false, error: 'Invalid slug' });
     
     // Try filesystem first
     if (await isFilesystemAvailable()) {
@@ -407,7 +414,9 @@ router.put('/:year/:slug', requireAdmin, async (req, res, next) => {
     const { year, slug } = req.params;
     if (!/^\d{4}$/.test(year))
       return res.status(400).json({ ok: false, error: 'Invalid year' });
-    const filename = `${slug}.md`;
+    const filename = buildValidatedPostFilename(slug);
+    if (!filename)
+      return res.status(400).json({ ok: false, error: 'Invalid slug' });
     const abs = path.join(config.content.postsDir, year, filename);
     if (!(await exists(abs)))
       return res.status(404).json({ ok: false, error: 'Not found' });
@@ -442,7 +451,9 @@ router.delete('/:year/:slug', requireAdmin, async (req, res, next) => {
     const { year, slug } = req.params;
     if (!/^\d{4}$/.test(year))
       return res.status(400).json({ ok: false, error: 'Invalid year' });
-    const filename = `${slug}.md`;
+    const filename = buildValidatedPostFilename(slug);
+    if (!filename)
+      return res.status(400).json({ ok: false, error: 'Invalid slug' });
     const abs = path.join(config.content.postsDir, year, filename);
     if (!(await exists(abs)))
       return res.status(404).json({ ok: false, error: 'Not found' });
