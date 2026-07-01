@@ -107,18 +107,24 @@ function RAGHealthSection() {
 function CollectionsSection() {
   const [collections, setCollections] = useState<RAGCollection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [collectionStats, setCollectionStats] = useState<{ count: number; exists: boolean } | null>(null);
 
   const fetchCollections = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await getCollections();
       if (response.ok && response.data) {
         setCollections(response.data.collections);
+      } else {
+        setCollections([]);
+        setError(response.error || 'Failed to fetch collections');
       }
-    } catch {
+    } catch (err) {
       setCollections([]);
+      setError(err instanceof Error ? err.message : 'Failed to fetch collections');
     } finally {
       setLoading(false);
     }
@@ -162,6 +168,8 @@ function CollectionsSection() {
             <RefreshCw className="h-3 w-3 animate-spin" />
             Loading...
           </div>
+        ) : error ? (
+          <p className="text-xs text-red-600">{error}</p>
         ) : collections.length === 0 ? (
           <p className="text-xs text-zinc-400">No collections found.</p>
         ) : (
