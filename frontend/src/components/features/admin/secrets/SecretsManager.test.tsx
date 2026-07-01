@@ -45,4 +45,15 @@ describe('SecretsManager', () => {
       expect(mockFetchOverview).toHaveBeenCalled();
     });
   });
+
+  it('labels the secrets overview refresh control', async () => {
+    render(<SecretsManager />);
+
+    expect(
+      screen.getByRole('button', { name: 'Refresh secrets overview' }),
+    ).toHaveAttribute('title', 'Refresh secrets overview');
+    await waitFor(() => {
+      expect(mockFetchOverview).toHaveBeenCalled();
+    });
+  });
 });
