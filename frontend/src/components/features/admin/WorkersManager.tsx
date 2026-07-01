@@ -63,6 +63,21 @@ interface SecretInfo {
   workers: string[];
 }
 
+interface D1DatabaseInfo {
+  uuid: string;
+  name: string;
+}
+
+interface KVNamespaceInfo {
+  id: string;
+  title: string;
+}
+
+interface R2BucketInfo {
+  name: string;
+  creation_date: string;
+}
+
 type WorkerSignalTone = "ready" | "warning" | "muted";
 
 type WorkerSignal = {
@@ -233,35 +248,54 @@ export function WorkersManager({
     },
   });
 
-  const { data: d1Data } = useQuery({
+  const {
+    data: d1Data,
+    error: d1Error,
+    refetch: refetchD1,
+  } = useQuery({
     queryKey: ["workers-d1"],
     queryFn: async () => {
       const res = await adminFetchRaw(
         `${API_BASE}/api/v1/admin/workers/d1/databases`,
       );
-      const json = await res.json();
+      const json = await readAdminJson<{
+        data: { databases?: D1DatabaseInfo[] };
+      }>(res, "Failed to fetch D1 databases");
       return json.data.databases || [];
     },
   });
 
-  const { data: kvData } = useQuery({
+  const {
+    data: kvData,
+    error: kvError,
+    refetch: refetchKV,
+  } = useQuery({
     queryKey: ["workers-kv"],
     queryFn: async () => {
       const res = await adminFetchRaw(
         `${API_BASE}/api/v1/admin/workers/kv/namespaces`,
       );
-      const json = await res.json();
+      const json = await readAdminJson<{
+        data: { namespaces?: KVNamespaceInfo[] };
+      }>(res, "Failed to fetch KV namespaces");
       return json.data.namespaces || [];
     },
   });
 
-  const { data: r2Data } = useQuery({
+  const {
+    data: r2Data,
+    error: r2Error,
+    refetch: refetchR2,
+  } = useQuery({
     queryKey: ["workers-r2"],
     queryFn: async () => {
       const res = await adminFetchRaw(
         `${API_BASE}/api/v1/admin/workers/r2/buckets`,
       );
-      const json = await res.json();
+      const json = await readAdminJson<{ data: { buckets?: R2BucketInfo[] } }>(
+        res,
+        "Failed to fetch R2 buckets",
+      );
       return json.data.buckets || [];
     },
   });
@@ -987,8 +1021,12 @@ export function WorkersManager({
               badge: "D1",
               badgeClass:
                 "text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800/50",
-              items: Array.isArray(d1Data) ? d1Data : [],
-              renderItem: (db: { uuid: string; name: string }) => (
+              error: d1Error,
+              errorTitle: "Unable to load D1 databases",
+              errorFallback: "Failed to fetch D1 databases",
+              retry: refetchD1,
+              count: Array.isArray(d1Data) ? d1Data.length : 0,
+              content: (Array.isArray(d1Data) ? d1Data : []).map((db) => (
                 <div
                   key={db.uuid}
                   className="flex items-center justify-between gap-2"
@@ -1000,7 +1038,7 @@ export function WorkersManager({
                     {db.uuid?.slice(0, 8)}
                   </span>
                 </div>
-              ),
+              )),
               empty: "No databases found",
             },
             {
@@ -1009,8 +1047,12 @@ export function WorkersManager({
               badge: "KV",
               badgeClass:
                 "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50",
-              items: Array.isArray(kvData) ? kvData : [],
-              renderItem: (kv: { id: string; title: string }) => (
+              error: kvError,
+              errorTitle: "Unable to load KV namespaces",
+              errorFallback: "Failed to fetch KV namespaces",
+              retry: refetchKV,
+              count: Array.isArray(kvData) ? kvData.length : 0,
+              content: (Array.isArray(kvData) ? kvData : []).map((kv) => (
                 <div
                   key={kv.id}
                   className="flex items-center justify-between gap-2"
@@ -1022,7 +1064,7 @@ export function WorkersManager({
                     {kv.id?.slice(0, 8)}
                   </span>
                 </div>
-              ),
+              )),
               empty: "No KV namespaces found",
             },
             {
@@ -1031,8 +1073,12 @@ export function WorkersManager({
               badge: "R2",
               badgeClass:
                 "text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800/50",
-              items: Array.isArray(r2Data) ? r2Data : [],
-              renderItem: (bucket: { name: string; creation_date: string }) => (
+              error: r2Error,
+              errorTitle: "Unable to load R2 buckets",
+              errorFallback: "Failed to fetch R2 buckets",
+              retry: refetchR2,
+              count: Array.isArray(r2Data) ? r2Data.length : 0,
+              content: (Array.isArray(r2Data) ? r2Data : []).map((bucket) => (
                 <div
                   key={bucket.name}
                   className="flex items-center justify-between gap-2"
@@ -1044,7 +1090,7 @@ export function WorkersManager({
                     {new Date(bucket.creation_date).toLocaleDateString()}
                   </span>
                 </div>
-              ),
+              )),
               empty: "No R2 buckets found",
             },
           ].map((section) => (
@@ -1058,20 +1104,47 @@ export function WorkersManager({
                 <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   {section.label}
                 </span>
-                {section.items.length > 0 && (
+                {section.count > 0 && (
                   <span className="ml-auto font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                    {section.items.length}
+                    {section.count}
                   </span>
                 )}
               </div>
-              {section.items.length === 0 ? (
+              {section.error ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle
+                      className="mt-0.5 h-4 w-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div>
+                        <p className="font-medium">{section.errorTitle}</p>
+                        <p>
+                          {getApiErrorMessage(
+                            section.error,
+                            section.errorFallback,
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`Retry ${section.label}`}
+                        onClick={() => void section.retry()}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-900/40"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : section.count === 0 ? (
                 <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
                   {section.empty}
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {section.items.map(section.renderItem)}
-                </div>
+                <div className="space-y-2">{section.content}</div>
               )}
             </div>
           ))}
