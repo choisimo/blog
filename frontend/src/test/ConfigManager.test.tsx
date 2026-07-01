@@ -116,4 +116,68 @@ describe("ConfigManager protected-environment mode", () => {
     expect(input).toHaveAttribute("readonly");
     expect(input).toHaveAttribute("disabled");
   });
+
+  it("shows a load error instead of an empty config panel when categories fail", async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/admin/config/categories")) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: { message: "Config service unavailable" },
+          }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.endsWith("/api/v1/admin/config/current")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              mutationsEnabled: true,
+              config: {},
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response("Not Found", { status: 404 });
+    }) as typeof fetch;
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ConfigManager />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Unable to load configuration/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Config service unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Environment config/i)).not.toBeInTheDocument();
+  });
 });
