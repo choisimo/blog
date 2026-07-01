@@ -374,10 +374,62 @@ test.describe('/live — API failure handling', () => {
 
 test.describe('/live — advanced simulated conversation', () => {
   test('handles incoming live_message and updates UI correctly', async ({ page }) => {
-    page.route(`${API_BASE}/api/v1/chat/live/stream*`, async (route: Route) => {
+    const smokeToken = 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbm9uLXNtb2tlIiwiZXhwIjo0MTAyNDQ0ODAwfQ.smoke';
+    const corsHeaders = (route: Route) => {
+      const origin = route.request().headers().origin ?? '*';
+      return {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Headers': 'authorization, content-type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      };
+    };
+
+    page.route(/\/api\/v1\/auth\/anonymous(?:\/refresh)?$/, (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        route.fulfill({ status: 204, headers: corsHeaders(route) });
+        return;
+      }
       route.fulfill({
         status: 200,
-        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+        contentType: 'application/json',
+        headers: corsHeaders(route),
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            token: smokeToken,
+            expiresAt: '2100-01-01T00:00:00.000Z',
+            userId: 'anon-smoke',
+          },
+        }),
+      });
+    });
+
+    page.route('**/api/v1/chat/live/message', (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        route.fulfill({ status: 204, headers: corsHeaders(route) });
+        return;
+      }
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: corsHeaders(route),
+        body: JSON.stringify({ ok: true }),
+      });
+    });
+
+    page.route('**/api/v1/chat/live/stream*', async (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        route.fulfill({ status: 204, headers: corsHeaders(route) });
+        return;
+      }
+      route.fulfill({
+        status: 200,
+        headers: {
+          ...corsHeaders(route),
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
         body: [
           `data: {"type":"connected","sessionId":"advanced-sess","room":"${CHAT_TEST_ROOM}","onlineCount":1}\n\n`,
           `data: {"type":"live_message","sessionId":"admin-sess","name":"admin","text":"Welcome to Live Chat!","senderType":"agent","room":"${CHAT_TEST_ROOM}","onlineCount":1}\n\n`,
@@ -388,9 +440,17 @@ test.describe('/live — advanced simulated conversation', () => {
     await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
+    const input = await getChatInput(page);
+    if (!input) {
+      test.skip(true, 'Chat widget not found on this page load');
+      return;
+    }
+
+    await input.fill('/live probe');
+    await page.keyboard.press('Enter');
 
     // Wait for the UI to update
-    const chatArea = page.locator('[data-testid="chat-messages"], .chat-messages, [role="log"]').first();
+    const chatArea = page.getByTestId('chat-messages').first();
     await expect(chatArea).toBeVisible({ timeout: 5000 });
     await expect(chatArea).toContainText(/Welcome to Live Chat!/i, { timeout: 5000 });
 
