@@ -9,6 +9,7 @@ import {
   isPgConfigured,
 } from '../repositories/analytics.repository.js';
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
+import requireAdmin from '../middleware/adminAuth.js';
 import { createLogger } from '../lib/logger.js';
 import { buildDataOwnershipHeaders } from '../../../shared/src/contracts/data-ownership.js';
 import { runIdempotent } from '../lib/idempotency.js';
@@ -149,7 +150,7 @@ router.get('/trending', requirePg, httpCache({ ttl: 300, prefix: 'analytics' }),
   }
 });
 
-router.post('/refresh-stats', requirePg, async (req, res, next) => {
+router.post('/refresh-stats', requireAdmin, requirePg, async (req, res, next) => {
   try {
     applyDataOwnership(res, 'analytics.post_stats');
     const refreshed = await refreshPeriodicStats();
