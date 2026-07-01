@@ -92,6 +92,27 @@ test('save-env serializes newline values without injecting extra env keys', asyn
   });
 });
 
+test('save-env preserves valid falsy numeric values', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/admin/config/save-env`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        target: 'backend',
+        variables: {
+          PORT: 0,
+          TRUST_PROXY: 0,
+        },
+      }),
+    });
+
+    assert.equal(response.status, 200);
+    const content = await fs.readFile(backendEnvPath, 'utf8');
+    assert.match(content, /^PORT=0$/m);
+    assert.match(content, /^TRUST_PROXY=0$/m);
+  });
+});
+
 test('save-env returns structured 400 for an empty body', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/v1/admin/config/save-env`, {

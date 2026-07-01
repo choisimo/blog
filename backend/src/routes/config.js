@@ -430,7 +430,7 @@ function generateEnvFile(includeSecrets = false) {
   CONFIG_CATEGORIES.forEach((cat) => {
     lines.push(`# === ${cat.name} ===`);
     cat.variables.forEach((v) => {
-      const value = process.env[v.key] || v.default || "";
+      const value = process.env[v.key] ?? v.default ?? "";
       if (v.isSecret && !includeSecrets) {
         lines.push(`# ${v.key}=<secret>`);
       } else {
@@ -448,7 +448,7 @@ function generateDockerComposeEnv(includeSecrets = false) {
 
   CONFIG_CATEGORIES.forEach((cat) => {
     cat.variables.forEach((v) => {
-      const value = process.env[v.key] || v.default || "";
+      const value = process.env[v.key] ?? v.default ?? "";
       if (v.isSecret && !includeSecrets) {
         lines.push(`      # - ${v.key}=<secret>`);
       } else if (value) {
@@ -466,7 +466,7 @@ function generateWranglerVars(includeSecrets = false) {
 
   CONFIG_CATEGORIES.forEach((cat) => {
     cat.variables.forEach((v) => {
-      const value = process.env[v.key] || v.default || "";
+      const value = process.env[v.key] ?? v.default ?? "";
       if (v.isSecret) {
         secretLines.push(`# wrangler secret put ${v.key}`);
       } else if (value) {
@@ -511,7 +511,7 @@ router.post("/save-env", requireAdmin, async (req, res) => {
 
     CONFIG_CATEGORIES.forEach((cat) => {
       cat.variables.forEach((v) => {
-        allVars[v.key] = process.env[v.key] || v.default || "";
+        allVars[v.key] = process.env[v.key] ?? v.default ?? "";
       });
     });
 
@@ -527,7 +527,7 @@ router.post("/save-env", requireAdmin, async (req, res) => {
     CONFIG_CATEGORIES.forEach((cat) => {
       lines.push(`# === ${cat.name} ===`);
       cat.variables.forEach((v) => {
-        const val = allVars[v.key] || "";
+        const val = allVars[v.key] ?? "";
         if (val || !v.isSecret) {
           lines.push(`${v.key}=${serializeEnvValue(val)}`);
         }
