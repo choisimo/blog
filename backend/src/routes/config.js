@@ -333,7 +333,8 @@ router.get("/current", requireAdmin, (req, res) => {
 });
 
 router.post("/validate", requireAdmin, (req, res) => {
-  const { key, value } = req.body;
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const { key, value } = body;
 
   const category = CONFIG_CATEGORIES.find((cat) =>
     cat.variables.some((v) => v.key === key),
@@ -381,8 +382,18 @@ function validateVariable(variable, value) {
   return { valid: true };
 }
 
+function serializeEnvValue(value) {
+  const raw = String(value ?? "");
+  if (!raw) return "";
+  if (/[\s#"'\\=]/.test(raw)) {
+    return JSON.stringify(raw);
+  }
+  return raw;
+}
+
 router.post("/export", requireAdmin, (req, res) => {
-  const { format = "env", includeSecrets = false } = req.body;
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const { format = "env", includeSecrets = false } = body;
 
   if (includeSecrets && config.security?.protectedEnvironment) {
     return res.status(403).json({
@@ -419,11 +430,11 @@ function generateEnvFile(includeSecrets = false) {
   CONFIG_CATEGORIES.forEach((cat) => {
     lines.push(`# === ${cat.name} ===`);
     cat.variables.forEach((v) => {
-      const value = process.env[v.key] || v.default || "";
+      const value = process.env[v.key] ?? v.default ?? "";
       if (v.isSecret && !includeSecrets) {
         lines.push(`# ${v.key}=<secret>`);
       } else {
-        lines.push(`${v.key}=${value}`);
+        lines.push(`${v.key}=${serializeEnvValue(value)}`);
       }
     });
     lines.push("");
@@ -437,7 +448,7 @@ function generateDockerComposeEnv(includeSecrets = false) {
 
   CONFIG_CATEGORIES.forEach((cat) => {
     cat.variables.forEach((v) => {
-      const value = process.env[v.key] || v.default || "";
+      const value = process.env[v.key] ?? v.default ?? "";
       if (v.isSecret && !includeSecrets) {
         lines.push(`      # - ${v.key}=<secret>`);
       } else if (value) {
@@ -455,7 +466,7 @@ function generateWranglerVars(includeSecrets = false) {
 
   CONFIG_CATEGORIES.forEach((cat) => {
     cat.variables.forEach((v) => {
-      const value = process.env[v.key] || v.default || "";
+      const value = process.env[v.key] ?? v.default ?? "";
       if (v.isSecret) {
         secretLines.push(`# wrangler secret put ${v.key}`);
       } else if (value) {
@@ -468,7 +479,8 @@ function generateWranglerVars(includeSecrets = false) {
 }
 
 router.post("/save-env", requireAdmin, async (req, res) => {
-  const { variables, target = "backend" } = req.body;
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const { variables, target = "backend" } = body;
 
   if (!configMutationsEnabled) {
     return res.status(403).json(buildConfigMutationsDisabledPayload());
@@ -478,6 +490,12 @@ router.post("/save-env", requireAdmin, async (req, res) => {
     return res
       .status(400)
       .json({ ok: false, error: "variables object required" });
+  }
+
+  if (!["backend", "root"].includes(target)) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "target must be backend or root" });
   }
 
   try {
@@ -493,7 +511,7 @@ router.post("/save-env", requireAdmin, async (req, res) => {
 
     CONFIG_CATEGORIES.forEach((cat) => {
       cat.variables.forEach((v) => {
-        allVars[v.key] = process.env[v.key] || v.default || "";
+        allVars[v.key] = process.env[v.key] ?? v.default ?? "";
       });
     });
 
@@ -509,9 +527,9 @@ router.post("/save-env", requireAdmin, async (req, res) => {
     CONFIG_CATEGORIES.forEach((cat) => {
       lines.push(`# === ${cat.name} ===`);
       cat.variables.forEach((v) => {
-        const val = allVars[v.key] || "";
+        const val = allVars[v.key] ?? "";
         if (val || !v.isSecret) {
-          lines.push(`${v.key}=${val}`);
+          lines.push(`${v.key}=${serializeEnvValue(val)}`);
         }
       });
       lines.push("");
