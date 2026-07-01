@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, ArrowLeft, Eye, Clock, Globe, Monitor } from 'lucide-react';
-import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { adminFetchRaw } from '@/services/admin/apiClient';
+import { adminApiFetch } from '@/services/admin/apiClient';
 
 interface Visit {
   id: number;
@@ -16,6 +15,15 @@ interface Visit {
 interface HourlyPoint {
   hour: string;
   visits: number;
+}
+
+interface VisitsData {
+  visits: Visit[];
+  total: number;
+}
+
+interface MetricsData {
+  hourly: HourlyPoint[];
 }
 
 interface PostMetricsDetailProps {
@@ -34,6 +42,11 @@ function parseBrowserName(ua: string | null): string {
   if (ua.includes('curl')) return 'curl';
   if (ua.includes('bot') || ua.includes('Bot') || ua.includes('spider')) return 'Bot';
   return 'Other';
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
 }
 
 function HourlyChart({ data }: { data: HourlyPoint[] }) {
@@ -71,34 +84,47 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
   const [total, setTotal] = useState(0);
   const [hourly, setHourly] = useState<HourlyPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   const PAGE_SIZE = 50;
 
   const fetchData = useCallback(async (pageNum: number) => {
     setLoading(true);
-    const base = getApiBaseUrl();
+    setError(null);
     const offset = pageNum * PAGE_SIZE;
+    const postPath = `/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}`;
 
     try {
-      const [visitsRes, metricsRes] = await Promise.all([
-        adminFetchRaw(`${base}/api/v1/admin/analytics/posts/${year}/${slug}/visits?limit=${PAGE_SIZE}&offset=${offset}`),
+      const [visitsResult, metricsResult] = await Promise.all([
+        adminApiFetch<VisitsData>(
+          `${postPath}/visits?limit=${PAGE_SIZE}&offset=${offset}`,
+          { pathPrefix: '/api/v1/admin/analytics' },
+        ),
         pageNum === 0
-          ? adminFetchRaw(`${base}/api/v1/admin/analytics/posts/${year}/${slug}/metrics`)
+          ? adminApiFetch<MetricsData>(
+              `${postPath}/metrics`,
+              { pathPrefix: '/api/v1/admin/analytics' },
+            )
           : Promise.resolve(null),
       ]);
 
-      if (visitsRes.ok) {
-        const data = await visitsRes.json();
-        setVisits(data.data?.visits ?? []);
-        setTotal(data.data?.total ?? 0);
+      if (!visitsResult.ok || !visitsResult.data) {
+        throw new Error(visitsResult.error || 'Failed to load visit logs');
       }
 
-      if (metricsRes?.ok) {
-        const data = await metricsRes.json();
-        setHourly(data.data?.hourly ?? []);
+      setVisits(visitsResult.data.visits ?? []);
+      setTotal(visitsResult.data.total ?? 0);
+
+      if (metricsResult) {
+        setHourly(metricsResult.ok && metricsResult.data ? metricsResult.data.hourly ?? [] : []);
       }
-    } catch { void 0; } finally {
+    } catch (err) {
+      setVisits([]);
+      setTotal(0);
+      if (pageNum === 0) setHourly([]);
+      setError(getErrorMessage(err, 'Failed to load visit logs'));
+    } finally {
       setLoading(false);
     }
   }, [slug, year]);
@@ -154,6 +180,11 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
           <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
             <RefreshCw className="h-3 w-3 animate-spin" />
             Loading...
+          </div>
+        ) : error ? (
+          <div className="px-4 py-3 space-y-1">
+            <p className="text-xs font-medium text-red-600">{error}</p>
+            <p className="text-xs text-zinc-400">Unable to load visitor log.</p>
           </div>
         ) : visits.length === 0 ? (
           <p className="px-4 py-3 text-xs text-zinc-400">No visits recorded yet.</p>
