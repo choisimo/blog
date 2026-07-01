@@ -61,10 +61,12 @@ export async function checkBackendHealth(): Promise<{
   }
 }
 
-async function checkRAGHealth(): Promise<{
+// eslint-disable-next-line react-refresh/only-export-components
+export async function checkRAGHealth(): Promise<{
   embedding: boolean;
   chroma: boolean;
   latencyMs: number;
+  error?: string;
 }> {
   const base = getApiBaseUrl();
   const start = Date.now();
@@ -74,15 +76,30 @@ async function checkRAGHealth(): Promise<{
       signal: AbortSignal.timeout(5000),
     });
     const latencyMs = Date.now() - start;
-    if (!res.ok) return { embedding: false, chroma: false, latencyMs };
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        embedding: false,
+        chroma: false,
+        latencyMs,
+        error: getResponseErrorMessage(
+          data,
+          `RAG health check failed (${res.status})`,
+        ),
+      };
+    }
     return {
       embedding: data.services?.embedding?.ok ?? data.data?.embedding ?? false,
       chroma: data.services?.chroma?.ok ?? data.data?.chromadb ?? false,
       latencyMs,
     };
-  } catch {
-    return { embedding: false, chroma: false, latencyMs: 0 };
+  } catch (err) {
+    return {
+      embedding: false,
+      chroma: false,
+      latencyMs: 0,
+      error: err instanceof Error ? err.message : "RAG health check failed",
+    };
   }
 }
 
@@ -296,11 +313,13 @@ export function SystemHealth() {
         displayName: "Embedding",
         status: result.embedding ? "healthy" : "down",
         latencyMs: result.latencyMs,
+        error: result.error,
       },
       {
         name: "chroma",
         displayName: "ChromaDB",
         status: result.chroma ? "healthy" : "down",
+        error: result.error,
       },
     ]);
     setRagLoading(false);
@@ -466,6 +485,11 @@ export function SystemHealth() {
                   {s.latencyMs !== undefined && s.status === "healthy" && (
                     <span className="font-mono text-xs text-zinc-400">
                       {s.latencyMs}ms
+                    </span>
+                  )}
+                  {s.error && (
+                    <span className="text-xs text-red-600 truncate max-w-[100px]">
+                      {s.error}
                     </span>
                   )}
                   <StatusDot status={s.status} />

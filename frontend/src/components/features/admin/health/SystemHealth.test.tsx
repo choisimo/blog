@@ -14,6 +14,7 @@ import {
   checkAgentHealthRequest,
   checkBackendHealth,
   checkProviderHealth,
+  checkRAGHealth,
   getProviders,
   getProvidersResult,
 } from "./SystemHealth";
@@ -38,6 +39,28 @@ describe("checkBackendHealth", () => {
         signal: expect.any(AbortSignal),
       })
     );
+  });
+
+  it("returns RAG health errors from non-OK responses", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { message: "Chroma unavailable" },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const health = await checkRAGHealth();
+
+    expect(health).toMatchObject({
+      embedding: false,
+      chroma: false,
+      error: "Chroma unavailable",
+    });
   });
 
   it("loads AI providers through the shared admin API client", async () => {
