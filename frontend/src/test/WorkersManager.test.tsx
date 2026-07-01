@@ -151,6 +151,8 @@ describe("WorkersManager read-only production mode", () => {
     expect(
       screen.getByText(".github/workflows/deploy-blog-workflow.yml"),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy Account" }))
+      .toHaveAttribute("title", "Copy Account");
   });
 
   it("shows manifest variable keys without exposing their values", async () => {
