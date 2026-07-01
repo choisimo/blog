@@ -58,4 +58,16 @@ describe('RAGManager', () => {
     expect(await screen.findByText('Collections service unavailable')).toBeInTheDocument();
     expect(screen.queryByText('No collections found.')).not.toBeInTheDocument();
   });
+
+  it('shows index status errors instead of the generic unavailable state', async () => {
+    mockGetCollectionStatus.mockResolvedValue({
+      ok: false,
+      error: 'Index status unavailable',
+    });
+
+    render(<RAGManager />);
+
+    expect(await screen.findByText('Index status unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('Unable to fetch index status.')).not.toBeInTheDocument();
+  });
 });

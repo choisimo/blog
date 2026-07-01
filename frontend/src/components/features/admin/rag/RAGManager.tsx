@@ -208,16 +208,22 @@ function CollectionsSection() {
 function IndexStatusSection() {
   const [status, setStatus] = useState<{ count: number; collection: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await getCollectionStatus();
       if (response.ok && response.data) {
         setStatus({ count: response.data.count, collection: response.data.collection });
+      } else {
+        setStatus(null);
+        setError(response.error || 'Failed to fetch index status');
       }
-    } catch {
+    } catch (err) {
       setStatus(null);
+      setError(err instanceof Error ? err.message : 'Failed to fetch index status');
     } finally {
       setLoading(false);
     }
@@ -239,6 +245,8 @@ function IndexStatusSection() {
             <RefreshCw className="h-3 w-3 animate-spin" />
             Loading...
           </div>
+        ) : error ? (
+          <p className="text-xs text-red-600">{error}</p>
         ) : status ? (
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-px border border-zinc-100 rounded-md overflow-hidden">
