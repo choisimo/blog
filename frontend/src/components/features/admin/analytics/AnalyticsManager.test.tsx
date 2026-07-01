@@ -1,21 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAllPostStats } from "./AnalyticsManager";
 
-const { mockAdminFetchRaw, mockGetValidAccessToken } = vi.hoisted(() => ({
+const { mockAdminFetchRaw } = vi.hoisted(() => ({
   mockAdminFetchRaw: vi.fn(),
-  mockGetValidAccessToken: vi.fn(),
 }));
 
 vi.mock("@/services/admin/apiClient", () => ({
   adminFetchRaw: mockAdminFetchRaw,
-}));
-
-vi.mock("@/stores/session/useAuthStore", () => ({
-  useAuthStore: {
-    getState: () => ({
-      getValidAccessToken: mockGetValidAccessToken,
-    }),
-  },
 }));
 
 vi.mock("@/utils/network/apiBase", () => ({
@@ -27,8 +18,7 @@ describe("getAllPostStats", () => {
     vi.clearAllMocks();
   });
 
-  it("calls adminFetchRaw only after resolving an auth token", async () => {
-    mockGetValidAccessToken.mockResolvedValue("test-token");
+  it("delegates admin post stats requests to the shared admin client", async () => {
     mockAdminFetchRaw.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -54,14 +44,7 @@ describe("getAllPostStats", () => {
 
     const result = await getAllPostStats("total_views");
 
-    // `adminFetchRaw()` injects `Authorization: Bearer <token>` internally via
-    // `bearerAuth(token)` in `apiClient.ts`; this test verifies `getAllPostStats()`
-    // resolves a token before delegating to that auth-injecting wrapper.
-    expect(mockGetValidAccessToken).toHaveBeenCalledOnce();
     expect(mockAdminFetchRaw).toHaveBeenCalledOnce();
-    expect(mockGetValidAccessToken.mock.invocationCallOrder[0]).toBeLessThan(
-      mockAdminFetchRaw.mock.invocationCallOrder[0],
-    );
     expect(mockAdminFetchRaw).toHaveBeenCalledWith(
       "https://admin.example.com/api/v1/admin/analytics/posts?orderBy=total_views",
     );
@@ -77,13 +60,19 @@ describe("getAllPostStats", () => {
     ]);
   });
 
-  it("returns an empty array without requesting when token is missing", async () => {
-    mockGetValidAccessToken.mockResolvedValue(null);
+  it("returns an empty array when the shared admin client response is not ok", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     const result = await getAllPostStats("views_7d");
 
-    expect(mockGetValidAccessToken).toHaveBeenCalledOnce();
-    expect(mockAdminFetchRaw).not.toHaveBeenCalled();
+    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+      "https://admin.example.com/api/v1/admin/analytics/posts?orderBy=views_7d",
+    );
     expect(result).toEqual([]);
   });
 });
