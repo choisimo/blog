@@ -1,5 +1,6 @@
 import test, { after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import os from 'node:os';
@@ -18,7 +19,21 @@ process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 process.env.APP_ENV = 'test';
 process.env.AI_DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || 'gpt-4.1-mini';
 
-const { default: workersRouter } = await import('../src/routes/workers.js');
+const { default: workersRouter, runWranglerCommand } = await import('../src/routes/workers.js');
+
+function createFakeProcess() {
+  const proc = new EventEmitter();
+  proc.stdout = new EventEmitter();
+  proc.stderr = new EventEmitter();
+  proc.stdin = {
+    write() {},
+    end() {},
+  };
+  proc.kill = (signal) => {
+    proc.killedSignal = signal;
+  };
+  return proc;
+}
 
 async function writeWranglerToml() {
   await fs.mkdir(workerDir, { recursive: true });
@@ -222,4 +237,35 @@ test('worker secret mutation returns structured 400 for an empty body', async ()
     assert.equal(payload.ok, false);
     assert.equal(payload.error.code, 'INVALID_WORKER_SECRET');
   });
+});
+
+test('wrangler command rejects oversized output and terminates the process', async () => {
+  let proc;
+  const promise = runWranglerCommand(['d1', 'list'], tempRoot, null, {
+    maxOutputBytes: 4,
+    timeoutMs: 1000,
+    spawnImpl: () => {
+      proc = createFakeProcess();
+      return proc;
+    },
+  });
+
+  proc.stdout.emit('data', Buffer.from('12345'));
+
+  await assert.rejects(promise, /Wrangler command output exceeded 4 bytes/);
+  assert.equal(proc.killedSignal, 'SIGTERM');
+});
+
+test('wrangler command rejects timed out processes and terminates them', async () => {
+  let proc;
+  const promise = runWranglerCommand(['deploy'], tempRoot, null, {
+    timeoutMs: 1,
+    spawnImpl: () => {
+      proc = createFakeProcess();
+      return proc;
+    },
+  });
+
+  await assert.rejects(promise, /Wrangler command timed out after 1ms/);
+  assert.equal(proc.killedSignal, 'SIGTERM');
 });
