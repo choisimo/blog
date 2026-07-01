@@ -81,6 +81,8 @@ describe('ContentManager', () => {
 
     expect(screen.getByText('Home CTA store unavailable')).toBeInTheDocument();
     expect(mocks.getAdminSiteContentBlock).toHaveBeenCalledWith('home_ai_cta');
+    expect(screen.getByRole('button', { name: 'Refresh content' }))
+      .toHaveAttribute('title', 'Refresh content');
 
     expect(screen.getByLabelText('Markdown')).toBeDisabled();
     expect(screen.getByLabelText('CTA label')).toBeDisabled();
