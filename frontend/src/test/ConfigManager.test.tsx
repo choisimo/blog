@@ -109,6 +109,7 @@ describe("ConfigManager protected-environment mode", () => {
 
     expect(screen.getByText(/GitOps only/i)).toBeInTheDocument();
     expect(screen.getByText(/ConfigMap and redeploy/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Wrangler/i })).toBeInTheDocument();
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
 
     const input = screen.getByDisplayValue("https://noblog.nodove.com");

@@ -347,7 +347,7 @@ export function ConfigManager() {
             <span className='text-xs text-zinc-400 dark:text-zinc-500'>Environment config</span>
           )}
         </div>
-        <div className='flex items-center gap-1.5 shrink-0'>
+        <div className='flex flex-wrap items-center justify-end gap-1.5 shrink-0'>
           <button
             type='button'
             onClick={() => exportMutation.mutate('env')}
@@ -365,6 +365,15 @@ export function ConfigManager() {
           >
             <Download className='h-3 w-3' aria-hidden='true' />
             Docker
+          </button>
+          <button
+            type='button'
+            onClick={() => exportMutation.mutate('wrangler')}
+            disabled={exportMutation.isPending}
+            className='flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
+          >
+            <Download className='h-3 w-3' aria-hidden='true' />
+            Wrangler
           </button>
           {mutationsEnabled ? (
             <button
