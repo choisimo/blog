@@ -5,6 +5,7 @@ import {
   EditorPicksSection,
   getAllPostStats,
   StatsRefreshSection,
+  TrendingPostsSection,
 } from "./AnalyticsManager";
 
 const { mockAdminApiFetch, mockAdminFetchRaw } = vi.hoisted(() => ({
@@ -133,6 +134,33 @@ describe("getAllPostStats", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/No editor picks configured/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows trending degraded messages without also showing the empty state", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          degraded: true,
+          error: { message: "Trending analytics unavailable" },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+
+    render(<TrendingPostsSection />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Trending analytics unavailable/i),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText(/No trending data for this period/i),
     ).not.toBeInTheDocument();
   });
 
