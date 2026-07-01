@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { adminFetchRaw } from '@/services/admin/apiClient';
-import { getApiBaseUrl } from '@/utils/network/apiBase';
+import { adminApiFetch } from '@/services/admin/apiClient';
 import { RefreshCw, RotateCcw, Save } from 'lucide-react';
 
 interface AgentPrompt {
@@ -13,9 +12,24 @@ interface AgentPrompt {
 
 const MODE_ORDER = ['default', 'research', 'coding', 'blog', 'article', 'terminal', 'performance'];
 
+function getPromptErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
+function getModeRank(mode: string): number {
+  const rank = MODE_ORDER.indexOf(mode);
+  return rank === -1 ? Number.MAX_SAFE_INTEGER : rank;
+}
+
+function sortPrompts(prompts: AgentPrompt[]): AgentPrompt[] {
+  return [...prompts].sort(
+    (a, b) => getModeRank(a.mode) - getModeRank(b.mode) || a.label.localeCompare(b.label)
+  );
+}
+
 export function PromptsManager() {
   const { toast } = useToast();
-  const API_BASE = getApiBaseUrl();
 
   const [prompts, setPrompts] = useState<AgentPrompt[]>([]);
   const [selectedMode, setSelectedMode] = useState<string>('default');
@@ -23,34 +37,43 @@ export function PromptsManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const isBusy = saving || resetting;
 
-  const loadOnMount = useCallback(() => {
+  const loadPrompts = useCallback(async () => {
     setLoading(true);
-    adminFetchRaw(`${API_BASE}/api/v1/agent/prompts`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to fetch prompts');
-        return res.json();
-      })
-      .then((json) => {
-        const sorted: AgentPrompt[] = [...(json.data.prompts as AgentPrompt[])].sort(
-          (a, b) => MODE_ORDER.indexOf(a.mode) - MODE_ORDER.indexOf(b.mode)
-        );
-        setPrompts(sorted);
-        const active = sorted[0];
-        if (active) {
-          setSelectedMode(active.mode);
-          setEditedText(active.text);
-        }
-      })
-      .catch(() => toast({ title: 'Failed to load prompts', variant: 'destructive' }))
-      .finally(() => setLoading(false));
-  }, [API_BASE, toast]);
+    try {
+      const result = await adminApiFetch<{ prompts: AgentPrompt[] }>('/prompts', {
+        pathPrefix: '/api/v1/agent',
+      });
+
+      if (!result.ok || !result.data) {
+        throw new Error(result.error || 'Failed to fetch prompts');
+      }
+
+      const sorted = sortPrompts(result.data.prompts);
+      setPrompts(sorted);
+      const active = sorted[0];
+      if (active) {
+        setSelectedMode(active.mode);
+        setEditedText(active.text);
+      }
+    } catch (error) {
+      toast({
+        title: 'Failed to load prompts',
+        description: getPromptErrorMessage(error, 'Failed to fetch prompts'),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    loadOnMount();
-  }, [loadOnMount]);
+    loadPrompts();
+  }, [loadPrompts]);
 
   const selectMode = (mode: string) => {
+    if (isBusy) return;
     const prompt = prompts.find((p) => p.mode === mode);
     if (prompt) {
       setSelectedMode(mode);
@@ -59,38 +82,58 @@ export function PromptsManager() {
   };
 
   const handleSave = async () => {
+    const mode = selectedMode;
+    const submittedText = editedText;
     setSaving(true);
     try {
-      const res = await adminFetchRaw(`${API_BASE}/api/v1/agent/prompts/${selectedMode}`, {
+      const result = await adminApiFetch<AgentPrompt>(`/prompts/${mode}`, {
+        pathPrefix: '/api/v1/agent',
         method: 'PUT',
-        body: JSON.stringify({ text: editedText }),
+        body: { text: submittedText },
       });
-      if (!res.ok) throw new Error('Save failed');
-      const json = await res.json();
-      const updated: AgentPrompt = json.data;
-      setPrompts((prev) => prev.map((p) => (p.mode === updated.mode ? updated : p)));
+
+      if (!result.ok || !result.data) {
+        throw new Error(result.error || 'Save failed');
+      }
+
+      const updated = result.data;
+      setPrompts((prev) => sortPrompts(prev.map((p) => (p.mode === updated.mode ? updated : p))));
+      setEditedText((current) => (current === submittedText ? updated.text : current));
       toast({ title: 'Prompt saved', description: `${updated.label} prompt updated` });
-    } catch {
-      toast({ title: 'Save failed', variant: 'destructive' });
+    } catch (error) {
+      toast({
+        title: 'Save failed',
+        description: getPromptErrorMessage(error, 'Save failed'),
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const handleReset = async () => {
+    const mode = selectedMode;
     setResetting(true);
     try {
-      const res = await adminFetchRaw(`${API_BASE}/api/v1/agent/prompts/${selectedMode}`, {
+      const result = await adminApiFetch<AgentPrompt>(`/prompts/${mode}`, {
+        pathPrefix: '/api/v1/agent',
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Reset failed');
-      const json = await res.json();
-      const updated: AgentPrompt = json.data;
-      setPrompts((prev) => prev.map((p) => (p.mode === updated.mode ? updated : p)));
+
+      if (!result.ok || !result.data) {
+        throw new Error(result.error || 'Reset failed');
+      }
+
+      const updated = result.data;
+      setPrompts((prev) => sortPrompts(prev.map((p) => (p.mode === updated.mode ? updated : p))));
       setEditedText(updated.text);
       toast({ title: 'Prompt reset', description: `${updated.label} restored to default` });
-    } catch {
-      toast({ title: 'Reset failed', variant: 'destructive' });
+    } catch (error) {
+      toast({
+        title: 'Reset failed',
+        description: getPromptErrorMessage(error, 'Reset failed'),
+        variant: 'destructive',
+      });
     } finally {
       setResetting(false);
     }
@@ -122,7 +165,8 @@ export function PromptsManager() {
               key={p.mode}
               type="button"
               onClick={() => selectMode(p.mode)}
-              className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 ${
+              disabled={isBusy}
+              className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 ${
                 selectedMode === p.mode
                   ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-r-2 border-zinc-900 dark:border-zinc-100'
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-white/60 dark:hover:bg-zinc-900/40'
@@ -138,8 +182,8 @@ export function PromptsManager() {
         <div className="px-3 py-2.5 border-t border-zinc-200 dark:border-zinc-700">
           <button
             type="button"
-            onClick={loadOnMount}
-            disabled={loading}
+            onClick={loadPrompts}
+            disabled={loading || isBusy}
             className="w-full flex items-center justify-center gap-1.5 h-7 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-40"
           >
             <RefreshCw className="h-3 w-3" />
@@ -175,7 +219,7 @@ export function PromptsManager() {
                   <button
                     type="button"
                     onClick={handleReset}
-                    disabled={resetting || saving}
+                    disabled={isBusy}
                     title="Reset to default"
                     className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40"
                   >
@@ -186,7 +230,7 @@ export function PromptsManager() {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving || !isDirty}
+                  disabled={isBusy || !isDirty}
                   className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40"
                 >
                   <Save className="h-3 w-3" />
@@ -199,9 +243,10 @@ export function PromptsManager() {
               <textarea
                 value={editedText}
                 onChange={(e) => setEditedText(e.target.value)}
+                disabled={isBusy}
                 rows={24}
                 spellCheck={false}
-                className="w-full h-full min-h-[400px] resize-none font-mono text-xs leading-relaxed text-zinc-800 dark:text-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 placeholder:text-zinc-400"
+                className="w-full h-full min-h-[400px] resize-none font-mono text-xs leading-relaxed text-zinc-800 dark:text-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70"
                 placeholder="Enter system prompt…"
               />
             </div>
