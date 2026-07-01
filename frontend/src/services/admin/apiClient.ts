@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/stores/session/useAuthStore';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 import { bearerAuth } from '@/lib/auth';
+import { refreshAccessToken } from '@/services/session/auth';
 
 interface AdminApiResult<T> {
   ok: boolean;
@@ -13,11 +14,56 @@ interface AdminApiFetchOptions extends Omit<RequestInit, 'body'> {
   pathPrefix?: string;
 }
 
+function buildAdminHeaders(
+  token: string | null,
+  headers?: HeadersInit,
+): Headers {
+  const nextHeaders = new Headers(headers);
+  if (!nextHeaders.has('Content-Type')) {
+    nextHeaders.set('Content-Type', 'application/json');
+  }
+  if (token) {
+    nextHeaders.set('Authorization', bearerAuth(token).Authorization);
+  }
+  return nextHeaders;
+}
+
+async function forceRefreshAdminAccessToken(): Promise<string | null> {
+  const { refreshToken, clearAuth } = useAuthStore.getState();
+  if (!refreshToken) {
+    clearAuth();
+    return null;
+  }
+
+  try {
+    const result = await refreshAccessToken(refreshToken);
+    useAuthStore
+      .getState()
+      .setTokens(result.accessToken, result.refreshToken);
+    return result.accessToken;
+  } catch {
+    clearAuth();
+    return null;
+  }
+}
+
+function buildAdminRequestInit(
+  options: RequestInit,
+  token: string | null,
+  body?: unknown,
+): RequestInit {
+  return {
+    ...options,
+    headers: buildAdminHeaders(token, options.headers),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  };
+}
+
 export async function adminApiFetch<T>(
   endpoint: string,
   options: AdminApiFetchOptions = {}
 ): Promise<AdminApiResult<T>> {
-  const { getValidAccessToken, clearAuth } = useAuthStore.getState();
+  const { getValidAccessToken } = useAuthStore.getState();
   const API_BASE = getApiBaseUrl();
   const { body, pathPrefix = '', ...fetchOptions } = options;
 
@@ -28,35 +74,15 @@ export async function adminApiFetch<T>(
     }
 
     const url = `${API_BASE}${pathPrefix}${endpoint}`;
-    const init: RequestInit = {
-      ...fetchOptions,
-      headers: {
-        'Content-Type': 'application/json',
-        ...bearerAuth(token),
-        ...((fetchOptions.headers as Record<string, string>) || {}),
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    };
-
-    let res = await fetch(url, init);
+    let res = await fetch(url, buildAdminRequestInit(fetchOptions, token, body));
 
     if (res.status === 401) {
-      const newToken = await getValidAccessToken();
+      const newToken = await forceRefreshAdminAccessToken();
       if (!newToken) {
-        clearAuth();
         return { ok: false, error: 'Session expired. Please log in again.' };
       }
 
-      const retryInit: RequestInit = {
-        ...fetchOptions,
-        headers: {
-          'Content-Type': 'application/json',
-          ...bearerAuth(newToken),
-          ...((fetchOptions.headers as Record<string, string>) || {}),
-        },
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      };
-      res = await fetch(url, retryInit);
+      res = await fetch(url, buildAdminRequestInit(fetchOptions, newToken, body));
     }
 
     const json = await res.json().catch(() => ({}));
@@ -84,12 +110,14 @@ export async function adminFetchRaw(
   const { getValidAccessToken } = useAuthStore.getState();
   const token = await getValidAccessToken();
 
-  return fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? bearerAuth(token) : {}),
-      ...((options.headers as Record<string, string>) || {}),
-    },
-  });
+  let res = await fetch(url, buildAdminRequestInit(options, token));
+
+  if (res.status === 401) {
+    const newToken = await forceRefreshAdminAccessToken();
+    if (newToken) {
+      res = await fetch(url, buildAdminRequestInit(options, newToken));
+    }
+  }
+
+  return res;
 }
