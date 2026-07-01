@@ -52,4 +52,18 @@ describe('AuditLogViewer', () => {
       });
     });
   });
+
+  it('labels the audit log refresh control', async () => {
+    render(<AuditLogViewer />);
+
+    expect(screen.getByRole('button', { name: 'Refresh audit log' }))
+      .toHaveAttribute('title', 'Refresh audit log');
+    await waitFor(() => {
+      expect(mockFetchLogs).toHaveBeenCalledWith({
+        action: undefined,
+        limit: 20,
+        offset: 0,
+      });
+    });
+  });
 });
