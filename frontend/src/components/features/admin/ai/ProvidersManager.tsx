@@ -428,7 +428,7 @@ export function ProvidersManager() {
                 </div>
               </div>
             ))}
-            {providers.length === 0 && (
+            {!error && providers.length === 0 && (
               <p className="text-center text-muted-foreground py-8">
                 No providers configured. Add your first provider to get started.
               </p>
