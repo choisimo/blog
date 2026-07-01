@@ -57,6 +57,7 @@ import {
   Bot,
   Save,
   ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
 import {
   usePlayground,
@@ -362,6 +363,7 @@ export function Playground() {
     history,
     templates,
     running,
+    error,
     total: historyTotal,
     runPlayground,
     fetchHistory,
@@ -462,6 +464,13 @@ export function Playground() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="playground" className="flex items-center gap-2">
@@ -717,7 +726,7 @@ export function Playground() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {history.length === 0 && (
+                  {!error && history.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         No history yet. Run a prompt to get started.
