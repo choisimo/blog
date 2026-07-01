@@ -374,7 +374,15 @@ test.describe('/live — API failure handling', () => {
 
 test.describe('/live — advanced simulated conversation', () => {
   test('handles incoming live_message and updates UI correctly', async ({ page }) => {
-    page.route(`${API_BASE}/api/v1/chat/live/stream*`, async (route: Route) => {
+    page.route('**/api/v1/chat/live/message', (route: Route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+    });
+
+    page.route('**/api/v1/chat/live/stream*', async (route: Route) => {
       route.fulfill({
         status: 200,
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
