@@ -117,7 +117,7 @@ export function AuditLogViewer() {
             </div>
           ))}
 
-          {logs.length === 0 && !loading && (
+          {logs.length === 0 && !loading && !error && (
             <p className="text-center text-muted-foreground py-8">No audit logs found</p>
           )}
         </div>
