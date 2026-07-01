@@ -1,9 +1,12 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAdminFetchRaw,
   mockGetApiBaseUrl,
   mockGetValidAccessToken,
 } = vi.hoisted(() => ({
+  mockAdminFetchRaw: vi.fn(),
   mockGetApiBaseUrl: vi.fn(() => "https://admin.example.com"),
   mockGetValidAccessToken: vi.fn(),
 }));
@@ -18,8 +21,13 @@ vi.mock("@/stores/session/useAuthStore", () => ({
   }),
 }));
 
+vi.mock("@/services/admin/apiClient", () => ({
+  adminFetchRaw: mockAdminFetchRaw,
+}));
+
 import {
   connectLogStream,
+  LogViewer,
   type LogEntry,
 } from "./LogViewer";
 
@@ -92,6 +100,34 @@ describe("LogViewer stream controller", () => {
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
+  });
+
+  it("labels icon-only log toolbar controls and updates pause state", async () => {
+    mockGetValidAccessToken.mockResolvedValue("stream-token");
+    mockAdminFetchRaw.mockResolvedValue(createResponse([]));
+
+    render(<LogViewer />);
+
+    await waitFor(() => {
+      expect(mockAdminFetchRaw).toHaveBeenCalled();
+    });
+
+    const pauseButton = screen.getByRole("button", {
+      name: "Pause log stream",
+    });
+    expect(pauseButton).toHaveAttribute("title", "Pause log stream");
+    expect(
+      screen.getByRole("button", { name: "Clear logs" }),
+    ).toHaveAttribute("title", "Clear logs");
+    expect(
+      screen.getByRole("button", { name: "Reconnect log stream" }),
+    ).toHaveAttribute("title", "Reconnect log stream");
+
+    fireEvent.click(pauseButton);
+
+    expect(
+      screen.getByRole("button", { name: "Resume log stream" }),
+    ).toHaveAttribute("title", "Resume log stream");
   });
 
   it("uses the shared admin stream fetcher after resolving a token", async () => {
