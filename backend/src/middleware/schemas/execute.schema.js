@@ -5,6 +5,15 @@
 
 import { z } from 'zod';
 
+const executeFileNameSchema = z
+  .string()
+  .min(1)
+  .max(256)
+  .regex(
+    /^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u,
+    'file name must be a basename without path separators',
+  );
+
 /**
  * POST / - Execute code via Piston
  */
@@ -14,7 +23,7 @@ export const executeBodySchema = z.object({
   files: z
     .array(
       z.object({
-        name: z.string().max(256).optional(),
+        name: executeFileNameSchema.optional(),
         content: z.string().max(1_000_000), // 1 MB per file max
       }),
     )
