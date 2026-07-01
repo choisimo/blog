@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type KeyboardEvent, type ReactNode } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   Settings,
@@ -38,7 +38,7 @@ type NavTab =
 const NAV_TABS: {
   id: NavTab;
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   group?: 'infra' | 'ops' | 'config';
 }[] = [
   {
@@ -115,9 +115,61 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
   }
 
   const activeTab = section;
+  const activeTabIndex = NAV_TABS.findIndex(tab => tab.id === activeTab);
 
   const setActiveTab = (tab: NavTab) => {
     navigate(`/admin/config/${tab}`, { replace: false });
+  };
+
+  const focusNavTab = (index: number) => {
+    const focus = () => {
+      const buttons = document.querySelectorAll<HTMLButtonElement>(
+        '[data-admin-nav-tab]',
+      );
+      buttons[index]?.focus();
+    };
+
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(focus);
+      return;
+    }
+
+    window.setTimeout(focus, 0);
+  };
+
+  const activateNavTabAt = (index: number) => {
+    const tab = NAV_TABS[index];
+    if (!tab) return;
+    setActiveTab(tab.id);
+    focusNavTab(index);
+  };
+
+  const handleNavKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      activateNavTabAt((index + 1) % NAV_TABS.length);
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      activateNavTabAt((index - 1 + NAV_TABS.length) % NAV_TABS.length);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      activateNavTabAt(0);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      activateNavTabAt(NAV_TABS.length - 1);
+    }
   };
 
   return (
@@ -144,13 +196,21 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
             <nav
               className='flex items-center gap-0.5 overflow-x-auto scrollbar-hide'
               aria-label='Admin navigation'
+              role='tablist'
             >
-              {NAV_TABS.map(tab => (
+              {NAV_TABS.map((tab, index) => (
                 <button
                   key={tab.id}
+                  id={`admin-tab-${tab.id}`}
+                  data-admin-nav-tab
                   type='button'
+                  role='tab'
                   onClick={() => setActiveTab(tab.id)}
-                  aria-current={activeTab === tab.id ? 'page' : undefined}
+                  onKeyDown={event => handleNavKeyDown(event, index)}
+                  aria-controls={`admin-panel-${tab.id}`}
+                  aria-label={tab.label}
+                  aria-selected={activeTab === tab.id}
+                  tabIndex={index === activeTabIndex ? 0 : -1}
                   className={`
                     admin-nav-btn
                     relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
@@ -204,7 +264,12 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
       {/* ── Main Content ── */}
       <main className='p-3 md:p-4 max-w-screen-2xl mx-auto'>
         {/* Tab content with fade-in on switch */}
-        <div className='admin-tab-content'>
+        <div
+          id={`admin-panel-${activeTab}`}
+          className='admin-tab-content'
+          role='tabpanel'
+          aria-labelledby={`admin-tab-${activeTab}`}
+        >
           <Suspense fallback={<div className='flex items-center justify-center py-12'><div className='h-5 w-5 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin' /></div>}>
           {activeTab === 'health' && <SystemHealth />}
           {activeTab === 'rag' && <RAGManager />}
