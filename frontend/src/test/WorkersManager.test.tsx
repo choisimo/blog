@@ -238,4 +238,79 @@ describe("WorkersManager read-only production mode", () => {
       screen.queryByText("prod-value-should-stay-hidden"),
     ).not.toBeInTheDocument();
   });
+
+  it("shows a load error instead of an empty workers list when worker inventory fails", async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/admin/workers/list")) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: { message: "Workers inventory unavailable" },
+          }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.endsWith("/api/v1/admin/workers/secrets")) {
+        return new Response(
+          JSON.stringify({ ok: true, data: { secrets: [] } }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (
+        url.endsWith("/api/v1/admin/workers/d1/databases") ||
+        url.endsWith("/api/v1/admin/workers/kv/namespaces") ||
+        url.endsWith("/api/v1/admin/workers/r2/buckets")
+      ) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: { databases: [], namespaces: [], buckets: [] },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response("Not Found", { status: 404 });
+    }) as typeof fetch;
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkersManager subtab="workers" />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Unable to load workers/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Workers inventory unavailable/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
+    expect(screen.queryByText(/No workers found/i)).not.toBeInTheDocument();
+  });
 });

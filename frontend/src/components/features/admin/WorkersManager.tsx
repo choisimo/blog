@@ -85,6 +85,15 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+async function readAdminJson<T>(res: Response, fallback: string): Promise<T> {
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error = (json as { error?: unknown }).error;
+    throw new Error(getApiErrorMessage(error, fallback));
+  }
+  return json as T;
+}
+
 function getWorkerSignalClasses(tone: WorkerSignalTone): string {
   switch (tone) {
     case "ready":
@@ -189,12 +198,19 @@ export function WorkersManager({
 
   const API_BASE = getApiBaseUrl();
 
-  const { data: workersData, isLoading: workersLoading } = useQuery({
+  const {
+    data: workersData,
+    error: workersError,
+    isLoading: workersLoading,
+    refetch: refetchWorkers,
+  } = useQuery({
     queryKey: ["workers-list"],
     queryFn: async () => {
       const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/workers/list`);
-      if (!res.ok) throw new Error("Failed to fetch workers");
-      const json = await res.json();
+      const json = await readAdminJson<{ data: { workers: WorkerConfig[] } }>(
+        res,
+        "Failed to fetch workers",
+      );
       return json.data.workers as WorkerConfig[];
     },
   });
@@ -358,6 +374,35 @@ export function WorkersManager({
           aria-hidden="true"
         />
         <span>Loading workers…</span>
+      </div>
+    );
+  }
+
+  if (workersError) {
+    const message =
+      workersError instanceof Error
+        ? workersError.message
+        : "Failed to fetch workers";
+
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-medium">Unable to load workers</p>
+              <p className="mt-1 text-xs">{message}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void refetchWorkers()}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
+          >
+            <RefreshCw className="h-3 w-3" aria-hidden="true" />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
