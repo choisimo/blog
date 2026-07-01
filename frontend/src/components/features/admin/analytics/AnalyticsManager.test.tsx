@@ -1,6 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AllPostsSection, getAllPostStats } from "./AnalyticsManager";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  AllPostsSection,
+  EditorPicksSection,
+  getAllPostStats,
+} from "./AnalyticsManager";
 
 const { mockAdminApiFetch, mockAdminFetchRaw } = vi.hoisted(() => ({
   mockAdminApiFetch: vi.fn(),
@@ -17,8 +21,14 @@ vi.mock("@/utils/network/apiBase", () => ({
 }));
 
 describe("getAllPostStats", () => {
+  const originalFetch = global.fetch;
+
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   it("delegates admin post stats requests to the shared admin API client", async () => {
@@ -92,6 +102,36 @@ describe("getAllPostStats", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/No post stats recorded yet/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a load error instead of an empty editor-picks list when editor picks fail", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          error: { message: "Editor picks unavailable" },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+
+    render(<EditorPicksSection />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Unable to load editor picks/i),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Editor picks unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Retry editor picks/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/No editor picks configured/i),
     ).not.toBeInTheDocument();
   });
 });
