@@ -319,6 +319,7 @@ export function LogViewer() {
     if (serviceFilter && !l.service) return false;
     return true;
   });
+  const pauseToggleLabel = paused ? "Resume log stream" : "Pause log stream";
 
   return (
     <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
@@ -361,28 +362,35 @@ export function LogViewer() {
           <button
             type="button"
             onClick={() => setPaused((v) => !v)}
+            aria-label={pauseToggleLabel}
+            title={pauseToggleLabel}
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
           >
             {paused ? (
-              <Play className="h-3 w-3" />
+              <Play className="h-3 w-3" aria-hidden="true" />
             ) : (
-              <Pause className="h-3 w-3" />
+              <Pause className="h-3 w-3" aria-hidden="true" />
             )}
           </button>
           <button
             type="button"
             onClick={handleClear}
+            aria-label="Clear logs"
+            title="Clear logs"
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-colors"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3 w-3" aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={connect}
+            aria-label="Reconnect log stream"
+            title="Reconnect log stream"
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
           >
             <RefreshCw
               className={`h-3 w-3 ${!connected ? "animate-spin" : ""}`}
+              aria-hidden="true"
             />
           </button>
         </div>
