@@ -137,6 +137,28 @@ describe("checkBackendHealth", () => {
     });
   });
 
+  it("returns agent health errors from non-OK admin responses", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: { message: "Agent runtime unavailable" },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const health = await checkAgentHealthRequest();
+
+    expect(health).toEqual({
+      status: "error",
+      error: "Agent runtime unavailable",
+    });
+  });
+
   it("checks provider health through the shared admin API client", async () => {
     mockAdminFetchRaw.mockResolvedValue(
       new Response(

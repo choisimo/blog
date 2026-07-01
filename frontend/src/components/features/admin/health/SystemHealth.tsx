@@ -180,6 +180,7 @@ interface AgentHealth {
   llm?: { ok: boolean };
   tools?: { count: number };
   uptime?: number;
+  error?: string;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -190,16 +191,27 @@ export async function checkAgentHealthRequest(): Promise<AgentHealth> {
       method: "GET",
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { status: "error" };
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        status: "error",
+        error: getResponseErrorMessage(
+          data,
+          `Agent health check failed (${res.status})`,
+        ),
+      };
+    }
     return {
       status: data.data?.status ?? "unknown",
       llm: data.data?.llm,
       tools: data.data?.tools,
       uptime: data.data?.uptime,
     };
-  } catch {
-    return { status: "error" };
+  } catch (err) {
+    return {
+      status: "error",
+      error: err instanceof Error ? err.message : "Agent health check failed",
+    };
   }
 }
 
@@ -619,6 +631,14 @@ export function SystemHealth() {
                     </span>
                   </div>
                 </div>
+                {agentHealth.error && (
+                  <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+                    <span className="text-sm text-zinc-700">Error</span>
+                    <span className="max-w-[160px] text-right text-xs text-red-600">
+                      {agentHealth.error}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-sm text-zinc-700">Uptime</span>
                   <span className="font-mono text-xs text-zinc-400">
