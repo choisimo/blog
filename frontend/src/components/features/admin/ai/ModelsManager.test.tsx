@@ -47,4 +47,51 @@ describe("ModelsManager", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/No models found/i)).not.toBeInTheDocument();
   });
+
+  it("labels model action menu controls", () => {
+    mockUseModels.mockReturnValue({
+      models: [
+        {
+          id: "model-1",
+          modelName: "gpt-test",
+          displayName: "GPT Test",
+          modelIdentifier: "gpt-test",
+          description: null,
+          provider: {
+            id: "provider-1",
+            name: "openai",
+            displayName: "OpenAI",
+            isEnabled: true,
+          },
+          contextWindow: 128000,
+          maxTokens: 4096,
+          cost: {
+            inputPer1k: 0.001,
+            outputPer1k: 0.002,
+          },
+          capabilities: {
+            vision: false,
+            streaming: true,
+            functionCalling: false,
+          },
+          isEnabled: true,
+          priority: 1,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      loading: false,
+      error: null,
+      fetchModels: vi.fn(),
+      createModel: vi.fn(),
+      updateModel: vi.fn(),
+      deleteModel: vi.fn(),
+      testModel: vi.fn(),
+    });
+
+    render(<ModelsManager />);
+
+    expect(screen.getByRole("button", { name: "Open model actions for GPT Test" }))
+      .toHaveAttribute("title", "Open model actions for GPT Test");
+  });
 });
