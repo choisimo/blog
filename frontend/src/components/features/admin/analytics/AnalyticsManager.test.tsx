@@ -196,6 +196,73 @@ describe("getAllPostStats", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("labels analytics refresh icon controls", async () => {
+    mockGetRealtimeVisitorsSnapshot.mockResolvedValue({
+      data: { activeVisitors: 2, timestamp: 1_777_777_777_000 },
+      degraded: false,
+    });
+    mockAdminApiFetch.mockResolvedValue({
+      ok: true,
+      data: { stats: [] },
+    });
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.includes("/api/v1/analytics/trending")) {
+        return new Response(
+          JSON.stringify({ data: { trending: [], total: 0 } }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.includes("/api/v1/analytics/editor-picks")) {
+        return new Response(JSON.stringify({ data: { picks: [] } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response("Not Found", { status: 404 });
+    }) as typeof fetch;
+
+    render(
+      <>
+        <RealtimeVisitorsSection />
+        <EditorPicksSection />
+        <TrendingPostsSection />
+        <AllPostsSection />
+      </>,
+    );
+
+    expect(screen.getByRole("button", { name: "Refresh realtime visitors" }))
+      .toHaveAttribute("title", "Refresh realtime visitors");
+    expect(screen.getByRole("button", { name: "Refresh editor picks" }))
+      .toHaveAttribute("title", "Refresh editor picks");
+    expect(screen.getByRole("button", { name: "Refresh trending posts" }))
+      .toHaveAttribute("title", "Refresh trending posts");
+    expect(screen.getByRole("button", { name: "Refresh post stats" }))
+      .toHaveAttribute("title", "Refresh post stats");
+
+    expect(await screen.findByText(/active within 60s/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/No editor picks configured/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/No trending data for this period/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/No post stats recorded yet/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows the backend message when removing an editor pick fails", async () => {
     global.fetch = vi.fn(async () => {
       return new Response(

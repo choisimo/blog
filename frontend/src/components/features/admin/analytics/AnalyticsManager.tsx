@@ -243,11 +243,13 @@ export function RealtimeVisitorsSection() {
           disabled={loading || refreshing}
           className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           aria-label="Refresh realtime visitors"
+          title="Refresh realtime visitors"
         >
           <RefreshCw
             className={`h-3 w-3 ${
               loading || refreshing ? "animate-spin" : ""
             }`}
+            aria-hidden="true"
           />
         </button>
       </div>
@@ -410,9 +412,14 @@ export function EditorPicksSection() {
             type="button"
             onClick={fetchPicks}
             disabled={loading}
+            aria-label="Refresh editor picks"
+            title="Refresh editor picks"
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -627,9 +634,14 @@ export function TrendingPostsSection() {
             type="button"
             onClick={fetchTrending}
             disabled={loading}
+            aria-label="Refresh trending posts"
+            title="Refresh trending posts"
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>
@@ -874,9 +886,14 @@ export function AllPostsSection() {
           type="button"
           onClick={fetchStats}
           disabled={loading}
+          aria-label="Refresh post stats"
+          title="Refresh post stats"
           className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+            aria-hidden="true"
+          />
         </button>
       </div>
       {loading ? (
