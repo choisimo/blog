@@ -10,7 +10,11 @@ vi.mock("@/services/admin/apiClient", () => ({
   adminFetchRaw: mockAdminFetchRaw,
 }));
 
-import { checkBackendHealth, getProviders } from "./SystemHealth";
+import {
+  checkAgentHealthRequest,
+  checkBackendHealth,
+  getProviders,
+} from "./SystemHealth";
 
 describe("checkBackendHealth", () => {
   afterEach(() => {
@@ -71,5 +75,41 @@ describe("checkBackendHealth", () => {
     );
     expect(providers).toHaveLength(1);
     expect(providers[0].displayName).toBe("OpenAI");
+  });
+
+  it("checks agent health through the shared admin API client", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            status: "healthy",
+            llm: { ok: true },
+            tools: { count: 7 },
+            uptime: 120,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const health = await checkAgentHealthRequest();
+
+    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+      "https://worker.example.com/api/v1/agent/health",
+      expect.objectContaining({
+        method: "GET",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(health).toEqual({
+      status: "healthy",
+      llm: { ok: true },
+      tools: { count: 7 },
+      uptime: 120,
+    });
   });
 });
