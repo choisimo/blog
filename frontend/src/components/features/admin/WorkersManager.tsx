@@ -949,8 +949,13 @@ export function WorkersManager({
                     onClick={() => toggleSecretVisibility(secret.key)}
                     aria-label={
                       visibleSecrets.has(secret.key)
-                        ? "Hide secret"
-                        : "Show secret"
+                        ? `Hide ${secret.key} secret`
+                        : `Show ${secret.key} secret`
+                    }
+                    title={
+                      visibleSecrets.has(secret.key)
+                        ? `Hide ${secret.key} secret`
+                        : `Show ${secret.key} secret`
                     }
                     className="h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
                   >
