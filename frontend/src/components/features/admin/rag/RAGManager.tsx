@@ -106,9 +106,14 @@ function RAGHealthSection() {
           type="button"
           onClick={fetchHealth}
           disabled={loading}
+          aria-label="Refresh RAG health"
+          title="Refresh RAG health"
           className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`}
+            aria-hidden="true"
+          />
         </button>
       </div>
     </div>
@@ -168,9 +173,14 @@ function CollectionsSection() {
           type="button"
           onClick={fetchCollections}
           disabled={loading}
+          aria-label="Refresh RAG collections"
+          title="Refresh RAG collections"
           className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`}
+            aria-hidden="true"
+          />
         </button>
       </div>
       <div className="px-4 py-3">
