@@ -170,6 +170,44 @@ test("backend outbox rejects GitHub PR paths outside post content", async () => 
   ]);
 });
 
+test("backend outbox rejects unsafe GitHub PR branch names", async () => {
+  const repository = new FakeRepository([
+    {
+      id: "dout-pr-bad-branch",
+      stream: GITHUB_PR_STREAM,
+      aggregateId: "post:2026:test",
+      eventType: "github.pr.create-post",
+      payload: {
+        branch: "post/2026-test..bad",
+        path: "frontend/public/posts/2026/test.md",
+        markdown: "# Test\n",
+        commitMessage: "feat(post): add test",
+        prTitle: "Add test",
+        prBody: "body",
+      },
+    },
+  ]);
+
+  const result = await flushBackendDomainOutbox({
+    repository,
+    streams: GITHUB_PR_STREAM,
+    octokitFactory: () => {
+      throw new Error("Octokit should not be created for invalid branches");
+    },
+  });
+
+  assert.equal(result.processed, 0);
+  assert.equal(result.failed, 1);
+  assert.match(result.results[0].error, /GitHub PR branch is not allowed/);
+  assert.deepEqual(repository.succeeded, []);
+  assert.deepEqual(repository.failed, [
+    {
+      id: "dout-pr-bad-branch",
+      error: "GitHub PR branch is not allowed",
+    },
+  ]);
+});
+
 test("backend outbox rejects comment archive paths outside archive data", async () => {
   const repository = new FakeRepository([
     {
