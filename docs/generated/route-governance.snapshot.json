@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-05T09:22:23.601Z",
+  "generatedAt": "2026-07-01T04:49:42.163Z",
   "counts": {
     "serviceBoundaries": {
       "worker-owned": 27,
@@ -513,8 +513,8 @@
       "wranglerPath": "api-gateway/wrangler.toml",
       "hasProduction": true,
       "requiredSecrets": [
-        "BACKEND_ORIGIN",
         "BACKEND_KEY",
+        "BACKEND_ORIGIN",
         "GATEWAY_SIGNING_SECRET",
         "JWT_SECRET",
         "SECRETS_ENCRYPTION_KEY"

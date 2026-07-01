@@ -10,6 +10,8 @@ const router = Router();
 
 const WORKERS_ROOT = config.paths?.workersDir || path.join(config.content.repoRoot, 'workers');
 const workerMutationsEnabled = process.env.ADMIN_WORKER_MUTATIONS === 'true';
+const WORKER_MUTATION_ENVS = new Set(['development', 'production']);
+const WORKER_VAR_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 
 const WORKERS_CONFIG = WORKER_DEPLOYMENTS.map((worker) => ({
@@ -41,6 +43,89 @@ function requireWorkerMutationCapability(req, res, next) {
     });
   }
   next();
+}
+
+function workerMutationBadRequest(res, code, message) {
+  return res.status(400).json({
+    ok: false,
+    error: { code, message },
+  });
+}
+
+function normalizeWorkerMutationEnv(rawEnv, fallback) {
+  const env = String(rawEnv || fallback).trim();
+  return WORKER_MUTATION_ENVS.has(env) ? env : null;
+}
+
+function isValidWorkerVarKey(key) {
+  return typeof key === 'string' && WORKER_VAR_KEY_PATTERN.test(key);
+}
+
+function toTomlBasicStringValue(value) {
+  if (!['string', 'number', 'boolean'].includes(typeof value)) {
+    return null;
+  }
+  const stringValue = String(value);
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(stringValue)) {
+    return null;
+  }
+  return stringValue
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+function normalizeWorkerVarUpdates(vars) {
+  if (!vars || typeof vars !== 'object' || Array.isArray(vars)) {
+    return { error: 'vars object required' };
+  }
+
+  const updates = [];
+  for (const [key, rawValue] of Object.entries(vars)) {
+    if (!isValidWorkerVarKey(key)) {
+      return { error: `Invalid variable key: ${key}` };
+    }
+    const value = toTomlBasicStringValue(rawValue);
+    if (value === null) {
+      return { error: `Invalid value for ${key}; expected string, number, or boolean` };
+    }
+    updates.push({ key, value });
+  }
+
+  if (updates.length === 0) {
+    return { error: 'vars must include at least one variable' };
+  }
+
+  return { updates };
+}
+
+function replaceWorkerVar(content, env, key, value) {
+  const targetSection = env === 'production' ? 'env.production.vars' : 'vars';
+  const lines = content.split(/\r?\n/);
+  let inTargetSection = false;
+  let updated = false;
+
+  const nextLines = lines.map((line) => {
+    const header = line.match(/^\s*\[([^\]]+)\]\s*$/);
+    if (header) {
+      inTargetSection = header[1] === targetSection;
+      return line;
+    }
+
+    if (!inTargetSection) return line;
+
+    const assignment = line.match(
+      /^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(?:[^"\\]|\\.)*"(.*)$/
+    );
+    if (!assignment || assignment[2] !== key) return line;
+
+    updated = true;
+    return `${assignment[1]}${key} = "${value}"${assignment[3]}`;
+  });
+
+  return { content: nextLines.join('\n'), updated };
 }
 
 router.get('/list', requireAdmin, async (req, res) => {
@@ -106,7 +191,18 @@ router.get('/:workerId/config', requireAdmin, async (req, res) => {
 
 router.post('/:workerId/vars', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
-  const { vars, env = 'development' } = req.body;
+  const env = normalizeWorkerMutationEnv(req.body?.env, 'development');
+  if (!env) {
+    return workerMutationBadRequest(
+      res,
+      'INVALID_WORKER_ENV',
+      'env must be development or production'
+    );
+  }
+  const normalizedVars = normalizeWorkerVarUpdates(req.body?.vars);
+  if (normalizedVars.error) {
+    return workerMutationBadRequest(res, 'INVALID_WORKER_VARS', normalizedVars.error);
+  }
   const worker = WORKERS_CONFIG.find((w) => w.id === workerId);
 
   if (!worker) {
@@ -116,27 +212,25 @@ router.post('/:workerId/vars', requireAdmin, requireWorkerMutationCapability, as
   try {
     const wranglerPath = path.join(WORKERS_ROOT, worker.wranglerPath);
     let content = await fs.readFile(wranglerPath, 'utf8');
+    const updated = [];
 
-    for (const [key, value] of Object.entries(vars)) {
-      if (env === 'development') {
-        const regex = new RegExp(`^(\\[vars\\][\\s\\S]*?)${key}\\s*=\\s*"[^"]*"`, 'm');
-        if (regex.test(content)) {
-          content = content.replace(regex, `$1${key} = "${value}"`);
-        }
-      } else if (env === 'production') {
-        const regex = new RegExp(
-          `^(\\[env\\.production\\.vars\\][\\s\\S]*?)${key}\\s*=\\s*"[^"]*"`,
-          'm'
-        );
-        if (regex.test(content)) {
-          content = content.replace(regex, `$1${key} = "${value}"`);
-        }
-      }
+    for (const { key, value } of normalizedVars.updates) {
+      const result = replaceWorkerVar(content, env, key, value);
+      content = result.content;
+      if (result.updated) updated.push(key);
+    }
+
+    if (updated.length === 0) {
+      return workerMutationBadRequest(
+        res,
+        'WORKER_VARS_NOT_FOUND',
+        `No matching ${env} worker variables found`
+      );
     }
 
     await fs.writeFile(wranglerPath, content, 'utf8');
 
-    res.json({ ok: true, data: { message: 'Variables updated', path: wranglerPath } });
+    res.json({ ok: true, data: { message: 'Variables updated', path: wranglerPath, updated } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -144,15 +238,28 @@ router.post('/:workerId/vars', requireAdmin, requireWorkerMutationCapability, as
 
 router.post('/:workerId/secret', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
-  const { key, value, env = 'production' } = req.body;
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const { key, value } = body;
+  const env = normalizeWorkerMutationEnv(body.env, 'production');
+  if (!env) {
+    return workerMutationBadRequest(
+      res,
+      'INVALID_WORKER_ENV',
+      'env must be development or production'
+    );
+  }
   const worker = WORKERS_CONFIG.find((w) => w.id === workerId);
 
   if (!worker) {
     return res.status(404).json({ ok: false, error: 'Worker not found' });
   }
 
-  if (!key || !value) {
-    return res.status(400).json({ ok: false, error: 'key and value required' });
+  if (!isValidWorkerVarKey(key) || typeof value !== 'string' || value.length === 0) {
+    return workerMutationBadRequest(
+      res,
+      'INVALID_WORKER_SECRET',
+      'key must be a valid variable name and value must be a non-empty string'
+    );
   }
 
   try {
@@ -172,7 +279,15 @@ router.post('/:workerId/secret', requireAdmin, requireWorkerMutationCapability, 
 
 router.post('/:workerId/deploy', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
-  const { env = 'production', dryRun = false } = req.body;
+  const env = normalizeWorkerMutationEnv(req.body?.env, 'production');
+  if (!env) {
+    return workerMutationBadRequest(
+      res,
+      'INVALID_WORKER_ENV',
+      'env must be development or production'
+    );
+  }
+  const dryRun = req.body?.dryRun === true;
   const worker = WORKERS_CONFIG.find((w) => w.id === workerId);
 
   if (!worker) {
@@ -326,7 +441,7 @@ function runWranglerCommand(args, cwd, stdin = null) {
   return new Promise((resolve, reject) => {
     const proc = spawn('npx', ['wrangler', ...args], {
       cwd,
-      shell: true,
+      shell: false,
       env: { ...process.env },
     });
 
