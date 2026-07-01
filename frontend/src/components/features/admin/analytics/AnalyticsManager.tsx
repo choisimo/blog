@@ -50,15 +50,49 @@ interface PostStatsResult {
   errorMessage?: string;
 }
 
-async function getEditorPicks(): Promise<EditorPick[]> {
+interface EditorPicksResult {
+  picks: EditorPick[];
+  errorMessage?: string;
+}
+
+function getAnalyticsErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== "object") return fallback;
+  const record = payload as { error?: unknown; message?: unknown };
+  if (typeof record.error === "string" && record.error) return record.error;
+  if (record.error && typeof record.error === "object") {
+    const nested = record.error as { message?: unknown; code?: unknown };
+    if (typeof nested.message === "string" && nested.message) {
+      return nested.message;
+    }
+    if (typeof nested.code === "string" && nested.code) return nested.code;
+  }
+  if (typeof record.message === "string" && record.message) {
+    return record.message;
+  }
+  return fallback;
+}
+
+async function getEditorPicksResult(): Promise<EditorPicksResult> {
   const base = getApiBaseUrl();
   try {
     const res = await fetch(`${base}/api/v1/analytics/editor-picks?limit=10`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data?.picks ?? [];
-  } catch {
-    return [];
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        picks: [],
+        errorMessage: getAnalyticsErrorMessage(
+          data,
+          "Failed to load editor picks",
+        ),
+      };
+    }
+    return { picks: data.data?.picks ?? [] };
+  } catch (err) {
+    return {
+      picks: [],
+      errorMessage:
+        err instanceof Error ? err.message : "Failed to load editor picks",
+    };
   }
 }
 
@@ -235,9 +269,10 @@ function RealtimeVisitorsSection() {
   );
 }
 
-function EditorPicksSection() {
+export function EditorPicksSection() {
   const [picks, setPicks] = useState<EditorPick[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formSlug, setFormSlug] = useState("");
   const [formYear, setFormYear] = useState("");
@@ -249,8 +284,10 @@ function EditorPicksSection() {
 
   const fetchPicks = useCallback(async () => {
     setLoading(true);
-    const result = await getEditorPicks();
-    setPicks(result);
+    setLoadError(null);
+    const result = await getEditorPicksResult();
+    setPicks(result.picks);
+    setLoadError(result.errorMessage ?? null);
     setLoading(false);
   }, []);
 
@@ -414,6 +451,27 @@ function EditorPicksSection() {
         <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
           <RefreshCw className="h-3 w-3 animate-spin" />
           Loading...
+        </div>
+      ) : loadError ? (
+        <div className="px-4 py-3 text-xs text-red-700 bg-red-50 border-t border-red-100">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div>
+                <p className="font-medium">Unable to load editor picks</p>
+                <p>{loadError}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Retry editor picks"
+                onClick={fetchPicks}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       ) : picks.length === 0 ? (
         <p className="px-4 py-3 text-xs text-zinc-400">
