@@ -1,4 +1,4 @@
-import { bearerAuth } from '@/lib/auth';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 export type AgentEditorAction =
@@ -49,15 +49,14 @@ export async function runBlogAgent(
     maxIterations?: number;
     temperature?: number;
   },
-  token: string,
+  _token: string,
 ): Promise<AgentRunResponse> {
   const base = getApiBaseUrl();
-  const response = await fetch(`${base}/api/v1/agent/run`, {
+  const response = await adminFetchRaw(`${base}/api/v1/agent/run`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Idempotency-Key': createIdempotencyKey(),
-      ...bearerAuth(token),
     },
     body: JSON.stringify({
       message: payload.message,
