@@ -58,6 +58,7 @@ import {
   disposeNotificationSSE,
 } from "@/services/realtime/notificationSSE";
 import { adminAccessTokenProvider } from "@/services/core/admin-access-token.provider";
+import { DEFAULT_ADMIN_PATH } from "@/services/session/adminReturnTo";
 import {
   startHeartbeat,
   stopHeartbeat,
@@ -281,6 +282,10 @@ function App() {
                         <Route
                           path="/maintenance"
                           element={<Navigate to="/503" replace />}
+                        />
+                        <Route
+                          path="/admin"
+                          element={<Navigate to={DEFAULT_ADMIN_PATH} replace />}
                         />
                         <Route
                           path="/admin/login"
