@@ -215,14 +215,20 @@ export function WorkersManager({
     },
   });
 
-  const { data: secretsData } = useQuery({
+  const {
+    data: secretsData,
+    error: secretsError,
+    refetch: refetchSecrets,
+  } = useQuery({
     queryKey: ["workers-secrets"],
     queryFn: async () => {
       const res = await adminFetchRaw(
         `${API_BASE}/api/v1/admin/workers/secrets`,
       );
-      if (!res.ok) throw new Error("Failed to fetch secrets");
-      const json = await res.json();
+      const json = await readAdminJson<{ data: { secrets: SecretInfo[] } }>(
+        res,
+        "Failed to fetch secrets",
+      );
       return json.data.secrets as SecretInfo[];
     },
   });
@@ -838,12 +844,36 @@ export function WorkersManager({
                 : `Secret rotation is read-only here. Update ${deploymentRunbook} and your GitOps secret source instead.`}
             </p>
           </div>
-          {secrets.length === 0 && (
+          {secretsError ? (
+            <div className="px-4 py-4 text-sm text-red-600 dark:text-red-400">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="font-medium">Unable to load worker secrets</p>
+                    <p className="mt-1 text-xs">
+                      {secretsError instanceof Error
+                        ? secretsError.message
+                        : "Failed to fetch secrets"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void refetchSecrets()}
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
+                >
+                  <RefreshCw className="h-3 w-3" aria-hidden="true" />
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : secrets.length === 0 && (
             <p className="px-4 py-6 text-sm text-zinc-400 dark:text-zinc-500">
               No secrets defined
             </p>
           )}
-          {secrets.map((secret) => (
+          {!secretsError && secrets.map((secret) => (
             <div key={secret.key} className="px-4 py-3.5 space-y-2.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
