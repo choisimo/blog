@@ -170,9 +170,14 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
             type="button"
             onClick={() => fetchData(page)}
             disabled={loading}
+            aria-label="Refresh visitor log"
+            title="Refresh visitor log"
             className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`}
+              aria-hidden="true"
+            />
           </button>
         </div>
 

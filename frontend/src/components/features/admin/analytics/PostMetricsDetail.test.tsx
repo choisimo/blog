@@ -53,6 +53,8 @@ describe('PostMetricsDetail', () => {
     expect(await screen.findByText('127.0.0.1')).toBeInTheDocument();
     expect(screen.getByText('Chrome')).toBeInTheDocument();
     expect(screen.getByText('example.com')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Refresh visitor log' }))
+      .toHaveAttribute('title', 'Refresh visitor log');
     expect(mockAdminApiFetch).toHaveBeenCalledWith(
       '/posts/2026/hello-world/visits?limit=50&offset=0',
       { pathPrefix: '/api/v1/admin/analytics' },
