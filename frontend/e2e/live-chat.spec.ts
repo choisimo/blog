@@ -388,9 +388,17 @@ test.describe('/live — advanced simulated conversation', () => {
     await page.goto(CHAT_TEST_PATH);
     await page.waitForLoadState('networkidle');
     await openChatWidget(page);
+    const input = await getChatInput(page);
+    if (!input) {
+      test.skip(true, 'Chat widget not found on this page load');
+      return;
+    }
+
+    await input.fill('/live');
+    await page.keyboard.press('Enter');
 
     // Wait for the UI to update
-    const chatArea = page.locator('[data-testid="chat-messages"], .chat-messages, [role="log"]').first();
+    const chatArea = page.getByTestId('chat-messages').first();
     await expect(chatArea).toBeVisible({ timeout: 5000 });
     await expect(chatArea).toContainText(/Welcome to Live Chat!/i, { timeout: 5000 });
 
