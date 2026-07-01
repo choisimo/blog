@@ -198,6 +198,66 @@ describe("getAllPostStats", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the backend message when adding an editor pick fails", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ data: { picks: [] } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { message: "Rank already assigned" },
+        }),
+        {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<EditorPicksSection />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/No editor picks configured/i),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Add Pick/i }));
+    fireEvent.change(screen.getByPlaceholderText("post-slug"), {
+      target: { value: "hello-world" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("2025"), {
+      target: { value: "2026" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("1"), {
+      target: { value: "1" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Submit/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Rank already assigned/i)).toBeInTheDocument();
+    });
+
+    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+      "https://admin.example.com/api/v1/analytics/admin/editor-picks",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          post_slug: "hello-world",
+          year: "2026",
+          rank: 1,
+        }),
+      },
+    );
+    expect(
+      screen.queryByText(/^Failed to add pick\.$/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the backend message when stats refresh fails", async () => {
     mockAdminFetchRaw.mockResolvedValue(
       new Response(
