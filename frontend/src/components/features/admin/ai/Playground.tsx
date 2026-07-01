@@ -358,7 +358,7 @@ function SaveTemplateDialog({
 }
 
 export function Playground() {
-  const { models, fetchModels } = useModels();
+  const { models, error: modelsError, fetchModels } = useModels();
   const {
     history,
     templates,
@@ -461,13 +461,14 @@ export function Playground() {
   };
 
   const isComparing = results.length > 1;
+  const displayError = error || modelsError;
 
   return (
     <div className="space-y-6">
-      {error && (
+      {displayError && (
         <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
-          {error}
+          {displayError}
         </div>
       )}
 

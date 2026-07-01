@@ -93,4 +93,19 @@ describe('Playground', () => {
       expect(mockFetchHistory).toHaveBeenCalledWith({ limit: 20 });
     });
   });
+
+  it('shows model load errors in the playground panel', async () => {
+    mockUseModels.mockReturnValue(
+      createUseModelsValue({
+        error: 'Model inventory unavailable',
+      }),
+    );
+
+    render(<Playground />);
+
+    expect(screen.getByText('Model inventory unavailable')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockFetchModels).toHaveBeenCalledWith(undefined, true);
+    });
+  });
 });
