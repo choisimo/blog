@@ -59,6 +59,20 @@ describe('RAGManager', () => {
     expect(screen.queryByText('No collections found.')).not.toBeInTheDocument();
   });
 
+  it('labels RAG refresh icon controls', async () => {
+    render(<RAGManager />);
+
+    expect(
+      screen.getByRole('button', { name: 'Refresh RAG health' }),
+    ).toHaveAttribute('title', 'Refresh RAG health');
+    expect(
+      screen.getByRole('button', { name: 'Refresh RAG collections' }),
+    ).toHaveAttribute('title', 'Refresh RAG collections');
+    expect(await screen.findByText('Embedding')).toBeInTheDocument();
+    expect(await screen.findByText('No collections found.')).toBeInTheDocument();
+    expect(await screen.findByText('Documents')).toBeInTheDocument();
+  });
+
   it('shows health load errors instead of only the unreachable fallback', async () => {
     mockCheckRAGHealth.mockResolvedValue({
       ok: false,
