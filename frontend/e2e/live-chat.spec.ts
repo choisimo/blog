@@ -374,18 +374,41 @@ test.describe('/live — API failure handling', () => {
 
 test.describe('/live — advanced simulated conversation', () => {
   test('handles incoming live_message and updates UI correctly', async ({ page }) => {
+    const corsHeaders = (route: Route) => {
+      const origin = route.request().headers().origin ?? '*';
+      return {
+        'Access-Control-Allow-Origin': origin,
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Headers': 'authorization, content-type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      };
+    };
+
     page.route('**/api/v1/chat/live/message', (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        route.fulfill({ status: 204, headers: corsHeaders(route) });
+        return;
+      }
       route.fulfill({
         status: 200,
         contentType: 'application/json',
+        headers: corsHeaders(route),
         body: JSON.stringify({ ok: true }),
       });
     });
 
     page.route('**/api/v1/chat/live/stream*', async (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        route.fulfill({ status: 204, headers: corsHeaders(route) });
+        return;
+      }
       route.fulfill({
         status: 200,
-        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+        headers: {
+          ...corsHeaders(route),
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
         body: [
           `data: {"type":"connected","sessionId":"advanced-sess","room":"${CHAT_TEST_ROOM}","onlineCount":1}\n\n`,
           `data: {"type":"live_message","sessionId":"admin-sess","name":"admin","text":"Welcome to Live Chat!","senderType":"agent","room":"${CHAT_TEST_ROOM}","onlineCount":1}\n\n`,
