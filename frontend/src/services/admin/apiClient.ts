@@ -17,9 +17,12 @@ interface AdminApiFetchOptions extends Omit<RequestInit, 'body'> {
 function buildAdminHeaders(
   token: string | null,
   headers?: HeadersInit,
+  requestBody?: unknown,
 ): Headers {
   const nextHeaders = new Headers(headers);
-  if (!nextHeaders.has('Content-Type')) {
+  const isFormDataBody =
+    typeof FormData !== 'undefined' && requestBody instanceof FormData;
+  if (!nextHeaders.has('Content-Type') && !isFormDataBody) {
     nextHeaders.set('Content-Type', 'application/json');
   }
   if (token) {
@@ -54,7 +57,7 @@ function buildAdminRequestInit(
 ): RequestInit {
   return {
     ...options,
-    headers: buildAdminHeaders(token, options.headers),
+    headers: buildAdminHeaders(token, options.headers, body ?? options.body),
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   };
 }
