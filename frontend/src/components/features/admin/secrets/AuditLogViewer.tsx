@@ -75,6 +75,8 @@ export function AuditLogViewer() {
             <Button
               variant="outline"
               size="icon"
+              aria-label="Refresh audit log"
+              title="Refresh audit log"
               onClick={() =>
                 fetchLogs({
                   action: actionFilter === 'all' ? undefined : actionFilter,
@@ -83,7 +85,7 @@ export function AuditLogViewer() {
                 })
               }
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </Button>
           </div>
         </div>
