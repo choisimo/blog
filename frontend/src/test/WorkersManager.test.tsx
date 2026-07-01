@@ -388,6 +388,81 @@ describe("WorkersManager read-only production mode", () => {
     expect(screen.queryByText(/No secrets defined/i)).not.toBeInTheDocument();
   });
 
+  it("labels worker secret visibility controls with their keys", async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/admin/workers/list")) {
+        return new Response(JSON.stringify(createWorkerListResponse(true)), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (url.endsWith("/api/v1/admin/workers/secrets")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              secrets: [
+                {
+                  key: "JWT_SECRET",
+                  description: "JWT signing key",
+                  workers: ["api-gateway"],
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (
+        url.endsWith("/api/v1/admin/workers/d1/databases") ||
+        url.endsWith("/api/v1/admin/workers/kv/namespaces") ||
+        url.endsWith("/api/v1/admin/workers/r2/buckets")
+      ) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: { databases: [], namespaces: [], buckets: [] },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response("Not Found", { status: 404 });
+    }) as typeof fetch;
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkersManager subtab="secrets" />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("button", { name: "Show JWT_SECRET secret" }))
+      .toHaveAttribute("title", "Show JWT_SECRET secret");
+  });
+
   it("shows a load error instead of an empty resource section when worker resources fail", async () => {
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url =
