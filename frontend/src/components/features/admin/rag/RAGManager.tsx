@@ -26,9 +26,11 @@ interface HealthStatus {
 function RAGHealthSection() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchHealth = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await checkRAGHealth();
       if (response.ok && response.data) {
@@ -43,10 +45,14 @@ function RAGHealthSection() {
             embedding: raw.services.embedding,
             chroma: raw.services.chroma,
           });
+        } else {
+          setHealth(null);
+          setError(response.error?.message || 'Failed to fetch RAG health');
         }
       }
-    } catch {
+    } catch (err) {
       setHealth(null);
+      setError(err instanceof Error ? err.message : 'Failed to fetch RAG health');
     } finally {
       setLoading(false);
     }
@@ -85,6 +91,11 @@ function RAGHealthSection() {
               </span>
             </span>
           </>
+        ) : error ? (
+          <span className="flex items-center gap-1 text-xs text-red-600">
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </span>
         ) : (
           <span className="flex items-center gap-1 text-xs text-red-600">
             <AlertCircle className="h-3 w-3" />

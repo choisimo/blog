@@ -59,6 +59,20 @@ describe('RAGManager', () => {
     expect(screen.queryByText('No collections found.')).not.toBeInTheDocument();
   });
 
+  it('shows health load errors instead of only the unreachable fallback', async () => {
+    mockCheckRAGHealth.mockResolvedValue({
+      ok: false,
+      error: {
+        message: 'Health service unavailable',
+      },
+    });
+
+    render(<RAGManager />);
+
+    expect(await screen.findByText('Health service unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('Unreachable')).not.toBeInTheDocument();
+  });
+
   it('shows index status errors instead of the generic unavailable state', async () => {
     mockGetCollectionStatus.mockResolvedValue({
       ok: false,
