@@ -12,7 +12,7 @@ export type CreatePostPayload = {
 
 export async function createPostPR(
   payload: CreatePostPayload,
-  _token: string
+  _token?: string
 ): Promise<{
   prUrl?: string;
   status?: 'pending' | 'succeeded';
@@ -41,7 +41,7 @@ export async function createPostPR(
 export async function uploadPostImages(
   params: { year: string | number; slug: string },
   files: File[],
-  _token: string
+  _token?: string
 ): Promise<{
   dir: string;
   items: Array<{ url: string; variantWebp?: { url: string } | null }>;
