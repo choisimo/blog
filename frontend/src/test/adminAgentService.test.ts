@@ -38,7 +38,6 @@ describe('admin agent service', () => {
         message: 'Improve this draft',
         sessionId: 'session-1',
       },
-      'expired-access-token',
     );
 
     expect(result).toEqual(data);

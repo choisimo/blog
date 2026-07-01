@@ -87,7 +87,7 @@ function getErrorMessage(payload: unknown, fallback: string): string {
 
 export async function generatePostImages(
   payload: GeneratePostImagesPayload,
-  _token: string,
+  _token?: string,
 ): Promise<GeneratePostImagesResponse> {
   const base = getApiBaseUrl();
   const response = await adminFetchRaw(`${base}/api/v1/admin/ai-images/generate`, {
@@ -113,7 +113,7 @@ export async function generatePostImages(
 }
 
 export async function getAdminAiImagesHealth(
-  _token: string,
+  _token?: string,
 ): Promise<AdminAiImagesHealth> {
   const base = getApiBaseUrl();
   const response = await adminFetchRaw(`${base}/api/v1/admin/ai-images/health`);

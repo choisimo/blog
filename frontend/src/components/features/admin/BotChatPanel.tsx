@@ -22,7 +22,6 @@ interface BotChatPanelProps {
     setCategory: (category: string) => void;
     setCoverImage: (url: string) => void;
     onInsertMarkdown: (markdown: string) => void;
-    getAccessToken: () => Promise<string | null>;
 }
 
 interface Message {
@@ -45,7 +44,6 @@ export default function BotChatPanel({
     setCategory,
     setCoverImage,
     onInsertMarkdown,
-    getAccessToken,
 }: BotChatPanelProps) {
     const [messages, setMessages] = useState<Message[]>([
         { role: "assistant", content: "안녕하세요. 현재 글 상태를 읽고 초안, 메타데이터, 커버/본문 이미지 생성을 도울 수 있습니다." },
@@ -177,9 +175,6 @@ export default function BotChatPanel({
         setIsTyping(true);
 
         try {
-            const token = await getAccessToken();
-            if (!token) throw new Error("먼저 로그인하세요");
-
             const result = await runBlogAgent(
                 {
                     message: buildAgentMessage(userMessage),
@@ -187,7 +182,6 @@ export default function BotChatPanel({
                     maxIterations: 6,
                     temperature: 0.4,
                 },
-                token,
             );
             const applied = applyActions(result.actions);
             const toolSuffix =

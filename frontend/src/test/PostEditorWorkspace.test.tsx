@@ -6,7 +6,6 @@ import { PostEditorWorkspace } from '@/components/features/admin/content/PostEdi
 
 const mocks = vi.hoisted(() => ({
   createPostPR: vi.fn(),
-  getValidAccessToken: vi.fn(async () => 'access-token'),
   logout: vi.fn(async () => undefined),
   uploadPostImages: vi.fn(),
 }));
@@ -18,7 +17,6 @@ vi.mock('@/services/session/admin', () => ({
 
 vi.mock('@/stores/session/useAuthStore', () => ({
   useAuthStore: () => ({
-    getValidAccessToken: mocks.getValidAccessToken,
     logout: mocks.logout,
   }),
 }));
