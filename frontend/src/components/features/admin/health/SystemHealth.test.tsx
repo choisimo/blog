@@ -13,6 +13,7 @@ vi.mock("@/services/admin/apiClient", () => ({
 import {
   checkAgentHealthRequest,
   checkBackendHealth,
+  checkProviderHealth,
   getProviders,
 } from "./SystemHealth";
 
@@ -110,6 +111,62 @@ describe("checkBackendHealth", () => {
       llm: { ok: true },
       tools: { count: 7 },
       uptime: 120,
+    });
+  });
+
+  it("checks provider health through the shared admin API client", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            status: "healthy",
+            latencyMs: 84,
+            error: null,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const health = await checkProviderHealth("openai");
+
+    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+      "https://worker.example.com/api/v1/admin/ai/providers/openai/health",
+      expect.objectContaining({
+        method: "PUT",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(health).toEqual({
+      status: "healthy",
+      latencyMs: 84,
+      error: null,
+    });
+  });
+
+  it("marks provider health checks down on non-OK admin responses", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: { message: "Provider gateway unavailable" },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const health = await checkProviderHealth("openai");
+
+    expect(health).toEqual({
+      status: "down",
+      error: "Provider gateway unavailable",
     });
   });
 });
