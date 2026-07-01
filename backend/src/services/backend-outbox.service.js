@@ -30,6 +30,10 @@ const MAX_LIMIT = 50;
 const DEFAULT_CONSUMER_ID = `backend-outbox-${process.pid}`;
 const CHROMA_TENANT = "default_tenant";
 const CHROMA_DATABASE = "default_database";
+const GITHUB_POST_MARKDOWN_PATH_PATTERN =
+  /^frontend\/public\/posts\/\d{4}\/[\p{L}\p{N}][\p{L}\p{N}_-]*\.md$/u;
+const COMMENT_ARCHIVE_PATH_PATTERN =
+  /^frontend\/src\/data\/comments\/\d{4}\/[\p{L}\p{N}][\p{L}\p{N}_-]*\.json$/u;
 const collectionUUIDCache = new Map();
 
 function clampLimit(value) {
@@ -51,6 +55,13 @@ function assertGitHubConfigured() {
     throw new Error("Server not configured for GitHub (owner/repo/token missing)");
   }
   return { owner, repo, token };
+}
+
+function assertAllowedRepoPath(pathValue, pattern, label) {
+  if (typeof pathValue !== "string" || !pattern.test(pathValue)) {
+    throw new Error(`${label} path is not allowed`);
+  }
+  return pathValue;
 }
 
 function getGitIdentity() {
@@ -244,13 +255,19 @@ async function processGithubPr(event, { octokitFactory } = {}) {
   }
 
   const payload = event.payload || {};
-  const { owner, repo } = assertGitHubConfigured();
-  const octokit = createOctokit(octokitFactory);
-  const baseBranch = payload.baseBranch || await getDefaultBranch(octokit, owner, repo);
 
   if (!payload.branch || !payload.path || !payload.markdown || !payload.prTitle) {
     throw new Error("GitHub PR outbox payload is incomplete");
   }
+  const filePath = assertAllowedRepoPath(
+    payload.path,
+    GITHUB_POST_MARKDOWN_PATH_PATTERN,
+    "GitHub PR",
+  );
+
+  const { owner, repo } = assertGitHubConfigured();
+  const octokit = createOctokit(octokitFactory);
+  const baseBranch = payload.baseBranch || await getDefaultBranch(octokit, owner, repo);
 
   await ensureBranch(octokit, {
     owner,
@@ -261,7 +278,7 @@ async function processGithubPr(event, { octokitFactory } = {}) {
   await ensureFile(octokit, {
     owner,
     repo,
-    path: payload.path,
+    path: filePath,
     branch: payload.branch,
     message: payload.commitMessage || payload.prTitle,
     content: payload.markdown,
@@ -278,27 +295,37 @@ async function processGithubPr(event, { octokitFactory } = {}) {
   return {
     prUrl: pr.html_url,
     branch: payload.branch,
-    path: payload.path,
+    path: filePath,
   };
 }
 
 async function processGithubCommentsArchive(event, { octokitFactory } = {}) {
   const payload = event.payload || {};
-  const { owner, repo } = assertGitHubConfigured();
   const archives = Array.isArray(payload.archives) ? payload.archives : [];
   if (!archives.length) return { archivedPosts: [], totalComments: 0 };
 
+  const normalizedArchives = archives.map((archive) => {
+    if (!archive.path || !archive.content || !Array.isArray(archive.commentIds)) {
+      throw new Error("Comment archive payload is incomplete");
+    }
+    return {
+      ...archive,
+      path: assertAllowedRepoPath(
+        archive.path,
+        COMMENT_ARCHIVE_PATH_PATTERN,
+        "Comment archive",
+      ),
+    };
+  });
+
+  const { owner, repo } = assertGitHubConfigured();
   const octokit = createOctokit(octokitFactory);
   const baseBranch = payload.baseBranch || await getDefaultBranch(octokit, owner, repo);
   const identity = getGitIdentity();
   const archivedPosts = [];
   let totalComments = 0;
 
-  for (const archive of archives) {
-    if (!archive.path || !archive.content || !Array.isArray(archive.commentIds)) {
-      throw new Error("Comment archive payload is incomplete");
-    }
-
+  for (const archive of normalizedArchives) {
     let sha;
     try {
       const existing = await octokit.rest.repos.getContent({
