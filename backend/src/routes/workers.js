@@ -12,6 +12,8 @@ const WORKERS_ROOT = config.paths?.workersDir || path.join(config.content.repoRo
 const workerMutationsEnabled = process.env.ADMIN_WORKER_MUTATIONS === 'true';
 const WORKER_MUTATION_ENVS = new Set(['development', 'production']);
 const WORKER_VAR_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const DEFAULT_WRANGLER_TIMEOUT_MS = 120_000;
+const DEFAULT_WRANGLER_MAX_OUTPUT_BYTES = 256 * 1024;
 
 
 const WORKERS_CONFIG = WORKER_DEPLOYMENTS.map((worker) => ({
@@ -437,9 +439,16 @@ function parseWranglerToml(content) {
   return result;
 }
 
-function runWranglerCommand(args, cwd, stdin = null) {
+export function runWranglerCommand(args, cwd, stdin = null, options = {}) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('npx', ['wrangler', ...args], {
+    const spawnImpl = options.spawnImpl || spawn;
+    const timeoutMs = Number.isFinite(options.timeoutMs)
+      ? options.timeoutMs
+      : DEFAULT_WRANGLER_TIMEOUT_MS;
+    const maxOutputBytes = Number.isFinite(options.maxOutputBytes)
+      ? options.maxOutputBytes
+      : DEFAULT_WRANGLER_MAX_OUTPUT_BYTES;
+    const proc = spawnImpl('npx', ['wrangler', ...args], {
       cwd,
       shell: false,
       env: { ...process.env },
@@ -447,13 +456,38 @@ function runWranglerCommand(args, cwd, stdin = null) {
 
     let stdout = '';
     let stderr = '';
+    let settled = false;
+
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      fn(value);
+    };
+
+    const appendOutput = (target, data) => {
+      if (settled) return target;
+      const next = target + data.toString();
+      if (Buffer.byteLength(stdout) + Buffer.byteLength(stderr) + Buffer.byteLength(data) > maxOutputBytes) {
+        proc.kill?.('SIGTERM');
+        finish(reject, new Error(`Wrangler command output exceeded ${maxOutputBytes} bytes`));
+      }
+      return next;
+    };
+
+    const timeout = timeoutMs > 0
+      ? setTimeout(() => {
+          proc.kill?.('SIGTERM');
+          finish(reject, new Error(`Wrangler command timed out after ${timeoutMs}ms`));
+        }, timeoutMs)
+      : null;
 
     proc.stdout.on('data', (data) => {
-      stdout += data.toString();
+      stdout = appendOutput(stdout, data);
     });
 
     proc.stderr.on('data', (data) => {
-      stderr += data.toString();
+      stderr = appendOutput(stderr, data);
     });
 
     if (stdin) {
@@ -463,14 +497,14 @@ function runWranglerCommand(args, cwd, stdin = null) {
 
     proc.on('close', (code) => {
       if (code === 0) {
-        resolve(stdout || stderr);
+        finish(resolve, stdout || stderr);
       } else {
-        reject(new Error(stderr || stdout || `Command failed with code ${code}`));
+        finish(reject, new Error(stderr || stdout || `Command failed with code ${code}`));
       }
     });
 
     proc.on('error', (err) => {
-      reject(err);
+      finish(reject, err);
     });
   });
 }
