@@ -401,8 +401,13 @@ export function ProvidersManager() {
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Open provider actions for ${provider.displayName}`}
+                          title={`Open provider actions for ${provider.displayName}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
