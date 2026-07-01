@@ -11,15 +11,21 @@ delete process.env.DATABASE_URL;
 
 const { default: analyticsRouter } = await import('../src/routes/analytics.js');
 
-function createApp() {
+function createApp({ trustedGateway = false } = {}) {
   const app = express();
   app.use(express.json());
+  if (trustedGateway) {
+    app.use((req, _res, next) => {
+      req.gatewaySignatureVerified = true;
+      next();
+    });
+  }
   app.use('/api/v1/analytics', analyticsRouter);
   return app;
 }
 
-async function withServer(callback) {
-  const server = http.createServer(createApp());
+async function withServer(callback, options) {
+  const server = http.createServer(createApp(options));
   await new Promise((resolve) => {
     server.listen(0, '127.0.0.1', resolve);
   });
@@ -65,4 +71,18 @@ test('refresh-stats preserves the existing PostgreSQL configuration response for
       error: 'Analytics service not configured (DATABASE_URL missing)',
     });
   });
+});
+
+test('refresh-stats allows already verified gateway requests for scheduled refreshes', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/analytics/refresh-stats`, {
+      method: 'POST',
+    });
+
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: 'Analytics service not configured (DATABASE_URL missing)',
+    });
+  }, { trustedGateway: true });
 });
