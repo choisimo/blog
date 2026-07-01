@@ -9,7 +9,7 @@ import {
   isPgConfigured,
 } from '../repositories/analytics.repository.js';
 import { httpCache, invalidateCacheByPrefix } from '../middleware/httpCache.js';
-import requireAdmin from '../middleware/adminAuth.js';
+import requireAdmin, { isAdminRequest } from '../middleware/adminAuth.js';
 import { createLogger } from '../lib/logger.js';
 import { buildDataOwnershipHeaders } from '../../../shared/src/contracts/data-ownership.js';
 import { runIdempotent } from '../lib/idempotency.js';
@@ -36,6 +36,18 @@ const requireD1 = (req, res, next) => {
     return res.status(503).json({ ok: false, error: 'Editor picks not configured (D1 credentials missing)' });
   }
   next();
+};
+
+const requireAdminOrTrustedGateway = (req, res, next) => {
+  if (
+    isAdminRequest(req) ||
+    req.gatewaySignatureVerified === true ||
+    req.gatewaySignatureBypassedByBackendKey === true
+  ) {
+    return next();
+  }
+
+  return requireAdmin(req, res, next);
 };
 
 router.post('/view', requirePg, async (req, res, next) => {
@@ -150,7 +162,7 @@ router.get('/trending', requirePg, httpCache({ ttl: 300, prefix: 'analytics' }),
   }
 });
 
-router.post('/refresh-stats', requireAdmin, requirePg, async (req, res, next) => {
+router.post('/refresh-stats', requireAdminOrTrustedGateway, requirePg, async (req, res, next) => {
   try {
     applyDataOwnership(res, 'analytics.post_stats');
     const refreshed = await refreshPeriodicStats();
