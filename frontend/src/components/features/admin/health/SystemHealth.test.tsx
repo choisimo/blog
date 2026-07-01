@@ -1,6 +1,35 @@
+import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mockAdminFetchRaw = vi.hoisted(() => vi.fn());
+const {
+  mockAdminFetchRaw,
+  mockFetchFlags,
+  mockUseFeatureFlagsStore,
+} = vi.hoisted(() => {
+  const mockFetchFlags = vi.fn();
+  const flags = {
+    aiEnabled: true,
+    ragEnabled: true,
+    terminalEnabled: false,
+    aiInline: true,
+    codeExecutionEnabled: false,
+    commentsEnabled: true,
+  };
+  const mockUseFeatureFlagsStore = Object.assign(
+    vi.fn(() => ({
+      flags,
+      isLoading: false,
+      fetchFlags: mockFetchFlags,
+    })),
+    { setState: vi.fn() },
+  );
+
+  return {
+    mockAdminFetchRaw: vi.fn(),
+    mockFetchFlags,
+    mockUseFeatureFlagsStore,
+  };
+});
 
 vi.mock("@/utils/network/apiBase", () => ({
   getApiBaseUrl: vi.fn(() => "https://worker.example.com"),
@@ -10,6 +39,10 @@ vi.mock("@/services/admin/apiClient", () => ({
   adminFetchRaw: mockAdminFetchRaw,
 }));
 
+vi.mock("@/stores/runtime/useFeatureFlagsStore", () => ({
+  useFeatureFlagsStore: mockUseFeatureFlagsStore,
+}));
+
 import {
   checkAgentHealthRequest,
   checkBackendHealth,
@@ -17,12 +50,98 @@ import {
   checkRAGHealth,
   getProviders,
   getProvidersResult,
+  SystemHealth,
 } from "./SystemHealth";
 
 describe("checkBackendHealth", () => {
   afterEach(() => {
     mockAdminFetchRaw.mockReset();
+    mockFetchFlags.mockReset();
+    mockUseFeatureFlagsStore.mockClear();
+    mockUseFeatureFlagsStore.setState.mockClear();
     vi.restoreAllMocks();
+  });
+
+  it("labels section refresh icon controls", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/rag/health")) {
+        return new Response(
+          JSON.stringify({
+            services: {
+              embedding: { ok: true },
+              chroma: { ok: true },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(null, { status: 200 });
+    });
+    mockAdminFetchRaw.mockImplementation(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/admin/ai/providers")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: { providers: [] },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            status: "healthy",
+            llm: { ok: true },
+            tools: { count: 7 },
+            uptime: 120,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    });
+
+    render(<SystemHealth />);
+
+    expect(screen.getByRole("button", { name: "Refresh core health" }))
+      .toHaveAttribute("title", "Refresh core health");
+    expect(screen.getByRole("button", { name: "Refresh RAG health" }))
+      .toHaveAttribute("title", "Refresh RAG health");
+    expect(screen.getByRole("button", { name: "Refresh AI providers" }))
+      .toHaveAttribute("title", "Refresh AI providers");
+    expect(screen.getByRole("button", { name: "Refresh feature flags" }))
+      .toHaveAttribute("title", "Refresh feature flags");
+    expect(screen.getByRole("button", { name: "Refresh agent health" }))
+      .toHaveAttribute("title", "Refresh agent health");
+
+    await waitFor(() => {
+      expect(screen.getByText("All systems operational")).toBeInTheDocument();
+    });
   });
 
   it("calls the backend healthz endpoint through the worker proxy", async () => {
