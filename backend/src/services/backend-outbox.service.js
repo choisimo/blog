@@ -34,6 +34,8 @@ const GITHUB_POST_MARKDOWN_PATH_PATTERN =
   /^frontend\/public\/posts\/\d{4}\/[\p{L}\p{N}][\p{L}\p{N}_-]*\.md$/u;
 const COMMENT_ARCHIVE_PATH_PATTERN =
   /^frontend\/src\/data\/comments\/\d{4}\/[\p{L}\p{N}][\p{L}\p{N}_-]*\.json$/u;
+const GITHUB_PR_BRANCH_PATTERN =
+  /^(?:post|propose)\/[\p{L}\p{N}][\p{L}\p{N}._-]{0,199}$/u;
 const collectionUUIDCache = new Map();
 
 function clampLimit(value) {
@@ -62,6 +64,22 @@ function assertAllowedRepoPath(pathValue, pattern, label) {
     throw new Error(`${label} path is not allowed`);
   }
   return pathValue;
+}
+
+function assertAllowedGitHubBranch(branchValue) {
+  if (typeof branchValue !== "string" || branchValue.trim() !== branchValue) {
+    throw new Error("GitHub PR branch is not allowed");
+  }
+  if (
+    !GITHUB_PR_BRANCH_PATTERN.test(branchValue) ||
+    branchValue.includes("..") ||
+    branchValue.includes("@{") ||
+    branchValue.endsWith(".") ||
+    branchValue.endsWith(".lock")
+  ) {
+    throw new Error("GitHub PR branch is not allowed");
+  }
+  return branchValue;
 }
 
 function getGitIdentity() {
@@ -264,6 +282,7 @@ async function processGithubPr(event, { octokitFactory } = {}) {
     GITHUB_POST_MARKDOWN_PATH_PATTERN,
     "GitHub PR",
   );
+  const branch = assertAllowedGitHubBranch(payload.branch);
 
   const { owner, repo } = assertGitHubConfigured();
   const octokit = createOctokit(octokitFactory);
@@ -273,13 +292,13 @@ async function processGithubPr(event, { octokitFactory } = {}) {
     owner,
     repo,
     baseBranch,
-    branch: payload.branch,
+    branch,
   });
   await ensureFile(octokit, {
     owner,
     repo,
     path: filePath,
-    branch: payload.branch,
+    branch,
     message: payload.commitMessage || payload.prTitle,
     content: payload.markdown,
   });
@@ -287,14 +306,14 @@ async function processGithubPr(event, { octokitFactory } = {}) {
     owner,
     repo,
     title: payload.prTitle,
-    head: payload.branch,
+    head: branch,
     base: baseBranch,
     body: payload.prBody || "",
   });
 
   return {
     prUrl: pr.html_url,
-    branch: payload.branch,
+    branch,
     path: filePath,
   };
 }
