@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockFetchModels = vi.hoisted(() => vi.fn());
@@ -126,6 +127,76 @@ describe('Playground', () => {
       screen.queryByText(/No templates yet/i),
     ).not.toBeInTheDocument();
     await waitFor(() => {
+      expect(mockFetchTemplates).toHaveBeenCalled();
+    });
+  });
+
+  it('labels history and template icon controls', async () => {
+    const user = userEvent.setup();
+
+    mockUsePlayground.mockReturnValue(
+      createUsePlaygroundValue({
+        history: [
+          {
+            id: 'hist-1',
+            title: 'Draft title',
+            system_prompt: null,
+            user_prompt: 'Write a concise intro',
+            model_id: 'model-1',
+            model_name: 'GPT Test',
+            provider_id: 'provider-1',
+            provider_name: 'OpenAI',
+            response: 'Draft response',
+            prompt_tokens: 10,
+            completion_tokens: 20,
+            total_tokens: 30,
+            latency_ms: 123,
+            estimated_cost: 0.001,
+            temperature: 0.7,
+            max_tokens: null,
+            status: 'success',
+            error_message: null,
+            metadata: null,
+            created_at: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        templates: [
+          {
+            id: 'tpl-1',
+            name: 'Intro Template',
+            description: null,
+            category: 'writing',
+            system_prompt: null,
+            user_prompt_template: 'Write an intro for {{topic}}',
+            variables: null,
+            default_model_id: null,
+            default_temperature: 0.7,
+            default_max_tokens: null,
+            is_public: 0,
+            usage_count: 0,
+            created_by: null,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    );
+
+    render(<Playground />);
+
+    await user.click(screen.getByRole('tab', { name: /History/i }));
+
+    expect(await screen.findByRole('button', { name: 'View playground history hist-1' }))
+      .toHaveAttribute('title', 'View playground history hist-1');
+    expect(screen.getByRole('button', { name: 'Delete playground history hist-1' }))
+      .toHaveAttribute('title', 'Delete playground history hist-1');
+
+    await user.click(screen.getByRole('tab', { name: /Templates/i }));
+
+    expect(await screen.findByRole('button', { name: 'Delete prompt template Intro Template' }))
+      .toHaveAttribute('title', 'Delete prompt template Intro Template');
+    await waitFor(() => {
+      expect(mockFetchHistory).toHaveBeenCalledWith({ limit: 20 });
       expect(mockFetchTemplates).toHaveBeenCalled();
     });
   });

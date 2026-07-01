@@ -710,19 +710,23 @@ export function Playground() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label={`View playground history ${item.id}`}
+                            title={`View playground history ${item.id}`}
                             onClick={() => {
                               setSelectedHistory(item);
                               setHistoryDialogOpen(true);
                             }}
                           >
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label={`Delete playground history ${item.id}`}
+                            title={`Delete playground history ${item.id}`}
                             onClick={() => deleteHistory(item.id)}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </TableCell>
@@ -763,12 +767,14 @@ export function Playground() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete prompt template ${template.name}`}
+                          title={`Delete prompt template ${template.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setDeleteTemplateId(template.id);
                           }}
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                         </Button>
                       </div>
                     </CardHeader>
