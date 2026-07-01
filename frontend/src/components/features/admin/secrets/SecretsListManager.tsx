@@ -505,7 +505,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
           </Card>
         ))}
 
-        {filteredSecrets.length === 0 && !loading && (
+        {filteredSecrets.length === 0 && !loading && !error && (
           <Card>
             <CardContent className="py-12 text-center">
               <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
