@@ -188,6 +188,14 @@ describe('PostEditorWorkspace', () => {
       (screen.getByLabelText('Markdown content editor') as HTMLTextAreaElement)
         .value,
     ).toContain('![Drag Hero](/images/2026/drag-hero/hero.webp)');
+
+    const assetsTab = screen.getByRole('tab', { name: /Assets/i });
+    fireEvent.mouseDown(assetsTab, { button: 0, ctrlKey: false });
+    fireEvent.pointerDown(assetsTab, { button: 0, ctrlKey: false });
+    fireEvent.click(assetsTab);
+
+    expect(await screen.findByRole('button', { name: 'hero.png URL 복사' }))
+      .toHaveAttribute('title', 'hero.png URL 복사');
   });
 
   it('lets assistant and generated-image panels attach content through the editor contract', async () => {
