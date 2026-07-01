@@ -49,7 +49,7 @@ export async function runBlogAgent(
     maxIterations?: number;
     temperature?: number;
   },
-  _token: string,
+  _token?: string,
 ): Promise<AgentRunResponse> {
   const base = getApiBaseUrl();
   const response = await adminFetchRaw(`${base}/api/v1/agent/run`, {

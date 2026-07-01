@@ -51,7 +51,6 @@ type AiImageGeneratorPanelProps = {
   content: string;
   year: string;
   slug: string;
-  getAccessToken: () => Promise<string | null>;
   onInsertMarkdown: (markdown: string) => void;
   onSetCoverImage: (url: string) => void;
 };
@@ -71,7 +70,6 @@ export default function AiImageGeneratorPanel({
   content,
   year,
   slug,
-  getAccessToken,
   onInsertMarkdown,
   onSetCoverImage,
 }: AiImageGeneratorPanelProps) {
@@ -94,8 +92,6 @@ export default function AiImageGeneratorPanel({
 
   const handleGenerate = async () => {
     try {
-      const token = await getAccessToken();
-      if (!token) throw new Error('먼저 로그인하세요');
       if (!/^[0-9]{4}$/.test(year)) throw new Error('연도(YYYY)를 입력하세요');
       if (!slug.trim()) throw new Error('슬러그(slug)를 먼저 입력하세요');
 
@@ -112,7 +108,6 @@ export default function AiImageGeneratorPanel({
           outputFormat: 'png',
           alt: alt.trim() || title.trim() || `${slug.trim()} cover image`,
         },
-        token,
       );
       setItems((previous) => [...response.items, ...previous]);
       toast({

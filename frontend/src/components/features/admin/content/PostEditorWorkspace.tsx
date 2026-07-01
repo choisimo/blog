@@ -152,7 +152,7 @@ function getImageFilesFromClipboard(
 
 export function PostEditorWorkspace() {
   const { toast } = useToast();
-  const { logout: storeLogout, getValidAccessToken } = useAuthStore();
+  const { logout: storeLogout } = useAuthStore();
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -978,7 +978,6 @@ export function PostEditorWorkspace() {
                   setCategory={setCategory}
                   setCoverImage={setCoverImage}
                   onInsertMarkdown={insertAtCursor}
-                  getAccessToken={getValidAccessToken}
                 />
               </TabsContent>
 
@@ -990,7 +989,6 @@ export function PostEditorWorkspace() {
                   content={content}
                   year={year}
                   slug={slug}
-                  getAccessToken={getValidAccessToken}
                   onInsertMarkdown={handleGeneratedMarkdownInsert}
                   onSetCoverImage={setCoverImage}
                 />

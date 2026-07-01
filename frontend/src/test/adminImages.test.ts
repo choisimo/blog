@@ -43,7 +43,6 @@ describe('admin image service', () => {
         slug: 'test-post',
         prompt: 'generate a cover image',
       },
-      'expired-access-token',
     );
 
     expect(result).toEqual(data);
@@ -88,7 +87,7 @@ describe('admin image service', () => {
       }),
     );
 
-    const result = await getAdminAiImagesHealth('expired-access-token');
+    const result = await getAdminAiImagesHealth();
 
     expect(result).toEqual(data);
     expect(mockAdminFetchRaw).toHaveBeenCalledWith(
