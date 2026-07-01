@@ -556,7 +556,7 @@ export function EditorPicksSection() {
   );
 }
 
-function TrendingPostsSection() {
+export function TrendingPostsSection() {
   const [trending, setTrending] = useState<TrendingPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
@@ -630,7 +630,7 @@ function TrendingPostsSection() {
           <RefreshCw className="h-3 w-3 animate-spin" />
           Loading...
         </div>
-      ) : trending.length === 0 ? (
+      ) : degradedMessage ? null : trending.length === 0 ? (
         <p className="px-4 py-3 text-xs text-zinc-400">
           No trending data for this period.
         </p>
