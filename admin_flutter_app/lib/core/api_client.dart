@@ -17,9 +17,11 @@ class PickedUpload {
 }
 
 class AdminApiClient {
-  AdminApiClient(this.auth);
+  AdminApiClient(this.auth, {http.Client? client})
+      : _client = client ?? http.Client();
 
   final AuthStore auth;
+  final http.Client _client;
 
   Future<Map<String, dynamic>> get(
     String path, {
@@ -80,14 +82,31 @@ class AdminApiClient {
     }
     final uri = auth.uri(path, query);
     final encoded = body == null ? null : jsonEncode(body);
-    final response = await switch (method) {
-      'GET' => http.get(uri, headers: requestHeaders),
-      'POST' => http.post(uri, headers: requestHeaders, body: encoded),
-      'PUT' => http.put(uri, headers: requestHeaders, body: encoded),
-      'DELETE' => http.delete(uri, headers: requestHeaders, body: encoded),
+    var response = await _send(method, uri, requestHeaders, encoded);
+    if (authRequired && response.statusCode == 401) {
+      final token = await auth.refreshAccessTokenNow();
+      if (token == null) {
+        throw Exception('Session expired. Please log in again.');
+      }
+      requestHeaders['Authorization'] = 'Bearer $token';
+      response = await _send(method, uri, requestHeaders, encoded);
+    }
+    return _decode(response);
+  }
+
+  Future<http.Response> _send(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    String? body,
+  ) {
+    return switch (method) {
+      'GET' => _client.get(uri, headers: headers),
+      'POST' => _client.post(uri, headers: headers, body: body),
+      'PUT' => _client.put(uri, headers: headers, body: body),
+      'DELETE' => _client.delete(uri, headers: headers, body: body),
       _ => throw UnsupportedError(method),
     };
-    return _decode(response);
   }
 
   Future<Map<String, dynamic>> multipart(
@@ -100,6 +119,28 @@ class AdminApiClient {
     if (token == null) {
       throw Exception('Not authenticated. Please log in again.');
     }
+    var response = await http.Response.fromStream(
+      await _sendMultipart(path, token, fields, files, fileField),
+    );
+    if (response.statusCode == 401) {
+      final refreshed = await auth.refreshAccessTokenNow();
+      if (refreshed == null) {
+        throw Exception('Session expired. Please log in again.');
+      }
+      response = await http.Response.fromStream(
+        await _sendMultipart(path, refreshed, fields, files, fileField),
+      );
+    }
+    return _decode(response);
+  }
+
+  Future<http.StreamedResponse> _sendMultipart(
+    String path,
+    String token,
+    Map<String, String> fields,
+    List<PickedUpload> files,
+    String fileField,
+  ) {
     final request = http.MultipartRequest('POST', auth.uri(path));
     request.headers['Authorization'] = 'Bearer $token';
     request.fields.addAll(fields);
@@ -113,9 +154,7 @@ class AdminApiClient {
             : MediaType.parse(file.contentType!),
       ));
     }
-    final streamed = await request.send();
-    final response = await http.Response.fromStream(streamed);
-    return _decode(response);
+    return _client.send(request);
   }
 
   Stream<String> streamLines(String path,
@@ -124,22 +163,34 @@ class AdminApiClient {
     if (token == null) {
       throw Exception('Not authenticated. Please log in again.');
     }
-    final client = http.Client();
+    var response = await _sendStreamRequest(path, query, token);
+    if (response.statusCode == 401) {
+      await response.stream.drain<void>();
+      final refreshed = await auth.refreshAccessTokenNow();
+      if (refreshed == null) {
+        throw Exception('Session expired. Please log in again.');
+      }
+      response = await _sendStreamRequest(path, query, refreshed);
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      await response.stream.drain<void>();
+      throw Exception('Stream failed (${response.statusCode})');
+    }
+    await for (final chunk in response.stream
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())) {
+      if (chunk.trim().isNotEmpty) yield chunk;
+    }
+  }
+
+  Future<http.StreamedResponse> _sendStreamRequest(
+    String path,
+    Map<String, String?> query,
+    String token,
+  ) {
     final request = http.Request('GET', auth.uri(path, query));
     request.headers['Authorization'] = 'Bearer $token';
-    try {
-      final response = await client.send(request);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Stream failed (${response.statusCode})');
-      }
-      await for (final chunk in response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())) {
-        if (chunk.trim().isNotEmpty) yield chunk;
-      }
-    } finally {
-      client.close();
-    }
+    return _client.send(request);
   }
 
   Map<String, dynamic> _decode(http.Response response) {
