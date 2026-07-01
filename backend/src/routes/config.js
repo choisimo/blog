@@ -391,6 +391,14 @@ function serializeEnvValue(value) {
   return raw;
 }
 
+function serializeDockerComposeEnvEntry(key, value) {
+  return JSON.stringify(`${key}=${String(value ?? "")}`);
+}
+
+function serializeTomlString(value) {
+  return JSON.stringify(String(value ?? ""));
+}
+
 router.post("/export", requireAdmin, (req, res) => {
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const { format = "env", includeSecrets = false } = body;
@@ -452,7 +460,7 @@ function generateDockerComposeEnv(includeSecrets = false) {
       if (v.isSecret && !includeSecrets) {
         lines.push(`      # - ${v.key}=<secret>`);
       } else if (value) {
-        lines.push(`      - ${v.key}=${value}`);
+        lines.push(`      - ${serializeDockerComposeEnvEntry(v.key, value)}`);
       }
     });
   });
@@ -470,7 +478,7 @@ function generateWranglerVars(includeSecrets = false) {
       if (v.isSecret) {
         secretLines.push(`# wrangler secret put ${v.key}`);
       } else if (value) {
-        lines.push(`${v.key} = "${value}"`);
+        lines.push(`${v.key} = ${serializeTomlString(value)}`);
       }
     });
   });

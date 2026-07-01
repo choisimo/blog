@@ -150,3 +150,67 @@ test('save-env rejects unknown targets instead of falling back to backend env', 
     });
   });
 });
+
+test('docker-compose export quotes multiline values without injecting extra entries', async () => {
+  const previous = process.env.SITE_BASE_URL;
+  process.env.SITE_BASE_URL = 'https://safe.example\nJWT_SECRET=hijack';
+
+  try {
+    await withServer(async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/v1/admin/config/export`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ format: 'docker-compose', includeSecrets: false }),
+      });
+
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.ok, true);
+
+      const content = payload.data.content;
+      assert.match(
+        content,
+        /^      - "SITE_BASE_URL=https:\/\/safe\.example\\nJWT_SECRET=hijack"$/m,
+      );
+      assert.doesNotMatch(content, /^JWT_SECRET=hijack$/m);
+    });
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SITE_BASE_URL;
+    } else {
+      process.env.SITE_BASE_URL = previous;
+    }
+  }
+});
+
+test('wrangler export escapes quotes and newlines in variable values', async () => {
+  const previous = process.env.SITE_BASE_URL;
+  process.env.SITE_BASE_URL = 'https://safe.example"\nJWT_SECRET="hijack';
+
+  try {
+    await withServer(async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/v1/admin/config/export`, {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ format: 'wrangler', includeSecrets: false }),
+      });
+
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.ok, true);
+
+      const content = payload.data.content;
+      assert.match(
+        content,
+        /^SITE_BASE_URL = "https:\/\/safe\.example\\"\\nJWT_SECRET=\\"hijack"$/m,
+      );
+      assert.doesNotMatch(content, /^JWT_SECRET=/m);
+    });
+  } finally {
+    if (previous === undefined) {
+      delete process.env.SITE_BASE_URL;
+    } else {
+      process.env.SITE_BASE_URL = previous;
+    }
+  }
+});
