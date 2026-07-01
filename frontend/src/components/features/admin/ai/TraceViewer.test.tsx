@@ -71,7 +71,11 @@ describe('TraceViewer', () => {
 
     render(<TraceViewer />);
 
-    fireEvent.click(await screen.findByRole('button', { name: /View trace trace-1/i }));
+    const viewButton = await screen.findByRole('button', { name: /View trace trace-1/i });
+
+    expect(viewButton).toHaveAttribute('title', 'View trace trace-1');
+
+    fireEvent.click(viewButton);
 
     await waitFor(() => {
       expect(mockFetchTraceDetail).toHaveBeenCalledWith('trace-1');

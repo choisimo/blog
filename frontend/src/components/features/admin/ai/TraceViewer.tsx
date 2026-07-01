@@ -448,9 +448,10 @@ export function TraceViewer() {
                       variant="ghost"
                       size="sm"
                       aria-label={`View trace ${trace.trace_id}`}
+                      title={`View trace ${trace.trace_id}`}
                       onClick={() => handleViewDetail(trace.trace_id)}
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TableCell>
                 </TableRow>
