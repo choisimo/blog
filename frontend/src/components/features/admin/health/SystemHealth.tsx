@@ -425,10 +425,13 @@ export function SystemHealth() {
               type="button"
               onClick={checkCoreServices}
               disabled={coreLoading}
+              aria-label="Refresh core health"
+              title="Refresh core health"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3 w-3 text-zinc-400 ${coreLoading ? "animate-spin" : ""}`}
+                aria-hidden="true"
               />
             </button>
           </div>
@@ -467,10 +470,13 @@ export function SystemHealth() {
               type="button"
               onClick={checkRagServices}
               disabled={ragLoading}
+              aria-label="Refresh RAG health"
+              title="Refresh RAG health"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3 w-3 text-zinc-400 ${ragLoading ? "animate-spin" : ""}`}
+                aria-hidden="true"
               />
             </button>
           </div>
@@ -511,10 +517,13 @@ export function SystemHealth() {
               type="button"
               onClick={fetchProviders}
               disabled={providersLoading}
+              aria-label="Refresh AI providers"
+              title="Refresh AI providers"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3 w-3 text-zinc-400 ${providersLoading ? "animate-spin" : ""}`}
+                aria-hidden="true"
               />
             </button>
           </div>
@@ -588,10 +597,13 @@ export function SystemHealth() {
               type="button"
               onClick={refreshFlags}
               disabled={flagsLoading}
+              aria-label="Refresh feature flags"
+              title="Refresh feature flags"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3 w-3 text-zinc-400 ${flagsLoading ? "animate-spin" : ""}`}
+                aria-hidden="true"
               />
             </button>
           </div>
@@ -626,10 +638,13 @@ export function SystemHealth() {
               type="button"
               onClick={checkAgentHealth}
               disabled={agentLoading}
+              aria-label="Refresh agent health"
+              title="Refresh agent health"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
             >
               <RefreshCw
                 className={`h-3 w-3 text-zinc-400 ${agentLoading ? "animate-spin" : ""}`}
+                aria-hidden="true"
               />
             </button>
           </div>
