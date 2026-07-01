@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import { bearerAuth } from '@/lib/auth';
+import { adminFetchRaw } from '@/services/admin/apiClient';
 
 export type CreatePostPayload = {
   title: string;
@@ -12,7 +12,7 @@ export type CreatePostPayload = {
 
 export async function createPostPR(
   payload: CreatePostPayload,
-  token: string
+  _token: string
 ): Promise<{
   prUrl?: string;
   status?: 'pending' | 'succeeded';
@@ -21,12 +21,8 @@ export async function createPostPR(
   path: string;
 }> {
   const base = getApiBaseUrl();
-  const res = await fetch(`${base}/api/v1/admin/create-post-pr`, {
+  const res = await adminFetchRaw(`${base}/api/v1/admin/create-post-pr`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...bearerAuth(token),
-    },
     body: JSON.stringify(payload),
   });
   const json = await res.json().catch(() => ({}));
@@ -45,7 +41,7 @@ export async function createPostPR(
 export async function uploadPostImages(
   params: { year: string | number; slug: string },
   files: File[],
-  token: string
+  _token: string
 ): Promise<{
   dir: string;
   items: Array<{ url: string; variantWebp?: { url: string } | null }>;
@@ -56,7 +52,7 @@ export async function uploadPostImages(
   const uploadedItems: Array<{ url: string; variantWebp?: { url: string } | null }> = [];
 
   for (const file of files) {
-    const directResult = await uploadPostImageDirect(normalizedBase, postId, file, token);
+    const directResult = await uploadPostImageDirect(normalizedBase, postId, file);
     if (directResult) {
       uploadedItems.push(directResult);
       continue;
@@ -64,7 +60,7 @@ export async function uploadPostImages(
     if (uploadedItems.length > 0) {
       throw new Error('Direct image upload failed after partial completion');
     }
-    return uploadPostImagesCompatibility(params, files, token);
+    return uploadPostImagesCompatibility(params, files);
   }
 
   return {
@@ -76,15 +72,10 @@ export async function uploadPostImages(
 async function uploadPostImageDirect(
   baseUrl: string,
   postId: string,
-  file: File,
-  token: string
+  file: File
 ): Promise<{ url: string; variantWebp?: { url: string } | null } | null> {
-  const presign = await fetch(`${baseUrl}/api/v1/images/presign`, {
+  const presign = await adminFetchRaw(`${baseUrl}/api/v1/images/presign`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...bearerAuth(token),
-    },
     body: JSON.stringify({
       filename: file.name,
       contentType: file.type,
@@ -105,9 +96,8 @@ async function uploadPostImageDirect(
   formData.append('file', file, file.name);
   formData.append('postId', postId);
 
-  const uploadResponse = await fetch(uploadUrl, {
+  const uploadResponse = await adminFetchRaw(uploadUrl, {
     method: 'POST',
-    headers: bearerAuth(token),
     body: formData,
   });
 
@@ -124,8 +114,7 @@ async function uploadPostImageDirect(
 
 async function uploadPostImagesCompatibility(
   params: { year: string | number; slug: string },
-  files: File[],
-  token: string
+  files: File[]
 ): Promise<{
   dir: string;
   items: Array<{ url: string; variantWebp?: { url: string } | null }>;
@@ -136,9 +125,8 @@ async function uploadPostImagesCompatibility(
   fd.append('slug', params.slug);
   for (const f of files) fd.append('files', f, f.name);
 
-  const res = await fetch(`${base}/api/v1/images/upload`, {
+  const res = await adminFetchRaw(`${base}/api/v1/images/upload`, {
     method: 'POST',
-    headers: bearerAuth(token),
     body: fd,
   });
   const json = await res.json().catch(() => ({}));

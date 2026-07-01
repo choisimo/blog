@@ -95,4 +95,29 @@ describe('admin API client auth retry', () => {
     expect(authorizationHeader(fetchMock, 1)).toBe('Bearer new-access-token');
     expect(mockRefreshAccessToken).toHaveBeenCalledWith('refresh-token');
   });
+
+  it('does not force a JSON content type for FormData adminFetchRaw requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const formData = new FormData();
+    formData.append('file', new Blob(['image']), 'cover.png');
+
+    const response = await adminFetchRaw(
+      'https://api.example.com/api/v1/images/upload-direct',
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = new Headers(init?.headers);
+    expect(headers.get('Authorization')).toBe('Bearer old-access-token');
+    expect(headers.get('Content-Type')).toBeNull();
+    expect(init?.body).toBe(formData);
+  });
 });
