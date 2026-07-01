@@ -136,9 +136,11 @@ export function ContentManager({
             disabled={query.isFetching}
             className='flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-800'
             aria-label='Refresh content'
+            title='Refresh content'
           >
             <RefreshCw
               className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`}
+              aria-hidden='true'
             />
           </button>
         </div>
