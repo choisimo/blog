@@ -374,6 +374,7 @@ test.describe('/live — API failure handling', () => {
 
 test.describe('/live — advanced simulated conversation', () => {
   test('handles incoming live_message and updates UI correctly', async ({ page }) => {
+    const smokeToken = 'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhbm9uLXNtb2tlIiwiZXhwIjo0MTAyNDQ0ODAwfQ.smoke';
     const corsHeaders = (route: Route) => {
       const origin = route.request().headers().origin ?? '*';
       return {
@@ -383,6 +384,26 @@ test.describe('/live — advanced simulated conversation', () => {
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       };
     };
+
+    page.route(/\/api\/v1\/auth\/anonymous(?:\/refresh)?$/, (route: Route) => {
+      if (route.request().method() === 'OPTIONS') {
+        route.fulfill({ status: 204, headers: corsHeaders(route) });
+        return;
+      }
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: corsHeaders(route),
+        body: JSON.stringify({
+          ok: true,
+          data: {
+            token: smokeToken,
+            expiresAt: '2100-01-01T00:00:00.000Z',
+            userId: 'anon-smoke',
+          },
+        }),
+      });
+    });
 
     page.route('**/api/v1/chat/live/message', (route: Route) => {
       if (route.request().method() === 'OPTIONS') {
