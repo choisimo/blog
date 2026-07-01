@@ -458,26 +458,26 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                             variant="ghost"
                             size="icon"
                             onClick={() => handleReveal(secret)}
-                            title={revealedValues[secret.id] ? 'Hide' : 'Reveal'}
+                            title={`${revealedValues[secret.id] ? 'Hide' : 'Reveal'} ${secret.key_name}`}
                             aria-label={`${revealedValues[secret.id] ? 'Hide' : 'Reveal'} ${secret.key_name}`}
                           >
                             {revealedValues[secret.id] ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
                             ) : (
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-4 w-4" aria-hidden="true" />
                             )}
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleCopy(secret)}
-                            title="Copy"
+                            title={`Copy ${secret.key_name}`}
                             aria-label={`Copy ${secret.key_name}`}
                           >
                             {copiedId === secret.id ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <CheckCircle className="h-4 w-4 text-green-500" aria-hidden="true" />
                             ) : (
-                              <Copy className="h-4 w-4" />
+                              <Copy className="h-4 w-4" aria-hidden="true" />
                             )}
                           </Button>
                         </>
@@ -486,10 +486,10 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(secret)}
-                        title="Edit"
+                        title={`Edit ${secret.key_name}`}
                         aria-label={`Edit ${secret.key_name}`}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-4 w-4" aria-hidden="true" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -498,10 +498,10 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                           setSelectedSecret(secret);
                           setIsDeleteOpen(true);
                         }}
-                        title="Delete"
+                        title={`Delete ${secret.key_name}`}
                         aria-label={`Delete ${secret.key_name}`}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-destructive" aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
