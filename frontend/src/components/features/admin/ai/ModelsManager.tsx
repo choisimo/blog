@@ -64,6 +64,8 @@ import {
 import { useModels, useProviders } from './hooks';
 import type { AIModel, ModelFormData, AIProvider } from './types';
 
+const ALL_FILTER_VALUE = 'all';
+
 interface ModelFormProps {
   model?: AIModel;
   providers: AIProvider[];
@@ -332,8 +334,10 @@ export function ModelsManager() {
   const [testingModel, setTestingModel] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<TestResultProps['result'] | null>(null);
   const [showTestDialog, setShowTestDialog] = useState(false);
-  const [filterProvider, setFilterProvider] = useState<string>('');
-  const [filterEnabled, setFilterEnabled] = useState<string>('');
+  const [filterProvider, setFilterProvider] =
+    useState<string>(ALL_FILTER_VALUE);
+  const [filterEnabled, setFilterEnabled] =
+    useState<string>(ALL_FILTER_VALUE);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AIModel | null>(null);
 
@@ -389,7 +393,9 @@ export function ModelsManager() {
   };
 
   const filteredModels = models.filter((m) => {
-    if (filterProvider && m.provider.id !== filterProvider) return false;
+    if (filterProvider !== ALL_FILTER_VALUE && m.provider.id !== filterProvider) {
+      return false;
+    }
     if (filterEnabled === 'true' && !m.isEnabled) return false;
     if (filterEnabled === 'false' && m.isEnabled) return false;
     if (searchQuery) {
@@ -431,7 +437,7 @@ export function ModelsManager() {
               <SelectValue placeholder="All Providers" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Providers</SelectItem>
+              <SelectItem value={ALL_FILTER_VALUE}>All Providers</SelectItem>
               {providers.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.displayName}
@@ -444,7 +450,7 @@ export function ModelsManager() {
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Status</SelectItem>
+              <SelectItem value={ALL_FILTER_VALUE}>All Status</SelectItem>
               <SelectItem value="true">Enabled Only</SelectItem>
               <SelectItem value="false">Disabled Only</SelectItem>
             </SelectContent>
@@ -555,7 +561,7 @@ export function ModelsManager() {
                 </div>
               </div>
             ))}
-            {filteredModels.length === 0 && (
+            {!error && filteredModels.length === 0 && (
               <p className="text-center text-muted-foreground py-8">
                 No models found. Add your first model to get started.
               </p>
