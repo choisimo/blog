@@ -133,6 +133,8 @@ export function UsageMonitor() {
     return 0;
   }, [chartData, groupBy]);
 
+  const showBreakdown = chartData.length > 0 || !error;
+
   const handleExport = async () => {
     const result = await exportConfig();
     if (result.ok && result.data) {
@@ -253,68 +255,69 @@ export function UsageMonitor() {
             </Card>
           </div>
 
-          {/* Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">
-                {groupBy === 'day' ? 'Daily Usage' : 'Usage by Model'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {chartData.length > 0 ? (
-                groupBy === 'model' ? (
-                  <div className="space-y-4">
-                    {chartData.map((item, idx) => (
-                      <UsageBar
-                        key={item.model?.id || idx}
-                        label={item.model?.displayName || 'Unknown'}
-                        value={item.requests}
-                        maxValue={maxRequests}
-                        color={
-                          idx === 0
-                            ? 'bg-blue-500'
-                            : idx === 1
-                            ? 'bg-green-500'
-                            : idx === 2
-                            ? 'bg-yellow-500'
-                            : 'bg-gray-400'
-                        }
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left p-2">Date</th>
-                          <th className="text-right p-2">Requests</th>
-                          <th className="text-right p-2">Tokens</th>
-                          <th className="text-right p-2">Cost</th>
-                          <th className="text-right p-2">Avg Latency</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {chartData.map((item, idx) => (
-                          <tr key={item.date || idx} className="border-b">
-                            <td className="p-2">{item.date}</td>
-                            <td className="text-right p-2">{formatNumber(item.requests)}</td>
-                            <td className="text-right p-2">{formatNumber(item.tokens)}</td>
-                            <td className="text-right p-2">${item.cost.toFixed(4)}</td>
-                            <td className="text-right p-2">{item.avgLatencyMs}ms</td>
+          {showBreakdown && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {groupBy === 'day' ? 'Daily Usage' : 'Usage by Model'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartData.length > 0 ? (
+                  groupBy === 'model' ? (
+                    <div className="space-y-4">
+                      {chartData.map((item, idx) => (
+                        <UsageBar
+                          key={item.model?.id || idx}
+                          label={item.model?.displayName || 'Unknown'}
+                          value={item.requests}
+                          maxValue={maxRequests}
+                          color={
+                            idx === 0
+                              ? 'bg-blue-500'
+                              : idx === 1
+                              ? 'bg-green-500'
+                              : idx === 2
+                              ? 'bg-yellow-500'
+                              : 'bg-gray-400'
+                          }
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-2">Date</th>
+                            <th className="text-right p-2">Requests</th>
+                            <th className="text-right p-2">Tokens</th>
+                            <th className="text-right p-2">Cost</th>
+                            <th className="text-right p-2">Avg Latency</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No usage data available for this period.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+                        </thead>
+                        <tbody>
+                          {chartData.map((item, idx) => (
+                            <tr key={item.date || idx} className="border-b">
+                              <td className="p-2">{item.date}</td>
+                              <td className="text-right p-2">{formatNumber(item.requests)}</td>
+                              <td className="text-right p-2">{formatNumber(item.tokens)}</td>
+                              <td className="text-right p-2">${item.cost.toFixed(4)}</td>
+                              <td className="text-right p-2">{item.avgLatencyMs}ms</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No usage data available for this period.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Config Actions */}
           <Card>
