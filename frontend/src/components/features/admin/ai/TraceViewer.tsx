@@ -21,6 +21,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -136,16 +137,25 @@ function TraceDetailDialog({
     null
   );
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (traceId && open) {
       setLoading(true);
+      setError(null);
+      setDetail(null);
       fetchTraceDetail(traceId).then((result) => {
         if (result.ok && result.data) {
           setDetail(result.data);
+        } else {
+          setError(result.error || 'Failed to load trace detail');
         }
         setLoading(false);
       });
+    } else if (!open) {
+      setDetail(null);
+      setError(null);
+      setLoading(false);
     }
   }, [traceId, open, fetchTraceDetail]);
 
@@ -157,11 +167,18 @@ function TraceDetailDialog({
             <Activity className="h-5 w-5" />
             Trace Detail
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Inspect timing spans and status for the selected AI trace.
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-500">
+            {error}
           </div>
         ) : detail ? (
           <div className="space-y-6">
@@ -430,6 +447,7 @@ export function TraceViewer() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      aria-label={`View trace ${trace.trace_id}`}
                       onClick={() => handleViewDetail(trace.trace_id)}
                     >
                       <ChevronRight className="h-4 w-4" />
