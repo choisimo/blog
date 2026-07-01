@@ -87,4 +87,48 @@ describe('SecretsListManager', () => {
       expect(mockFetchSecrets).toHaveBeenCalled();
     });
   });
+
+  it('uses specific titles for secret row action controls', async () => {
+    mockUseSecrets.mockReturnValue(
+      createUseSecretsValue({
+        secrets: [
+          {
+            id: 'secret-1',
+            category_id: 'general',
+            key_name: 'API_KEY',
+            display_name: 'API key',
+            description: null,
+            is_required: 1,
+            is_sensitive: 1,
+            value_type: 'string',
+            validation_pattern: null,
+            default_value: null,
+            env_fallback: null,
+            last_rotated_at: null,
+            expires_at: null,
+            created_at: '2026-01-01T00:00:00.000Z',
+            updated_at: '2026-01-01T00:00:00.000Z',
+            created_by: null,
+            updated_by: null,
+            has_value: true,
+            category_name: 'General',
+          },
+        ],
+      }),
+    );
+
+    render(<SecretsListManager categories={[]} />);
+
+    expect(screen.getByRole('button', { name: 'Reveal API_KEY' }))
+      .toHaveAttribute('title', 'Reveal API_KEY');
+    expect(screen.getByRole('button', { name: 'Copy API_KEY' }))
+      .toHaveAttribute('title', 'Copy API_KEY');
+    expect(screen.getByRole('button', { name: 'Edit API_KEY' }))
+      .toHaveAttribute('title', 'Edit API_KEY');
+    expect(screen.getByRole('button', { name: 'Delete API_KEY' }))
+      .toHaveAttribute('title', 'Delete API_KEY');
+    await waitFor(() => {
+      expect(mockFetchSecrets).toHaveBeenCalled();
+    });
+  });
 });
