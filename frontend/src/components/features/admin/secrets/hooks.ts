@@ -139,7 +139,8 @@ export function useSecrets() {
     [fetchSecrets],
   );
 
-  const revealSecret = useCallback(async (id: string) => {
+  const revealSecret = useCallback(async (id: string, reason?: string) => {
+    const trimmedReason = reason?.trim();
     const result = await adminApiFetch<{
       id: string;
       keyName: string;
@@ -147,6 +148,7 @@ export function useSecrets() {
     }>(`/${id}/reveal`, {
       pathPrefix: "/api/v1/admin/secrets",
       method: "POST",
+      ...(trimmedReason ? { body: { reason: trimmedReason } } : {}),
     });
     return result;
   }, []);
@@ -295,13 +297,19 @@ export function useSecretsOverview() {
 export function useSecretsExport() {
   const [loading, setLoading] = useState(false);
 
-  const exportSecrets = useCallback(async (includeValues = false) => {
+  const exportSecrets = useCallback(async (includeValues = false, reason?: string) => {
     const query = includeValues ? "?includeValues=true" : "";
+    const trimmedReason = reason?.trim();
     const result = await adminApiFetch<{
       exportedAt: string;
       categories: SecretCategory[];
       secrets: SecretPublic[];
-    }>(`/export${query}`, { pathPrefix: "/api/v1/admin/secrets" });
+    }>(`/export${query}`, {
+      pathPrefix: "/api/v1/admin/secrets",
+      ...(trimmedReason
+        ? { headers: { "X-Break-Glass-Reason": trimmedReason } }
+        : {}),
+    });
     return result;
   }, []);
 

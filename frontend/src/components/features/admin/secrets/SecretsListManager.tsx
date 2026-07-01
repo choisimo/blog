@@ -54,6 +54,7 @@ import {
   CheckCircle,
   XCircle,
   Key,
+  ShieldAlert,
 } from 'lucide-react';
 import { useSecrets, useCategories } from './hooks';
 import type { SecretCategory, SecretPublic, SecretFormData } from './types';
@@ -61,6 +62,19 @@ import type { SecretCategory, SecretPublic, SecretFormData } from './types';
 interface SecretsListManagerProps {
   categories: SecretCategory[];
   initialCategoryFilter?: string | null;
+}
+
+type PlaintextActionKind = 'reveal' | 'copy';
+
+interface PendingPlaintextAction {
+  kind: PlaintextActionKind;
+  secret: SecretPublic;
+}
+
+const BREAK_GLASS_REASON_REQUIRED = 'break-glass reason is required';
+
+function needsBreakGlassReason(error?: string): boolean {
+  return error?.toLowerCase().includes(BREAK_GLASS_REASON_REQUIRED) ?? false;
 }
 
 export function SecretsListManager({ categories: initialCategories, initialCategoryFilter }: SecretsListManagerProps) {
@@ -93,6 +107,11 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   const [selectedSecret, setSelectedSecret] = useState<SecretPublic | null>(null);
   const [revealedValues, setRevealedValues] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pendingPlaintextAction, setPendingPlaintextAction] =
+    useState<PendingPlaintextAction | null>(null);
+  const [plaintextReason, setPlaintextReason] = useState('');
+  const [plaintextError, setPlaintextError] = useState('');
+  const [plaintextLoading, setPlaintextLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<SecretFormData>({
@@ -139,53 +158,113 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
     {} as Record<string, SecretPublic[]>
   );
 
+  const hideSecretValue = useCallback((secretId: string) => {
+    setRevealedValues((prev) => {
+      const next = { ...prev };
+      delete next[secretId];
+      return next;
+    });
+  }, []);
+
+  const showSecretValue = useCallback((secret: SecretPublic, value: string) => {
+    setRevealedValues((prev) => ({
+      ...prev,
+      [secret.id]: value,
+    }));
+    setTimeout(() => hideSecretValue(secret.id), 30000);
+  }, [hideSecretValue]);
+
+  const copySecretValue = useCallback(async (secret: SecretPublic, value: string) => {
+    await navigator.clipboard.writeText(value);
+    setCopiedId(secret.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }, []);
+
+  const requestPlaintextValue = useCallback(
+    async (
+      secret: SecretPublic,
+      kind: PlaintextActionKind,
+      reason?: string,
+    ): Promise<boolean> => {
+      const result = await revealSecret(secret.id, reason);
+
+      if (result.ok && result.data) {
+        if (kind === 'copy') {
+          await copySecretValue(secret, result.data.value);
+        } else {
+          showSecretValue(secret, result.data.value);
+        }
+        return true;
+      }
+
+      if (!reason && needsBreakGlassReason(result.error)) {
+        setPendingPlaintextAction({ kind, secret });
+        setPlaintextReason('');
+        setPlaintextError('');
+        return false;
+      }
+
+      setPlaintextError(result.error || 'Failed to retrieve secret value');
+      return false;
+    },
+    [copySecretValue, revealSecret, showSecretValue],
+  );
+
+  const closePlaintextDialog = useCallback(() => {
+    setPendingPlaintextAction(null);
+    setPlaintextReason('');
+    setPlaintextError('');
+    setPlaintextLoading(false);
+  }, []);
+
+  const handlePlaintextReasonSubmit = useCallback(async () => {
+    if (!pendingPlaintextAction) return;
+    const reason = plaintextReason.trim();
+    if (reason.length < 8) {
+      setPlaintextError('Reason must be at least 8 characters.');
+      return;
+    }
+
+    setPlaintextLoading(true);
+    setPlaintextError('');
+    const ok = await requestPlaintextValue(
+      pendingPlaintextAction.secret,
+      pendingPlaintextAction.kind,
+      reason,
+    );
+    setPlaintextLoading(false);
+    if (ok) {
+      closePlaintextDialog();
+    }
+  }, [
+    closePlaintextDialog,
+    pendingPlaintextAction,
+    plaintextReason,
+    requestPlaintextValue,
+  ]);
+
   const handleReveal = useCallback(
     async (secret: SecretPublic) => {
       if (revealedValues[secret.id]) {
-        // Hide
-        setRevealedValues((prev) => {
-          const next = { ...prev };
-          delete next[secret.id];
-          return next;
-        });
+        hideSecretValue(secret.id);
         return;
       }
 
-      const result = await revealSecret(secret.id);
-      if (result.ok && result.data) {
-        setRevealedValues((prev) => ({
-          ...prev,
-          [secret.id]: result.data!.value,
-        }));
-        // Auto-hide after 30 seconds
-        setTimeout(() => {
-          setRevealedValues((prev) => {
-            const next = { ...prev };
-            delete next[secret.id];
-            return next;
-          });
-        }, 30000);
-      }
+      await requestPlaintextValue(secret, 'reveal');
     },
-    [revealSecret, revealedValues]
+    [hideSecretValue, requestPlaintextValue, revealedValues],
   );
 
   const handleCopy = useCallback(async (secret: SecretPublic) => {
-    let value = revealedValues[secret.id];
-
-    if (!value) {
-      const result = await revealSecret(secret.id);
-      if (result.ok && result.data) {
-        value = result.data.value;
-      }
-    }
+    const value = revealedValues[secret.id];
 
     if (value) {
-      await navigator.clipboard.writeText(value);
-      setCopiedId(secret.id);
-      setTimeout(() => setCopiedId(null), 2000);
+      await copySecretValue(secret, value);
+      return;
     }
-  }, [revealSecret, revealedValues]);
+
+    await requestPlaintextValue(secret, 'copy');
+  }, [copySecretValue, requestPlaintextValue, revealedValues]);
 
   const handleCreate = async () => {
     setFormError('');
@@ -374,6 +453,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                             size="icon"
                             onClick={() => handleReveal(secret)}
                             title={revealedValues[secret.id] ? 'Hide' : 'Reveal'}
+                            aria-label={`${revealedValues[secret.id] ? 'Hide' : 'Reveal'} ${secret.key_name}`}
                           >
                             {revealedValues[secret.id] ? (
                               <EyeOff className="h-4 w-4" />
@@ -386,6 +466,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                             size="icon"
                             onClick={() => handleCopy(secret)}
                             title="Copy"
+                            aria-label={`Copy ${secret.key_name}`}
                           >
                             {copiedId === secret.id ? (
                               <CheckCircle className="h-4 w-4 text-green-500" />
@@ -400,6 +481,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                         size="icon"
                         onClick={() => openEdit(secret)}
                         title="Edit"
+                        aria-label={`Edit ${secret.key_name}`}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -411,6 +493,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                           setIsDeleteOpen(true);
                         }}
                         title="Delete"
+                        aria-label={`Delete ${secret.key_name}`}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -635,6 +718,61 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             </Button>
             <Button onClick={handleUpdate} disabled={formLoading}>
               {formLoading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Plaintext Reason Dialog */}
+      <Dialog
+        open={!!pendingPlaintextAction}
+        onOpenChange={(open) => {
+          if (!open) closePlaintextDialog();
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-500" />
+              Audit Reason
+            </DialogTitle>
+            <DialogDescription>
+              {pendingPlaintextAction?.secret.key_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="plaintext-reason">Reason</Label>
+              <Textarea
+                id="plaintext-reason"
+                value={plaintextReason}
+                onChange={(e) => {
+                  setPlaintextReason(e.target.value);
+                  if (plaintextError) setPlaintextError('');
+                }}
+                rows={3}
+                autoFocus
+              />
+            </div>
+            {plaintextError && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {plaintextError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={closePlaintextDialog}
+              disabled={plaintextLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePlaintextReasonSubmit}
+              disabled={plaintextLoading || plaintextReason.trim().length < 8}
+            >
+              {plaintextLoading ? 'Continuing...' : 'Continue'}
             </Button>
           </DialogFooter>
         </DialogContent>
