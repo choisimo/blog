@@ -394,7 +394,7 @@ test.describe('/live — advanced simulated conversation', () => {
       return;
     }
 
-    await input.fill('/live');
+    await input.fill('/live on');
     await page.keyboard.press('Enter');
 
     // Wait for the UI to update
