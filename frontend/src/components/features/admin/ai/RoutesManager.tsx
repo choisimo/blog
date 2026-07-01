@@ -476,7 +476,7 @@ export function RoutesManager() {
                 </div>
               </div>
             ))}
-            {routes.length === 0 && (
+            {!error && routes.length === 0 && (
               <p className="text-center text-muted-foreground py-8">
                 No routes configured. Add your first routing rule to get started.
               </p>
