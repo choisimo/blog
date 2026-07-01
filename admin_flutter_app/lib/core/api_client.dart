@@ -173,6 +173,7 @@ class AdminApiClient {
       response = await _sendStreamRequest(path, query, refreshed);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      await response.stream.drain<void>();
       throw Exception('Stream failed (${response.statusCode})');
     }
     await for (final chunk in response.stream
