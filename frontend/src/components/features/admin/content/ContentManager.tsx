@@ -1,7 +1,7 @@
 import type { SiteContentBlock } from '@/services/content/site-content';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Megaphone, RefreshCw, Save } from 'lucide-react';
+import { AlertCircle, FileText, Megaphone, RefreshCw, Save } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -66,6 +66,11 @@ export function ContentManager({
   });
 
   const block = query.data ?? DEFAULT_HOME_AI_CTA_BLOCK;
+  const homeCtaLoadError = query.error instanceof Error ? query.error : null;
+  const hasLoadedHomeCta = query.data !== undefined;
+  const homeCtaUnavailable = Boolean(homeCtaLoadError && !hasLoadedHomeCta);
+  const homeCtaFormDisabled =
+    homeCtaUnavailable || (query.isLoading && !hasLoadedHomeCta);
 
   useEffect(() => {
     setMarkdown(block.markdown);
@@ -91,6 +96,7 @@ export function ContentManager({
   });
 
   const handleSave = () => {
+    if (homeCtaFormDisabled) return;
     saveMutation.mutate({
       markdown,
       ctaLabel: ctaLabel || null,
@@ -138,9 +144,28 @@ export function ContentManager({
         </div>
 
         <div className='space-y-4 p-4'>
-          {query.error instanceof Error && (
+          {homeCtaLoadError && (
             <div className='rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300'>
-              {query.error.message}
+              <div className='flex items-start justify-between gap-3'>
+                <div className='flex min-w-0 items-start gap-2'>
+                  <AlertCircle className='mt-0.5 h-3.5 w-3.5 shrink-0' />
+                  <div className='min-w-0'>
+                    <p className='font-medium'>Unable to load Home CTA</p>
+                    <p className='mt-1'>{homeCtaLoadError.message}</p>
+                  </div>
+                </div>
+                <button
+                  type='button'
+                  onClick={() => void query.refetch()}
+                  disabled={query.isFetching}
+                  className='inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-amber-200 bg-white px-2 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-900/40'
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${query.isFetching ? 'animate-spin' : ''}`}
+                  />
+                  Retry
+                </button>
+              </div>
             </div>
           )}
 
@@ -153,6 +178,7 @@ export function ContentManager({
               value={markdown}
               onChange={event => setMarkdown(event.target.value)}
               rows={12}
+              disabled={homeCtaFormDisabled}
               className='min-h-72 resize-y rounded-lg font-mono text-sm'
             />
           </div>
@@ -166,6 +192,7 @@ export function ContentManager({
                 id='home-ai-cta-label'
                 value={ctaLabel}
                 onChange={event => setCtaLabel(event.target.value)}
+                disabled={homeCtaFormDisabled}
                 className='h-9 rounded-lg text-sm'
               />
             </div>
@@ -177,6 +204,7 @@ export function ContentManager({
                 id='home-ai-cta-href'
                 value={ctaHref}
                 onChange={event => setCtaHref(event.target.value)}
+                disabled={homeCtaFormDisabled}
                 className='h-9 rounded-lg font-mono text-sm'
               />
             </div>
@@ -193,13 +221,14 @@ export function ContentManager({
               id='home-ai-cta-enabled'
               checked={enabled}
               onCheckedChange={setEnabled}
+              disabled={homeCtaFormDisabled}
             />
           </div>
 
           <button
             type='button'
             onClick={handleSave}
-            disabled={saveMutation.isPending}
+            disabled={homeCtaFormDisabled || saveMutation.isPending}
             className='inline-flex h-9 items-center gap-2 rounded-lg bg-zinc-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200'
           >
             <Save className='h-3.5 w-3.5' />
