@@ -32,6 +32,19 @@ function buildAdminHeaders(
   return nextHeaders;
 }
 
+function getAdminApiErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== 'object') return fallback;
+  const record = payload as { error?: unknown; message?: unknown };
+  if (typeof record.error === 'string' && record.error) return record.error;
+  if (record.error && typeof record.error === 'object') {
+    const nested = record.error as { message?: unknown; code?: unknown };
+    if (typeof nested.message === 'string' && nested.message) return nested.message;
+    if (typeof nested.code === 'string' && nested.code) return nested.code;
+  }
+  if (typeof record.message === 'string' && record.message) return record.message;
+  return fallback;
+}
+
 async function forceRefreshAdminAccessToken(): Promise<string | null> {
   const { refreshToken, clearAuth } = useAuthStore.getState();
   if (!refreshToken) {
@@ -100,7 +113,7 @@ export async function adminApiFetch<T>(
     if (!res.ok) {
       return {
         ok: false,
-        error: json?.error?.message || json?.error || `Request failed (${res.status})`,
+        error: getAdminApiErrorMessage(json, `Request failed (${res.status})`),
       };
     }
 

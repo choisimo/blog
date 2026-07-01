@@ -107,6 +107,27 @@ describe('admin API client auth retry', () => {
     expect(init?.body).toBeUndefined();
   });
 
+  it('normalizes object-shaped adminApiFetch error responses', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { code: 'RATE_LIMITED' },
+        }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ saved: boolean }>('/secrets', {
+      pathPrefix: '/api/v1/admin',
+    });
+
+    expect(result).toEqual({ ok: false, error: 'RATE_LIMITED' });
+  });
+
   it('retries adminFetchRaw with a refreshed token after a 401', async () => {
     const fetchMock = vi
       .fn()
