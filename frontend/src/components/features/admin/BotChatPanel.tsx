@@ -255,8 +255,14 @@ export default function BotChatPanel({
                             }
                         }}
                     />
-                    <Button size="icon" onClick={handleSend} disabled={isTyping || !input.trim()}>
-                        <Send className="w-4 h-4" />
+                    <Button
+                        size="icon"
+                        onClick={handleSend}
+                        disabled={isTyping || !input.trim()}
+                        aria-label="Send assistant message"
+                        title="Send assistant message"
+                    >
+                        <Send className="w-4 h-4" aria-hidden="true" />
                     </Button>
                 </div>
             </CardFooter>
