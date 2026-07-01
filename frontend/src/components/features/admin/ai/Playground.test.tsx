@@ -39,6 +39,7 @@ function createUsePlaygroundValue(overrides = {}) {
     loading: false,
     running: false,
     error: null,
+    templatesError: null,
     total: 0,
     runPlayground: mockRunPlayground,
     fetchHistory: mockFetchHistory,
@@ -106,6 +107,26 @@ describe('Playground', () => {
     expect(screen.getByText('Model inventory unavailable')).toBeInTheDocument();
     await waitFor(() => {
       expect(mockFetchModels).toHaveBeenCalledWith(undefined, true);
+    });
+  });
+
+  it('shows template load errors without also showing the template empty state', async () => {
+    mockUsePlayground.mockReturnValue(
+      createUsePlaygroundValue({
+        templatesError: 'Prompt templates unavailable',
+      }),
+    );
+
+    render(<Playground />);
+
+    fireEvent.click(screen.getByRole('tab', { name: /Templates/i }));
+
+    expect(screen.getByText('Prompt templates unavailable')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/No templates yet/i),
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockFetchTemplates).toHaveBeenCalled();
     });
   });
 });

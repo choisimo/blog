@@ -364,6 +364,7 @@ export function Playground() {
     templates,
     running,
     error,
+    templatesError,
     total: historyTotal,
     runPlayground,
     fetchHistory,
@@ -461,7 +462,7 @@ export function Playground() {
   };
 
   const isComparing = results.length > 1;
-  const displayError = error || modelsError;
+  const displayError = error || modelsError || templatesError;
 
   return (
     <div className="space-y-6">
@@ -786,7 +787,7 @@ export function Playground() {
                     </CardContent>
                   </Card>
                 ))}
-                {templates.length === 0 && (
+                {!templatesError && templates.length === 0 && (
                   <div className="col-span-full text-center text-muted-foreground py-8">
                     No templates yet. Save a prompt as a template to get started.
                   </div>
