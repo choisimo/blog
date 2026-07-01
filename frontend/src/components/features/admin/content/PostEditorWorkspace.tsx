@@ -1055,6 +1055,7 @@ export function PostEditorWorkspace() {
                                 variant='ghost'
                                 className='h-8 rounded-lg px-2 text-xs'
                                 aria-label={`${item.name} URL 복사`}
+                                title={`${item.name} URL 복사`}
                                 onClick={() => void copyText(item.url)}
                               >
                                 <Copy className='h-3.5 w-3.5' aria-hidden='true' />
