@@ -70,12 +70,41 @@ describe('admin API client auth retry', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(authorizationHeader(fetchMock, 0)).toBe('Bearer old-access-token');
     expect(authorizationHeader(fetchMock, 1)).toBe('Bearer new-access-token');
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Content-Type')).toBe(
+      'application/json',
+    );
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(
+      JSON.stringify({ key: 'OPENAI_API_KEY' }),
+    );
     expect(mockRefreshAccessToken).toHaveBeenCalledWith('refresh-token');
     expect(mockState.setTokens).toHaveBeenCalledWith(
       'new-access-token',
       'new-refresh-token',
     );
     expect(mockState.clearAuth).not.toHaveBeenCalled();
+  });
+
+  it('does not force a JSON content type for bodyless adminApiFetch requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { providers: [] } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ providers: unknown[] }>('/providers', {
+      pathPrefix: '/api/v1/admin/ai',
+    });
+
+    expect(result).toEqual({ ok: true, data: { providers: [] } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = new Headers(init?.headers);
+    expect(headers.get('Authorization')).toBe('Bearer old-access-token');
+    expect(headers.get('Content-Type')).toBeNull();
+    expect(init?.body).toBeUndefined();
   });
 
   it('retries adminFetchRaw with a refreshed token after a 401', async () => {
