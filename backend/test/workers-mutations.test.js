@@ -112,6 +112,36 @@ test('worker vars mutation validates and escapes TOML string values', async () =
   });
 });
 
+test('worker vars mutation can update a previously escaped TOML value', async () => {
+  await withServer(async (baseUrl) => {
+    const first = await fetch(`${baseUrl}/api/v1/admin/workers/api-gateway/vars`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        vars: {
+          BACKEND_ORIGIN: 'https://first.example.com/"quoted"',
+        },
+      }),
+    });
+    assert.equal(first.status, 200);
+
+    const second = await fetch(`${baseUrl}/api/v1/admin/workers/api-gateway/vars`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        vars: {
+          BACKEND_ORIGIN: 'https://second.example.com',
+        },
+      }),
+    });
+
+    assert.equal(second.status, 200);
+    const content = await fs.readFile(wranglerPath, 'utf8');
+    assert.match(content, /BACKEND_ORIGIN = "https:\/\/second\.example\.com"/);
+    assert.doesNotMatch(content, /first\.example/);
+  });
+});
+
 test('worker vars mutation rejects invalid variable keys before writing', async () => {
   const before = await fs.readFile(wranglerPath, 'utf8');
 
@@ -136,6 +166,29 @@ test('worker vars mutation rejects invalid variable keys before writing', async 
   assert.equal(await fs.readFile(wranglerPath, 'utf8'), before);
 });
 
+test('worker vars mutation rejects unsupported control characters', async () => {
+  const before = await fs.readFile(wranglerPath, 'utf8');
+
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/admin/workers/api-gateway/vars`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        vars: {
+          BACKEND_ORIGIN: 'https://bad.example.com\u000B',
+        },
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+    assert.equal(payload.error.code, 'INVALID_WORKER_VARS');
+  });
+
+  assert.equal(await fs.readFile(wranglerPath, 'utf8'), before);
+});
+
 test('worker secret mutation rejects shell metacharacters in secret keys', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/v1/admin/workers/api-gateway/secret`, {
@@ -146,6 +199,22 @@ test('worker secret mutation rejects shell metacharacters in secret keys', async
         key: 'SAFE_KEY;echo pwned',
         value: 'secret-value',
       }),
+    });
+
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+    assert.equal(payload.error.code, 'INVALID_WORKER_SECRET');
+  });
+});
+
+test('worker secret mutation returns structured 400 for an empty body', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/v1/admin/workers/api-gateway/secret`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.ADMIN_BEARER_TOKEN}`,
+      },
     });
 
     assert.equal(response.status, 400);

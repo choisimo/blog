@@ -65,7 +65,11 @@ function toTomlBasicStringValue(value) {
   if (!['string', 'number', 'boolean'].includes(typeof value)) {
     return null;
   }
-  return String(value)
+  const stringValue = String(value);
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(stringValue)) {
+    return null;
+  }
+  return stringValue
     .replace(/\\/g, '\\\\')
     .replace(/"/g, '\\"')
     .replace(/\n/g, '\\n')
@@ -113,7 +117,7 @@ function replaceWorkerVar(content, env, key, value) {
     if (!inTargetSection) return line;
 
     const assignment = line.match(
-      /^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"[^"]*"(.*)$/
+      /^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(?:[^"\\]|\\.)*"(.*)$/
     );
     if (!assignment || assignment[2] !== key) return line;
 
@@ -234,8 +238,9 @@ router.post('/:workerId/vars', requireAdmin, requireWorkerMutationCapability, as
 
 router.post('/:workerId/secret', requireAdmin, requireWorkerMutationCapability, async (req, res) => {
   const { workerId } = req.params;
-  const { key, value } = req.body;
-  const env = normalizeWorkerMutationEnv(req.body?.env, 'production');
+  const body = req.body && typeof req.body === 'object' ? req.body : {};
+  const { key, value } = body;
+  const env = normalizeWorkerMutationEnv(body.env, 'production');
   if (!env) {
     return workerMutationBadRequest(
       res,
