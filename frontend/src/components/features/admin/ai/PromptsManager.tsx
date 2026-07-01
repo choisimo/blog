@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { adminApiFetch } from '@/services/admin/apiClient';
-import { RefreshCw, RotateCcw, Save } from 'lucide-react';
+import { AlertCircle, RefreshCw, RotateCcw, Save } from 'lucide-react';
 
 interface AgentPrompt {
   mode: string;
@@ -35,12 +35,14 @@ export function PromptsManager() {
   const [selectedMode, setSelectedMode] = useState<string>('default');
   const [editedText, setEditedText] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const isBusy = saving || resetting;
 
   const loadPrompts = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const result = await adminApiFetch<{ prompts: AgentPrompt[] }>('/prompts', {
         pathPrefix: '/api/v1/agent',
@@ -58,9 +60,11 @@ export function PromptsManager() {
         setEditedText(active.text);
       }
     } catch (error) {
+      const message = getPromptErrorMessage(error, 'Failed to fetch prompts');
+      setLoadError(message);
       toast({
         title: 'Failed to load prompts',
-        description: getPromptErrorMessage(error, 'Failed to fetch prompts'),
+        description: message,
         variant: 'destructive',
       });
     } finally {
@@ -147,6 +151,30 @@ export function PromptsManager() {
       <div className="flex items-center gap-3 px-4 py-8 text-sm text-zinc-400">
         <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
         <span>Loading prompts…</span>
+      </div>
+    );
+  }
+
+  if (loadError && prompts.length === 0) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-medium">Unable to load prompts</p>
+              <p className="mt-1 text-xs">{loadError}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadPrompts()}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
+          >
+            <RefreshCw className="h-3 w-3" aria-hidden="true" />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
