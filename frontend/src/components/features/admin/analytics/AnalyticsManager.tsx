@@ -13,7 +13,6 @@ import {
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { adminFetchRaw } from "@/services/admin/apiClient";
 import { getRealtimeVisitorsSnapshot } from "@/services/content/analytics";
-import { useAuthStore } from "@/stores/session/useAuthStore";
 import { PostMetricsDetail } from "./PostMetricsDetail";
 
 interface PostStat {
@@ -683,8 +682,6 @@ function StatsRefreshSection() {
 export async function getAllPostStats(
   orderBy: string,
 ): Promise<PostStat[]> {
-  const token = await useAuthStore.getState().getValidAccessToken();
-  if (!token) return [];
   const base = getApiBaseUrl();
   try {
     const res = await adminFetchRaw(
