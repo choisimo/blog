@@ -575,6 +575,7 @@ export function usePlayground() {
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
 
   const runPlayground = useCallback(
@@ -672,12 +673,15 @@ export function usePlayground() {
   );
 
   const fetchTemplates = useCallback(async (category?: string) => {
+    setTemplatesError(null);
     const query = category ? `?category=${category}` : '';
     const result = await adminApiFetch<{ templates: PromptTemplate[]; total: number }>(
       `/prompt-templates${query}`
     , { pathPrefix: '/api/v1/admin/ai' });
     if (result.ok && result.data) {
       setTemplates(result.data.templates);
+    } else {
+      setTemplatesError(result.error || 'Failed to fetch templates');
     }
     return result;
   }, []);
@@ -762,6 +766,7 @@ export function usePlayground() {
     loading,
     running,
     error,
+    templatesError,
     total,
     runPlayground,
     fetchHistory,
