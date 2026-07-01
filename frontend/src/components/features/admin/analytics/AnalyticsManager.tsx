@@ -55,6 +55,11 @@ interface EditorPicksResult {
   errorMessage?: string;
 }
 
+interface StatsRefreshResult {
+  success: boolean;
+  message: string;
+}
+
 function getAnalyticsErrorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object") return fallback;
   const record = payload as { error?: unknown; message?: unknown };
@@ -124,15 +129,28 @@ async function getTrendingPosts(
   }
 }
 
-async function refreshStats(): Promise<boolean> {
+async function refreshStats(): Promise<StatsRefreshResult> {
   const base = getApiBaseUrl();
   try {
     const res = await adminFetchRaw(`${base}/api/v1/analytics/refresh-stats`, {
       method: "POST",
     });
-    return res.ok;
-  } catch {
-    return false;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        success: false,
+        message: getAnalyticsErrorMessage(data, "Refresh failed."),
+      };
+    }
+    return {
+      success: true,
+      message: data.data?.message || "Stats refreshed successfully.",
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : "Refresh failed.",
+    };
   }
 }
 
@@ -681,7 +699,7 @@ function TrendingPostsSection() {
   );
 }
 
-function StatsRefreshSection() {
+export function StatsRefreshSection() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [result, setResult] = useState<{
@@ -692,12 +710,9 @@ function StatsRefreshSection() {
   const handleRefresh = async () => {
     setRefreshing(true);
     setResult(null);
-    const success = await refreshStats();
-    setResult({
-      success,
-      message: success ? "Stats refreshed successfully." : "Refresh failed.",
-    });
-    if (success) setLastRefresh(new Date());
+    const refreshResult = await refreshStats();
+    setResult(refreshResult);
+    if (refreshResult.success) setLastRefresh(new Date());
     setRefreshing(false);
   };
 
