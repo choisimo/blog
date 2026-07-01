@@ -80,4 +80,14 @@ describe('UsageMonitor', () => {
       expect(mockFetchUsage).toHaveBeenCalled();
     });
   });
+
+  it('labels the usage refresh control', async () => {
+    render(<UsageMonitor />);
+
+    expect(screen.getByRole('button', { name: 'Refresh usage' }))
+      .toHaveAttribute('title', 'Refresh usage');
+    await waitFor(() => {
+      expect(mockFetchUsage).toHaveBeenCalled();
+    });
+  });
 });

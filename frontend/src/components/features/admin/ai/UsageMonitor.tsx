@@ -184,8 +184,14 @@ export function UsageMonitor() {
                   <SelectItem value="model">By Model</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="icon" onClick={() => fetchUsage()}>
-                <RefreshCw className="h-4 w-4" />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fetchUsage()}
+                aria-label="Refresh usage"
+                title="Refresh usage"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
