@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockFetchTraces = vi.hoisted(() => vi.fn());
 const mockFetchTraceDetail = vi.hoisted(() => vi.fn());
 const mockFetchTraceStats = vi.hoisted(() => vi.fn());
+const mockUseTraces = vi.hoisted(() => vi.fn());
 
 vi.mock('./hooks', () => ({
-  useTraces: () => ({
+  useTraces: mockUseTraces,
+}));
+
+function createUseTracesValue(overrides = {}) {
+  return {
     traces: [
       {
         trace_id: 'trace-1',
@@ -29,8 +34,9 @@ vi.mock('./hooks', () => ({
     fetchTraces: mockFetchTraces,
     fetchTraceDetail: mockFetchTraceDetail,
     fetchTraceStats: mockFetchTraceStats,
-  }),
-}));
+    ...overrides,
+  };
+}
 
 import { TraceViewer } from './TraceViewer';
 
@@ -54,6 +60,7 @@ describe('TraceViewer', () => {
         },
       },
     });
+    mockUseTraces.mockReturnValue(createUseTracesValue());
   });
 
   it('shows trace detail load errors instead of stale or empty detail content', async () => {
@@ -72,5 +79,23 @@ describe('TraceViewer', () => {
 
     expect(await screen.findByText('Trace not found')).toBeInTheDocument();
     expect(screen.queryByText('No trace data found')).not.toBeInTheDocument();
+  });
+
+  it('shows trace list errors without also showing the empty state', async () => {
+    mockUseTraces.mockReturnValue(
+      createUseTracesValue({
+        traces: [],
+        error: 'Trace service unavailable',
+        total: 0,
+      }),
+    );
+
+    render(<TraceViewer />);
+
+    expect(screen.getByText('Trace service unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('No traces found')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockFetchTraceStats).toHaveBeenCalled();
+    });
   });
 });

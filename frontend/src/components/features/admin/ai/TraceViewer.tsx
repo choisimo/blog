@@ -455,7 +455,7 @@ export function TraceViewer() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!loading && traces.length === 0 && (
+              {!loading && !error && traces.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No traces found
