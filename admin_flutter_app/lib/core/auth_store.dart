@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'json_utils.dart';
 
 class AuthStore extends ChangeNotifier {
+  AuthStore({http.Client? client}) : _client = client ?? http.Client();
+
   static const _secureStorage = FlutterSecureStorage();
   static const defaultBaseUrl = String.fromEnvironment(
     'ADMIN_API_BASE_URL',
@@ -17,6 +19,8 @@ class AuthStore extends ChangeNotifier {
   static const _accessTokenKey = 'noblog.admin.accessToken';
   static const _refreshTokenKey = 'noblog.admin.refreshToken';
   static const _userKey = 'noblog.admin.user';
+
+  final http.Client _client;
 
   String baseUrl = defaultBaseUrl;
   String? accessToken;
@@ -133,7 +137,7 @@ class AuthStore extends ChangeNotifier {
   Future<void> logout() async {
     final token = refreshToken;
     try {
-      await http.post(
+      await _client.post(
         uri('/api/v1/auth/logout'),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'refreshToken': token}),
@@ -165,6 +169,10 @@ class AuthStore extends ChangeNotifier {
     if (accessToken != null && !isTokenExpired(accessToken!)) {
       return accessToken;
     }
+    return refreshAccessTokenNow();
+  }
+
+  Future<String?> refreshAccessTokenNow() async {
     if (refreshToken == null ||
         isTokenExpired(refreshToken!, bufferSeconds: 0)) {
       await clearLocal();
@@ -172,7 +180,7 @@ class AuthStore extends ChangeNotifier {
     }
     final http.Response response;
     try {
-      response = await http.post(
+      response = await _client.post(
         uri('/api/v1/auth/refresh'),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'refreshToken': refreshToken}),
@@ -215,12 +223,12 @@ class AuthStore extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> getTotpStatus() async {
-    final response = await http.get(uri('/api/v1/auth/totp/status'));
+    final response = await _client.get(uri('/api/v1/auth/totp/status'));
     return _unwrap(response, 'Failed to load TOTP status');
   }
 
   Future<Map<String, dynamic>> getTotpSetup({String? setupToken}) async {
-    final response = await http.get(
+    final response = await _client.get(
       uri('/api/v1/auth/totp/setup'),
       headers: <String, String>{
         if (setupToken != null && setupToken.isNotEmpty)
@@ -232,7 +240,7 @@ class AuthStore extends ChangeNotifier {
 
   Future<Map<String, dynamic>> verifyTotpSetup(String code,
       {String? setupToken}) async {
-    final response = await http.post(
+    final response = await _client.post(
       uri('/api/v1/auth/totp/setup/verify'),
       headers: <String, String>{
         'Content-Type': 'application/json',
@@ -245,7 +253,7 @@ class AuthStore extends ChangeNotifier {
   }
 
   Future<String> createTotpChallenge() async {
-    final response = await http.post(
+    final response = await _client.post(
       uri('/api/v1/auth/totp/challenge'),
       headers: const {'Content-Type': 'application/json'},
     );
@@ -254,7 +262,7 @@ class AuthStore extends ChangeNotifier {
   }
 
   Future<void> verifyTotpCode(String challengeId, String code) async {
-    final response = await http.post(
+    final response = await _client.post(
       uri('/api/v1/auth/totp/verify'),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'challengeId': challengeId, 'code': code}),
@@ -268,7 +276,7 @@ class AuthStore extends ChangeNotifier {
   }
 
   Future<void> consumeOAuthHandoff(String handoff) async {
-    final response = await http.post(
+    final response = await _client.post(
       uri('/api/v1/auth/oauth/handoff/consume'),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'handoff': handoff}),
@@ -284,7 +292,7 @@ class AuthStore extends ChangeNotifier {
   Future<Map<String, dynamic>> getMe() async {
     final token = await getValidAccessToken();
     if (token == null) throw Exception('Not authenticated');
-    final response = await http.get(uri('/api/v1/auth/me'),
+    final response = await _client.get(uri('/api/v1/auth/me'),
         headers: {'Authorization': 'Bearer $token'});
     final data = await _unwrap(response, 'Failed to load user');
     return asMap(data['user']);
