@@ -58,6 +58,30 @@ describe('admin session service', () => {
     });
   });
 
+  it('surfaces create post backend error messages', async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: { message: 'Title is required' },
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    await expect(
+      createPostPR({
+        title: '',
+        slug: 'test-post',
+        year: 2026,
+        content: '# Test',
+      }),
+    ).rejects.toThrow('Title is required');
+  });
+
   it('uploads post images through the shared admin API client', async () => {
     mockAdminFetchRaw
       .mockResolvedValueOnce(
@@ -114,5 +138,39 @@ describe('admin session service', () => {
     const [uploadUrl, uploadOptions] = mockAdminFetchRaw.mock.calls[1];
     expect(uploadUrl).toBe('https://worker.example.com/api/v1/images/upload-direct');
     expect(uploadOptions.body).toBeInstanceOf(FormData);
+  });
+
+  it('surfaces fallback image upload backend error messages', async () => {
+    mockAdminFetchRaw
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: { message: 'Presign disabled' },
+          }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: { message: 'Image upload too large' },
+          }),
+          {
+            status: 413,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const file = new File(['image'], 'cover.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages({ year: 2026, slug: 'test-post' }, [file]),
+    ).rejects.toThrow('Image upload too large');
   });
 });

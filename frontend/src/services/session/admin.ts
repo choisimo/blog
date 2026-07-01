@@ -10,6 +10,19 @@ export type CreatePostPayload = {
   draft?: boolean;
 };
 
+function getAdminErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== 'object') return fallback;
+  const record = payload as { error?: unknown; message?: unknown };
+  if (typeof record.error === 'string' && record.error) return record.error;
+  if (record.error && typeof record.error === 'object') {
+    const nested = record.error as { message?: unknown; code?: unknown };
+    if (typeof nested.message === 'string' && nested.message) return nested.message;
+    if (typeof nested.code === 'string' && nested.code) return nested.code;
+  }
+  if (typeof record.message === 'string' && record.message) return record.message;
+  return fallback;
+}
+
 export async function createPostPR(
   payload: CreatePostPayload,
   _token?: string
@@ -27,7 +40,7 @@ export async function createPostPR(
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
-    throw new Error(json?.error || 'Failed to create PR');
+    throw new Error(getAdminErrorMessage(json, 'Failed to create PR'));
   }
   return json.data as {
     prUrl?: string;
@@ -131,7 +144,7 @@ async function uploadPostImagesCompatibility(
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
-    throw new Error(json?.error || 'Failed to upload');
+    throw new Error(getAdminErrorMessage(json, 'Failed to upload'));
   }
   return json.data as {
     dir: string;
