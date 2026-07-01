@@ -12,8 +12,7 @@ import {
   Bot,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
-import { useAuthStore } from "@/stores/session/useAuthStore";
-import { bearerAuth } from "@/lib/auth";
+import { adminFetchRaw } from "@/services/admin/apiClient";
 import {
   useFeatureFlagsStore,
   type FeatureFlags,
@@ -81,11 +80,11 @@ async function checkRAGHealth(): Promise<{
   }
 }
 
-async function getProviders(token: string): Promise<ProviderHealth[]> {
+// eslint-disable-next-line react-refresh/only-export-components
+export async function getProviders(): Promise<ProviderHealth[]> {
   const base = getApiBaseUrl();
   try {
-    const res = await fetch(`${base}/api/v1/admin/ai/providers`, {
-      headers: bearerAuth(token),
+    const res = await adminFetchRaw(`${base}/api/v1/admin/ai/providers`, {
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return [];
@@ -98,15 +97,13 @@ async function getProviders(token: string): Promise<ProviderHealth[]> {
 
 async function checkProviderHealth(
   providerId: string,
-  token: string,
 ): Promise<{ status: string; latencyMs?: number; error?: string }> {
   const base = getApiBaseUrl();
   try {
-    const res = await fetch(
+    const res = await adminFetchRaw(
       `${base}/api/v1/admin/ai/providers/${providerId}/health`,
       {
         method: "PUT",
-        headers: bearerAuth(token),
         signal: AbortSignal.timeout(15000),
       },
     );
@@ -182,8 +179,6 @@ const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
 };
 
 export function SystemHealth() {
-  const { getValidAccessToken } = useAuthStore();
-
   const [coreServices, setCoreServices] = useState<ServiceStatus[]>([
     { name: "backend", displayName: "Backend API", status: "unknown" },
   ]);
@@ -245,35 +240,29 @@ export function SystemHealth() {
 
   const fetchProviders = useCallback(async () => {
     setProvidersLoading(true);
-    const token = await getValidAccessToken();
-    if (token) {
-      const result = await getProviders(token);
-      setProviders(result);
-    }
+    const result = await getProviders();
+    setProviders(result);
     setProvidersLoading(false);
-  }, [getValidAccessToken]);
+  }, []);
 
   const handleCheckProviderHealth = useCallback(
     async (providerId: string) => {
       setCheckingProvider(providerId);
-      const token = await getValidAccessToken();
-      if (token) {
-        const result = await checkProviderHealth(providerId, token);
-        setProviders((prev) =>
-          prev.map((p) =>
-            p.id === providerId
-              ? {
-                  ...p,
-                  healthStatus: result.status,
-                  lastHealthCheck: new Date().toISOString(),
-                }
-              : p,
-          ),
-        );
-      }
+      const result = await checkProviderHealth(providerId);
+      setProviders((prev) =>
+        prev.map((p) =>
+          p.id === providerId
+            ? {
+                ...p,
+                healthStatus: result.status,
+                lastHealthCheck: new Date().toISOString(),
+              }
+            : p,
+        ),
+      );
       setCheckingProvider(null);
     },
-    [getValidAccessToken],
+    [],
   );
 
   const refreshFlags = useCallback(() => {
