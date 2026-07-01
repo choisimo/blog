@@ -354,7 +354,8 @@ export function EditorPicksSection() {
         },
       );
       if (!res.ok) {
-        setFormError("Failed to add pick.");
+        const data = await res.json().catch(() => ({}));
+        setFormError(getAnalyticsErrorMessage(data, "Failed to add pick."));
         setFormSubmitting(false);
         return;
       }
@@ -364,8 +365,10 @@ export function EditorPicksSection() {
       setFormReason("");
       setShowAddForm(false);
       await fetchPicks();
-    } catch {
-      setFormError("Failed to add pick.");
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : "Failed to add pick.",
+      );
     }
     setFormSubmitting(false);
   };
