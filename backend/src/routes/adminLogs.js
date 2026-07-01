@@ -10,17 +10,6 @@ import { createLogger } from "../lib/logger.js";
 const router = Router();
 const logger = createLogger("admin-logs");
 
-router.use((req, res, next) => {
-  if (req.path === "/stream" && !req.headers.authorization) {
-    const token =
-      typeof req.query.token === "string" ? req.query.token.trim() : "";
-    if (token) {
-      req.headers.authorization = `Bearer ${token}`;
-    }
-  }
-  next();
-});
-
 router.use(requireAdmin);
 
 const requirePg = (req, res, next) => {
