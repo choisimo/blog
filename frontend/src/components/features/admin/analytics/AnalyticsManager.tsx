@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  AlertCircle,
   RefreshCw,
   TrendingUp,
   Star,
@@ -11,7 +12,7 @@ import {
   ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
-import { adminFetchRaw } from "@/services/admin/apiClient";
+import { adminApiFetch, adminFetchRaw } from "@/services/admin/apiClient";
 import { getRealtimeVisitorsSnapshot } from "@/services/content/analytics";
 import { PostMetricsDetail } from "./PostMetricsDetail";
 
@@ -42,6 +43,11 @@ interface TrendingPost {
   year: string;
   recent_views: number;
   total_views: number;
+}
+
+interface PostStatsResult {
+  stats: PostStat[];
+  errorMessage?: string;
 }
 
 async function getEditorPicks(): Promise<EditorPick[]> {
@@ -679,27 +685,33 @@ function StatsRefreshSection() {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export async function getAllPostStats(
+export async function getAllPostStatsResult(
   orderBy: string,
-): Promise<PostStat[]> {
-  const base = getApiBaseUrl();
-  try {
-    const res = await adminFetchRaw(
-      `${base}/api/v1/admin/analytics/posts?orderBy=${orderBy}`,
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data?.stats ?? [];
-  } catch {
-    return [];
+): Promise<PostStatsResult> {
+  const result = await adminApiFetch<{ stats?: PostStat[] }>(
+    `/posts?orderBy=${encodeURIComponent(orderBy)}`,
+    { pathPrefix: "/api/v1/admin/analytics" },
+  );
+  if (!result.ok) {
+    return {
+      stats: [],
+      errorMessage: result.error || "Failed to load post stats",
+    };
   }
+  return { stats: result.data?.stats ?? [] };
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export async function getAllPostStats(orderBy: string): Promise<PostStat[]> {
+  return (await getAllPostStatsResult(orderBy)).stats;
 }
 
 type SortField = "total_views" | "views_7d" | "views_30d" | "last_viewed_at";
 
-function AllPostsSection() {
+export function AllPostsSection() {
   const [stats, setStats] = useState<PostStat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortField>("total_views");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<{
@@ -710,8 +722,10 @@ function AllPostsSection() {
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
-    const result = await getAllPostStats(sortBy);
-    setStats(result);
+    setErrorMessage(null);
+    const result = await getAllPostStatsResult(sortBy);
+    setStats(result.stats);
+    setErrorMessage(result.errorMessage ?? null);
     setLoading(false);
   }, [sortBy]);
 
@@ -779,6 +793,27 @@ function AllPostsSection() {
         <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
           <RefreshCw className="h-3 w-3 animate-spin" />
           Loading...
+        </div>
+      ) : errorMessage ? (
+        <div className="px-4 py-3 text-xs text-red-700 bg-red-50 border-t border-red-100">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div>
+                <p className="font-medium">Unable to load post stats</p>
+                <p>{errorMessage}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Retry post stats"
+                onClick={fetchStats}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
+              </button>
+            </div>
+          </div>
         </div>
       ) : stats.length === 0 ? (
         <p className="px-4 py-3 text-xs text-zinc-400">
