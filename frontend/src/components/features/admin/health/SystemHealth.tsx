@@ -128,10 +128,11 @@ interface AgentHealth {
   uptime?: number;
 }
 
-async function checkAgentHealthRequest(): Promise<AgentHealth> {
+// eslint-disable-next-line react-refresh/only-export-components
+export async function checkAgentHealthRequest(): Promise<AgentHealth> {
   const base = getApiBaseUrl();
   try {
-    const res = await fetch(`${base}/api/v1/agent/health`, {
+    const res = await adminFetchRaw(`${base}/api/v1/agent/health`, {
       method: "GET",
       signal: AbortSignal.timeout(8000),
     });
