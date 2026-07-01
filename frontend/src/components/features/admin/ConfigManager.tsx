@@ -268,7 +268,8 @@ export function ConfigManager() {
             <button
               type='button'
               onClick={() => toggleSecretVisibility(variable.key)}
-              aria-label={isVisible ? 'Hide value' : 'Show value'}
+              aria-label={`${isVisible ? 'Hide' : 'Show'} ${variable.key} value`}
+              title={`${isVisible ? 'Hide' : 'Show'} ${variable.key} value`}
               className={iconBtnClass}
               disabled={!mutationsEnabled}
             >
@@ -308,7 +309,8 @@ export function ConfigManager() {
               <button
                 type='button'
                 onClick={() => copyToClipboard(value)}
-                aria-label='Copy URL'
+                aria-label={`Copy ${variable.key} URL`}
+                title={`Copy ${variable.key} URL`}
                 className={iconBtnClass}
               >
                 <Copy className='h-3.5 w-3.5' aria-hidden='true' />

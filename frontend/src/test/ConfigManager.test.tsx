@@ -180,4 +180,98 @@ describe("ConfigManager protected-environment mode", () => {
     expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
     expect(screen.queryByText(/Environment config/i)).not.toBeInTheDocument();
   });
+
+  it("labels icon controls with their config keys", async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/admin/config/categories")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              categories: [
+                {
+                  id: "app",
+                  name: "Application",
+                  description: "server settings",
+                  variables: [
+                    {
+                      key: "SECRET_TOKEN",
+                      type: "password",
+                      description: "Secret token",
+                    },
+                    {
+                      key: "SITE_BASE_URL",
+                      type: "url",
+                      description: "Site URL",
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.endsWith("/api/v1/admin/config/current")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              mutationsEnabled: true,
+              config: {
+                SECRET_TOKEN: {
+                  value: "secret-value",
+                  isSecret: true,
+                  isSet: true,
+                  default: "",
+                },
+                SITE_BASE_URL: {
+                  value: "https://noblog.nodove.com",
+                  isSecret: false,
+                  isSet: true,
+                  default: "",
+                },
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response("Not Found", { status: 404 });
+    }) as typeof fetch;
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ConfigManager />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("button", { name: "Show SECRET_TOKEN value" }))
+      .toHaveAttribute("title", "Show SECRET_TOKEN value");
+    expect(screen.getByRole("button", { name: "Copy SITE_BASE_URL URL" }))
+      .toHaveAttribute("title", "Copy SITE_BASE_URL URL");
+  });
 });
