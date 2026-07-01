@@ -51,6 +51,27 @@ interface ConfigStateResponse {
 
 const EMPTY_CONFIG_VALUES: Record<string, ConfigValue> = {};
 
+function getAdminErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== 'object') return fallback;
+  const record = payload as { error?: unknown; message?: unknown };
+  if (typeof record.error === 'string' && record.error) return record.error;
+  if (record.error && typeof record.error === 'object') {
+    const nested = record.error as { message?: unknown; code?: unknown };
+    if (typeof nested.message === 'string' && nested.message) return nested.message;
+    if (typeof nested.code === 'string' && nested.code) return nested.code;
+  }
+  if (typeof record.message === 'string' && record.message) return record.message;
+  return fallback;
+}
+
+async function readAdminJson<T>(res: Response, fallback: string): Promise<T> {
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(getAdminErrorMessage(json, fallback));
+  }
+  return json as T;
+}
+
 export function ConfigManager() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('app');
@@ -60,26 +81,36 @@ export function ConfigManager() {
 
   const API_BASE = getApiBaseUrl();
 
-  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
+  const {
+    data: categoriesData,
+    error: categoriesError,
+    isLoading: categoriesLoading,
+    refetch: refetchCategories,
+  } = useQuery({
     queryKey: ['config-categories'],
     queryFn: async () => {
       const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/categories`);
-      if (!res.ok) throw new Error('Failed to fetch categories');
-      const json = await res.json();
+      const json = await readAdminJson<{ data: { categories: ConfigCategory[] } }>(
+        res,
+        'Failed to fetch categories',
+      );
       return json.data.categories as ConfigCategory[];
     },
   });
 
   const {
     data: configData,
+    error: configError,
     isLoading: configLoading,
     refetch: refetchConfig,
   } = useQuery({
     queryKey: ['config-current'],
     queryFn: async () => {
       const res = await adminFetchRaw(`${API_BASE}/api/v1/admin/config/current`);
-      if (!res.ok) throw new Error('Failed to fetch config');
-      const json = await res.json();
+      const json = await readAdminJson<{ data: ConfigStateResponse }>(
+        res,
+        'Failed to fetch config',
+      );
       return json.data as ConfigStateResponse;
     },
   });
@@ -321,6 +352,39 @@ export function ConfigManager() {
       <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 flex items-center gap-3 text-sm text-zinc-400'>
         <RefreshCw className='h-4 w-4 animate-spin shrink-0' aria-hidden='true' />
         <span>Loading configuration…</span>
+      </div>
+    );
+  }
+
+  const loadError = categoriesError ?? configError;
+  if (loadError) {
+    const message =
+      loadError instanceof Error
+        ? loadError.message
+        : 'Failed to load configuration';
+
+    return (
+      <div className='rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300'>
+        <div className='flex items-start justify-between gap-3'>
+          <div className='flex min-w-0 items-start gap-2'>
+            <AlertCircle className='mt-0.5 h-4 w-4 shrink-0' aria-hidden='true' />
+            <div className='min-w-0'>
+              <p className='font-medium'>Unable to load configuration</p>
+              <p className='mt-1 text-xs'>{message}</p>
+            </div>
+          </div>
+          <button
+            type='button'
+            onClick={() => {
+              void refetchCategories();
+              void refetchConfig();
+            }}
+            className='inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30'
+          >
+            <RefreshCw className='h-3 w-3' aria-hidden='true' />
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
