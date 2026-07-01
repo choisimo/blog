@@ -1,17 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockBearerAuth,
   mockGetApiBaseUrl,
   mockGetValidAccessToken,
 } = vi.hoisted(() => ({
-  mockBearerAuth: vi.fn((token: string) => ({ Authorization: `Bearer ${token}` })),
   mockGetApiBaseUrl: vi.fn(() => "https://admin.example.com"),
   mockGetValidAccessToken: vi.fn(),
-}));
-
-vi.mock("@/lib/auth", () => ({
-  bearerAuth: mockBearerAuth,
 }));
 
 vi.mock("@/utils/network/apiBase", () => ({
@@ -92,20 +86,15 @@ describe("LogViewer stream controller", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-    vi.stubGlobal("fetch", mockFetch);
     mockGetApiBaseUrl.mockReturnValue("https://admin.example.com");
-    mockBearerAuth.mockImplementation((token: string) => ({
-      Authorization: `Bearer ${token}`,
-    }));
   });
 
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
-    vi.unstubAllGlobals();
   });
 
-  it("sends the bearer token in the stream request", async () => {
+  it("uses the shared admin stream fetcher after resolving a token", async () => {
     mockGetValidAccessToken.mockResolvedValue("test-token");
     mockFetch.mockResolvedValue(createResponse([]));
 
@@ -114,6 +103,7 @@ describe("LogViewer stream controller", () => {
 
     await connectLogStream({
       abortRef: { current: null },
+      fetchStream: mockFetch,
       getValidAccessToken: mockGetValidAccessToken,
       pausedRef: { current: false },
       reconnect: vi.fn(),
@@ -121,14 +111,13 @@ describe("LogViewer stream controller", () => {
       setLogs: state.setLogs,
     });
 
-    expect(mockBearerAuth).toHaveBeenCalledWith("test-token");
+    expect(mockGetValidAccessToken).toHaveBeenCalled();
     expect(mockFetch).toHaveBeenCalledWith(
       "https://admin.example.com/api/v1/admin/logs/stream",
       expect.objectContaining({
         method: "GET",
         headers: expect.objectContaining({
           "Content-Type": "text/event-stream",
-          Authorization: "Bearer test-token",
         }),
       }),
     );
@@ -159,6 +148,7 @@ describe("LogViewer stream controller", () => {
     async function connect() {
       await connectLogStream({
         abortRef,
+        fetchStream: mockFetch,
         getValidAccessToken: mockGetValidAccessToken,
         pausedRef: { current: false },
         reconnect: () => {
@@ -208,6 +198,7 @@ describe("LogViewer stream controller", () => {
 
     await connectLogStream({
       abortRef,
+      fetchStream: mockFetch,
       getValidAccessToken: mockGetValidAccessToken,
       pausedRef,
       reconnect,
@@ -224,6 +215,7 @@ describe("LogViewer stream controller", () => {
 
     await connectLogStream({
       abortRef,
+      fetchStream: mockFetch,
       getValidAccessToken: mockGetValidAccessToken,
       pausedRef,
       reconnect,

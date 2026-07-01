@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { useAuthStore } from "@/stores/session/useAuthStore";
-import { bearerAuth } from "@/lib/auth";
+import { adminFetchRaw } from "@/services/admin/apiClient";
 import {
   findSSEFrameBoundary,
   parseSSEFrame,
@@ -106,7 +106,7 @@ export async function parseLogStream(
 // eslint-disable-next-line react-refresh/only-export-components
 export async function connectLogStream({
   abortRef,
-  fetchImpl = fetch,
+  fetchStream = adminFetchRaw,
   getValidAccessToken,
   pausedRef,
   reconnect,
@@ -114,7 +114,7 @@ export async function connectLogStream({
   setLogs,
 }: {
   abortRef: AbortControllerRef;
-  fetchImpl?: typeof fetch;
+  fetchStream?: typeof adminFetchRaw;
   getValidAccessToken: () => Promise<string | null>;
   pausedRef: BooleanRef;
   reconnect: () => void;
@@ -138,11 +138,10 @@ export async function connectLogStream({
   abortRef.current = controller;
 
   try {
-    const response = await fetchImpl(url, {
+    const response = await fetchStream(url, {
       method: "GET",
       headers: {
         "Content-Type": "text/event-stream",
-        ...bearerAuth(token),
       },
       signal: controller.signal,
     });
