@@ -284,7 +284,8 @@ export default function AiImageGeneratorPanel({
                       'transition-transform duration-200 ease-spring hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
                     )}
                     onClick={() => onInsertMarkdown(item.markdown)}
-                    title="본문에 삽입"
+                    aria-label={`본문에 ${item.alt} 삽입`}
+                    title={`본문에 ${item.alt} 삽입`}
                   >
                     <img
                       src={imageUrl}
@@ -321,7 +322,8 @@ export default function AiImageGeneratorPanel({
                       variant="ghost"
                       className="min-h-9 px-2 text-xs"
                       onClick={() => void copyUrl(imageUrl)}
-                      aria-label="이미지 URL 복사"
+                      aria-label={`${item.alt} URL 복사`}
+                      title={`${item.alt} URL 복사`}
                     >
                       {copied ? (
                         <Check className="h-4 w-4" aria-hidden="true" />
