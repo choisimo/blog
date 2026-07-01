@@ -74,6 +74,12 @@ function renderEditor() {
 describe('PostEditorWorkspace', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    mocks.createPostPR.mockResolvedValue({
+      status: 'pending',
+      outboxId: 'outbox-1',
+      branch: 'post/draft-title',
+      path: 'frontend/public/posts/2026/draft-title.md',
+    });
     mocks.uploadPostImages.mockResolvedValue({
       dir: '/images/2026/drag-hero',
       items: [
@@ -117,6 +123,36 @@ describe('PostEditorWorkspace', () => {
     );
   });
 
+  it('creates draft PRs through the admin session service without token plumbing', async () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText('제목'), {
+      target: { value: 'Draft Title' },
+    });
+    fireEvent.change(screen.getByLabelText('슬러그'), {
+      target: { value: 'draft-title' },
+    });
+    fireEvent.change(screen.getByLabelText('Markdown content editor'), {
+      target: { value: '# Draft Title\n\nBody' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Draft PR/i }));
+
+    await waitFor(() => {
+      expect(mocks.createPostPR).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mocks.createPostPR.mock.calls[0]).toHaveLength(1);
+    expect(mocks.createPostPR).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Draft Title',
+        slug: 'draft-title',
+        content: '# Draft Title\n\nBody',
+        draft: true,
+      }),
+    );
+  });
+
   it('uploads a dropped image and inserts the returned markdown into content', async () => {
     renderEditor();
 
@@ -146,9 +182,9 @@ describe('PostEditorWorkspace', () => {
       expect(mocks.uploadPostImages).toHaveBeenCalledWith(
         { year: expect.any(String), slug: 'drag-hero' },
         [file],
-        'access-token',
       );
     });
+    expect(mocks.uploadPostImages.mock.calls[0]).toHaveLength(2);
 
     expect(
       (screen.getByLabelText('Markdown content editor') as HTMLTextAreaElement)

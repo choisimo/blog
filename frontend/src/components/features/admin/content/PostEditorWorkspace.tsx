@@ -354,9 +354,6 @@ export function PostEditorWorkspace() {
 
   const createPr = useMutation({
     mutationFn: async (mode: SubmitMode) => {
-      const token = await getValidAccessToken();
-      if (!token) throw new Error('먼저 로그인하세요');
-
       const publishNow = mode === 'publish' && published;
       const payload: CreatePostPayload = {
         title: title.trim() || slug.trim() || 'New Post',
@@ -375,7 +372,7 @@ export function PostEditorWorkspace() {
         },
       };
 
-      return createPostPR(payload, token);
+      return createPostPR(payload);
     },
     onSuccess: data => {
       if (data.prUrl) {
@@ -439,8 +436,6 @@ export function PostEditorWorkspace() {
       }
 
       try {
-        const token = await getValidAccessToken();
-        if (!token) throw new Error('먼저 로그인하세요');
         if (!/^[0-9]{4}$/.test(year)) throw new Error('연도(YYYY)를 입력하세요');
         if (!slug.trim()) {
           throw new Error('슬러그를 먼저 입력하세요. 이미지 저장 경로에 필요합니다.');
@@ -451,7 +446,6 @@ export function PostEditorWorkspace() {
         const result = await uploadPostImages(
           { year, slug: slug.trim() },
           imageFiles,
-          token,
         );
 
         result.items.forEach((item, index) => {
@@ -483,7 +477,6 @@ export function PostEditorWorkspace() {
     },
     [
       appendAttachedImage,
-      getValidAccessToken,
       insertAtCursor,
       slug,
       toast,
