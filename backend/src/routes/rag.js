@@ -19,6 +19,7 @@
 import express from 'express';
 import crypto from 'node:crypto';
 import { config } from '../config.js';
+import requireAdmin from '../middleware/adminAuth.js';
 import { requireFeature } from '../middleware/featureFlags.js';
 import { validateBody } from '../middleware/validation.js';
 import {
@@ -500,7 +501,7 @@ router.post('/search', validateBody(ragSearchBodySchema), async (req, res) => {
  *   }
  * }
  */
-router.post('/embed', validateBody(ragEmbedBodySchema), async (req, res) => {
+router.post('/embed', requireAdmin, validateBody(ragEmbedBodySchema), async (req, res) => {
   try {
     const { texts } = req.body;
 
@@ -800,7 +801,7 @@ router.post('/memories/batch-delete', validateBody(memoriesBatchDeleteBodySchema
  *   collection?: string  // Optional custom collection name
  * }
  */
-router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
+router.post('/index', requireAdmin, validateBody(ragIndexBodySchema), async (req, res) => {
   try {
     const { documents, collection } = req.body;
     const collectionName = collection || config.rag.chromaCollection;
@@ -836,7 +837,7 @@ router.post('/index', validateBody(ragIndexBodySchema), async (req, res) => {
 /**
  * DELETE /index/:documentId - 인덱스에서 문서 삭제
  */
-router.delete('/index/:documentId', async (req, res) => {
+router.delete('/index/:documentId', requireAdmin, async (req, res) => {
   try {
     const { documentId } = req.params;
     const { collection } = req.query;
@@ -874,7 +875,7 @@ router.delete('/index/:documentId', async (req, res) => {
 /**
  * GET /status - 인덱스 상태 확인
  */
-router.get('/status', async (req, res) => {
+router.get('/status', requireAdmin, async (req, res) => {
   try {
     const { collection } = req.query;
     const collectionName = collection || config.rag.chromaCollection;
@@ -933,7 +934,7 @@ router.get('/status', async (req, res) => {
 /**
  * GET /collections - 모든 컬렉션 목록
  */
-router.get('/collections', async (req, res) => {
+router.get('/collections', requireAdmin, async (req, res) => {
   try {
     const collectionsBase = getChromaCollectionsBase();
     
