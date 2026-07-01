@@ -322,7 +322,8 @@ export function EditorPicksSection() {
         { method: "DELETE" },
       );
       if (!res.ok) {
-        setRemoveError("Failed to remove pick.");
+        const data = await res.json().catch(() => ({}));
+        setRemoveError(getAnalyticsErrorMessage(data, "Failed to remove pick."));
         return;
       }
       await fetchPicks();

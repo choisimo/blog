@@ -136,6 +136,68 @@ describe("getAllPostStats", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the backend message when removing an editor pick fails", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          data: {
+            picks: [
+              {
+                post_slug: "hello-world",
+                year: "2026",
+                title: "Hello World",
+                cover_image: null,
+                category: "Engineering",
+                rank: 1,
+                score: 99,
+                reason: "Featured",
+                is_active: 1,
+                expires_at: null,
+              },
+            ],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { message: "Editor pick removal denied" },
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<EditorPicksSection />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Hello World")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Editor pick removal denied/i),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+      "https://admin.example.com/api/v1/analytics/admin/editor-picks/2026/hello-world",
+      { method: "DELETE" },
+    );
+    expect(
+      screen.queryByText(/^Failed to remove pick\.$/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the backend message when stats refresh fails", async () => {
     mockAdminFetchRaw.mockResolvedValue(
       new Response(
