@@ -15,6 +15,7 @@ import {
   checkBackendHealth,
   checkProviderHealth,
   getProviders,
+  getProvidersResult,
 } from "./SystemHealth";
 
 describe("checkBackendHealth", () => {
@@ -76,6 +77,28 @@ describe("checkBackendHealth", () => {
     );
     expect(providers).toHaveLength(1);
     expect(providers[0].displayName).toBe("OpenAI");
+  });
+
+  it("returns provider load errors from non-OK admin responses", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: { message: "Provider inventory unavailable" },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const result = await getProvidersResult();
+
+    expect(result).toEqual({
+      providers: [],
+      errorMessage: "Provider inventory unavailable",
+    });
   });
 
   it("checks agent health through the shared admin API client", async () => {

@@ -38,6 +38,11 @@ interface ProviderHealth {
   healthError?: string | null;
 }
 
+interface ProvidersResult {
+  providers: ProviderHealth[];
+  errorMessage?: string;
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export async function checkBackendHealth(): Promise<{
   ok: boolean;
@@ -82,18 +87,35 @@ async function checkRAGHealth(): Promise<{
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export async function getProviders(): Promise<ProviderHealth[]> {
+export async function getProvidersResult(): Promise<ProvidersResult> {
   const base = getApiBaseUrl();
   try {
     const res = await adminFetchRaw(`${base}/api/v1/admin/ai/providers`, {
       signal: AbortSignal.timeout(10000),
     });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data?.providers ?? [];
-  } catch {
-    return [];
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        providers: [],
+        errorMessage: getResponseErrorMessage(
+          data,
+          `Failed to load providers (${res.status})`,
+        ),
+      };
+    }
+    return { providers: data.data?.providers ?? [] };
+  } catch (err) {
+    return {
+      providers: [],
+      errorMessage:
+        err instanceof Error ? err.message : "Failed to load providers",
+    };
   }
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export async function getProviders(): Promise<ProviderHealth[]> {
+  return (await getProvidersResult()).providers;
 }
 
 function getResponseErrorMessage(payload: unknown, fallback: string): string {
@@ -224,6 +246,7 @@ export function SystemHealth() {
   const [ragLoading, setRagLoading] = useState(false);
 
   const [providers, setProviders] = useState<ProviderHealth[]>([]);
+  const [providersError, setProvidersError] = useState<string | null>(null);
   const [providersLoading, setProvidersLoading] = useState(false);
   const [checkingProvider, setCheckingProvider] = useState<string | null>(null);
 
@@ -273,8 +296,10 @@ export function SystemHealth() {
 
   const fetchProviders = useCallback(async () => {
     setProvidersLoading(true);
-    const result = await getProviders();
-    setProviders(result);
+    setProvidersError(null);
+    const result = await getProvidersResult();
+    setProviders(result.providers);
+    setProvidersError(result.errorMessage ?? null);
     setProvidersLoading(false);
   }, []);
 
@@ -458,7 +483,20 @@ export function SystemHealth() {
             </button>
           </div>
           <div className="divide-y divide-zinc-100">
-            {providers.length === 0 ? (
+            {providersError ? (
+              <div className="px-4 py-2.5 text-xs text-red-700 bg-red-50">
+                <p className="font-medium">Unable to load providers</p>
+                <p>{providersError}</p>
+                <button
+                  type="button"
+                  onClick={fetchProviders}
+                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Retry
+                </button>
+              </div>
+            ) : providers.length === 0 ? (
               <p className="px-4 py-2.5 text-xs text-zinc-400">
                 {providersLoading ? "Loading..." : "No providers"}
               </p>
