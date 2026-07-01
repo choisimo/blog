@@ -35,6 +35,7 @@ interface ProviderHealth {
   isEnabled: boolean;
   modelCount: number;
   enabledModelCount: number;
+  healthError?: string | null;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -95,7 +96,29 @@ export async function getProviders(): Promise<ProviderHealth[]> {
   }
 }
 
-async function checkProviderHealth(
+function getResponseErrorMessage(payload: unknown, fallback: string): string {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "error" in payload
+  ) {
+    const error = payload.error;
+    if (typeof error === "string" && error) return error;
+    if (
+      error &&
+      typeof error === "object" &&
+      "message" in error &&
+      typeof error.message === "string" &&
+      error.message
+    ) {
+      return error.message;
+    }
+  }
+  return fallback;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export async function checkProviderHealth(
   providerId: string,
 ): Promise<{ status: string; latencyMs?: number; error?: string }> {
   const base = getApiBaseUrl();
@@ -107,7 +130,16 @@ async function checkProviderHealth(
         signal: AbortSignal.timeout(15000),
       },
     );
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        status: "down",
+        error: getResponseErrorMessage(
+          data,
+          `Provider health check failed (${res.status})`,
+        ),
+      };
+    }
     return {
       status: data.data?.status ?? "unknown",
       latencyMs: data.data?.latencyMs,
@@ -256,6 +288,7 @@ export function SystemHealth() {
             ? {
                 ...p,
                 healthStatus: result.status,
+                healthError: result.error ?? null,
                 lastHealthCheck: new Date().toISOString(),
               }
             : p,
@@ -440,8 +473,12 @@ export function SystemHealth() {
                 >
                   <div className="text-left">
                     <p className="text-sm text-zinc-700">{p.displayName}</p>
-                    <p className="font-mono text-xs text-zinc-400">
-                      {p.enabledModelCount}/{p.modelCount} models
+                    <p
+                      className={`font-mono text-xs max-w-[140px] truncate ${
+                        p.healthError ? "text-red-600" : "text-zinc-400"
+                      }`}
+                    >
+                      {p.healthError ?? `${p.enabledModelCount}/${p.modelCount} models`}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
