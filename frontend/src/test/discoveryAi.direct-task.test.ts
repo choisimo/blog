@@ -172,4 +172,51 @@ describe('discovery AI direct tasks', () => {
       sketch({ paragraph: 'This text should not become fallback bullets.' }),
     ).rejects.toThrow('AI task failed');
   });
+
+  it('uses sanitized direct-task error codes when error messages are missing', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: ' AI\u0000\nTASK_FAILED ',
+          },
+        }),
+        {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const { sketch } = await import('@/services/discovery/ai');
+
+    await expect(
+      sketch({ paragraph: 'This text should not become fallback bullets.' }),
+    ).rejects.toThrow('AI TASK_FAILED');
+  });
+
+  it('rejects malformed successful sketch payloads instead of trusting array presence', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            mood: 'curious',
+            bullets: ['valid point', { text: 'not a string' }],
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const { sketch } = await import('@/services/discovery/ai');
+
+    await expect(
+      sketch({ paragraph: 'A paragraph with malformed AI output.' }),
+    ).rejects.toThrow('Invalid sketch response format');
+  });
 });

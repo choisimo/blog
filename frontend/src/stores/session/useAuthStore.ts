@@ -48,6 +48,8 @@ export interface AuthState {
 // ============================================================================
 
 const STORAGE_KEY = 'admin.auth';
+const MAX_AUTH_STORE_TOKEN_LENGTH = 4096;
+const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/;
 
 // Refresh lock to prevent concurrent refreshes
 let refreshPromise: Promise<string | null> | null = null;
@@ -58,6 +60,21 @@ function clearTokenRefreshTimer(): void {
     clearTimeout(refreshTimer);
     refreshTimer = null;
   }
+}
+
+export function normalizeAuthStoreToken(token: string | null | undefined): string | null {
+  if (typeof token !== 'string') return null;
+  const value = token.trim();
+  if (
+    !value ||
+    value.length > MAX_AUTH_STORE_TOKEN_LENGTH ||
+    /\s/.test(value) ||
+    CONTROL_CHAR_PATTERN.test(value) ||
+    /%(?:0a|0d)/i.test(value)
+  ) {
+    return null;
+  }
+  return value;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -73,14 +90,37 @@ export const useAuthStore = create<AuthState>()(
        * Set both tokens after successful OTP verification
        */
       setTokens: (accessToken, refreshToken, user) => {
-        set({ accessToken, refreshToken, user: user ?? get().user });
+        const normalizedAccessToken = normalizeAuthStoreToken(accessToken);
+        const normalizedRefreshToken = normalizeAuthStoreToken(refreshToken);
+
+        if (!normalizedAccessToken || !normalizedRefreshToken) {
+          get().clearAuth();
+          return;
+        }
+
+        set({
+          accessToken: normalizedAccessToken,
+          refreshToken: normalizedRefreshToken,
+          user: user ?? get().user,
+        });
         scheduleTokenRefresh();
       },
       /**
        * Set both tokens after successful OAuth callback
        */
       setTokensFromOAuth: (accessToken, refreshToken) => {
-        set({ accessToken, refreshToken });
+        const normalizedAccessToken = normalizeAuthStoreToken(accessToken);
+        const normalizedRefreshToken = normalizeAuthStoreToken(refreshToken);
+
+        if (!normalizedAccessToken || !normalizedRefreshToken) {
+          get().clearAuth();
+          return;
+        }
+
+        set({
+          accessToken: normalizedAccessToken,
+          refreshToken: normalizedRefreshToken,
+        });
         scheduleTokenRefresh();
       },
 
@@ -96,6 +136,7 @@ export const useAuthStore = create<AuthState>()(
        */
       clearAuth: () => {
         clearTokenRefreshTimer();
+        refreshPromise = null;
         set({
           accessToken: null,
           refreshToken: null,
@@ -121,7 +162,18 @@ export const useAuthStore = create<AuthState>()(
        * Returns null if unable to get a valid token (user should re-authenticate)
        */
       getValidAccessToken: async () => {
-        const { accessToken, refreshToken } = get();
+        const storedAccessToken = get().accessToken;
+        const storedRefreshToken = get().refreshToken;
+        const accessToken = normalizeAuthStoreToken(storedAccessToken);
+        const refreshToken = normalizeAuthStoreToken(storedRefreshToken);
+
+        if (
+          (storedAccessToken && !accessToken) ||
+          (storedRefreshToken && !refreshToken)
+        ) {
+          get().clearAuth();
+          return null;
+        }
 
         // No tokens at all
         if (!accessToken && !refreshToken) {
@@ -156,6 +208,10 @@ export const useAuthStore = create<AuthState>()(
         refreshPromise = (async () => {
           try {
             const result = await refreshAccessToken(refreshToken);
+            if (get().refreshToken !== refreshToken) {
+              set({ isRefreshing: false });
+              return null;
+            }
             set({
               accessToken: result.accessToken,
               refreshToken: result.refreshToken,
@@ -179,7 +235,8 @@ export const useAuthStore = create<AuthState>()(
        * Check if user is authenticated (has valid tokens)
        */
       isAuthenticated: () => {
-        const { accessToken, refreshToken } = get();
+        const accessToken = normalizeAuthStoreToken(get().accessToken);
+        const refreshToken = normalizeAuthStoreToken(get().refreshToken);
 
         // Has valid access token
         if (accessToken && !isTokenExpired(accessToken, 0)) {
@@ -216,10 +273,16 @@ export const useAuthStore = create<AuthState>()(
  */
 export function getAuthHeaders(): Record<string, string> {
   const { accessToken } = useAuthStore.getState();
+  const token = normalizeAuthStoreToken(accessToken);
+
+  if (accessToken && !token) {
+    useAuthStore.getState().clearAuth();
+  }
+
   return accessToken
     ? {
         'Content-Type': 'application/json',
-        ...bearerAuth(accessToken),
+        ...(token ? bearerAuth(token) : {}),
       }
     : { 'Content-Type': 'application/json' };
 }
@@ -245,10 +308,11 @@ export function scheduleTokenRefresh(): () => void {
   clearTokenRefreshTimer();
 
   const { accessToken } = useAuthStore.getState();
+  const normalizedAccessToken = normalizeAuthStoreToken(accessToken);
 
-  if (!accessToken) return () => {};
+  if (!normalizedAccessToken) return () => {};
 
-  const expiration = getTokenExpiration(accessToken);
+  const expiration = getTokenExpiration(normalizedAccessToken);
   if (!expiration) return () => {};
 
   // Refresh 1 minute before expiration

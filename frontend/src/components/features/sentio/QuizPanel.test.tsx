@@ -7,7 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { QuizPanel } from "./QuizPanel";
+import { QuizPanel, normalizeQuizPanelText } from "./QuizPanel";
 import type { QuizResult } from "@/services/discovery/ai";
 
 vi.mock("@/contexts/ThemeContext", () => ({
@@ -67,6 +67,68 @@ describe("QuizPanel", () => {
     fireEvent.click(screen.getByTestId("quiz-start"));
 
     expect(await screen.findByText("정답은 무엇인가요?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /beta/i }));
+    fireEvent.click(screen.getByRole("button", { name: "확인" }));
+
+    expect(await screen.findByText("정답입니다!")).toBeInTheDocument();
+  });
+
+  it("normalizes prompt metadata before requesting quiz generation", async () => {
+    vi.mocked(quiz).mockResolvedValue({
+      quiz: [
+        {
+          type: "multiple_choice",
+          question: "Sanitized metadata question",
+          answer: "A",
+          options: ["Clean answer", "Other", "Else", "More"],
+        },
+      ],
+    });
+
+    render(
+      <QuizPanel
+        content={codeBlock}
+        postTitle={"Old\u0000 Post\r\nInjected\u007F"}
+        postTags={[" Study\u0000 Mode ", "bad\r\ntag\u007F", ""]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("quiz-start"));
+
+    expect(await screen.findByText("Sanitized metadata question")).toBeInTheDocument();
+    expect(quiz).toHaveBeenCalledWith(
+      expect.objectContaining({
+        postTitle: "Old Post Injected",
+        postTags: ["study mode", "bad tag"],
+      }),
+    );
+  });
+
+  it("strips OSC and CSI ANSI escape sequences from quiz metadata text", () => {
+    expect(
+      normalizeQuizPanelText(
+        "\u001b]0;Hidden title\u0007Visible \u001b[31mquiz\u001b[0m\u0000",
+      ),
+    ).toBe("Visible quiz");
+  });
+
+  it("accepts ANSI-wrapped letter answers as correct", async () => {
+    vi.mocked(quiz).mockResolvedValue({
+      quiz: [
+        {
+          type: "multiple_choice",
+          question: "정답 라벨은?",
+          answer: "\u001b[31mB\u001b[0m",
+          options: ["Alpha", "Beta", "Gamma", "Delta"],
+        },
+      ],
+    });
+
+    render(<QuizPanel content={codeBlock} postTitle="Old Post" />);
+
+    fireEvent.click(screen.getByTestId("quiz-start"));
+
+    expect(await screen.findByText("정답 라벨은?")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /beta/i }));
     fireEvent.click(screen.getByRole("button", { name: "확인" }));
 

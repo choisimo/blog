@@ -31,7 +31,13 @@ vi.mock('@/config/defaults', () => ({
   },
 }));
 
-import { deleteFromIndex, getCollections, indexDocuments } from './rag';
+import {
+  deleteFromIndex,
+  getCollectionStatus,
+  getCollections,
+  indexDocuments,
+  semanticSearch,
+} from './rag';
 
 describe('admin rag API helpers', () => {
   beforeEach(() => {
@@ -102,5 +108,94 @@ describe('admin rag API helpers', () => {
       }
     );
     expect(result).toEqual({ ok: true });
+  });
+
+  it('rejects polluted collection selectors before status requests', async () => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const result = await getCollectionStatus('posts%0Aevil');
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Invalid RAG collection selector',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockGetAuthHeadersAsync).not.toHaveBeenCalled();
+  });
+
+  it('rejects polluted document selectors before index delete requests', async () => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const result = await deleteFromIndex('doc-1%0Aevil', 'posts');
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Invalid RAG document selector',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockGetAuthHeadersAsync).not.toHaveBeenCalled();
+  });
+
+  it('normalizes index document ids and collection selectors while preserving content', async () => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { indexed: 1, collection: 'posts' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    await indexDocuments(
+      [{ id: ' doc-1 ', content: 'hello\nworld' }],
+      ' posts ',
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://api.example.com/api/v1/rag/index', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer admin-token',
+      },
+      body: JSON.stringify({
+        documents: [{ id: 'doc-1', content: 'hello\nworld' }],
+        collection: 'posts',
+      }),
+    });
+  });
+
+  it('clamps semantic search result counts before requests', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { results: [], query: 'rag', total: 0 },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    await semanticSearch('rag', { n_results: 500 });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://api.example.com/api/v1/rag/search',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ query: 'rag', n_results: 50 }),
+      }),
+    );
   });
 });

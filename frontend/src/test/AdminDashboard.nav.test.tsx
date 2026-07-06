@@ -37,12 +37,40 @@ vi.mock('@/components/features/admin/logs', () => ({
 }));
 
 vi.mock('@/components/features/admin/content', () => ({
-  ContentManager: () => <div>Content panel</div>,
+  ContentManager: ({
+    subtab,
+    onSubtabChange,
+  }: {
+    subtab?: string;
+    onSubtabChange: (nextSubtab: string) => void;
+  }) => (
+    <div>
+      Content panel
+      <span data-testid="content-subtab">{subtab ?? 'none'}</span>
+      <button
+        type="button"
+        onClick={() => onSubtabChange(' overview ')}
+      >
+        Safe content subtab
+      </button>
+      <button
+        type="button"
+        onClick={() => onSubtabChange('overview\r\nX-Injected: yes')}
+      >
+        Polluted content subtab
+      </button>
+    </div>
+  ),
 }));
 
 function LocationProbe() {
   const location = useLocation();
-  return <span data-testid="path">{location.pathname}</span>;
+  return (
+    <>
+      <span data-testid="path">{location.pathname}</span>
+      <span data-testid="location-key">{location.key}</span>
+    </>
+  );
 }
 
 function renderDashboard(initialPath = '/admin/config/health') {
@@ -51,6 +79,18 @@ function renderDashboard(initialPath = '/admin/config/health') {
       <Routes>
         <Route
           path="/admin/config/:section"
+          element={
+            <>
+              <LocationProbe />
+              <AdminDashboard
+                userEmail="admin@example.com"
+                onLogout={() => {}}
+              />
+            </>
+          }
+        />
+        <Route
+          path="/admin/config/:section/:subtab"
           element={
             <>
               <LocationProbe />
@@ -119,5 +159,59 @@ describe('AdminDashboard navigation', () => {
       'true',
     );
     await screen.findByText('Workers panel');
+  });
+
+  it('does not push a new route when reselecting the active section', async () => {
+    renderDashboard();
+    await screen.findByText('Health panel');
+
+    const initialKey = screen.getByTestId('location-key').textContent;
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Health' }));
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Health' }), {
+      key: 'Home',
+    });
+
+    expect(screen.getByTestId('path')).toHaveTextContent('/admin/config/health');
+    expect(screen.getByTestId('location-key')).toHaveTextContent(
+      initialKey ?? '',
+    );
+  });
+
+  it('normalizes valid admin subtab route params before passing them to managers', async () => {
+    renderDashboard('/admin/config/content/Overview');
+    await screen.findByText('Content panel');
+
+    expect(screen.getByTestId('content-subtab')).toHaveTextContent('overview');
+  });
+
+  it('redirects polluted admin subtab route params to the base section', async () => {
+    renderDashboard('/admin/config/content/overview%0AInjected');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('path')).toHaveTextContent(
+        '/admin/config/content',
+      );
+    });
+  });
+
+  it('ignores polluted admin subtab navigation callbacks', async () => {
+    renderDashboard('/admin/config/content');
+    await screen.findByText('Content panel');
+
+    const initialKey = screen.getByTestId('location-key').textContent;
+    fireEvent.click(screen.getByRole('button', { name: 'Polluted content subtab' }));
+
+    expect(screen.getByTestId('path')).toHaveTextContent('/admin/config/content');
+    expect(screen.getByTestId('location-key')).toHaveTextContent(
+      initialKey ?? '',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Safe content subtab' }));
+    await waitFor(() => {
+      expect(screen.getByTestId('path')).toHaveTextContent(
+        '/admin/config/content/overview',
+      );
+    });
   });
 });

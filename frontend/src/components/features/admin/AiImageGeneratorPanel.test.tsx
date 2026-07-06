@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGeneratePostImages = vi.hoisted(() => vi.fn());
 const mockToast = vi.hoisted(() => vi.fn());
@@ -18,6 +18,11 @@ vi.mock('@/hooks/ui/use-toast', () => ({
 import AiImageGeneratorPanel from './AiImageGeneratorPanel';
 
 describe('AiImageGeneratorPanel', () => {
+  beforeEach(() => {
+    mockGeneratePostImages.mockReset();
+    mockToast.mockReset();
+  });
+
   it('labels generated image actions by alt text', async () => {
     const user = userEvent.setup();
 
@@ -57,5 +62,31 @@ describe('AiImageGeneratorPanel', () => {
     await waitFor(() => {
       expect(mockGeneratePostImages).toHaveBeenCalled();
     });
+  });
+
+  it('explains why image generation is disabled when the slug is missing', () => {
+    render(
+      <AiImageGeneratorPanel
+        title="Sample diagram"
+        category="dev"
+        tags="ai"
+        content="content"
+        year="2026"
+        slug=""
+        onInsertMarkdown={vi.fn()}
+        onSetCoverImage={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: '이미지 생성' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(
+      '슬러그(slug)를 입력하면 이미지 저장 경로를 만들 수 있습니다.',
+    );
+    expect(
+      screen.getByText(
+        '슬러그(slug)를 입력하면 이미지 저장 경로를 만들 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
   });
 });

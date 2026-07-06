@@ -86,16 +86,188 @@ type WorkerSignal = {
   tone: WorkerSignalTone;
 };
 
-function getApiErrorMessage(error: unknown, fallback: string): string {
-  if (typeof error === "string" && error) return error;
+type WorkerEnvironment = "development" | "production";
+
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const ADMIN_ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const ADMIN_TEXT_CONTROL_PATTERN = /[\u0000-\u001F\u007F]+/g;
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+export function normalizeAdminDisplayText(
+  value: unknown,
+  fallback = "",
+): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ADMIN_ANSI_ESCAPE_PATTERN, "")
+    .replace(ADMIN_TEXT_CONTROL_PATTERN, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  const hasUnsafePathOrHeaderChars = [trimmed, decoded].some((candidate) =>
+    /[\r\n\\/]/.test(candidate),
+  );
+  if (hasUnsafePathOrHeaderChars) return null;
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeWorkerEnv(value: unknown): WorkerEnvironment | null {
+  return value === "development" || value === "production" ? value : null;
+}
+
+export function normalizeSelectorList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(new Set(values.map(normalizeAdminSelector).filter(isPresent)));
+}
+
+function normalizeManifestVars(vars: unknown): Record<string, string> {
+  if (!vars || typeof vars !== "object") return {};
+  return Object.entries(vars).reduce<Record<string, string>>((next, [key, value]) => {
+    const normalizedKey = normalizeAdminDisplayText(key);
+    if (!normalizedKey) return next;
+    next[normalizedKey] = typeof value === "string" ? value : "";
+    return next;
+  }, {});
+}
+
+function normalizeD1Databases(
+  value: unknown,
+): WorkerConfig["config"] extends null ? never : Array<{
+  binding: string;
+  database_name: string;
+  database_id: string;
+}> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((db) => {
+    if (!db || typeof db !== "object") return [];
+    const record = db as Record<string, unknown>;
+    const binding = normalizeAdminDisplayText(record.binding);
+    const databaseName = normalizeAdminDisplayText(record.database_name);
+    const databaseId = normalizeAdminDisplayText(record.database_id);
+    if (!binding) return [];
+    return [{ binding, database_name: databaseName, database_id: databaseId }];
+  });
+}
+
+function normalizeR2Buckets(value: unknown): Array<{
+  binding: string;
+  bucket_name: string;
+}> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((bucket) => {
+    if (!bucket || typeof bucket !== "object") return [];
+    const record = bucket as Record<string, unknown>;
+    const binding = normalizeAdminDisplayText(record.binding);
+    const bucketName = normalizeAdminDisplayText(record.bucket_name);
+    if (!binding) return [];
+    return [{ binding, bucket_name: bucketName }];
+  });
+}
+
+function normalizeKvNamespaces(value: unknown): Array<{
+  binding: string;
+  id: string;
+}> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((namespace) => {
+    if (!namespace || typeof namespace !== "object") return [];
+    const record = namespace as Record<string, unknown>;
+    const binding = normalizeAdminDisplayText(record.binding);
+    const id = normalizeAdminDisplayText(record.id);
+    if (!binding) return [];
+    return [{ binding, id }];
+  });
+}
+
+function normalizeWorkerRuntimeConfig(
+  config: WorkerConfig["config"],
+  fallbackName: string,
+): WorkerConfig["config"] {
+  if (!config) return null;
+  return {
+    name: normalizeAdminDisplayText(config.name, fallbackName),
+    main: normalizeAdminDisplayText(config.main),
+    compatibility_date: normalizeAdminDisplayText(config.compatibility_date),
+    account_id: normalizeAdminDisplayText(config.account_id),
+    vars: normalizeManifestVars(config.vars),
+    production: {
+      name: normalizeAdminDisplayText(config.production?.name),
+      vars: normalizeManifestVars(config.production?.vars),
+    },
+    d1_databases: normalizeD1Databases(config.d1_databases),
+    r2_buckets: normalizeR2Buckets(config.r2_buckets),
+    kv_namespaces: normalizeKvNamespaces(config.kv_namespaces),
+  };
+}
+
+function normalizeWorkerConfig(worker: WorkerConfig): WorkerConfig | null {
+  const id = normalizeAdminSelector(worker.id);
+  if (!id) return null;
+  return {
+    ...worker,
+    id,
+    name: normalizeAdminDisplayText(worker.name, id),
+    description: normalizeAdminDisplayText(worker.description),
+    config: normalizeWorkerRuntimeConfig(worker.config, id),
+  };
+}
+
+function normalizeSecretInfo(secret: SecretInfo): SecretInfo | null {
+  const key = normalizeAdminSelector(secret.key);
+  if (!key) return null;
+  return {
+    ...secret,
+    key,
+    description: normalizeAdminDisplayText(secret.description),
+    workers: normalizeSelectorList(secret.workers),
+  };
+}
+
+function getSelectedWorkerForSecret(
+  secret: SecretInfo,
+  selectedWorker: unknown,
+): string | null {
+  const normalizedSelected = normalizeAdminSelector(selectedWorker);
+  if (normalizedSelected && secret.workers.includes(normalizedSelected)) {
+    return normalizedSelected;
+  }
+  return secret.workers[0] ?? null;
+}
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "string") {
+    return normalizeAdminDisplayText(error, fallback);
+  }
   if (
     error &&
     typeof error === "object" &&
     "message" in error &&
-    typeof error.message === "string" &&
-    error.message
+    typeof error.message === "string"
   ) {
-    return error.message;
+    return normalizeAdminDisplayText(error.message, fallback);
   }
   return fallback;
 }
@@ -122,8 +294,8 @@ function getWorkerSignalClasses(tone: WorkerSignalTone): string {
 
 function getWorkerSignals(worker: WorkerConfig): WorkerSignal[] {
   const envKeys = new Set([
-    ...Object.keys(worker.config?.vars || {}),
-    ...Object.keys(worker.config?.production?.vars || {}),
+    ...getManifestVarKeys(worker.config?.vars || {}),
+    ...getManifestVarKeys(worker.config?.production?.vars || {}),
   ]);
   const bindingCount =
     (worker.config?.d1_databases.length || 0) +
@@ -159,8 +331,10 @@ function getWorkerSignals(worker: WorkerConfig): WorkerSignal[] {
   ];
 }
 
-function getManifestVarKeys(vars: Record<string, string>): string[] {
-  return Object.keys(vars).sort();
+export function getManifestVarKeys(vars: Record<string, string>): string[] {
+  return Array.from(
+    new Set(Object.keys(vars).map((key) => normalizeAdminDisplayText(key)).filter(Boolean)),
+  ).sort();
 }
 
 const TABS = [
@@ -196,9 +370,8 @@ export function WorkersManager({
   const validTabs = TABS.map((t) => t.id) as string[];
   const activeTab: TabId =
     subtab && validTabs.includes(subtab) ? (subtab as TabId) : "workers";
-  const [deployEnv, setDeployEnv] = useState<"development" | "production">(
-    "production",
-  );
+  const [deployEnv, setDeployEnv] =
+    useState<WorkerEnvironment>("production");
   const [secretInputs, setSecretInputs] = useState<Record<string, string>>({});
   const [selectedWorkers, setSelectedWorkers] = useState<
     Record<string, string>
@@ -226,7 +399,10 @@ export function WorkersManager({
         res,
         "Failed to fetch workers",
       );
-      return json.data.workers as WorkerConfig[];
+      const rawWorkers = Array.isArray(json.data?.workers)
+        ? json.data.workers
+        : [];
+      return rawWorkers.map(normalizeWorkerConfig).filter(isPresent);
     },
   });
 
@@ -244,7 +420,10 @@ export function WorkersManager({
         res,
         "Failed to fetch secrets",
       );
-      return json.data.secrets as SecretInfo[];
+      const rawSecrets = Array.isArray(json.data?.secrets)
+        ? json.data.secrets
+        : [];
+      return rawSecrets.map(normalizeSecretInfo).filter(isPresent);
     },
   });
 
@@ -261,7 +440,10 @@ export function WorkersManager({
       const json = await readAdminJson<{
         data: { databases?: D1DatabaseInfo[] };
       }>(res, "Failed to fetch D1 databases");
-      return json.data.databases || [];
+      return (Array.isArray(json.data.databases) ? json.data.databases : []).map((db) => ({
+        uuid: normalizeAdminDisplayText(db.uuid),
+        name: normalizeAdminDisplayText(db.name),
+      }));
     },
   });
 
@@ -278,7 +460,10 @@ export function WorkersManager({
       const json = await readAdminJson<{
         data: { namespaces?: KVNamespaceInfo[] };
       }>(res, "Failed to fetch KV namespaces");
-      return json.data.namespaces || [];
+      return (Array.isArray(json.data.namespaces) ? json.data.namespaces : []).map((namespace) => ({
+        id: normalizeAdminDisplayText(namespace.id),
+        title: normalizeAdminDisplayText(namespace.title),
+      }));
     },
   });
 
@@ -296,7 +481,10 @@ export function WorkersManager({
         res,
         "Failed to fetch R2 buckets",
       );
-      return json.data.buckets || [];
+      return (Array.isArray(json.data.buckets) ? json.data.buckets : []).map((bucket) => ({
+        name: normalizeAdminDisplayText(bucket.name),
+        creation_date: normalizeAdminDisplayText(bucket.creation_date),
+      }));
     },
   });
 
@@ -310,11 +498,17 @@ export function WorkersManager({
       env: string;
       dryRun: boolean;
     }) => {
+      const normalizedWorkerId = normalizeAdminSelector(workerId);
+      const normalizedEnv = normalizeWorkerEnv(env);
+      if (!normalizedWorkerId || !normalizedEnv) {
+        throw new Error("Invalid worker deployment selector");
+      }
+
       const res = await adminFetchRaw(
-        `${API_BASE}/api/v1/admin/workers/${workerId}/deploy`,
+        `${API_BASE}/api/v1/admin/workers/${encodeURIComponent(normalizedWorkerId)}/deploy`,
         {
           method: "POST",
-          body: JSON.stringify({ env, dryRun }),
+          body: JSON.stringify({ env: normalizedEnv, dryRun }),
         },
       );
       if (!res.ok) {
@@ -324,12 +518,15 @@ export function WorkersManager({
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Deployment", description: data.data.message });
+      toast({
+        title: "Deployment",
+        description: normalizeAdminDisplayText(data.data?.message, "Deployment complete"),
+      });
     },
     onError: (err: Error) => {
       toast({
         title: "Deployment failed",
-        description: err.message,
+        description: getApiErrorMessage(err, "Deploy failed"),
         variant: "destructive",
       });
     },
@@ -347,11 +544,22 @@ export function WorkersManager({
       value: string;
       env: string;
     }) => {
+      const normalizedWorkerId = normalizeAdminSelector(workerId);
+      const normalizedKey = normalizeAdminSelector(key);
+      const normalizedEnv = normalizeWorkerEnv(env);
+      if (!normalizedWorkerId || !normalizedKey || !normalizedEnv) {
+        throw new Error("Invalid worker secret selector");
+      }
+
       const res = await adminFetchRaw(
-        `${API_BASE}/api/v1/admin/workers/${workerId}/secret`,
+        `${API_BASE}/api/v1/admin/workers/${encodeURIComponent(normalizedWorkerId)}/secret`,
         {
           method: "POST",
-          body: JSON.stringify({ key, value, env }),
+          body: JSON.stringify({
+            key: normalizedKey,
+            value,
+            env: normalizedEnv,
+          }),
         },
       );
       if (!res.ok) {
@@ -361,13 +569,16 @@ export function WorkersManager({
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ title: "Secret Updated", description: data.data.message });
+      toast({
+        title: "Secret Updated",
+        description: normalizeAdminDisplayText(data.data?.message, "Secret updated"),
+      });
       setSecretInputs({});
     },
     onError: (err: Error) => {
       toast({
         title: "Failed to set secret",
-        description: err.message,
+        description: getApiErrorMessage(err, "Failed to set secret"),
         variant: "destructive",
       });
     },
@@ -421,7 +632,7 @@ export function WorkersManager({
   if (workersError) {
     const message =
       workersError instanceof Error
-        ? workersError.message
+        ? getApiErrorMessage(workersError, "Failed to fetch workers")
         : "Failed to fetch workers";
 
     return (
@@ -794,9 +1005,10 @@ export function WorkersManager({
                       <div className="flex items-center gap-2 px-4 py-3 border-t border-zinc-100 dark:border-zinc-800">
                         <Select
                           value={deployEnv}
-                          onValueChange={(v) =>
-                            setDeployEnv(v as "development" | "production")
-                          }
+                          onValueChange={(v) => {
+                            const normalizedEnv = normalizeWorkerEnv(v);
+                            if (normalizedEnv) setDeployEnv(normalizedEnv);
+                          }}
                         >
                           <SelectTrigger className="h-9 text-xs w-[140px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg">
                             <SelectValue />
@@ -888,7 +1100,7 @@ export function WorkersManager({
                     <p className="font-medium">Unable to load worker secrets</p>
                     <p className="mt-1 text-xs">
                       {secretsError instanceof Error
-                        ? secretsError.message
+                        ? getApiErrorMessage(secretsError, "Failed to fetch secrets")
                         : "Failed to fetch secrets"}
                     </p>
                   </div>
@@ -908,113 +1120,133 @@ export function WorkersManager({
               No secrets defined
             </p>
           )}
-          {!secretsError && secrets.map((secret) => (
-            <div key={secret.key} className="px-4 py-3.5 space-y-2.5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="font-mono text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">
-                    {secret.key}
-                  </span>
-                  <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-                    {secret.description}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
-                  {secret.workers.map((w) => (
-                    <span
-                      key={w}
-                      className="font-mono text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded"
-                    >
-                      {w}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {mutationsEnabled ? (
-                <div className="flex gap-2">
-                  <Input
-                    type={visibleSecrets.has(secret.key) ? "text" : "password"}
-                    placeholder="Enter new secret value…"
-                    value={secretInputs[secret.key] || ""}
-                    onChange={(e) =>
-                      setSecretInputs((prev) => ({
-                        ...prev,
-                        [secret.key]: e.target.value,
-                      }))
-                    }
-                    className="h-9 text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleSecretVisibility(secret.key)}
-                    aria-label={
-                      visibleSecrets.has(secret.key)
-                        ? `Hide ${secret.key} secret`
-                        : `Show ${secret.key} secret`
-                    }
-                    title={
-                      visibleSecrets.has(secret.key)
-                        ? `Hide ${secret.key} secret`
-                        : `Show ${secret.key} secret`
-                    }
-                    className="h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
-                  >
-                    {visibleSecrets.has(secret.key) ? (
-                      <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
-                    ) : (
-                      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                  </button>
-                  <Select
-                    value={selectedWorkers[secret.key] ?? secret.workers[0]}
-                    onValueChange={(v) =>
-                      setSelectedWorkers((prev) => ({
-                        ...prev,
-                        [secret.key]: v,
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-9 text-xs w-[150px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg">
-                      <SelectValue placeholder="Select worker" />
-                    </SelectTrigger>
-                    <SelectContent>
+          {!secretsError &&
+            secrets.map((secret) => {
+              const selectedWorker = getSelectedWorkerForSecret(
+                secret,
+                selectedWorkers[secret.key],
+              );
+
+              return (
+                <div key={secret.key} className="px-4 py-3.5 space-y-2.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="font-mono text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">
+                        {secret.key}
+                      </span>
+                      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+                        {secret.description}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap justify-end shrink-0">
                       {secret.workers.map((w) => (
-                        <SelectItem key={w} value={w} className="text-xs">
+                        <span
+                          key={w}
+                          className="font-mono text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded"
+                        >
                           {w}
-                        </SelectItem>
+                        </span>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const value = secretInputs[secret.key];
-                      if (value) {
-                        secretMutation.mutate({
-                          workerId:
-                            selectedWorkers[secret.key] ?? secret.workers[0],
-                          key: secret.key,
-                          value,
-                          env: "production",
-                        });
-                      }
-                    }}
-                    disabled={
-                      !secretInputs[secret.key] || secretMutation.isPending
-                    }
-                    className="h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
-                  >
-                    Set
-                  </button>
+                    </div>
+                  </div>
+                  {mutationsEnabled ? (
+                    <div className="flex gap-2">
+                      <Input
+                        type={
+                          visibleSecrets.has(secret.key) ? "text" : "password"
+                        }
+                        placeholder="Enter new secret value…"
+                        value={secretInputs[secret.key] || ""}
+                        onChange={(e) =>
+                          setSecretInputs((prev) => ({
+                            ...prev,
+                            [secret.key]: e.target.value,
+                          }))
+                        }
+                        className="h-9 text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleSecretVisibility(secret.key)}
+                        aria-label={
+                          visibleSecrets.has(secret.key)
+                            ? `Hide ${secret.key} secret`
+                            : `Show ${secret.key} secret`
+                        }
+                        title={
+                          visibleSecrets.has(secret.key)
+                            ? `Hide ${secret.key} secret`
+                            : `Show ${secret.key} secret`
+                        }
+                        className="h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
+                      >
+                        {visibleSecrets.has(secret.key) ? (
+                          <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                      </button>
+                      <Select
+                        value={selectedWorker ?? undefined}
+                        disabled={secret.workers.length === 0}
+                        onValueChange={(v) => {
+                          const normalizedWorker = normalizeAdminSelector(v);
+                          if (
+                            !normalizedWorker ||
+                            !secret.workers.includes(normalizedWorker)
+                          ) {
+                            return;
+                          }
+
+                          setSelectedWorkers((prev) => ({
+                            ...prev,
+                            [secret.key]: normalizedWorker,
+                          }));
+                        }}
+                      >
+                        <SelectTrigger className="h-9 text-xs w-[150px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg">
+                          <SelectValue placeholder="Select worker" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {secret.workers.map((w) => (
+                            <SelectItem key={w} value={w} className="text-xs">
+                              {w}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const value = secretInputs[secret.key];
+                          if (value && selectedWorker) {
+                            secretMutation.mutate({
+                              workerId: selectedWorker,
+                              key: secret.key,
+                              value,
+                              env: "production",
+                            });
+                          }
+                        }}
+                        disabled={
+                          !secretInputs[secret.key] ||
+                          !selectedWorker ||
+                          secretMutation.isPending
+                        }
+                        className="h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
+                      >
+                        Set
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Update this secret through GitHub Actions/GitOps secret
+                      management. UI writes are disabled in this environment.
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Update this secret through GitHub Actions/GitOps secret
-                  management. UI writes are disabled in this environment.
-                </p>
-              )}
-            </div>
-          ))}
+              );
+            })}
         </div>
       )}
 

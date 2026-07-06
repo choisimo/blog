@@ -132,6 +132,12 @@ const IFRAME_AUTO_HEIGHT_SOURCE = 'nodove-blog-embed';
 const DEFAULT_EMBED_HEIGHT = 760;
 const MIN_EMBED_HEIGHT = 320;
 const MAX_EMBED_HEIGHT = 6000;
+const MARKDOWN_HREF_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const MARKDOWN_HREF_ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const MARKDOWN_HREF_WHITESPACE_PATTERN = /\s+/g;
+const MARKDOWN_HREF_MALFORMED_PERCENT_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const MARKDOWN_HREF_ENCODED_CONTROL_PATTERN = /%(?:0[0-9A-Fa-f]|1[0-9A-Fa-f]|7[Ff])/;
+const MARKDOWN_HREF_ENCODED_SEPARATOR_PATTERN = /%(?:2[Ff]|5[Cc])/;
 
 function clampEmbedHeight(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_EMBED_HEIGHT;
@@ -187,6 +193,53 @@ function normalizeIframeSrc(
   }
 
   return `/${normalizedRelative}`;
+}
+
+export function normalizeMarkdownLinkHref(
+  href: string | undefined
+): string | undefined {
+  const raw = href
+    ?.replace(MARKDOWN_HREF_ANSI_ESCAPE_PATTERN, ' ')
+    .replace(MARKDOWN_HREF_CONTROL_PATTERN, ' ')
+    .replace(MARKDOWN_HREF_WHITESPACE_PATTERN, ' ')
+    .trim();
+  if (!raw) return undefined;
+  if (
+    raw.includes('\\') ||
+    MARKDOWN_HREF_MALFORMED_PERCENT_PATTERN.test(raw) ||
+    MARKDOWN_HREF_ENCODED_CONTROL_PATTERN.test(raw) ||
+    MARKDOWN_HREF_ENCODED_SEPARATOR_PATTERN.test(raw)
+  ) {
+    return undefined;
+  }
+
+  if (raw.startsWith('#')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/') && !raw.startsWith('//')) {
+    return raw;
+  }
+
+  try {
+    const parsed = new URL(raw, 'https://nodove.local');
+    const safeProtocol =
+      parsed.protocol === 'http:' ||
+      parsed.protocol === 'https:' ||
+      parsed.protocol === 'mailto:';
+    if (!safeProtocol) return undefined;
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      (parsed.username || parsed.password)
+    ) {
+      return undefined;
+    }
+    return safeProtocol
+      ? raw
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function extractEmbedHeightMessage(data: unknown): number | null {
@@ -1281,20 +1334,24 @@ function MarkdownRendererInner({
           </code>
         );
       },
-      a: ({ href, children }: { href?: string; children?: ReactNode }) => (
-        <a
-          href={href}
-          target='_blank'
-          rel='noopener noreferrer'
-          className={cn(
-            'text-primary hover:underline',
-            isTerminal &&
-              'underline decoration-dotted underline-offset-4 hover:decoration-solid'
-          )}
-        >
-          {children}
-        </a>
-      ),
+      a: ({ href, children }: { href?: string; children?: ReactNode }) => {
+        const safeHref = normalizeMarkdownLinkHref(href);
+
+        return (
+          <a
+            href={safeHref}
+            target={safeHref ? '_blank' : undefined}
+            rel={safeHref ? 'noopener noreferrer' : undefined}
+            className={cn(
+              'text-primary hover:underline',
+              isTerminal &&
+                'underline decoration-dotted underline-offset-4 hover:decoration-solid'
+            )}
+          >
+            {children}
+          </a>
+        );
+      },
       img: ({
         src,
         alt,

@@ -19,12 +19,38 @@ const CATEGORY_ICONS = [
   Coffee,
 ];
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeCategoryName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  if (!normalized || normalized.includes('/') || normalized.includes('\\')) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeCategoryCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : 0;
+}
+
 export function HomeCategoryStrip({
   categories,
   state,
   isTerminal,
 }: HomeCategoryStripProps) {
-  const shown = categories.slice(0, 6);
+  const shown = categories
+    .flatMap((category) => {
+      const name = normalizeCategoryName(category.name);
+      return name ? [{ ...category, name, count: normalizeCategoryCount(category.count) }] : [];
+    })
+    .slice(0, 6);
 
   return (
     <section className='mb-14'>
@@ -60,7 +86,7 @@ export function HomeCategoryStrip({
             const Icon = CATEGORY_ICONS[index % CATEGORY_ICONS.length];
             return (
               <Link
-                key={category.name}
+                key={`${category.name}-${index}`}
                 to={`/blog?category=${encodeURIComponent(category.name)}`}
                 className='group rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] px-3 py-5 text-center transition-[border-color,box-shadow,transform] duration-200 ease-spring hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--blog-shadow-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99]'
               >

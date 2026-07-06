@@ -4,6 +4,7 @@ const ROOT_IMAGES_RE = /^(?:\.\.\/|\.\/)*images\/(.+)$/i;
 const ROOT_POSTS_RE = /^(?:\.\.\/|\.\/)*posts\/(.+)$/i;
 const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.mov', '.m4v'];
 const ANIMATED_IMAGE_EXTENSIONS = ['.gif'];
+const MEDIA_PATH_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
 
 function trimMediaSrc(src: string): string {
   return src.trim();
@@ -44,6 +45,21 @@ function normalizeLegacyManifestPath(raw: string): string {
   return raw;
 }
 
+function hasUnsafePathSegment(path: string): boolean {
+  return path
+    .replace(/[?#].*$/, '')
+    .split(/[\\/]+/)
+    .some((segment) => {
+      if (segment === '..' || MEDIA_PATH_CONTROL_PATTERN.test(segment)) return true;
+      try {
+        const decoded = decodeURIComponent(segment);
+        return decoded === '..' || MEDIA_PATH_CONTROL_PATTERN.test(decoded);
+      } catch {
+        return true;
+      }
+    });
+}
+
 export function isExternalMedia(src: string): boolean {
   const raw = trimMediaSrc(src);
   return EXTERNAL_URL_RE.test(raw) || raw.startsWith('//');
@@ -73,16 +89,19 @@ export function normalizeManifestMediaPath(
   }
 
   if (raw.startsWith('/')) {
+    if (hasUnsafePathSegment(raw)) return undefined;
     return raw;
   }
 
   const rootImagesMatch = raw.match(ROOT_IMAGES_RE);
   if (rootImagesMatch?.[1]) {
+    if (hasUnsafePathSegment(rootImagesMatch[1])) return undefined;
     return `/images/${rootImagesMatch[1]}`;
   }
 
   const rootPostsMatch = raw.match(ROOT_POSTS_RE);
   if (rootPostsMatch?.[1]) {
+    if (hasUnsafePathSegment(rootPostsMatch[1])) return undefined;
     return `/posts/${rootPostsMatch[1]}`;
   }
 
@@ -90,6 +109,7 @@ export function normalizeManifestMediaPath(
   const normalizedRelative = raw
     .replace(/^\.?\//, '')
     .replace(/^(?:\.\.\/)+/, '');
+  if (hasUnsafePathSegment(normalizedRelative)) return undefined;
 
   if (year) {
     return `/posts/${year}/${normalizedRelative}`;

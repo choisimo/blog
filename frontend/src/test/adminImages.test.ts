@@ -1,97 +1,181 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockAdminFetchRaw = vi.hoisted(() => vi.fn());
-
-vi.mock('@/utils/network/apiBase', () => ({
-  getApiBaseUrl: vi.fn(() => 'https://worker.example.com'),
-}));
+const adminFetchRawMock = vi.hoisted(() => vi.fn());
+const getApiBaseUrlMock = vi.hoisted(() => vi.fn(() => 'https://api.example.test'));
 
 vi.mock('@/services/admin/apiClient', () => ({
-  adminFetchRaw: mockAdminFetchRaw,
+  adminFetchRaw: adminFetchRawMock,
 }));
 
-import {
-  generatePostImages,
-  getAdminAiImagesHealth,
-} from '@/services/session/adminImages';
+vi.mock('@/utils/network/apiBase', () => ({
+  getApiBaseUrl: getApiBaseUrlMock,
+}));
 
-describe('admin image service', () => {
-  afterEach(() => {
-    mockAdminFetchRaw.mockReset();
+import { generatePostImages, getAdminAiImagesHealth } from '@/services/session/adminImages';
+
+function validImageData(overrides: Record<string, unknown> = {}) {
+  return {
+    dir: '/images/posts/2026/demo',
+    model: 'image-model',
+    created: 1,
+    durationMs: 25,
+    usage: null,
+    metadata: null,
+    items: [
+      {
+        filename: 'cover.png',
+        path: '/images/posts/2026/demo/cover.png',
+        url: '/images/posts/2026/demo/cover.png',
+        variantWebp: null,
+        alt: 'Cover image',
+        markdown: '![Cover image](/images/posts/2026/demo/cover.png)',
+        source: 'ai-generated',
+        width: 1024,
+        height: 1024,
+        sizeBytes: 100,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+describe('adminImages service', () => {
+  beforeEach(() => {
+    adminFetchRawMock.mockReset();
+    getApiBaseUrlMock.mockReturnValue('https://api.example.test');
   });
 
-  it('generates images through the shared admin API client', async () => {
-    const data = {
-      dir: '/images/2026/test-post/ai',
-      model: 'test-image-model',
-      created: 1,
-      durationMs: 25,
-      usage: null,
-      metadata: null,
-      items: [],
-    };
-    mockAdminFetchRaw.mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+  it('normalizes generate-image payload text and bounded options before POSTing', async () => {
+    adminFetchRawMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, data: validImageData() }),
+    });
+
+    await expect(
+      generatePostImages({
+        year: '2026',
+        slug: 'demo-post',
+        prompt: ' Draw\u0000\r\ncover ',
+        alt: ' Hero\u0000\nImage ',
+        n: 99,
+        quality: 'hd',
+        size: '1024x1536',
       }),
-    );
+    ).resolves.toMatchObject({ dir: '/images/posts/2026/demo' });
 
-    const result = await generatePostImages(
-      {
-        year: 2026,
-        slug: 'test-post',
-        prompt: 'generate a cover image',
-      },
-    );
-
-    expect(result).toEqual(data);
-    expect(mockAdminFetchRaw).toHaveBeenCalledTimes(1);
-
-    const [url, options] = mockAdminFetchRaw.mock.calls[0];
-    expect(url).toBe('https://worker.example.com/api/v1/admin/ai-images/generate');
-    expect(options).toEqual(
+    expect(adminFetchRawMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/v1/admin/ai-images/generate',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          'Idempotency-Key': expect.stringMatching(/^admin-ai-image:/),
+        body: JSON.stringify({
+          year: '2026',
+          slug: 'demo-post',
+          prompt: 'Draw \ncover',
+          n: 4,
+          size: '1024x1536',
+          quality: 'hd',
+          outputFormat: 'png',
+          alt: 'Hero Image',
         }),
       }),
     );
-    expect(JSON.parse(String(options.body))).toEqual({
-      year: '2026',
-      slug: 'test-post',
-      prompt: 'generate a cover image',
-      n: 1,
-      size: '1024x1024',
-      quality: 'medium',
-      outputFormat: 'png',
-    });
   });
 
-  it('loads AI image health through the shared admin API client', async () => {
-    const data = {
-      enabled: true,
-      configured: true,
-      baseUrlConfigured: true,
-      apiKeyConfigured: true,
-      model: 'test-image-model',
-      maxCount: 2,
-      timeoutMs: 10000,
-    };
-    mockAdminFetchRaw.mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
+  it('rejects generated image responses containing unsafe control characters', async () => {
+    adminFetchRawMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: validImageData({
+          items: [
+            {
+              filename: 'cover.png',
+              path: '/images/posts/2026/demo/cover.png',
+              url: '/images/posts/2026/demo/cover.png',
+              variantWebp: null,
+              alt: 'Bad\u0000Alt',
+              markdown: '![Bad Alt](/images/posts/2026/demo/cover.png)',
+              source: 'ai-generated',
+            },
+          ],
+        }),
       }),
-    );
+    });
 
-    const result = await getAdminAiImagesHealth();
+    await expect(
+      generatePostImages({ year: '2026', slug: 'demo-post', prompt: 'Draw cover' }),
+    ).rejects.toThrow('AI image generation returned an invalid response');
 
-    expect(result).toEqual(data);
-    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
-      'https://worker.example.com/api/v1/admin/ai-images/health',
+    adminFetchRawMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: validImageData({
+          items: [
+            {
+              filename: 'cover.png',
+              path: '/images/posts/2026/demo/cover.png',
+              url: '/images/posts/2026/demo/cover.png',
+              variantWebp: null,
+              alt: 'x\u0000',
+              markdown: '![Bad Alt](/images/posts/2026/demo/cover.png)',
+              source: 'ai-generated',
+            },
+          ],
+        }),
+      }),
+    });
+
+    await expect(
+      generatePostImages({ year: '2026', slug: 'demo-post', prompt: 'Draw cover' }),
+    ).rejects.toThrow('AI image generation returned an invalid response');
+  });
+
+  it('sanitizes API error messages before throwing', async () => {
+    adminFetchRawMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        ok: false,
+        error: { message: ' Bad\u0000\nmessage ' },
+      }),
+    });
+
+    await expect(
+      generatePostImages({ year: '2026', slug: 'demo-post', prompt: 'Draw cover' }),
+    ).rejects.toThrow('Bad message');
+
+    adminFetchRawMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        ok: false,
+        error: { code: ' RATE\u0000\nLIMIT ' },
+      }),
+    });
+
+    await expect(
+      generatePostImages({ year: '2026', slug: 'demo-post', prompt: 'Draw cover' }),
+    ).rejects.toThrow('RATE LIMIT');
+  });
+
+  it('rejects invalid health payload text containing control characters', async () => {
+    adminFetchRawMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          enabled: true,
+          configured: true,
+          baseUrlConfigured: true,
+          apiKeyConfigured: true,
+          model: 'bad\u0000model',
+          maxCount: 4,
+          timeoutMs: 1000,
+        },
+      }),
+    });
+
+    await expect(getAdminAiImagesHealth()).rejects.toThrow(
+      'AI image health returned an invalid response',
     );
   });
 });

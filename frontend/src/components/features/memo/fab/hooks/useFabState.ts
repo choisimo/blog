@@ -7,6 +7,70 @@ type MemoPadElement = HTMLElement & {
 
 type FabEventDetail = Record<string, unknown>;
 
+const FAB_ANSI_ESCAPE_RE =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const FAB_CONTROL_CHARS_RE =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
+const MAX_FAB_TEXT_LENGTH = 500;
+
+export function normalizeFabText(raw: unknown): string {
+  return String(raw ?? "")
+    .replace(FAB_ANSI_ESCAPE_RE, "")
+    .replace(FAB_CONTROL_CHARS_RE, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_FAB_TEXT_LENGTH);
+}
+
+export function normalizeFabBoolean(raw: unknown): boolean | null {
+  if (typeof raw === "boolean") return raw;
+  if (raw === 1) return true;
+  if (raw === 0) return false;
+  if (typeof raw !== "string") return null;
+
+  const normalized = normalizeFabText(raw).toLowerCase();
+  if (normalized === "true" || normalized === "1") return true;
+  if (normalized === "false" || normalized === "0") return false;
+
+  try {
+    return normalizeFabBoolean(JSON.parse(normalized));
+  } catch {
+    return null;
+  }
+}
+
+function readStoredFabBoolean(key: string): boolean | null {
+  try {
+    return normalizeFabBoolean(localStorage.getItem(key));
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeFabEventDetail(
+  detail?: FabEventDetail,
+): FabEventDetail | undefined {
+  if (!detail) return undefined;
+
+  const normalized: FabEventDetail = {};
+  for (const [key, value] of Object.entries(detail)) {
+    const normalizedKey = normalizeFabText(key);
+    if (!normalizedKey || normalizedKey === "type" || normalizedKey === "ts") {
+      continue;
+    }
+
+    if (typeof value === "string") {
+      normalized[normalizedKey] = normalizeFabText(value);
+    } else if (typeof value === "number") {
+      normalized[normalizedKey] = Number.isFinite(value) ? value : null;
+    } else {
+      normalized[normalizedKey] = value;
+    }
+  }
+
+  return normalized;
+}
+
 function getMemoShadowRoot(aiMemoEl: HTMLElement | null): ShadowRoot | null {
   return (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? null;
 }
@@ -35,23 +99,14 @@ export function ensureAIMemoElement(): HTMLElement | null {
 
 // Feature flag: build-time + runtime override
 export function isFabEnabled(): boolean {
-  let lsValue: boolean | null = null;
-  try {
-    const stored = localStorage.getItem("aiMemo.fab.enabled");
-    if (stored != null) {
-      lsValue = JSON.parse(stored);
-    }
-  } catch {
-    lsValue = null;
-  }
-
-  if (typeof lsValue === "boolean") {
+  const lsValue = readStoredFabBoolean("aiMemo.fab.enabled");
+  if (lsValue !== null) {
     return lsValue;
   }
 
   const envFlag = import.meta.env.VITE_FEATURE_FAB;
   if (envFlag != null) {
-    return ["true", "1"].includes(envFlag);
+    return normalizeFabBoolean(envFlag) ?? false;
   }
 
   return true;
@@ -104,22 +159,12 @@ export function useAIMemoElement(): HTMLElement | null {
 
 export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
   const [open, setOpen] = useState<boolean>(() => {
-    try {
-      return !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false");
-    } catch {
-      return false;
-    }
+    return readStoredFabBoolean("aiMemo.isOpen") ?? false;
   });
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (!e.key || e.key === "aiMemo.isOpen") {
-        try {
-          setOpen(
-            !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
-          );
-        } catch {
-          void 0;
-        }
+        setOpen(readStoredFabBoolean("aiMemo.isOpen") ?? false);
       }
     };
     window.addEventListener("storage", onStorage);
@@ -158,13 +203,7 @@ export function useMemoOpen(aiMemoEl: HTMLElement | null): boolean {
       let tries = 0;
       pollId = window.setInterval(() => {
         tries += 1;
-        try {
-          setOpen(
-            !!JSON.parse(localStorage.getItem("aiMemo.isOpen") || "false"),
-          );
-        } catch {
-          void 0;
-        }
+        setOpen(readStoredFabBoolean("aiMemo.isOpen") ?? false);
         if (tries > 20) {
           if (pollId) {
             clearInterval(pollId);
@@ -387,8 +426,8 @@ export function useFabPinned(): [boolean, () => void] {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("fab.pinned");
-      if (saved != null) setPinned(JSON.parse(saved));
+      const saved = readStoredFabBoolean("fab.pinned");
+      if (saved !== null) setPinned(saved);
     } catch {
       void 0;
     }
@@ -431,8 +470,14 @@ export function useFabAnalytics() {
 
   const send = useCallback((type: string, detail?: FabEventDetail) => {
     try {
+      const normalizedType = normalizeFabText(type) || "fab_event";
+      const normalizedDetail = normalizeFabEventDetail(detail);
       const evt = new CustomEvent("fab:event", {
-        detail: { type, ts: Date.now(), ...(detail || {}) },
+        detail: {
+          ...(normalizedDetail || {}),
+          type: normalizedType,
+          ts: Date.now(),
+        },
       });
       window.dispatchEvent(evt);
       if (
@@ -440,7 +485,7 @@ export function useFabAnalytics() {
         (typeof localStorage !== "undefined" &&
           localStorage.getItem("aiMemo.fab.debug") === "true")
       ) {
-        console.log("[FAB]", type, detail || "");
+        console.log("[FAB]", normalizedType, normalizedDetail || "");
       }
     } catch {
       void 0;

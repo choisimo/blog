@@ -10,6 +10,21 @@ import type { BlogPost } from '@/types/blog';
 // 싱글톤 캐시 - 여러 컴포넌트에서 사용해도 한 번만 로드
 let cachedPosts: BlogPost[] | null = null;
 let loadingPromise: Promise<BlogPost[]> | null = null;
+const POST_INDEX_SEGMENT_UNSAFE_PATTERN = /[\u0000-\u001F\u007F/\\]/;
+
+function normalizePostIndexSegment(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || POST_INDEX_SEGMENT_UNSAFE_PATTERN.test(trimmed)) return null;
+
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    return decoded && !POST_INDEX_SEGMENT_UNSAFE_PATTERN.test(decoded)
+      ? trimmed
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 export function prefetchPostsIndex(): void {
   if (cachedPosts || loadingPromise) return;
@@ -88,7 +103,11 @@ export function usePostsIndex(enabled = true) {
     refresh,
     // 편의 메서드들
     getPostBySlug: useCallback((year: string, slug: string) => {
-      return posts.find(p => p.year === year && p.slug === slug) || null;
+      const safeYear = normalizePostIndexSegment(year);
+      const safeSlug = normalizePostIndexSegment(slug);
+      if (!safeYear || !safeSlug) return null;
+
+      return posts.find(p => p.year === safeYear && p.slug === safeSlug) || null;
     }, [posts]),
     searchPosts: useCallback((query: string) => {
       if (!query.trim()) return posts;

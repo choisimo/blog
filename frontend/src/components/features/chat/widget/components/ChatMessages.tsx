@@ -29,6 +29,65 @@ type ChatMessagesProps = {
 };
 
 const MOBILE_RENDER_LIMIT = 80;
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const ANSI_ESCAPE_DETECTOR = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/;
+const MESSAGE_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const MESSAGE_URL_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const SAFE_SOURCE_PROTOCOLS = new Set(["http:", "https:"]);
+
+function stripUnsafeMessageControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(MESSAGE_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizeMessageLine(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeMessageControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeSafeSourceUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const url = value.trim();
+  if (
+    !url ||
+    ANSI_ESCAPE_DETECTOR.test(url) ||
+    MESSAGE_URL_CONTROL_PATTERN.test(url) ||
+    url.includes("\\") ||
+    url.startsWith("//")
+  ) {
+    return null;
+  }
+
+  let decodedUrl: string;
+  try {
+    decodedUrl = decodeURIComponent(url);
+  } catch {
+    return null;
+  }
+
+  if (MESSAGE_URL_CONTROL_PATTERN.test(decodedUrl) || decodedUrl.includes("\\")) {
+    return null;
+  }
+
+  if (url.startsWith("/")) return url;
+
+  try {
+    const base =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost";
+    const parsed = new URL(url, base);
+    if (!SAFE_SOURCE_PROTOCOLS.has(parsed.protocol)) return null;
+    if (parsed.username || parsed.password) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
 
 function getSystemLevel(message: ChatMessage): SystemMessageLevel {
   return message.systemLevel ?? "error";
@@ -79,7 +138,9 @@ function LiveMessageLabel({
   authorMeta?: string;
   isTerminal: boolean;
 }) {
-  if (!authorName && !authorMeta) return null;
+  const safeAuthorName = normalizeMessageLine(authorName);
+  const safeAuthorMeta = normalizeMessageLine(authorMeta);
+  if (!safeAuthorName && !safeAuthorMeta) return null;
 
   return (
     <div
@@ -88,8 +149,10 @@ function LiveMessageLabel({
         isTerminal ? "text-primary/80" : "text-muted-foreground",
       )}
     >
-      {authorName ? <span className="font-semibold">{authorName}</span> : null}
-      {authorMeta ? <span>{authorMeta}</span> : null}
+      {safeAuthorName ? (
+        <span className="font-semibold">{safeAuthorName}</span>
+      ) : null}
+      {safeAuthorMeta ? <span>{safeAuthorMeta}</span> : null}
     </div>
   );
 }
@@ -170,6 +233,7 @@ export function ChatMessages({
         <div className="flex justify-center">
           <button
             type="button"
+            aria-label={`이전 메시지 ${hiddenMessageCount}개 보기`}
             onClick={() => setShowFullMobileHistory(true)}
             className="rounded-full border px-3 py-1 text-xs text-muted-foreground hover:bg-muted transition-colors"
           >
@@ -350,11 +414,16 @@ const TerminalMessage = React.memo(function TerminalMessage({
   onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 }) {
   const isLiveAssistantMessage = isAssistant && m.channel === "live";
-  const isReplyActive = activeReplyTargetName === m.authorName;
+  const messageText = stripUnsafeMessageControls(m.text);
+  const safeCleanText = stripUnsafeMessageControls(cleanText);
+  const typingLabel = normalizeMessageLine(m.typingLabel);
+  const liveAuthorName = normalizeMessageLine(m.authorName);
+  const activeReplyName = normalizeMessageLine(activeReplyTargetName);
+  const isReplyActive = Boolean(activeReplyName && activeReplyName === liveAuthorName);
   const canReply =
     isLiveAssistantMessage &&
     !m.pending &&
-    Boolean(m.authorName) &&
+    Boolean(liveAuthorName) &&
     Boolean(m.liveSenderType) &&
     Boolean(onReplyToLiveMessage);
 
@@ -367,8 +436,8 @@ const TerminalMessage = React.memo(function TerminalMessage({
               user@blog:~$
             </span>
             <span className="whitespace-pre-wrap text-foreground break-words text-sm">
-              {cleanText ||
-                (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
+              {safeCleanText ||
+                (imageUrl ? "첨부한 이미지에 대해 설명해줘." : messageText)}
             </span>
           </div>
           <MessageAttachments attachments={m.attachments} isTerminal />
@@ -378,32 +447,33 @@ const TerminalMessage = React.memo(function TerminalMessage({
       {isAssistant && (
         <div className="ai-response-container">
           <div className="ai-response-header">
-            <Terminal className="h-3.5 w-3.5" />
+            <Terminal aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             <span>
               {isLiveAssistantMessage
-                ? `Live · ${m.authorName || "room"}`
+                ? `Live · ${liveAuthorName || "room"}`
                 : "AI Response"}
             </span>
             {canReply ? (
               <ReplyActionButton
                 isTerminal
                 active={isReplyActive}
+                targetName={liveAuthorName}
                 onClick={() =>
                   onReplyToLiveMessage?.({
-                    name: m.authorName!,
+                    name: liveAuthorName,
                     senderType: m.liveSenderType!,
                   })
                 }
               />
             ) : null}
             {m.pending && (
-              <span className="streaming-indicator">
-                <span className="streaming-dots">
+              <span className="streaming-indicator" role="status" aria-label={typingLabel || "processing"}>
+                <span className="streaming-dots" aria-hidden="true">
                   <span>.</span>
                   <span>.</span>
                   <span>.</span>
                 </span>
-                {m.typingLabel || "processing"}
+                {typingLabel || "processing"}
               </span>
             )}
           </div>
@@ -415,20 +485,20 @@ const TerminalMessage = React.memo(function TerminalMessage({
                 isTerminal
               />
             ) : null}
-            {!m.pending && m.text.trim() ? (
+            {!m.pending && messageText.trim() ? (
               <>
                 {isMobile ? (
                   <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                    {m.text}
+                    {messageText}
                   </span>
                 ) : (
-                  <ChatMarkdown content={m.text} isStreaming={false} />
+                  <ChatMarkdown content={messageText} isStreaming={false} />
                 )}
               </>
             ) : (
               <div className="space-y-2">
-                {m.typingLabel ? (
-                  <span className="text-xs text-primary/70">{m.typingLabel}</span>
+                {typingLabel ? (
+                  <span className="text-xs text-primary/70">{typingLabel}</span>
                 ) : null}
                 <span className="crt-block-cursor" aria-label="waiting" />
               </div>
@@ -512,6 +582,9 @@ const DefaultMessage = React.memo(function DefaultMessage({
   activeReplyTargetName?: string | null;
   onReplyToLiveMessage?: (target: LiveReplyTarget) => void;
 }) {
+  const messageText = stripUnsafeMessageControls(m.text);
+  const safeCleanText = stripUnsafeMessageControls(cleanText);
+  const typingLabel = normalizeMessageLine(m.typingLabel);
   const isStatus =
     isSystem &&
     (m.systemKind === "status" ||
@@ -522,10 +595,12 @@ const DefaultMessage = React.memo(function DefaultMessage({
     isAssistant &&
     m.channel === "live" &&
     !m.pending &&
-    Boolean(m.authorName) &&
+    Boolean(normalizeMessageLine(m.authorName)) &&
     Boolean(m.liveSenderType) &&
     Boolean(onReplyToLiveMessage);
-  const isReplyActive = activeReplyTargetName === m.authorName;
+  const liveAuthorName = normalizeMessageLine(m.authorName);
+  const activeReplyName = normalizeMessageLine(activeReplyTargetName);
+  const isReplyActive = Boolean(activeReplyName && activeReplyName === liveAuthorName);
 
   if (isStatus) {
     return (
@@ -562,9 +637,10 @@ const DefaultMessage = React.memo(function DefaultMessage({
                   <ReplyActionButton
                     isTerminal={false}
                     active={isReplyActive}
+                    targetName={liveAuthorName}
                     onClick={() =>
                       onReplyToLiveMessage?.({
-                        name: m.authorName!,
+                        name: liveAuthorName,
                         senderType: m.liveSenderType!,
                       })
                     }
@@ -572,20 +648,20 @@ const DefaultMessage = React.memo(function DefaultMessage({
                 ) : null}
               </div>
             ) : null}
-            {!m.pending && m.text.trim() ? (
+            {!m.pending && messageText.trim() ? (
               isMobile ? (
                 <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                  {m.text}
+                  {messageText}
                 </span>
               ) : (
-                <ChatMarkdown content={m.text} isStreaming={false} />
+                <ChatMarkdown content={messageText} isStreaming={false} />
               )
             ) : (
               <div className="space-y-2">
                 <TypingDots />
-                {m.typingLabel ? (
+                {typingLabel ? (
                   <p className="text-xs text-muted-foreground">
-                    {m.typingLabel}
+                    {typingLabel}
                   </p>
                 ) : null}
               </div>
@@ -594,8 +670,8 @@ const DefaultMessage = React.memo(function DefaultMessage({
         ) : isUser ? (
           <div className="space-y-2">
             <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-              {cleanText ||
-                (imageUrl ? "첨부한 이미지에 대해 설명해줘." : m.text)}
+              {safeCleanText ||
+                (imageUrl ? "첨부한 이미지에 대해 설명해줘." : messageText)}
             </span>
             <MessageAttachments
               attachments={m.attachments}
@@ -605,7 +681,7 @@ const DefaultMessage = React.memo(function DefaultMessage({
           </div>
         ) : (
           <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-            {m.text}
+            {messageText}
           </span>
         )}
 
@@ -630,6 +706,7 @@ const DefaultMessage = React.memo(function DefaultMessage({
             <Button
               size="sm"
               variant="ghost"
+              aria-label="마지막 질문 다시 시도하기"
               className="h-9 text-sm px-3"
               onClick={() => onRetry(lastPrompt)}
             >
@@ -659,26 +736,33 @@ const MessageAttachments = React.memo(function MessageAttachments({
 
   return (
     <div className="mt-2 space-y-1.5">
-      {attachments.map((attachment) => (
-        <div
-          key={attachment.id}
-          className={cn(
-            "rounded-lg border px-3 py-2 text-xs",
-            isTerminal
-              ? "border-primary/25 text-primary/80"
-              : "border-primary-foreground/20 bg-primary-foreground/10",
-          )}
-        >
-          <div className="font-semibold">
-            {attachment.name} · {formatBytes(attachment.sizeBytes)}
-          </div>
-          {attachment.textPreview ? (
-            <div className="mt-1 line-clamp-3 opacity-80">
-              {attachment.textPreview}
+      {attachments.map((attachment) => {
+        const attachmentName = normalizeMessageLine(
+          attachment.name,
+          "첨부",
+        );
+        const attachmentPreview = stripUnsafeMessageControls(attachment.textPreview || "");
+        return (
+          <div
+            key={attachment.id}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-xs",
+              isTerminal
+                ? "border-primary/25 text-primary/80"
+                : "border-primary-foreground/20 bg-primary-foreground/10",
+            )}
+          >
+            <div className="font-semibold">
+              {attachmentName} · {formatBytes(attachment.sizeBytes)}
             </div>
-          ) : null}
-        </div>
-      ))}
+            {attachment.textPreview ? (
+              <div className="mt-1 line-clamp-3 opacity-80">
+                {attachmentPreview}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 });
@@ -686,15 +770,20 @@ const MessageAttachments = React.memo(function MessageAttachments({
 function ReplyActionButton({
   isTerminal,
   active,
+  targetName,
   onClick,
 }: {
   isTerminal: boolean;
   active: boolean;
+  targetName: string;
   onClick: () => void;
 }) {
+  const safeTargetName = normalizeMessageLine(targetName, "상대");
   return (
     <button
       type="button"
+      aria-label={active ? `답장 중: ${safeTargetName}` : `답장하기: ${safeTargetName}`}
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] transition-colors",
@@ -705,9 +794,9 @@ function ReplyActionButton({
           : active
             ? "bg-primary/10 text-primary"
             : "bg-muted text-muted-foreground hover:text-foreground",
-      )}
+        )}
     >
-      <CornerUpLeft className="h-3 w-3" />
+      <CornerUpLeft aria-hidden="true" className="h-3 w-3" focusable="false" />
       <span>{active ? "답장 중" : "답장"}</span>
     </button>
   );
@@ -725,13 +814,17 @@ const UserImage = React.memo(function UserImage({
     return (
       <div className="ml-0 mt-2">
         <div className="inline-block rounded border border-primary/30 overflow-hidden max-w-[200px] sm:max-w-[280px]">
-          <img
-            src={imageUrl}
-            alt="첨부 이미지"
-            className="w-full h-auto object-contain max-h-[200px]"
-            onClick={() => window.open(imageUrl, "_blank")}
-            style={{ cursor: "pointer" }}
-          />
+          <button
+            type="button"
+            aria-label="첨부 이미지 원본 열기"
+            onClick={() => window.open(imageUrl, "_blank", "noopener,noreferrer")}
+          >
+            <img
+              src={imageUrl}
+              alt="첨부 이미지"
+              className="w-full h-auto object-contain max-h-[200px]"
+            />
+          </button>
         </div>
         <div className="text-xs text-primary/60 mt-1 font-mono">
           [img] 클릭하여 원본 보기
@@ -743,13 +836,17 @@ const UserImage = React.memo(function UserImage({
   return (
     <div className="mt-2">
       <div className="inline-block rounded-lg overflow-hidden max-w-[200px] sm:max-w-[240px] border border-primary-foreground/20">
-        <img
-          src={imageUrl}
-          alt="첨부 이미지"
-          className="w-full h-auto object-contain max-h-[180px]"
-          onClick={() => window.open(imageUrl, "_blank")}
-          style={{ cursor: "pointer" }}
-        />
+        <button
+          type="button"
+          aria-label="첨부 이미지 원본 열기"
+          onClick={() => window.open(imageUrl, "_blank", "noopener,noreferrer")}
+        >
+          <img
+            src={imageUrl}
+            alt="첨부 이미지"
+            className="w-full h-auto object-contain max-h-[180px]"
+          />
+        </button>
       </div>
     </div>
   );
@@ -772,22 +869,30 @@ const Sources = React.memo(function Sources({
       <div className="mt-3 pl-3 text-xs">
         <span className="text-primary/60"># Sources:</span>
         <ul className="mt-1 space-y-1">
-          {sources.map((s, i) => (
-            <li key={i} className="text-muted-foreground">
-              <span className="text-primary/50">[{i + 1}]</span>{" "}
-              {s.url ? (
-                <a
-                  className="underline decoration-dotted hover:text-primary cursor-pointer break-all"
-                  href={s.url}
-                  onClick={(e) => onSourceClick(s.url!, e)}
-                >
-                  {s.title || s.url}
-                </a>
-              ) : (
-                <span>{s.title || "출처"}</span>
-              )}
-            </li>
-          ))}
+          {sources.map((s, i) => {
+            const sourceUrl = normalizeSafeSourceUrl(s.url);
+            const sourceTitle = normalizeMessageLine(
+              s.title,
+              sourceUrl || "출처",
+            );
+            return (
+              <li key={i} className="text-muted-foreground">
+                <span className="text-primary/50">[{i + 1}]</span>{" "}
+                {sourceUrl ? (
+                  <a
+                    aria-label={`출처 열기: ${sourceTitle}`}
+                    className="underline decoration-dotted hover:text-primary cursor-pointer break-all"
+                    href={sourceUrl}
+                    onClick={(e) => onSourceClick(sourceUrl, e)}
+                  >
+                    {sourceTitle}
+                  </a>
+                ) : (
+                  <span>{sourceTitle}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
     );
@@ -799,21 +904,29 @@ const Sources = React.memo(function Sources({
         참고한 출처
       </div>
       <ul className="text-sm list-disc pl-4 space-y-1">
-        {sources.map((s, i) => (
-          <li key={i}>
-            {s.url ? (
-              <a
-                className="underline text-primary cursor-pointer break-all"
-                href={s.url}
-                onClick={(e) => onSourceClick(s.url!, e)}
-              >
-                {s.title || s.url}
-              </a>
-            ) : (
-              <span>{s.title || "출처"}</span>
-            )}
-          </li>
-        ))}
+        {sources.map((s, i) => {
+          const sourceUrl = normalizeSafeSourceUrl(s.url);
+          const sourceTitle = normalizeMessageLine(
+            s.title,
+            sourceUrl || "출처",
+          );
+          return (
+            <li key={i}>
+              {sourceUrl ? (
+                <a
+                  aria-label={`출처 열기: ${sourceTitle}`}
+                  className="underline text-primary cursor-pointer break-all"
+                  href={sourceUrl}
+                  onClick={(e) => onSourceClick(sourceUrl, e)}
+                >
+                  {sourceTitle}
+                </a>
+              ) : (
+                <span>{sourceTitle}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -840,19 +953,25 @@ const Followups = React.memo(function Followups({
         <div
           className={cn("flex gap-2 mt-2", isMobile ? "flex-col" : "flex-wrap")}
         >
-          {followups.map((q, i) => (
-            <button
-              key={i}
-              className={cn(
-                "text-xs text-primary/80 hover:text-primary border border-primary/30 hover:bg-primary/10 transition-colors text-left",
-                isMobile ? "px-4 py-3" : "px-3 py-2",
-              )}
-              onClick={() => onPromptClick(q)}
-            >
-              <ChevronRight className="inline h-3 w-3 -ml-0.5 mr-1" />
-              {q}
-            </button>
-          ))}
+          {followups.flatMap((q, i) => {
+            const followup = normalizeMessageLine(q);
+            if (!followup) return [];
+            return [
+              <button
+                key={i}
+                type="button"
+                aria-label={`연관 질문 선택: ${followup}`}
+                className={cn(
+                  "text-xs text-primary/80 hover:text-primary border border-primary/30 hover:bg-primary/10 transition-colors text-left",
+                  isMobile ? "px-4 py-3" : "px-3 py-2",
+                )}
+                onClick={() => onPromptClick(followup)}
+              >
+                <ChevronRight aria-hidden="true" className="inline h-3 w-3 -ml-0.5 mr-1" focusable="false" />
+                {followup}
+              </button>,
+            ];
+          })}
         </div>
       </div>
     );
@@ -864,20 +983,25 @@ const Followups = React.memo(function Followups({
         연관 질문
       </div>
       <div className={cn("flex gap-2", isMobile ? "flex-col" : "flex-wrap")}>
-        {followups.map((q, i) => (
-          <Button
-            key={i}
-            size="sm"
-            variant="secondary"
-            className={cn(
-              "text-xs justify-start",
-              isMobile ? "h-12 px-4 w-full text-sm" : "h-10 px-4",
-            )}
-            onClick={() => onPromptClick(q)}
-          >
-            {q}
-          </Button>
-        ))}
+        {followups.flatMap((q, i) => {
+          const followup = normalizeMessageLine(q);
+          if (!followup) return [];
+          return [
+            <Button
+              key={i}
+              size="sm"
+              variant="secondary"
+              aria-label={`연관 질문 선택: ${followup}`}
+              className={cn(
+                "text-xs justify-start",
+                isMobile ? "h-12 px-4 w-full text-sm" : "h-10 px-4",
+              )}
+              onClick={() => onPromptClick(followup)}
+            >
+              {followup}
+            </Button>,
+          ];
+        })}
       </div>
     </div>
   );
@@ -900,13 +1024,16 @@ const SystemMessage = React.memo(function SystemMessage({
   if (isTerminal) {
     const toneClass = getSystemTerminalClass(level);
     const label = getSystemLabel(level);
+    const safeText = stripUnsafeMessageControls(text);
 
     return (
-      <div className={cn("flex items-start gap-2", toneClass)}>
+      <div className={cn("flex items-start gap-2", toneClass)} role={level === "error" ? "alert" : "status"}>
         <span className="font-bold select-none shrink-0">{label}</span>
-        <span className="whitespace-pre-wrap break-words text-sm">{text}</span>
+        <span className="whitespace-pre-wrap break-words text-sm">{safeText}</span>
         {level === "error" && lastPrompt && (
           <button
+            type="button"
+            aria-label="마지막 질문 다시 시도하기"
             className="text-xs underline ml-2 opacity-80 hover:opacity-100"
             onClick={onRetry}
           >

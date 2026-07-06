@@ -62,12 +62,100 @@ interface ChatMarkdownProps {
   content: string;
   /** Enable streaming mode for better partial markdown handling */
   isStreaming?: boolean;
+  label?: string;
+  title?: string;
 }
 
 type CodeComponentProps = React.ComponentPropsWithoutRef<'code'> & {
   inline?: boolean;
   className?: string;
 };
+
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const ANSI_ESCAPE_DETECTOR = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/;
+const MARKDOWN_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g;
+const MARKDOWN_ACCESSIBLE_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const MARKDOWN_HREF_TEXT_PATTERN = /[\u0000-\u001F\u007F\s]/;
+const MARKDOWN_DECODED_HREF_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
+
+function sanitizeMarkdownContent(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(MARKDOWN_CONTROL_TEXT_PATTERN, '');
+}
+
+function sanitizeMarkdownAccessibleText(value: unknown): string | undefined {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(MARKDOWN_ACCESSIBLE_TEXT_PATTERN, '')
+    .trim();
+
+  return sanitized.length > 0 ? sanitized : undefined;
+}
+
+function normalizeMarkdownContent(value: unknown): string {
+  return typeof value === 'string' ? sanitizeMarkdownContent(value) : '';
+}
+
+function hasUnsafeMarkdownPathSegment(path: string): boolean {
+  return path
+    .split('/')
+    .some(segment => segment === '.' || segment === '..');
+}
+
+export function normalizeMarkdownHref(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const href = value.trim();
+  if (!href || ANSI_ESCAPE_DETECTOR.test(href) || MARKDOWN_HREF_TEXT_PATTERN.test(href) || href.includes('\\')) {
+    return null;
+  }
+
+  let decodedHref: string;
+  try {
+    decodedHref = decodeURIComponent(href);
+  } catch {
+    return null;
+  }
+
+  if (MARKDOWN_DECODED_HREF_TEXT_PATTERN.test(decodedHref) || decodedHref.includes('\\')) {
+    return null;
+  }
+
+  if (href.startsWith('//')) return null;
+
+  if (href.startsWith('/')) {
+    const decodedPath = decodedHref.split(/[?#]/, 1)[0] || '';
+    if (hasUnsafeMarkdownPathSegment(decodedPath)) return null;
+
+    return href;
+  }
+
+  if (href.startsWith('#')) {
+    return href;
+  }
+
+  const scheme = href.match(/^([A-Za-z][A-Za-z0-9+.-]*):/);
+  if (scheme) {
+    const protocol = scheme[1].toLowerCase();
+    if (protocol === 'mailto') return href;
+    if (protocol !== 'http' && protocol !== 'https') return null;
+
+    try {
+      const url = new URL(href);
+      if (url.username || url.password) return null;
+      return url.href;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
 
 /**
  * Sanitize incomplete markdown during streaming to prevent parse errors
@@ -111,8 +199,10 @@ const ChatCodeBlock = memo(function ChatCodeBlock({ language, codeString, isTerm
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    if (!navigator?.clipboard) return;
-    void navigator.clipboard.writeText(codeString).then(() => {
+    const clipboard =
+      typeof navigator !== 'undefined' ? navigator.clipboard : null;
+    if (typeof clipboard?.writeText !== 'function') return;
+    void clipboard.writeText(codeString).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
@@ -137,6 +227,7 @@ const ChatCodeBlock = memo(function ChatCodeBlock({ language, codeString, isTerm
         </span>
         <button
           type='button'
+          aria-label={copied ? 'Code copied' : 'Copy code'}
           className={cn(
             'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
             'opacity-0 group-hover:opacity-100 focus:opacity-100',
@@ -149,12 +240,12 @@ const ChatCodeBlock = memo(function ChatCodeBlock({ language, codeString, isTerm
         >
           {copied ? (
             <>
-              <Check className='h-3 w-3' />
+              <Check className='h-3 w-3' aria-hidden='true' />
               <span>Copied</span>
             </>
           ) : (
             <>
-              <Copy className='h-3 w-3' />
+              <Copy className='h-3 w-3' aria-hidden='true' />
               <span>Copy</span>
             </>
           )}
@@ -183,8 +274,10 @@ const ChatPlainCodeBlock = memo(function ChatPlainCodeBlock({ codeString, isTerm
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    if (!navigator?.clipboard) return;
-    void navigator.clipboard.writeText(codeString).then(() => {
+    const clipboard =
+      typeof navigator !== 'undefined' ? navigator.clipboard : null;
+    if (typeof clipboard?.writeText !== 'function') return;
+    void clipboard.writeText(codeString).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});
@@ -197,6 +290,7 @@ const ChatPlainCodeBlock = memo(function ChatPlainCodeBlock({ codeString, isTerm
     )}>
       <button
         type='button'
+        aria-label={copied ? 'Code copied' : 'Copy code'}
         className={cn(
           'absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition z-10',
           'opacity-0 group-hover:opacity-100 focus:opacity-100 sm:opacity-100',
@@ -206,7 +300,11 @@ const ChatPlainCodeBlock = memo(function ChatPlainCodeBlock({ codeString, isTerm
         )}
         onClick={handleCopy}
       >
-        {copied ? <Check className='h-3 w-3' /> : <Copy className='h-3 w-3' />}
+        {copied ? (
+          <Check className='h-3 w-3' aria-hidden='true' />
+        ) : (
+          <Copy className='h-3 w-3' aria-hidden='true' />
+        )}
       </button>
       <pre className={cn(
         'p-4 text-[12px] overflow-auto overscroll-contain max-h-[400px]',
@@ -218,9 +316,17 @@ const ChatPlainCodeBlock = memo(function ChatPlainCodeBlock({ codeString, isTerm
   );
 });
 
-const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }) => {
+const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
+  content,
+  isStreaming,
+  label,
+  title,
+}) => {
   const { isTerminal } = useTheme();
-  const displayContent = isStreaming ? sanitizeStreamingMarkdown(content) : content;
+  const normalizedContent = normalizeMarkdownContent(content);
+  const displayContent = isStreaming ? sanitizeStreamingMarkdown(normalizedContent) : normalizedContent;
+  const safeLabel = sanitizeMarkdownAccessibleText(label);
+  const safeTitle = sanitizeMarkdownAccessibleText(title);
   
   const components = useMemo<Components>(() => ({
     h1: ({ children }) => (
@@ -298,19 +404,26 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
         </code>
       );
     },
-    a: ({ children, href }) => (
-      <a
-        href={href}
-        target='_blank'
-        rel='noopener noreferrer'
-        className={cn(
-          'text-primary underline decoration-dotted underline-offset-2 hover:text-primary/80 break-all',
-          isTerminal && 'hover:decoration-solid'
-        )}
-      >
-        {children}
-      </a>
-    ),
+    a: ({ children, href }) => {
+      const safeHref = normalizeMarkdownHref(href);
+      if (!safeHref) {
+        return <span>{children}</span>;
+      }
+
+      return (
+        <a
+          href={safeHref}
+          target='_blank'
+          rel='noopener noreferrer'
+          className={cn(
+            'text-primary underline decoration-dotted underline-offset-2 hover:text-primary/80 break-all',
+            isTerminal && 'hover:decoration-solid'
+          )}
+        >
+          {children}
+        </a>
+      );
+    },
     // Enhanced table rendering
     table: ({ children }) => (
       <div className={cn(
@@ -321,7 +434,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
           'flex items-center gap-2 px-3 py-2 border-b text-xs font-medium',
           isTerminal ? 'border-border text-primary/70' : 'border-border/60 text-muted-foreground'
         )}>
-          <Table2 className='h-3.5 w-3.5' />
+          <Table2 className='h-3.5 w-3.5' aria-hidden='true' />
           <span className={isTerminal ? 'font-mono uppercase tracking-wide' : ''}>Table</span>
         </div>
         <div className='overflow-x-auto'>
@@ -389,7 +502,10 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({ content, isStreaming }
       '[&>ul]:my-2 [&>ol]:my-2',
       '[&_pre]:!overflow-auto',
       isTerminal && 'prose-headings:font-mono'
-    )}>
+    )}
+      aria-label={safeLabel}
+      title={safeTitle}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {displayContent}
       </ReactMarkdown>

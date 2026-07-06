@@ -23,6 +23,57 @@ const SESSION_PERSIST_DEBOUNCE_MS = 400;
 const MAX_MESSAGES_PER_SESSION = 200;
 const LIVE_PINNED_KEY = "aiChat.livePinned";
 const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 120;
+const CHAT_MESSAGE_ROLES = new Set(["user", "assistant", "system"]);
+
+function normalizeStateSessionId(sessionId: unknown): string | null {
+  if (typeof sessionId !== "string") return null;
+  const normalized = sessionId.trim();
+  if (!normalized || /[\r\n]/.test(normalized)) return null;
+  return normalized;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeStoredChatMessage(value: unknown): ChatMessage | null {
+  if (!isRecord(value)) return null;
+
+  const id = normalizeStateSessionId(value.id);
+  const role = typeof value.role === "string" ? value.role : "";
+  const text = typeof value.text === "string" ? value.text : null;
+  if (!id || !CHAT_MESSAGE_ROLES.has(role) || text === null) {
+    return null;
+  }
+
+  if (
+    value.pending === true ||
+    value.transient === true ||
+    value.statusSource === "event"
+  ) {
+    return null;
+  }
+
+  return {
+    ...value,
+    id,
+    role: role as ChatMessage["role"],
+    text,
+  } as ChatMessage;
+}
+
+export function normalizeStoredChatMessages(value: unknown): ChatMessage[] {
+  if (!Array.isArray(value)) return [];
+
+  const normalized: ChatMessage[] = [];
+  for (const item of value) {
+    const message = normalizeStoredChatMessage(item);
+    if (message) {
+      normalized.push(message);
+    }
+  }
+  return normalized;
+}
 
 export function useChatState(options?: {
   initialMessage?: string;
@@ -35,11 +86,13 @@ export function useChatState(options?: {
 
   const [sessionKey, setSessionKey] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    const existing = getStoredSessionId();
+    const existing = normalizeStateSessionId(getStoredSessionId());
     if (existing) return existing;
 
-    const fresh = generateLocalSessionId();
-    storeSessionId(fresh);
+    const fresh = normalizeStateSessionId(generateLocalSessionId()) || "";
+    if (fresh) {
+      storeSessionId(fresh);
+    }
     return fresh;
   });
 
@@ -81,6 +134,12 @@ export function useChatState(options?: {
   const lastPromptRef = useRef<string>("");
   const persistTimerRef = useRef<number | null>(null);
   const autoScrollEnabledRef = useRef(true);
+
+  const setSafeSessionKey = useCallback((key: string) => {
+    const normalized = normalizeStateSessionId(key);
+    if (!normalized) return;
+    setSessionKey(normalized);
+  }, []);
 
   const canSend =
     (input.trim().length > 0 ||
@@ -159,10 +218,9 @@ export function useChatState(options?: {
         `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
       );
       if (raw) {
-        const parsed = JSON.parse(raw) as ChatMessage[];
-        if (Array.isArray(parsed)) {
-          setMessages(parsed.slice(-MAX_MESSAGES_PER_SESSION));
-        }
+        const parsed: unknown = JSON.parse(raw);
+        const restoredMessages = normalizeStoredChatMessages(parsed);
+        setMessages(restoredMessages.slice(-MAX_MESSAGES_PER_SESSION));
       } else {
         setMessages([]);
       }
@@ -302,7 +360,7 @@ export function useChatState(options?: {
         setInput("");
         setSelectedBlockAttachments([]);
         setIsAggregatePrompt(false);
-        setSessionKey(generateLocalSessionId());
+        setSafeSessionKey(generateLocalSessionId());
 
         try {
           window.dispatchEvent(new CustomEvent("aiChat:sessionsUpdated"));
@@ -318,7 +376,7 @@ export function useChatState(options?: {
     } catch {
       void 0;
     }
-  }, [persistOptIn, sessionKey]);
+  }, [persistOptIn, sessionKey, setSafeSessionKey]);
 
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -354,7 +412,7 @@ export function useChatState(options?: {
     setPersistOptIn,
     sessionId,
     sessionKey,
-    setSessionKey,
+    setSessionKey: setSafeSessionKey,
     sessions,
     setSessions,
     showSessions,

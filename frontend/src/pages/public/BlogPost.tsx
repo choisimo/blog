@@ -35,6 +35,7 @@ import {
 } from '@/services/content/translate';
 import { curiosityTracker } from '@/services/engagement/curiosity';
 import { useUIStrings } from '@/utils/i18n/uiStrings';
+import { resolveAiMemoInlineEnabledPreference } from '@/utils/aiMemoInlinePreference';
 import { findRelatedPosts as findRAGRelatedPosts } from '@/services/discovery/rag';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
@@ -611,7 +612,7 @@ ${description}
     const read = () => {
       try {
         const v = localStorage.getItem('aiMemo.inline.enabled');
-        setInlineEnabled(!!JSON.parse(v || 'true'));
+        setInlineEnabled(resolveAiMemoInlineEnabledPreference(v));
       } catch {
         setInlineEnabled(true);
       }

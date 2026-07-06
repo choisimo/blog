@@ -11,6 +11,10 @@
 import { sha256 } from "./hash";
 
 export async function getCanvasFingerprint(): Promise<string> {
+    if (typeof document === "undefined") {
+        return "";
+    }
+
     try {
         const canvas = document.createElement("canvas");
         canvas.width = 256;
@@ -58,6 +62,10 @@ export async function getCanvasFingerprint(): Promise<string> {
         ctx.globalCompositeOperation = "source-over";
 
         const dataUrl = canvas.toDataURL("image/png");
+        if (typeof dataUrl !== "string" || !dataUrl) {
+            return "";
+        }
+
         return sha256(dataUrl);
     } catch {
         return "";

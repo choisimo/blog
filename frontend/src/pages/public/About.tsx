@@ -12,6 +12,10 @@ import { site } from '@/config/site';
 import { sendContactMessage } from '@/services/engagement/contact';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
+import {
+  normalizeAboutEmailHref,
+  normalizeAboutSocialHref,
+} from '@/utils/aboutLinks';
 
 interface ContactFormState {
   name: string;
@@ -102,6 +106,9 @@ const About = () => {
   const { toast } = useToast();
   const [formData, setFormData] = useState<ContactFormState>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const githubHref = normalizeAboutSocialHref(site.social.github);
+  const linkedinHref = normalizeAboutSocialHref(site.social.linkedin);
+  const emailHref = normalizeAboutEmailHref(site.email);
 
   const handleChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -242,24 +249,30 @@ const About = () => {
                   Social Links
                 </h3>
                 <div className='flex flex-wrap gap-2'>
-                  <Button variant='outline' size='sm' asChild>
-                    <a href={site.social.github} target='_blank' rel='noopener noreferrer'>
-                      <Github className='h-4 w-4' />
-                      GitHub
-                    </a>
-                  </Button>
-                  <Button variant='outline' size='sm' asChild>
-                    <a href={site.social.linkedin} target='_blank' rel='noopener noreferrer'>
-                      <Linkedin className='h-4 w-4' />
-                      LinkedIn
-                    </a>
-                  </Button>
-                  <Button variant='outline' size='sm' asChild>
-                    <a href={`mailto:${site.email}`}>
-                      <Mail className='h-4 w-4' />
-                      Email
-                    </a>
-                  </Button>
+                  {githubHref && (
+                    <Button variant='outline' size='sm' asChild>
+                      <a href={githubHref} target='_blank' rel='noopener noreferrer'>
+                        <Github className='h-4 w-4' />
+                        GitHub
+                      </a>
+                    </Button>
+                  )}
+                  {linkedinHref && (
+                    <Button variant='outline' size='sm' asChild>
+                      <a href={linkedinHref} target='_blank' rel='noopener noreferrer'>
+                        <Linkedin className='h-4 w-4' />
+                        LinkedIn
+                      </a>
+                    </Button>
+                  )}
+                  {emailHref && (
+                    <Button variant='outline' size='sm' asChild>
+                      <a href={emailHref}>
+                        <Mail className='h-4 w-4' />
+                        Email
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

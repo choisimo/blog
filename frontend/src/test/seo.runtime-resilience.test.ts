@@ -56,4 +56,22 @@ describe('seo runtime resilience', () => {
     expect(seoData.ogImage).toBe('https://noblog.nodove.com/images/seo/default/seo.png');
     expect(structuredData.image).toBe('https://noblog.nodove.com/images/seo/default/seo.png');
   });
+
+  it('falls back from unsafe post path segments in canonical metadata', () => {
+    const unsafePost = {
+      ...post,
+      year: '2024\u0000',
+      slug: 'bad%2Fslug',
+    };
+
+    const seoData = generateSEOData(unsafePost, 'post');
+    const structuredData = generateStructuredData(unsafePost, 'post') as {
+      mainEntityOfPage: { '@id': string };
+    };
+
+    expect(seoData.canonicalUrl).toBe('https://noblog.nodove.com/blog');
+    expect(structuredData.mainEntityOfPage['@id']).toBe(
+      'https://noblog.nodove.com/blog'
+    );
+  });
 });

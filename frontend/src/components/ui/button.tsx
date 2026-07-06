@@ -4,6 +4,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+function sanitizeAccessibleText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return value as string | undefined;
+  const sanitized = value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+  return sanitized || undefined;
+}
+
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.98]',
   {
@@ -49,12 +62,20 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    { className, variant, size, asChild = false, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => {
     const Comp = asChild ? Slot : 'button';
+    const safeAriaLabel = sanitizeAccessibleText(ariaLabel);
+    const safeTitle = sanitizeAccessibleText(title);
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        aria-label={safeAriaLabel}
+        title={safeTitle}
         {...props}
       />
     );

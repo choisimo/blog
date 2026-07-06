@@ -64,12 +64,250 @@ export interface RAGHealthResponse {
 
 type AuthenticatedJsonHeaders = Record<string, string> & { Authorization: string };
 
+const RAG_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const WHITESPACE_PATTERN = /\s+/g;
+const MAX_RAG_QUERY_LENGTH = 4000;
+const MAX_RAG_TEXT_LENGTH = 200000;
+const MAX_RAG_SINGLE_LINE_LENGTH = 1000;
+
+function decodeRAGSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRAGSelector(value: unknown): string | null {
+  const trimmed = normalizeSingleLineText(value, 128);
+  if (!trimmed) return null;
+
+  const decoded = decodeRAGSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return RAG_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function encodeRAGSelector(value: string): string {
+  return encodeURIComponent(value);
+}
+
+function normalizeSingleLineText(value: unknown, maxLength = MAX_RAG_SINGLE_LINE_LENGTH): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+
+  const normalized = String(value)
+    .replace(SINGLE_LINE_CONTROL_PATTERN, ' ')
+    .replace(WHITESPACE_PATTERN, ' ')
+    .trim();
+
+  return normalized && normalized.length <= maxLength ? normalized : null;
+}
+
+function normalizeMultilineText(value: unknown, maxLength = MAX_RAG_TEXT_LENGTH): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+
+  const normalized = String(value)
+    .replace(/\r\n?/g, '\n')
+    .replace(MULTILINE_CONTROL_PATTERN, ' ')
+    .trim();
+
+  return normalized && normalized.length <= maxLength ? normalized : null;
+}
+
+function getRAGErrorMessage(value: unknown, fallback: string): string {
+  if (isRecord(value)) {
+    const error = value.error;
+    const errorText = normalizeSingleLineText(error);
+    if (errorText) return errorText;
+
+    if (isRecord(error)) {
+      const nestedMessage = normalizeSingleLineText(error.message);
+      if (nestedMessage) return nestedMessage;
+      const nestedCode = normalizeSingleLineText(error.code);
+      if (nestedCode) return nestedCode;
+    }
+
+    const message = normalizeSingleLineText(value.message);
+    if (message) return message;
+  }
+
+  return fallback;
+}
+
+function normalizeRAGResultMetadata(
+  metadata: Record<string, unknown>,
+): RAGSearchResult['metadata'] {
+  return {
+    ...metadata,
+    ...(typeof metadata.title === 'string'
+      ? { title: normalizeSingleLineText(metadata.title) ?? undefined }
+      : {}),
+    ...(typeof metadata.slug === 'string'
+      ? { slug: normalizeRAGSelector(metadata.slug) ?? undefined }
+      : {}),
+    ...(typeof metadata.year === 'string'
+      ? { year: /^\d{4}$/.test(metadata.year.trim()) ? metadata.year.trim() : undefined }
+      : {}),
+    ...(typeof metadata.category === 'string'
+      ? { category: normalizeSingleLineText(metadata.category) ?? undefined }
+      : {}),
+    ...(Array.isArray(metadata.tags)
+      ? {
+          tags: metadata.tags
+            .map((tag) => normalizeSingleLineText(tag, 128))
+            .filter((tag): tag is string => Boolean(tag)),
+        }
+      : {}),
+  };
+}
+
+function normalizeIndexDocuments(
+  documents: RAGIndexDocument[],
+): RAGIndexDocument[] | null {
+  const normalized: RAGIndexDocument[] = [];
+  for (const document of documents) {
+    const id = normalizeRAGSelector(document.id);
+    const content = normalizeMultilineText(document.content);
+    if (!id || !content) return null;
+    normalized.push({ ...document, id, content });
+  }
+  return normalized;
+}
+
 async function getAdminRequestHeaders(): Promise<AuthenticatedJsonHeaders | null> {
   const headers = await getAuthHeadersAsync();
   if (!headers.Authorization) {
     return null;
   }
   return headers as AuthenticatedJsonHeaders;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseRAGSearchResult(value: unknown): RAGSearchResult | null {
+  if (!isRecord(value) || !isRecord(value.metadata)) {
+    return null;
+  }
+
+  const content =
+    normalizeMultilineText(value.content) ??
+    (typeof value.document === 'string' ? normalizeMultilineText(value.document) : null);
+  const score =
+    typeof value.score === 'number' && Number.isFinite(value.score)
+      ? value.score
+      : typeof value.distance === 'number' && Number.isFinite(value.distance)
+        ? Math.max(0, 1 - value.distance)
+        : null;
+  const id = normalizeRAGSelector(value.id);
+
+  if (!id || content === null || score === null) {
+    return null;
+  }
+
+  return {
+    ...value,
+    id,
+    content,
+    metadata: normalizeRAGResultMetadata(value.metadata),
+    score,
+    ...(normalizeMultilineText(value.document) ? { document: normalizeMultilineText(value.document) } : {}),
+    ...(typeof value.distance === 'number' && Number.isFinite(value.distance)
+      ? { distance: value.distance }
+      : {}),
+    ...(normalizeMultilineText(value.snippet) ? { snippet: normalizeMultilineText(value.snippet) } : {}),
+  };
+}
+
+function parseRAGSearchResponse(value: unknown, fallbackQuery: string): RAGSearchResponse | null {
+  if (!isRecord(value) || value.ok !== true || !isRecord(value.data)) {
+    return null;
+  }
+
+  const rawResults = value.data.results;
+  if (!Array.isArray(rawResults)) {
+    return null;
+  }
+
+  const results = rawResults.map(parseRAGSearchResult);
+  if (results.some((result) => result === null)) {
+    return null;
+  }
+
+  const total =
+    typeof value.data.total === 'number' && Number.isFinite(value.data.total)
+      ? value.data.total
+      : results.length;
+
+  return {
+    ok: true,
+    data: {
+      results: results as RAGSearchResult[],
+      query: normalizeSingleLineText(value.data.query, MAX_RAG_QUERY_LENGTH) ?? fallbackQuery,
+      total,
+    },
+  };
+}
+
+function isFiniteNumberArray(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === 'number' && Number.isFinite(item))
+  );
+}
+
+function parseRAGEmbedResponse(value: unknown): RAGEmbedResponse | null {
+  if (!isRecord(value) || value.ok !== true || !isRecord(value.data)) {
+    return null;
+  }
+
+  if (
+    typeof value.data.model !== 'string' ||
+    !Array.isArray(value.data.embeddings) ||
+    !value.data.embeddings.every(isFiniteNumberArray)
+  ) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    data: {
+      embeddings: value.data.embeddings,
+      model: normalizeSingleLineText(value.data.model) ?? value.data.model,
+    },
+  };
+}
+
+function parseRAGHealthResponse(value: unknown): RAGHealthResponse | null {
+  if (!isRecord(value) || value.ok !== true || !isRecord(value.data)) {
+    return null;
+  }
+
+  if (
+    (value.data.status !== 'ok' && value.data.status !== 'error') ||
+    typeof value.data.chromadb !== 'boolean' ||
+    typeof value.data.embedding !== 'boolean' ||
+    typeof value.data.timestamp !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    data: {
+      status: value.data.status,
+      chromadb: value.data.chromadb,
+      embedding: value.data.embedding,
+      timestamp: value.data.timestamp,
+    },
+  };
 }
 
 // ============================================================================
@@ -96,6 +334,14 @@ export async function semanticSearch(
   } = {}
 ): Promise<RAGSearchResponse> {
   const { n_results = 5, filter, signal } = options;
+  const safeResultCount =
+    Number.isFinite(n_results) && n_results > 0
+      ? Math.min(Math.floor(n_results), 50)
+      : 5;
+  const safeQuery = normalizeSingleLineText(query, MAX_RAG_QUERY_LENGTH);
+  if (!safeQuery) {
+    return { ok: false, error: { message: 'Invalid RAG search query', code: 'INVALID_QUERY' } };
+  }
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, '')}/api/v1/rag/search`;
 
@@ -103,7 +349,7 @@ export async function semanticSearch(
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, n_results, filter }),
+      body: JSON.stringify({ query: safeQuery, n_results: safeResultCount, filter }),
       signal,
     });
 
@@ -112,27 +358,27 @@ export async function semanticSearch(
     if (!res.ok) {
       return {
         ok: false,
-        error: data.error || { message: `HTTP ${res.status}` },
+        error: { message: getRAGErrorMessage(data, `HTTP ${res.status}`) },
       };
     }
 
-    // Normalize backend response format
-    // Backend returns: { ok, data: { results: [{ document, metadata, distance }] } }
-    // Frontend expects: { ok, data: { results: [{ content, metadata, score }] } }
-    if (data.ok && data.data?.results) {
-      data.data.results = data.data.results.map((r: RAGSearchResult) => ({
-        ...r,
-        content: r.content || r.document || '',
-        score: r.score ?? (r.distance != null ? Math.max(0, 1 - r.distance) : 0),
-      }));
+    const parsed = parseRAGSearchResponse(data, safeQuery);
+    if (!parsed) {
+      return {
+        ok: false,
+        error: {
+          message: 'Invalid response from RAG search API',
+          code: 'PARSE_ERROR',
+        },
+      };
     }
 
-    return data as RAGSearchResponse;
+    return parsed;
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, error: { message: 'Search cancelled', code: 'ABORTED' } };
     }
-    const message = err instanceof Error ? err.message : 'Search failed';
+    const message = normalizeSingleLineText(err instanceof Error ? err.message : null) ?? 'Search failed';
     return { ok: false, error: { message, code: 'NETWORK_ERROR' } };
   }
 }
@@ -169,7 +415,11 @@ export async function generateEmbeddings(
     const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ texts }),
+      body: JSON.stringify({
+        texts: texts
+          .map((text) => normalizeMultilineText(text))
+          .filter((text): text is string => Boolean(text)),
+      }),
       signal,
     });
 
@@ -178,16 +428,27 @@ export async function generateEmbeddings(
     if (!res.ok) {
       return {
         ok: false,
-        error: data.error || { message: `HTTP ${res.status}` },
+        error: { message: getRAGErrorMessage(data, `HTTP ${res.status}`) },
       };
     }
 
-    return data as RAGEmbedResponse;
+    const parsed = parseRAGEmbedResponse(data);
+    if (!parsed) {
+      return {
+        ok: false,
+        error: {
+          message: 'Invalid response from RAG embed API',
+          code: 'PARSE_ERROR',
+        },
+      };
+    }
+
+    return parsed;
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, error: { message: 'Embed cancelled', code: 'ABORTED' } };
     }
-    const message = err instanceof Error ? err.message : 'Embed failed';
+    const message = normalizeSingleLineText(err instanceof Error ? err.message : null) ?? 'Embed failed';
     return { ok: false, error: { message, code: 'NETWORK_ERROR' } };
   }
 }
@@ -208,13 +469,24 @@ export async function checkRAGHealth(): Promise<RAGHealthResponse> {
     if (!res.ok) {
       return {
         ok: false,
-        error: data.error || { message: `HTTP ${res.status}` },
+        error: { message: getRAGErrorMessage(data, `HTTP ${res.status}`) },
       };
     }
 
-    return data as RAGHealthResponse;
+    const parsed = parseRAGHealthResponse(data);
+    if (!parsed) {
+      return {
+        ok: false,
+        error: {
+          message: 'Invalid response from RAG health API',
+          code: 'PARSE_ERROR',
+        },
+      };
+    }
+
+    return parsed;
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Health check failed';
+    const message = normalizeSingleLineText(err instanceof Error ? err.message : null) ?? 'Health check failed';
     return { ok: false, error: { message, code: 'NETWORK_ERROR' } };
   }
 }
@@ -565,9 +837,14 @@ export async function getCollections(): Promise<RAGCollectionsResponse> {
  * 특정 컬렉션 상태 조회
  */
 export async function getCollectionStatus(collection?: string): Promise<RAGStatusResponse> {
+  const safeCollection = collection ? normalizeRAGSelector(collection) : null;
+  if (collection && !safeCollection) {
+    return { ok: false, error: 'Invalid RAG collection selector' };
+  }
+
   const base = getApiBaseUrl();
-  const url = collection
-    ? `${base.replace(/\/$/, '')}/api/v1/rag/status?collection=${encodeURIComponent(collection)}`
+  const url = safeCollection
+    ? `${base.replace(/\/$/, '')}/api/v1/rag/status?collection=${encodeRAGSelector(safeCollection)}`
     : `${base.replace(/\/$/, '')}/api/v1/rag/status`;
 
   try {
@@ -597,6 +874,15 @@ export async function indexDocuments(
   documents: RAGIndexDocument[],
   collection?: string
 ): Promise<RAGIndexResponse> {
+  const safeCollection = collection ? normalizeRAGSelector(collection) : null;
+  if (collection && !safeCollection) {
+    return { ok: false, error: 'Invalid RAG collection selector' };
+  }
+  const safeDocuments = normalizeIndexDocuments(documents);
+  if (!safeDocuments) {
+    return { ok: false, error: 'Invalid RAG document selector' };
+  }
+
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, '')}/api/v1/rag/index`;
 
@@ -609,7 +895,10 @@ export async function indexDocuments(
     const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ documents, collection }),
+      body: JSON.stringify({
+        documents: safeDocuments,
+        ...(safeCollection ? { collection: safeCollection } : {}),
+      }),
     });
 
     const data = await res.json();
@@ -632,10 +921,19 @@ export async function deleteFromIndex(
   documentId: string,
   collection?: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const safeDocumentId = normalizeRAGSelector(documentId);
+  const safeCollection = collection ? normalizeRAGSelector(collection) : null;
+  if (!safeDocumentId) {
+    return { ok: false, error: 'Invalid RAG document selector' };
+  }
+  if (collection && !safeCollection) {
+    return { ok: false, error: 'Invalid RAG collection selector' };
+  }
+
   const base = getApiBaseUrl();
-  const url = collection
-    ? `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeURIComponent(documentId)}?collection=${encodeURIComponent(collection)}`
-    : `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeURIComponent(documentId)}`;
+  const url = safeCollection
+    ? `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeRAGSelector(safeDocumentId)}?collection=${encodeRAGSelector(safeCollection)}`
+    : `${base.replace(/\/$/, '')}/api/v1/rag/index/${encodeRAGSelector(safeDocumentId)}`;
 
   try {
     const headers = await getAdminRequestHeaders();

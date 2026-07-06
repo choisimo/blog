@@ -67,6 +67,144 @@ type ChatJsonResponse<T> = {
   raw: unknown;
 };
 
+const MAX_CHAT_HEADER_VALUE_LENGTH = 1024;
+const MAX_CHAT_IMAGE_FIELD_LENGTH = 512;
+const MAX_CHAT_PROMPT_LENGTH = 20000;
+const CHAT_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const CHAT_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
+
+function normalizeHeaderSafeString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized) || /%(?:0a|0d)/i.test(normalized)) return null;
+  return normalized;
+}
+
+function normalizeBoundedHeaderValue(value: unknown): string | null {
+  const normalized = normalizeHeaderSafeString(value);
+  return normalized && normalized.length <= MAX_CHAT_HEADER_VALUE_LENGTH
+    ? normalized
+    : null;
+}
+
+export function normalizeChatMultilineText(value: unknown, label: string): string {
+  if (typeof value !== "string") {
+    throw new ChatError(`Invalid chat ${label}`, "VALIDATION_ERROR");
+  }
+
+  const normalized = value.replace(/\r\n?/g, "\n").trim();
+  if (!normalized || normalized.length > MAX_CHAT_PROMPT_LENGTH) {
+    throw new ChatError(`Invalid chat ${label}`, "VALIDATION_ERROR");
+  }
+
+  return normalized;
+}
+
+function normalizeChatIdempotencyKey(value: unknown): string | null {
+  const normalized = normalizeHeaderSafeString(value);
+  return normalized && CHAT_IDEMPOTENCY_KEY_PATTERN.test(normalized)
+    ? normalized
+    : null;
+}
+
+function normalizeChatImageUrl(value: unknown): string | null {
+  const normalized = normalizeHeaderSafeString(value);
+  if (!normalized || normalized.length > MAX_CHAT_IMAGE_FIELD_LENGTH) return null;
+
+  if (normalized.startsWith("/")) {
+    return normalized.startsWith("//") || normalized.includes("/../") ? null : normalized;
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (
+      (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeChatImageKey(value: unknown): string | null {
+  const normalized = normalizeHeaderSafeString(value);
+  if (
+    !normalized ||
+    normalized.length > MAX_CHAT_IMAGE_FIELD_LENGTH ||
+    !CHAT_IMAGE_KEY_PATTERN.test(normalized) ||
+    normalized.includes("//") ||
+    normalized.includes("/../") ||
+    normalized.endsWith("/..")
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeExtraChatHeaders(headers?: Record<string, string>): Record<string, string> {
+  if (!headers) return {};
+
+  return Object.entries(headers).reduce<Record<string, string>>((acc, [key, value]) => {
+    const normalizedKey = normalizeHeaderSafeString(key);
+    const normalizedValue = normalizeBoundedHeaderValue(value);
+    if (!normalizedKey || !normalizedValue || normalizedKey.toLowerCase() === "authorization") {
+      return acc;
+    }
+    acc[normalizedKey] = normalizedValue;
+    return acc;
+  }, {});
+}
+
+function isValidChatUploadFile(file: File): boolean {
+  if (!file || typeof file !== "object") return false;
+  const candidate = file as {
+    name?: unknown;
+    size?: unknown;
+    type?: unknown;
+  };
+  const name = normalizeHeaderSafeString(candidate.name);
+  const type = normalizeHeaderSafeString(candidate.type);
+  return (
+    Boolean(name) &&
+    Boolean(type?.startsWith("image/")) &&
+    typeof candidate.size === "number" &&
+    Number.isSafeInteger(candidate.size) &&
+    candidate.size > 0
+  );
+}
+
+function normalizeChatUploadResult(
+  data: ChatUploadEnvelope["data"],
+): ChatImageUploadResult | null {
+  if (!data || typeof data !== "object") return null;
+
+  const url = normalizeChatImageUrl(data.url);
+  const key = normalizeChatImageKey(data.key);
+  const contentType = normalizeHeaderSafeString(data.contentType);
+  if (
+    !url ||
+    !key ||
+    !contentType?.startsWith("image/") ||
+    typeof data.size !== "number" ||
+    !Number.isSafeInteger(data.size) ||
+    data.size <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    ...data,
+    url,
+    key,
+    size: data.size,
+    contentType,
+  };
+}
+
 async function buildAuthenticatedChatHeaders(
   contentType: "json" | "stream",
   extraHeaders?: Record<string, string>,
@@ -74,8 +212,8 @@ async function buildAuthenticatedChatHeaders(
   const token = await getPrincipalToken();
   return {
     ...buildChatHeaders(contentType),
+    ...normalizeExtraChatHeaders(extraHeaders),
     ...bearerAuth(token),
-    ...(extraHeaders ?? {}),
   };
 }
 
@@ -242,7 +380,12 @@ export async function* streamChatEvents(
   const { page, parts, enableRag } = buildStreamPayload(input);
 
   const url = buildChatUrl("/message", sessionID);
-  const idempotencyKey = input.idempotencyKey || createChatIdempotencyKey();
+  const idempotencyKey = input.idempotencyKey
+    ? normalizeChatIdempotencyKey(input.idempotencyKey)
+    : createChatIdempotencyKey();
+  if (!idempotencyKey) {
+    throw new ChatError("Invalid chat idempotency key", "VALIDATION_ERROR");
+  }
   const headers = await buildAuthenticatedChatHeaders("stream", {
     "Idempotency-Key": idempotencyKey,
   });
@@ -358,6 +501,10 @@ function buildStreamPayload(input: StreamChatInput): {
   }
 
   if (input.imageUrl) {
+    const userText = normalizeChatMultilineText(
+      input.text || "이 이미지에 대해 설명해 주세요.",
+      "message",
+    );
     const imageContext = buildImageContext(
       input.imageUrl,
       input.imageAnalysis,
@@ -367,10 +514,14 @@ function buildStreamPayload(input: StreamChatInput): {
     parts.push({
       type: "text",
       purpose: "user",
-      text: input.text || "이 이미지에 대해 설명해 주세요.",
+      text: userText,
     });
   } else {
-    parts.push({ type: "text", purpose: "user", text: input.text });
+    parts.push({
+      type: "text",
+      purpose: "user",
+      text: normalizeChatMultilineText(input.text, "message"),
+    });
   }
 
   return { page, parts, enableRag: input.enableRag ?? false };
@@ -398,6 +549,10 @@ export async function uploadChatImage(
   file: File,
   signal?: AbortSignal,
 ): Promise<ChatImageUploadResult> {
+  if (!isValidChatUploadFile(file)) {
+    throw new ChatError("Invalid chat image file", "VALIDATION_ERROR");
+  }
+
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/images/chat-upload`;
   const formData = new FormData();
@@ -429,8 +584,8 @@ export async function uploadChatImage(
     throw ChatError.fromResponse(res.status, parsed || text);
   }
 
-  const data = parsed?.data;
-  if (!data || typeof data.url !== "string") {
+  const data = normalizeChatUploadResult(parsed?.data);
+  if (!data) {
     throw new ChatError("Invalid chat image upload response", "PARSE_ERROR");
   }
 
@@ -455,6 +610,7 @@ export async function invokeChatAggregate(input: {
   prompt: string;
   signal?: AbortSignal;
 }): Promise<string> {
+  const prompt = normalizeChatMultilineText(input.prompt, "aggregate prompt");
   const base = getApiBaseUrl();
   const url = `${base.replace(/\/$/, "")}/api/v1/chat/aggregate`;
   const headers = await buildAuthenticatedChatHeaders("json");
@@ -462,7 +618,7 @@ export async function invokeChatAggregate(input: {
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ prompt: input.prompt }),
+    body: JSON.stringify({ prompt }),
     signal: input.signal,
   });
 

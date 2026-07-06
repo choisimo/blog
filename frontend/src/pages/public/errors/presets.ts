@@ -14,6 +14,23 @@ import type { ErrorStatusPageProps } from "./ErrorStatusPage";
 
 type ErrorPagePreset = Omit<ErrorStatusPageProps, "actions" | "footer">;
 
+const ERROR_CONTACT_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function buildErrorContactHref(email: unknown): string | undefined {
+  if (typeof email !== "string") return undefined;
+
+  const normalized = email.trim();
+  if (
+    !normalized ||
+    /[\u0000-\u001F\u007F\s]/.test(normalized) ||
+    !ERROR_CONTACT_EMAIL_PATTERN.test(normalized)
+  ) {
+    return undefined;
+  }
+
+  return `mailto:${normalized}`;
+}
+
 export const badRequestPage: ErrorPagePreset = {
   statusCode: 400,
   label: "Bad Request",
@@ -138,7 +155,7 @@ export const defaultActions = {
   },
   contact: {
     label: "문의하기",
-    href: `mailto:${site.email}`,
+    href: buildErrorContactHref(site.email),
     icon: Mail,
     variant: "outline" as const,
   },

@@ -4,9 +4,57 @@ import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeContextMenuText = (value: string | number): string =>
+  String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+
+const sanitizeContextMenuOptionalText = (
+  value: unknown
+): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeContextMenuText(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeContextMenuNode = (
+  children: React.ReactNode
+): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeContextMenuText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeContextMenuNode);
+  }
+
+  return children;
+};
+
 const ContextMenu = ContextMenuPrimitive.Root;
 
-const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
+const ContextMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof ContextMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Trigger>
+>(({ children, 'aria-label': ariaLabel, title, ...props }, ref) => (
+  <ContextMenuPrimitive.Trigger
+    ref={ref}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
+    {...props}
+  >
+    {sanitizeContextMenuNode(children)}
+  </ContextMenuPrimitive.Trigger>
+));
+ContextMenuTrigger.displayName = ContextMenuPrimitive.Trigger.displayName;
 
 const ContextMenuGroup = ContextMenuPrimitive.Group;
 
@@ -21,7 +69,11 @@ const ContextMenuSubTrigger = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.SubTrigger> & {
     inset?: boolean;
   }
->(({ className, inset, children, ...props }, ref) => (
+>(
+  (
+    { className, inset, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => (
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
@@ -29,33 +81,43 @@ const ContextMenuSubTrigger = React.forwardRef<
       inset && 'pl-8',
       className
     )}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
     {...props}
   >
-    {children}
+    {sanitizeContextMenuNode(children)}
     <ChevronRight className='ml-auto h-4 w-4' />
   </ContextMenuPrimitive.SubTrigger>
-));
+  )
+);
 ContextMenuSubTrigger.displayName = ContextMenuPrimitive.SubTrigger.displayName;
 
 const ContextMenuSubContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+>(
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <ContextMenuPrimitive.SubContent
     ref={ref}
     className={cn(
       'z-[var(--z-popover)] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
       className
     )}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
     {...props}
-  />
-));
+  >
+    {sanitizeContextMenuNode(children)}
+  </ContextMenuPrimitive.SubContent>
+  )
+);
 ContextMenuSubContent.displayName = ContextMenuPrimitive.SubContent.displayName;
 
 const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, ...props }, ref) => (
+>(
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <ContextMenuPrimitive.Portal>
     <ContextMenuPrimitive.Content
       ref={ref}
@@ -63,10 +125,15 @@ const ContextMenuContent = React.forwardRef<
         'z-[var(--z-popover)] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
         className
       )}
+      aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+      title={sanitizeContextMenuOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeContextMenuNode(children)}
+    </ContextMenuPrimitive.Content>
   </ContextMenuPrimitive.Portal>
-));
+  )
+);
 ContextMenuContent.displayName = ContextMenuPrimitive.Content.displayName;
 
 const ContextMenuItem = React.forwardRef<
@@ -74,7 +141,11 @@ const ContextMenuItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> & {
     inset?: boolean;
   }
->(({ className, inset, ...props }, ref) => (
+>(
+  (
+    { className, inset, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => (
   <ContextMenuPrimitive.Item
     ref={ref}
     className={cn(
@@ -82,21 +153,32 @@ const ContextMenuItem = React.forwardRef<
       inset && 'pl-8',
       className
     )}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
     {...props}
-  />
-));
+  >
+    {sanitizeContextMenuNode(children)}
+  </ContextMenuPrimitive.Item>
+  )
+);
 ContextMenuItem.displayName = ContextMenuPrimitive.Item.displayName;
 
 const ContextMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.CheckboxItem>
->(({ className, children, checked, ...props }, ref) => (
+>(
+  (
+    { className, children, checked, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => (
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
       'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
     checked={checked}
     {...props}
   >
@@ -105,22 +187,26 @@ const ContextMenuCheckboxItem = React.forwardRef<
         <Check className='h-4 w-4' />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
-    {children}
+    {sanitizeContextMenuNode(children)}
   </ContextMenuPrimitive.CheckboxItem>
-));
+  )
+);
 ContextMenuCheckboxItem.displayName =
   ContextMenuPrimitive.CheckboxItem.displayName;
 
 const ContextMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.RadioItem>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.RadioItem>
->(({ className, children, ...props }, ref) => (
+>(
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <ContextMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
       'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
     {...props}
   >
     <span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
@@ -128,9 +214,10 @@ const ContextMenuRadioItem = React.forwardRef<
         <Circle className='h-2 w-2 fill-current' />
       </ContextMenuPrimitive.ItemIndicator>
     </span>
-    {children}
+    {sanitizeContextMenuNode(children)}
   </ContextMenuPrimitive.RadioItem>
-));
+  )
+);
 ContextMenuRadioItem.displayName = ContextMenuPrimitive.RadioItem.displayName;
 
 const ContextMenuLabel = React.forwardRef<
@@ -138,7 +225,11 @@ const ContextMenuLabel = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Label> & {
     inset?: boolean;
   }
->(({ className, inset, ...props }, ref) => (
+>(
+  (
+    { className, inset, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => (
   <ContextMenuPrimitive.Label
     ref={ref}
     className={cn(
@@ -146,9 +237,14 @@ const ContextMenuLabel = React.forwardRef<
       inset && 'pl-8',
       className
     )}
+    aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+    title={sanitizeContextMenuOptionalText(title)}
     {...props}
-  />
-));
+  >
+    {sanitizeContextMenuNode(children)}
+  </ContextMenuPrimitive.Label>
+  )
+);
 ContextMenuLabel.displayName = ContextMenuPrimitive.Label.displayName;
 
 const ContextMenuSeparator = React.forwardRef<
@@ -165,6 +261,9 @@ ContextMenuSeparator.displayName = ContextMenuPrimitive.Separator.displayName;
 
 const ContextMenuShortcut = ({
   className,
+  children,
+  'aria-label': ariaLabel,
+  title,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
@@ -173,8 +272,12 @@ const ContextMenuShortcut = ({
         'ml-auto text-xs tracking-widest text-muted-foreground',
         className
       )}
+      aria-label={sanitizeContextMenuOptionalText(ariaLabel)}
+      title={sanitizeContextMenuOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeContextMenuNode(children)}
+    </span>
   );
 };
 ContextMenuShortcut.displayName = 'ContextMenuShortcut';

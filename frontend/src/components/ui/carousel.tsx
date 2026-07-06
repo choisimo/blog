@@ -7,6 +7,37 @@ import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeCarouselText = (value: string | number): string =>
+  String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+
+const sanitizeCarouselOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeCarouselText(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeCarouselNode = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeCarouselText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeCarouselNode);
+  }
+
+  return children;
+};
+
 type CarouselApi = UseEmblaCarouselType[1];
 type UseCarouselParameters = Parameters<typeof useEmblaCarousel>;
 type CarouselOptions = UseCarouselParameters[0];
@@ -52,6 +83,8 @@ const Carousel = React.forwardRef<
       plugins,
       className,
       children,
+      'aria-label': ariaLabel,
+      title,
       ...props
     },
     ref
@@ -138,9 +171,11 @@ const Carousel = React.forwardRef<
           className={cn('relative', className)}
           role='region'
           aria-roledescription='carousel'
+          aria-label={sanitizeCarouselOptionalText(ariaLabel)}
+          title={sanitizeCarouselOptionalText(title)}
           {...props}
         >
-          {children}
+          {sanitizeCarouselNode(children)}
         </div>
       </CarouselContext.Provider>
     );
@@ -151,7 +186,7 @@ Carousel.displayName = 'Carousel';
 const CarouselContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const { carouselRef, orientation } = useCarousel();
 
   return (
@@ -163,8 +198,12 @@ const CarouselContent = React.forwardRef<
           orientation === 'horizontal' ? '-ml-4' : '-mt-4 flex-col',
           className
         )}
+        aria-label={sanitizeCarouselOptionalText(ariaLabel)}
+        title={sanitizeCarouselOptionalText(title)}
         {...props}
-      />
+      >
+        {sanitizeCarouselNode(children)}
+      </div>
     </div>
   );
 });
@@ -173,7 +212,7 @@ CarouselContent.displayName = 'CarouselContent';
 const CarouselItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const { orientation } = useCarousel();
 
   return (
@@ -186,8 +225,12 @@ const CarouselItem = React.forwardRef<
         orientation === 'horizontal' ? 'pl-4' : 'pt-4',
         className
       )}
+      aria-label={sanitizeCarouselOptionalText(ariaLabel)}
+      title={sanitizeCarouselOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeCarouselNode(children)}
+    </div>
   );
 });
 CarouselItem.displayName = 'CarouselItem';
@@ -195,7 +238,11 @@ CarouselItem.displayName = 'CarouselItem';
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
->(({ className, variant = 'outline', size = 'icon', ...props }, ref) => {
+>(
+  (
+    { className, children, variant = 'outline', size = 'icon', 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel();
 
   return (
@@ -212,19 +259,27 @@ const CarouselPrevious = React.forwardRef<
       )}
       disabled={!canScrollPrev}
       onClick={scrollPrev}
+      aria-label={sanitizeCarouselOptionalText(ariaLabel)}
+      title={sanitizeCarouselOptionalText(title)}
       {...props}
     >
       <ArrowLeft className='h-4 w-4' />
+      {sanitizeCarouselNode(children)}
       <span className='sr-only'>Previous slide</span>
     </Button>
   );
-});
+  }
+);
 CarouselPrevious.displayName = 'CarouselPrevious';
 
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
->(({ className, variant = 'outline', size = 'icon', ...props }, ref) => {
+>(
+  (
+    { className, children, variant = 'outline', size = 'icon', 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel();
 
   return (
@@ -241,13 +296,17 @@ const CarouselNext = React.forwardRef<
       )}
       disabled={!canScrollNext}
       onClick={scrollNext}
+      aria-label={sanitizeCarouselOptionalText(ariaLabel)}
+      title={sanitizeCarouselOptionalText(title)}
       {...props}
     >
       <ArrowRight className='h-4 w-4' />
+      {sanitizeCarouselNode(children)}
       <span className='sr-only'>Next slide</span>
     </Button>
   );
-});
+  }
+);
 CarouselNext.displayName = 'CarouselNext';
 
 export {

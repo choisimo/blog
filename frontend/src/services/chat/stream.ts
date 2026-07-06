@@ -6,6 +6,31 @@
 
 import type { ChatStreamEvent } from "./types";
 
+export const MAX_STREAM_BUFFER_CHARS = 1_000_000;
+const STREAM_BUFFER_LIMIT_ERROR = "Chat stream frame exceeded maximum size";
+
+function normalizeStreamString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized)) return null;
+  return normalized;
+}
+
+function appendBoundedStreamChunk(
+  buffer: string,
+  chunk: string,
+): { buffer: string; events: ChatStreamEvent[] } {
+  const nextBuffer = buffer + chunk;
+  if (nextBuffer.length <= MAX_STREAM_BUFFER_CHARS) {
+    return { buffer: nextBuffer, events: [] };
+  }
+
+  return {
+    buffer: "",
+    events: [{ type: "error", message: STREAM_BUFFER_LIMIT_ERROR }],
+  };
+}
+
 /**
  * 응답 객체에서 텍스트 추출
  */
@@ -62,15 +87,18 @@ export function parseStreamObject(obj: unknown): ChatStreamEvent[] {
   const o = obj as Record<string, unknown>;
 
   if (o.type === "session" && typeof o.sessionId === "string") {
-    events.push({ type: "session", sessionId: o.sessionId });
+    const sessionId = normalizeStreamString(o.sessionId);
+    if (sessionId) {
+      events.push({ type: "session", sessionId });
+    }
   }
 
   if (o.type === "error") {
     const message =
-      (typeof o.error === "string" && o.error) ||
-      (typeof o.message === "string" && o.message) ||
+      normalizeStreamString(o.error) ||
+      normalizeStreamString(o.message) ||
       "Chat failed";
-    const code = typeof o.code === "string" ? o.code : undefined;
+    const code = normalizeStreamString(o.code) ?? undefined;
     events.push({ type: "error", message, code });
   }
 
@@ -85,12 +113,24 @@ export function parseStreamObject(obj: unknown): ChatStreamEvent[] {
 
   const srcs = o.sources;
   if (Array.isArray(srcs)) {
-    events.push({ type: "sources", sources: srcs });
+    const sources = srcs.flatMap((source) => {
+      const normalized = normalizeStreamString(source);
+      return normalized ? [normalized] : [];
+    });
+    if (sources.length > 0) {
+      events.push({ type: "sources", sources });
+    }
   }
 
   const fups = o.followups ?? o.suggestions;
   if (Array.isArray(fups)) {
-    events.push({ type: "followups", questions: fups });
+    const questions = fups.flatMap((question) => {
+      const normalized = normalizeStreamString(question);
+      return normalized ? [normalized] : [];
+    });
+    if (questions.length > 0) {
+      events.push({ type: "followups", questions });
+    }
   }
 
   const ctx = o.context;
@@ -192,7 +232,7 @@ export function createSSEParser(): StreamParser {
     }
 
     if (event === "error") {
-      return [{ type: "error", message: data || "Chat failed" }];
+      return [{ type: "error", message: normalizeStreamString(data) || "Chat failed" }];
     }
 
     try {
@@ -206,8 +246,10 @@ export function createSSEParser(): StreamParser {
 
   return {
     processChunk(chunk: string): ChatStreamEvent[] {
-      buffer += chunk;
+      const bounded = appendBoundedStreamChunk(buffer, chunk);
+      buffer = bounded.buffer;
       const events: ChatStreamEvent[] = [];
+      events.push(...bounded.events);
 
       while (true) {
         const boundary = findSSEFrameBoundary(buffer);
@@ -234,8 +276,10 @@ export function createNDJSONParser(): StreamParser {
 
   return {
     processChunk(chunk: string): ChatStreamEvent[] {
-      buffer += chunk;
+      const bounded = appendBoundedStreamChunk(buffer, chunk);
+      buffer = bounded.buffer;
       const events: ChatStreamEvent[] = [];
+      events.push(...bounded.events);
 
       while (true) {
         const nl = buffer.indexOf("\n");
@@ -293,7 +337,9 @@ export function createJSONParser(): StreamParser {
 
   return {
     processChunk(chunk: string): ChatStreamEvent[] {
-      buffer += chunk;
+      const bounded = appendBoundedStreamChunk(buffer, chunk);
+      buffer = bounded.buffer;
+      if (bounded.events.length > 0) return bounded.events;
       return []; // JSON은 끝까지 모아서 파싱
     },
     flush(): ChatStreamEvent[] {

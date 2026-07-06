@@ -32,6 +32,69 @@ import {
 } from 'lucide-react';
 import { useUsage, useAIConfig } from './hooks';
 import { toast } from '@/hooks/ui/use-toast';
+import { buildAIConfigExportFilename } from './usageExport';
+
+type UsagePeriod = '1d' | '7d' | '30d';
+type UsageGroupBy = 'day' | 'model';
+
+const PERIOD_TO_DAYS: Record<UsagePeriod, number> = {
+  '1d': 1,
+  '7d': 7,
+  '30d': 30,
+};
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizePeriod(value: unknown): UsagePeriod {
+  return value === '1d' || value === '7d' || value === '30d' ? value : '7d';
+}
+
+function normalizeGroupBy(value: unknown): UsageGroupBy {
+  return value === 'day' || value === 'model' ? value : 'day';
+}
+
+function normalizeDisplayText(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const cleaned = value.replace(/[\r\n]+/g, ' ').trim();
+  return cleaned || fallback;
+}
+
+function normalizeUsageDate(value: unknown): string {
+  if (typeof value !== 'string') return 'Unknown date';
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return 'Unknown date';
+  return trimmed;
+}
+
+function getBreakdownModelLabel(item: {
+  model?: { id: string; displayName: string } | undefined;
+}): string {
+  if (!item.model) return 'Unknown';
+  if (!normalizeAdminSelector(item.model.id)) return 'Unknown';
+  return normalizeDisplayText(item.model.displayName, 'Unknown');
+}
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -109,11 +172,11 @@ function UsageBar({
 export function UsageMonitor() {
   const { usage, loading, error, fetchUsage } = useUsage();
   const { exportConfig } = useAIConfig();
-  const [period, setPeriod] = useState('7d');
-  const [groupBy, setGroupBy] = useState<'day' | 'model'>('day');
+  const [period, setPeriod] = useState<UsagePeriod>('7d');
+  const [groupBy, setGroupBy] = useState<UsageGroupBy>('day');
 
   useEffect(() => {
-    const days = period === '7d' ? 7 : period === '30d' ? 30 : 1;
+    const days = PERIOD_TO_DAYS[period];
     const endDate = new Date().toISOString().split('T')[0];
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
       .toISOString()
@@ -142,7 +205,7 @@ export function UsageMonitor() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `ai-config-export-${result.data.exportedAt.split('T')[0]}.json`;
+      a.download = buildAIConfigExportFilename(result.data.exportedAt);
       a.click();
       URL.revokeObjectURL(url);
     } else {
@@ -165,7 +228,10 @@ export function UsageMonitor() {
               <CardDescription>Track AI usage, costs, and performance</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={period} onValueChange={setPeriod}>
+              <Select
+                value={period}
+                onValueChange={(value) => setPeriod(normalizePeriod(value))}
+              >
                 <SelectTrigger className="w-[130px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -175,7 +241,10 @@ export function UsageMonitor() {
                   <SelectItem value="30d">Last 30 days</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={groupBy} onValueChange={(v) => setGroupBy(v as 'day' | 'model')}>
+              <Select
+                value={groupBy}
+                onValueChange={(value) => setGroupBy(normalizeGroupBy(value))}
+              >
                 <SelectTrigger className="w-[130px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -274,8 +343,8 @@ export function UsageMonitor() {
                     <div className="space-y-4">
                       {chartData.map((item, idx) => (
                         <UsageBar
-                          key={item.model?.id || idx}
-                          label={item.model?.displayName || 'Unknown'}
+                          key={normalizeAdminSelector(item.model?.id) || idx}
+                          label={getBreakdownModelLabel(item)}
                           value={item.requests}
                           maxValue={maxRequests}
                           color={
@@ -304,8 +373,8 @@ export function UsageMonitor() {
                         </thead>
                         <tbody>
                           {chartData.map((item, idx) => (
-                            <tr key={item.date || idx} className="border-b">
-                              <td className="p-2">{item.date}</td>
+                            <tr key={normalizeUsageDate(item.date) || idx} className="border-b">
+                              <td className="p-2">{normalizeUsageDate(item.date)}</td>
                               <td className="text-right p-2">{formatNumber(item.requests)}</td>
                               <td className="text-right p-2">{formatNumber(item.tokens)}</td>
                               <td className="text-right p-2">${item.cost.toFixed(4)}</td>

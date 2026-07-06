@@ -16,8 +16,14 @@ interface OptimizedImageProps {
 type InViewCallback = () => void;
 
 const callbackMap = new Map<Element, InViewCallback>();
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
 
 let sharedObserver: IntersectionObserver | null = null;
+
+const sanitizeOptimizedImageText = (value: string): string =>
+  value.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
 
 function getSharedObserver(): IntersectionObserver {
   if (!sharedObserver) {
@@ -41,6 +47,51 @@ function getSharedObserver(): IntersectionObserver {
   return sharedObserver;
 }
 
+export function resolveOptimizedImageSrc(
+  src: string,
+  baseUrl?: string
+): string | null {
+  const candidate = src.trim();
+  if (!candidate || /[\u0000-\u001F\u007F]/.test(candidate)) {
+    return null;
+  }
+
+  if (candidate.startsWith('//')) {
+    return null;
+  }
+
+  const scheme = candidate.match(/^([A-Za-z][A-Za-z0-9+.-]*):/);
+  if (scheme) {
+    const protocol = `${scheme[1].toLowerCase()}:`;
+    if (protocol === 'http:' || protocol === 'https:') {
+      try {
+        return new URL(candidate).href;
+      } catch {
+        return null;
+      }
+    }
+
+    if (protocol === 'data:') {
+      return /^data:image\//i.test(candidate) ? candidate : null;
+    }
+
+    return protocol === 'blob:' ? candidate : null;
+  }
+
+  const base = baseUrl ?? (import.meta.env?.BASE_URL ? String(import.meta.env.BASE_URL) : '/');
+  const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  if (!normalizedBase || normalizedBase === '/') return candidate;
+
+  // If already prefixed with BASE_URL, keep as-is.
+  if (candidate.startsWith(`${normalizedBase}/`)) return candidate;
+
+  // Root-relative assets need BASE_URL prefix for subpath deployments.
+  if (candidate.startsWith('/')) return `${normalizedBase}${candidate}`;
+
+  // Relative assets should be resolved under BASE_URL.
+  return `${normalizedBase}/${candidate}`;
+}
+
 export const OptimizedImage = ({
   src,
   alt,
@@ -52,25 +103,11 @@ export const OptimizedImage = ({
   onLoad,
   onError,
 }: OptimizedImageProps) => {
-  const resolvedSrc = (() => {
-    if (!src) return src;
-    if (/^(https?:)?\/\//i.test(src) || /^(data|blob):/i.test(src)) return src;
-
-    const base = import.meta.env?.BASE_URL
-      ? String(import.meta.env.BASE_URL)
-      : '/';
-    const normalizedBase = base.endsWith('/') ? base.slice(0, -1) : base;
-    if (!normalizedBase || normalizedBase === '/') return src;
-
-    // If already prefixed with BASE_URL, keep as-is.
-    if (src.startsWith(`${normalizedBase}/`)) return src;
-
-    // Root-relative assets need BASE_URL prefix for subpath deployments.
-    if (src.startsWith('/')) return `${normalizedBase}${src}`;
-
-    // Relative assets should be resolved under BASE_URL.
-    return `${normalizedBase}/${src}`;
-  })();
+  const resolvedSrc = resolveOptimizedImageSrc(src);
+  const sanitizedAlt = sanitizeOptimizedImageText(alt);
+  const errorLabel = sanitizedAlt
+    ? `이미지를 불러올 수 없습니다: ${sanitizedAlt}`
+    : '이미지를 불러올 수 없습니다';
 
   const [imageSrc, setImageSrc] = useState(placeholder);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +136,13 @@ export const OptimizedImage = ({
   // Load the actual image when in view
   useEffect(() => {
     if (!isInView) return;
+
+    if (!resolvedSrc) {
+      setHasError(true);
+      setIsLoading(false);
+      onError?.();
+      return;
+    }
 
     const img = new Image();
 
@@ -132,7 +176,7 @@ export const OptimizedImage = ({
         )}
         style={{ width, height }}
         role='img'
-        aria-label={`이미지를 불러올 수 없습니다: ${alt}`}
+        aria-label={errorLabel}
       >
         <svg
           className='w-8 h-8'
@@ -157,7 +201,7 @@ export const OptimizedImage = ({
       <img
         ref={imgRef}
         src={imageSrc}
-        alt={alt}
+        alt={sanitizedAlt}
         width={width}
         height={height}
         className={cn(

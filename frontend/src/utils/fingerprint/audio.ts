@@ -10,7 +10,14 @@
 
 import { sha256 } from "./hash";
 
+const AUDIO_SAMPLE_RATE = 44100;
+const AUDIO_SAMPLE_COUNT = 4500;
+
 export async function getAudioFingerprint(): Promise<string> {
+    if (typeof window === "undefined") {
+        return "";
+    }
+
     try {
         const OfflineCtx =
             window.OfflineAudioContext ||
@@ -19,7 +26,7 @@ export async function getAudioFingerprint(): Promise<string> {
 
         if (!OfflineCtx) return "";
 
-        const sampleRate = 44100;
+        const sampleRate = AUDIO_SAMPLE_RATE;
         const length = sampleRate * 0.13; // ~130ms of audio
         const context = new OfflineCtx(1, length, sampleRate);
 
@@ -42,13 +49,28 @@ export async function getAudioFingerprint(): Promise<string> {
         oscillator.start(0);
 
         const buffer = await context.startRendering();
+        if (!buffer || typeof buffer.getChannelData !== "function") {
+            return "";
+        }
+
         const channelData = buffer.getChannelData(0);
+        if (!channelData || typeof channelData.length !== "number") {
+            return "";
+        }
 
         // Use first 4500 samples — more than enough for uniqueness
-        const sampleCount = Math.min(4500, channelData.length);
+        const sampleCount = Math.min(AUDIO_SAMPLE_COUNT, channelData.length);
+        if (sampleCount <= 0) {
+            return "";
+        }
+
         const parts: string[] = [];
         for (let i = 0; i < sampleCount; i++) {
-            parts.push(channelData[i].toFixed(6));
+            const sample = channelData[i];
+            if (typeof sample !== "number" || !Number.isFinite(sample)) {
+                return "";
+            }
+            parts.push(sample.toFixed(6));
         }
 
         return sha256(parts.join(","));

@@ -67,6 +67,10 @@ import { PageTransitionFallback } from "@/components/atoms";
 import { useAuthStore } from "@/stores/session/useAuthStore";
 import { isTokenExpired } from "@/services/session/auth";
 import { useNotificationStore } from "@/stores/realtime/useNotificationStore";
+import {
+  FAB_ENABLED_STORAGE_KEY,
+  resolveFabEnabledPreference,
+} from "@/utils/aiMemoFabPreference";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -195,24 +199,27 @@ function App() {
 
   useEffect(() => {
     const getFabEnabled = () => {
+      let storedPreference: string | null = null;
       try {
-        const ls = localStorage.getItem("aiMemo.fab.enabled");
-        if (ls != null) return !!JSON.parse(ls);
+        storedPreference =
+          typeof window === "undefined"
+            ? null
+            : window.localStorage.getItem(FAB_ENABLED_STORAGE_KEY);
       } catch {
         void 0;
       }
 
-      const envFlag = import.meta.env.VITE_FEATURE_FAB;
-      if (envFlag != null) {
-        return envFlag === "true" || envFlag === "1";
-      }
-
-      return true;
+      return resolveFabEnabledPreference(
+        storedPreference,
+        import.meta.env.VITE_FEATURE_FAB,
+      );
     };
     setFabOn(getFabEnabled());
 
     const onStorage = (e: StorageEvent) => {
-      if (!e.key || e.key === "aiMemo.fab.enabled") setFabOn(getFabEnabled());
+      if (!e.key || e.key === FAB_ENABLED_STORAGE_KEY) {
+        setFabOn(getFabEnabled());
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);

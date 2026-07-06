@@ -80,6 +80,74 @@ function formatCost(cost: number | null): string {
   return `$${cost.toFixed(4)}`;
 }
 
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const DEFAULT_PLAYGROUND_TEMPERATURE = 0.7;
+const MAX_PLAYGROUND_MAX_TOKENS = 1_000_000;
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeSelectorList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(new Set(values.map(normalizeAdminSelector).filter(isPresent)));
+}
+
+function normalizeDisplayText(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.replace(/[\r\n]+/g, ' ').trim();
+  return normalized || fallback;
+}
+
+export function normalizePlaygroundTemperature(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_PLAYGROUND_TEMPERATURE;
+  }
+
+  return Math.min(2, Math.max(0, value));
+}
+
+export function normalizePlaygroundMaxTokens(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  const normalized = Math.floor(value);
+  return normalized > 0 && normalized <= MAX_PLAYGROUND_MAX_TOKENS
+    ? normalized
+    : undefined;
+}
+
+export function parsePlaygroundMaxTokensInput(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (!/^\d+$/.test(trimmed)) return undefined;
+  return normalizePlaygroundMaxTokens(Number(trimmed));
+}
+
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleString('ko-KR', {
@@ -295,7 +363,9 @@ function SaveTemplateDialog({
       category,
       system_prompt: initialData.system_prompt || undefined,
       user_prompt_template: initialData.user_prompt,
-      default_temperature: initialData.temperature,
+      default_temperature: normalizePlaygroundTemperature(
+        initialData.temperature,
+      ),
     });
     setName('');
     setDescription('');
@@ -396,23 +466,46 @@ export function Playground() {
     fetchTemplates();
   }, [fetchModels, fetchHistory, fetchTemplates]);
 
-  const enabledModels = models.filter((m) => m.isEnabled);
+  const enabledModels = models.filter(
+    (m) => m.isEnabled && normalizeAdminSelector(m.id),
+  );
+  const visibleHistory = history.filter((item) => normalizeAdminSelector(item.id));
+  const visibleTemplates = templates.filter(
+    (template) =>
+      normalizeAdminSelector(template.id) &&
+      (!template.default_model_id ||
+        normalizeAdminSelector(template.default_model_id)),
+  );
 
   const handleModelToggle = (modelId: string) => {
-    setSelectedModelIds((prev) =>
-      prev.includes(modelId) ? prev.filter((id) => id !== modelId) : [...prev, modelId]
-    );
+    const safeModelId = normalizeAdminSelector(modelId);
+    if (!safeModelId || !enabledModels.some((model) => model.id === safeModelId)) {
+      return;
+    }
+    setSelectedModelIds((prev) => {
+      const safePrevious = normalizeSelectorList(prev).filter((id) =>
+        enabledModels.some((model) => model.id === id),
+      );
+      if (safePrevious.includes(safeModelId)) {
+        return safePrevious.filter((id) => id !== safeModelId);
+      }
+      if (safePrevious.length >= 5) return safePrevious;
+      return [...safePrevious, safeModelId];
+    });
   };
 
   const handleRun = async () => {
-    if (!userPrompt.trim() || selectedModelIds.length === 0) return;
+    const modelIds = normalizeSelectorList(selectedModelIds).filter((id) =>
+      enabledModels.some((model) => model.id === id),
+    );
+    if (!userPrompt.trim() || modelIds.length === 0) return;
 
     const result = await runPlayground({
       system_prompt: systemPrompt || undefined,
       user_prompt: userPrompt,
-      model_ids: selectedModelIds,
-      temperature,
-      max_tokens: maxTokens,
+      model_ids: modelIds,
+      temperature: normalizePlaygroundTemperature(temperature),
+      max_tokens: normalizePlaygroundMaxTokens(maxTokens),
     });
 
     if (result.ok && result.data) {
@@ -424,34 +517,39 @@ export function Playground() {
   const handleLoadFromHistory = (hist: PlaygroundHistory) => {
     setSystemPrompt(hist.system_prompt || '');
     setUserPrompt(hist.user_prompt);
-    setTemperature(hist.temperature);
-    setMaxTokens(hist.max_tokens || undefined);
-    if (hist.model_id) {
-      setSelectedModelIds([hist.model_id]);
-    }
+    setTemperature(normalizePlaygroundTemperature(hist.temperature));
+    setMaxTokens(normalizePlaygroundMaxTokens(hist.max_tokens));
+    const modelId = normalizeAdminSelector(hist.model_id);
+    setSelectedModelIds(modelId ? [modelId] : []);
     setActiveTab('playground');
     setHistoryDialogOpen(false);
   };
 
   const handleLoadTemplate = async (template: PromptTemplate) => {
-    await applyTemplate(template.id);
+    const templateId = normalizeAdminSelector(template.id);
+    if (!templateId) return;
+    await applyTemplate(templateId);
     setSystemPrompt(template.system_prompt || '');
     setUserPrompt(template.user_prompt_template);
-    setTemperature(template.default_temperature);
-    setMaxTokens(template.default_max_tokens || undefined);
-    if (template.default_model_id) {
-      setSelectedModelIds([template.default_model_id]);
-    }
+    setTemperature(normalizePlaygroundTemperature(template.default_temperature));
+    setMaxTokens(normalizePlaygroundMaxTokens(template.default_max_tokens));
+    const defaultModelId = normalizeAdminSelector(template.default_model_id);
+    setSelectedModelIds(defaultModelId ? [defaultModelId] : []);
     setActiveTab('playground');
   };
 
   const handleSaveTemplate = async (data: Parameters<typeof createTemplate>[0]) => {
-    await createTemplate(data);
+    const category = normalizeAdminSelector(data.category) || undefined;
+    await createTemplate({
+      ...data,
+      ...(category ? { category } : {}),
+    });
   };
 
   const handleDeleteTemplate = async () => {
-    if (deleteTemplateId) {
-      await deleteTemplate(deleteTemplateId);
+    const templateId = normalizeAdminSelector(deleteTemplateId);
+    if (templateId) {
+      await deleteTemplate(templateId);
       setDeleteTemplateId(null);
     }
   };
@@ -607,7 +705,7 @@ export function Playground() {
                       type="number"
                       value={maxTokens ?? ''}
                       onChange={(e) =>
-                        setMaxTokens(e.target.value ? parseInt(e.target.value, 10) : undefined)
+                        setMaxTokens(parsePlaygroundMaxTokensInput(e.target.value))
                       }
                       placeholder="Auto"
                       className="mt-1"
@@ -653,7 +751,7 @@ export function Playground() {
                   variant="outline"
                   size="sm"
                   onClick={() => setClearHistoryOpen(true)}
-                  disabled={history.length === 0}
+                  disabled={visibleHistory.length === 0}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Clear All
@@ -674,7 +772,11 @@ export function Playground() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {history.map((item) => (
+                  {visibleHistory.map((item) => {
+                    const historyId = normalizeAdminSelector(item.id);
+                    const historyLabel = historyId || 'history';
+
+                    return (
                     <TableRow key={item.id}>
                       <TableCell className="max-w-[200px] truncate">
                         {item.title || item.user_prompt.slice(0, 50)}
@@ -710,8 +812,8 @@ export function Playground() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={`View playground history ${item.id}`}
-                            title={`View playground history ${item.id}`}
+                            aria-label={`View playground history ${historyLabel}`}
+                            title={`View playground history ${historyLabel}`}
                             onClick={() => {
                               setSelectedHistory(item);
                               setHistoryDialogOpen(true);
@@ -722,17 +824,20 @@ export function Playground() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label={`Delete playground history ${item.id}`}
-                            title={`Delete playground history ${item.id}`}
-                            onClick={() => deleteHistory(item.id)}
+                            aria-label={`Delete playground history ${historyLabel}`}
+                            title={`Delete playground history ${historyLabel}`}
+                            onClick={() => {
+                              if (historyId) void deleteHistory(historyId);
+                            }}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
-                  {!error && history.length === 0 && (
+                    );
+                  })}
+                  {!error && visibleHistory.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         No history yet. Run a prompt to get started.
@@ -755,7 +860,16 @@ export function Playground() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates.map((template) => (
+                {visibleTemplates.map((template) => {
+                  const templateId = normalizeAdminSelector(template.id);
+                  const templateName = normalizeDisplayText(
+                    template.name,
+                    templateId || 'template',
+                  );
+                  const templateCategory =
+                    normalizeAdminSelector(template.category) || 'uncategorized';
+
+                  return (
                   <Card
                     key={template.id}
                     className="cursor-pointer hover:border-primary transition-colors"
@@ -763,15 +877,15 @@ export function Playground() {
                   >
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm">{template.name}</CardTitle>
+                        <CardTitle className="text-sm">{templateName}</CardTitle>
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label={`Delete prompt template ${template.name}`}
-                          title={`Delete prompt template ${template.name}`}
+                          aria-label={`Delete prompt template ${templateName}`}
+                          title={`Delete prompt template ${templateName}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDeleteTemplateId(template.id);
+                            if (templateId) setDeleteTemplateId(templateId);
                           }}
                         >
                           <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
@@ -784,7 +898,7 @@ export function Playground() {
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant="secondary" className="text-xs">
-                          {template.category}
+                          {templateCategory}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           Used {template.usage_count}x
@@ -792,8 +906,9 @@ export function Playground() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-                {!templatesError && templates.length === 0 && (
+                  );
+                })}
+                {!templatesError && visibleTemplates.length === 0 && (
                   <div className="col-span-full text-center text-muted-foreground py-8">
                     No templates yet. Save a prompt as a template to get started.
                   </div>

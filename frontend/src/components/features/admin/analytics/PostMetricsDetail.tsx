@@ -32,6 +32,103 @@ interface PostMetricsDetailProps {
   onBack: () => void;
 }
 
+const ANALYTICS_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAnalyticsSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ANALYTICS_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeAnalyticsYear(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return /^\d{4}$/.test(trimmed) ? trimmed : null;
+}
+
+function normalizeDisplayText(value: unknown, fallback = '—'): string {
+  if (typeof value !== 'string') return fallback;
+  const decoded = decodeSelector(value);
+  if (!decoded || /[\r\n]/.test(decoded)) return fallback;
+  const cleaned = value.replace(/[\r\n]+/g, ' ').trim();
+  return cleaned || fallback;
+}
+
+function normalizeVisitPath(value: unknown): string {
+  if (typeof value !== 'string') return '—';
+  const trimmed = value.trim();
+  const decoded = decodeSelector(trimmed);
+  if (!decoded || /[\r\n\\]/.test(decoded)) return '—';
+  return trimmed.startsWith('/') ? trimmed : '—';
+}
+
+export function normalizeVisitRefererHost(value: unknown): string {
+  if (typeof value !== 'string') return '—';
+
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith('//')) return '—';
+
+  const decoded = decodeSelector(trimmed);
+  if (
+    !decoded ||
+    [trimmed, decoded].some((candidate) => /[\u0000-\u001F\u007F\s\\]/.test(candidate))
+  ) {
+    return '—';
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.hostname || '—'
+      : '—';
+  } catch {
+    return '—';
+  }
+}
+
+function normalizeVisitDate(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || /[\r\n]/.test(trimmed)) return null;
+  const date = new Date(trimmed);
+  return Number.isNaN(date.getTime()) ? null : trimmed;
+}
+
+function formatVisitDate(value: unknown): string {
+  const safeDate = normalizeVisitDate(value);
+  if (!safeDate) return '—';
+  return new Date(safeDate).toLocaleString('en-US', {
+    month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+function normalizeHourlyPoint(point: HourlyPoint): HourlyPoint | null {
+  const safeHour = normalizeVisitDate(point.hour);
+  if (!safeHour) return null;
+  return {
+    hour: safeHour,
+    visits: Number.isFinite(Number(point.visits)) ? Number(point.visits) : 0,
+  };
+}
+
 function parseBrowserName(ua: string | null): string {
   if (!ua) return 'Unknown';
   if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) return 'Chrome';
@@ -58,7 +155,10 @@ function HourlyChart({ data }: { data: HourlyPoint[] }) {
     <div className="flex items-end gap-0.5 h-20 w-full">
       {data.map((point) => {
         const height = Math.max(4, (Number(point.visits) / max) * 80);
-        const label = new Date(point.hour).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const safeHour = normalizeVisitDate(point.hour);
+        const label = safeHour
+          ? new Date(safeHour).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+          : '—';
         return (
           <div
             key={point.hour}
@@ -85,15 +185,29 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
   const [hourly, setHourly] = useState<HourlyPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   const PAGE_SIZE = 50;
+  const safeYear = normalizeAnalyticsYear(year);
+  const safeSlug = normalizeAnalyticsSelector(slug);
 
   const fetchData = useCallback(async (pageNum: number) => {
+    if (!safeYear || !safeSlug) {
+      setVisits([]);
+      setTotal(0);
+      setHourly([]);
+      setError('Invalid post analytics selector');
+      setMetricsError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    if (pageNum === 0) setMetricsError(null);
     const offset = pageNum * PAGE_SIZE;
-    const postPath = `/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}`;
+    const postPath = `/posts/${encodeURIComponent(safeYear)}/${encodeURIComponent(safeSlug)}`;
 
     try {
       const [visitsResult, metricsResult] = await Promise.all([
@@ -117,17 +231,30 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
       setTotal(visitsResult.data.total ?? 0);
 
       if (metricsResult) {
-        setHourly(metricsResult.ok && metricsResult.data ? metricsResult.data.hourly ?? [] : []);
+        if (metricsResult.ok && metricsResult.data) {
+          setHourly(
+            (metricsResult.data.hourly ?? [])
+              .map(normalizeHourlyPoint)
+              .filter((point): point is HourlyPoint => point !== null),
+          );
+          setMetricsError(null);
+        } else {
+          setHourly([]);
+          setMetricsError(metricsResult.error || 'Failed to load hourly traffic');
+        }
       }
     } catch (err) {
       setVisits([]);
       setTotal(0);
-      if (pageNum === 0) setHourly([]);
+      if (pageNum === 0) {
+        setHourly([]);
+        setMetricsError(null);
+      }
       setError(getErrorMessage(err, 'Failed to load visit logs'));
     } finally {
       setLoading(false);
     }
-  }, [slug, year]);
+  }, [safeSlug, safeYear]);
 
   useEffect(() => {
     fetchData(page);
@@ -147,7 +274,9 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
           Back to all posts
         </button>
         <span className="text-zinc-300">|</span>
-        <span className="font-mono text-xs text-zinc-700 font-semibold">{year}/{slug}</span>
+        <span className="font-mono text-xs text-zinc-700 font-semibold">
+          {safeYear ?? 'invalid'}/{safeSlug ?? 'invalid'}
+        </span>
         <div className="flex items-center gap-1 text-xs text-zinc-500">
           <Eye className="h-3 w-3" />
           <span className="font-semibold text-zinc-800">{total.toLocaleString()}</span> total visits
@@ -156,7 +285,14 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
 
       <div className="bg-white border border-zinc-200 rounded-lg p-4">
         <p className="text-xs font-semibold text-zinc-600 mb-3">Last 7 days — hourly traffic</p>
-        <HourlyChart data={hourly} />
+        {metricsError ? (
+          <div className="space-y-1 py-4 text-center">
+            <p className="text-xs font-medium text-red-600">{metricsError}</p>
+            <p className="text-xs text-zinc-400">Unable to load hourly traffic.</p>
+          </div>
+        ) : (
+          <HourlyChart data={hourly} />
+        )}
       </div>
 
       <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
@@ -205,30 +341,23 @@ export function PostMetricsDetail({ slug, year, onBack }: PostMetricsDetailProps
             <div className="divide-y divide-zinc-100">
               {visits.map((v) => (
                 <div key={v.id} className="grid grid-cols-12 px-4 py-2 items-center hover:bg-zinc-50 text-xs">
-                  <span className="col-span-2 font-mono text-zinc-600 truncate" title={v.ip_address ?? ''}>
-                    {v.ip_address ?? '—'}
+                  <span className="col-span-2 font-mono text-zinc-600 truncate" title={normalizeDisplayText(v.ip_address)}>
+                    {normalizeDisplayText(v.ip_address)}
                   </span>
                   <div className="col-span-3 flex items-center gap-1 text-zinc-500">
                     <Monitor className="h-3 w-3 shrink-0" />
                     <span className="truncate">{parseBrowserName(v.user_agent)}</span>
                   </div>
-                  <span className="col-span-3 text-zinc-400 truncate" title={v.referer ?? ''}>
-                    {v.referer
-                      ? (() => {
-                          try { return new URL(v.referer).hostname; } catch { return v.referer; }
-                        })()
-                      : '—'}
+                  <span className="col-span-3 text-zinc-400 truncate" title={normalizeVisitRefererHost(v.referer)}>
+                    {normalizeVisitRefererHost(v.referer)}
                   </span>
-                  <span className="col-span-2 font-mono text-zinc-400 truncate" title={v.path ?? ''}>
-                    {v.path ?? '—'}
+                  <span className="col-span-2 font-mono text-zinc-400 truncate" title={normalizeVisitPath(v.path)}>
+                    {normalizeVisitPath(v.path)}
                   </span>
                   <div className="col-span-2 flex items-center justify-end gap-1 text-zinc-400">
                     <Clock className="h-3 w-3" />
                     <span className="font-mono">
-                      {new Date(v.visited_at).toLocaleString('en-US', {
-                        month: 'numeric', day: 'numeric',
-                        hour: '2-digit', minute: '2-digit', hour12: false
-                      })}
+                      {formatVisitDate(v.visited_at)}
                     </span>
                   </div>
                 </div>

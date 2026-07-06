@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { createSSEParser, parseSSEFrame } from '@/services/chat/stream';
+import {
+  createSSEParser,
+  parseSSEFrame,
+  parseStreamObject,
+} from '@/services/chat/stream';
 
 describe('chat stream parser', () => {
   it('parses SSE frame with CRLF line endings', () => {
@@ -34,5 +38,86 @@ describe('chat stream parser', () => {
     parser.processChunk('data: {"type":"text","text":"tail"}');
 
     expect(parser.flush()).toEqual([{ type: 'text', text: 'tail' }]);
+  });
+
+  it('normalizes SSE error event payloads before emitting them', () => {
+    const parser = createSSEParser();
+
+    expect(
+      parser.processChunk('event: error\ndata: Stream failed \n\n'),
+    ).toEqual([{ type: 'error', message: 'Stream failed' }]);
+  });
+
+  it('falls back for multiline SSE error event payloads', () => {
+    const parser = createSSEParser();
+
+    expect(
+      parser.processChunk(
+        'event: error\ndata: bad\ndata: X-Injected: yes\n\n',
+      ),
+    ).toEqual([{ type: 'error', message: 'Chat failed' }]);
+  });
+
+  it('filters malformed source and followup metadata entries', () => {
+    expect(
+      parseStreamObject({
+        sources: [
+          ' https://example.com/source ',
+          123,
+          null,
+          'bad\r\nX-Injected: yes',
+        ],
+        followups: [
+          ' What next? ',
+          { text: 'bad' },
+          'Summarize this',
+          'bad\r\nX-Injected: yes',
+        ],
+      }),
+    ).toEqual([
+      { type: 'sources', sources: ['https://example.com/source'] },
+      { type: 'followups', questions: ['What next?', 'Summarize this'] },
+    ]);
+
+    expect(
+      parseStreamObject({
+        sources: [123, null],
+        followups: [{ text: 'bad' }],
+      }),
+    ).toEqual([]);
+  });
+
+  it('normalizes valid session stream events before emitting them', () => {
+    expect(
+      parseStreamObject({
+        type: 'session',
+        sessionId: ' session-1 ',
+      }),
+    ).toEqual([{ type: 'session', sessionId: 'session-1' }]);
+  });
+
+  it('drops header-breaking session stream events', () => {
+    expect(
+      parseStreamObject({
+        type: 'session',
+        sessionId: 'session-1\r\nX-Injected: yes',
+      }),
+    ).toEqual([]);
+  });
+
+  it('normalizes stream error metadata', () => {
+    expect(
+      parseStreamObject({
+        type: 'error',
+        message: ' Stream failed ',
+        code: ' BAD_REQUEST ',
+      }),
+    ).toEqual([
+      {
+        type: 'error',
+        message: 'Stream failed',
+        code: 'BAD_REQUEST',
+      },
+    ]);
   });
 });

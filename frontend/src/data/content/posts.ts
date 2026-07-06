@@ -1,6 +1,54 @@
 import { PostService } from "@/services/content/postService";
 import type { BlogPost, BlogCategory, BlogTag, PostsPage } from "@/types/blog";
 
+const POST_PATH_SEGMENT_UNSAFE_PATTERN = /[\u0000-\u001F\u007F/\\]/;
+const LEGACY_POST_LOOKUP_UNSAFE_PATTERN = /[\u0000-\u001F\u007F\\]/;
+
+function normalizePostPathSegment(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || POST_PATH_SEGMENT_UNSAFE_PATTERN.test(trimmed)) return null;
+
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    return decoded && !POST_PATH_SEGMENT_UNSAFE_PATTERN.test(decoded)
+      ? trimmed
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLegacyPostLookupSlug(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || LEGACY_POST_LOOKUP_UNSAFE_PATTERN.test(trimmed)) return null;
+
+  const segments = trimmed.split("/");
+  if (
+    segments.length > 2 ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    return null;
+  }
+
+  for (const segment of segments) {
+    try {
+      const decoded = decodeURIComponent(segment);
+      if (
+        !decoded ||
+        decoded === "." ||
+        decoded === ".." ||
+        POST_PATH_SEGMENT_UNSAFE_PATTERN.test(decoded)
+      ) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return trimmed;
+}
+
 // Main function to get all posts from markdown files
 export const getPosts = async (): Promise<BlogPost[]> => {
   try {
@@ -16,10 +64,14 @@ export const getPostBySlug = async (
   year: string,
   slug: string,
 ): Promise<BlogPost | null> => {
+  const safeYear = normalizePostPathSegment(year);
+  const safeSlug = normalizePostPathSegment(slug);
+  if (!safeYear || !safeSlug) return null;
+
   try {
-    return await PostService.getPostBySlug(year, slug);
+    return await PostService.getPostBySlug(safeYear, safeSlug);
   } catch (error) {
-    console.error(`Error loading post ${year}/${slug}:`, error);
+    console.error(`Error loading post ${safeYear}/${safeSlug}:`, error);
     return null;
   }
 };
@@ -57,8 +109,12 @@ export const prefetchPost = async (
   year: string,
   slug: string,
 ): Promise<void> => {
+  const safeYear = normalizePostPathSegment(year);
+  const safeSlug = normalizePostPathSegment(slug);
+  if (!safeYear || !safeSlug) return;
+
   try {
-    await PostService.prefetchPost(year, slug);
+    await PostService.prefetchPost(safeYear, safeSlug);
   } catch {
     // ignore prefetch errors
   }
@@ -68,15 +124,19 @@ export const prefetchPost = async (
 export const getPostBySlugLegacy = async (
   slug: string,
 ): Promise<BlogPost | null> => {
+  const safeSlug = normalizeLegacyPostLookupSlug(slug);
+  if (!safeSlug) return null;
+
   try {
     const posts = await PostService.getAllPosts();
     return (
       posts.find(
-        (post) => post.slug === slug || `${post.year}/${post.slug}` === slug,
+        (post) =>
+          post.slug === safeSlug || `${post.year}/${post.slug}` === safeSlug,
       ) || null
     );
   } catch (error) {
-    console.error(`Error loading post ${slug}:`, error);
+    console.error(`Error loading post ${safeSlug}:`, error);
     return null;
   }
 };

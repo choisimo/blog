@@ -5,7 +5,7 @@
  * High-fidelity cyberpunk industrial style
  */
 
-import { memo, useRef, useEffect, type KeyboardEvent } from 'react';
+import { memo, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Send, Square, Database, Globe, Cpu, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConsoleMode } from './types';
@@ -22,6 +22,13 @@ interface ConsoleInputProps {
   isMobile?: boolean;
   isTerminal?: boolean;
   className?: string;
+  label?: string;
+  title?: string;
+  inputLabel?: string;
+  placeholder?: string;
+  submitLabel?: string;
+  stopLabel?: string;
+  newlineHint?: string;
 }
 
 const MODE_CONFIG: Record<ConsoleMode, { icon: typeof Database; label: string; desc: string }> = {
@@ -29,6 +36,47 @@ const MODE_CONFIG: Record<ConsoleMode, { icon: typeof Database; label: string; d
   agent: { icon: Cpu, label: 'Agent', desc: 'Multi-step reasoning' },
   web: { icon: Globe, label: 'Web', desc: 'Search the internet' },
 };
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const DEFAULT_CONSOLE_INPUT_LABEL = 'Console input';
+const DEFAULT_TEXTAREA_LABEL = 'Console query';
+const DEFAULT_PLACEHOLDER = 'Ask about blog content...';
+const DEFAULT_SUBMIT_LABEL = 'Send message';
+const DEFAULT_STOP_LABEL = 'Stop response';
+const DEFAULT_NEWLINE_HINT = 'Shift+Enter for newline';
+
+function normalizeInputValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
+
+function normalizeConsoleMode(value: unknown): ConsoleMode {
+  return typeof value === 'string' && value in MODE_CONFIG
+    ? (value as ConsoleMode)
+    : 'rag';
+}
+
+function normalizeConsoleInputText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return fallback;
+  }
+
+  const normalized = String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return normalized || fallback;
+}
+
+function isComposingEvent(e: ReactKeyboardEvent<HTMLTextAreaElement>): boolean {
+  const nativeEvent = e.nativeEvent as { isComposing?: boolean };
+  const syntheticEvent = e as unknown as { isComposing?: boolean };
+  return nativeEvent.isComposing === true || syntheticEvent.isComposing === true;
+}
 
 function ModeTab({
   mode,
@@ -62,8 +110,9 @@ function ModeTab({
             : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border'
       )}
       title={config.desc}
+      aria-pressed={isActive}
     >
-      <Icon className={cn(isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5')} />
+      <Icon className={cn(isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5')} aria-hidden="true" />
       <span>{config.label}</span>
     </button>
   );
@@ -81,8 +130,26 @@ export const ConsoleInput = memo(function ConsoleInput({
   isMobile,
   isTerminal,
   className,
+  label = DEFAULT_CONSOLE_INPUT_LABEL,
+  title,
+  inputLabel = DEFAULT_TEXTAREA_LABEL,
+  placeholder = DEFAULT_PLACEHOLDER,
+  submitLabel = DEFAULT_SUBMIT_LABEL,
+  stopLabel = DEFAULT_STOP_LABEL,
+  newlineHint = DEFAULT_NEWLINE_HINT,
 }: ConsoleInputProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputValue = normalizeInputValue(value);
+  const activeMode = normalizeConsoleMode(mode);
+  const hasInput = inputValue.trim().length > 0;
+  const isInputDisabled = Boolean(disabled || isProcessing);
+  const safeLabel = normalizeConsoleInputText(label, DEFAULT_CONSOLE_INPUT_LABEL);
+  const safeTitle = normalizeConsoleInputText(title);
+  const safeInputLabel = normalizeConsoleInputText(inputLabel, DEFAULT_TEXTAREA_LABEL);
+  const safePlaceholder = normalizeConsoleInputText(placeholder, DEFAULT_PLACEHOLDER);
+  const safeSubmitLabel = normalizeConsoleInputText(submitLabel, DEFAULT_SUBMIT_LABEL);
+  const safeStopLabel = normalizeConsoleInputText(stopLabel, DEFAULT_STOP_LABEL);
+  const safeNewlineHint = normalizeConsoleInputText(newlineHint, DEFAULT_NEWLINE_HINT);
 
   useEffect(() => {
     // Don't auto-focus on mobile to prevent keyboard popup
@@ -91,10 +158,12 @@ export const ConsoleInput = memo(function ConsoleInput({
     }
   }, [isProcessing, isMobile]);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (isComposingEvent(e)) return;
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isProcessing && value.trim()) {
+      if (!isProcessing && !disabled && hasInput) {
         onSubmit();
       }
     }
@@ -103,7 +172,7 @@ export const ConsoleInput = memo(function ConsoleInput({
   const handleSubmit = () => {
     if (isProcessing) {
       onStop();
-    } else if (value.trim()) {
+    } else if (!disabled && hasInput) {
       onSubmit();
     }
   };
@@ -113,7 +182,10 @@ export const ConsoleInput = memo(function ConsoleInput({
       'border-t',
       isTerminal ? 'border-border' : 'border-border',
       className
-    )}>
+    )}
+      aria-label={safeLabel}
+      title={safeTitle || undefined}
+    >
       {/* Mode Tabs */}
       <div className={cn(
         'flex items-center border-b',
@@ -126,7 +198,7 @@ export const ConsoleInput = memo(function ConsoleInput({
           <ModeTab
             key={m}
             mode={m}
-            isActive={mode === m}
+            isActive={activeMode === m}
             onClick={() => onModeChange(m)}
             isMobile={isMobile}
             isTerminal={isTerminal}
@@ -135,7 +207,7 @@ export const ConsoleInput = memo(function ConsoleInput({
         <div className="flex-1" />
         {!isMobile && (
           <span className="text-[10px] font-mono text-muted-foreground px-2">
-            Shift+Enter for newline
+            {safeNewlineHint}
           </span>
         )}
       </div>
@@ -158,11 +230,12 @@ export const ConsoleInput = memo(function ConsoleInput({
         <div className="flex-1 relative">
           <textarea
             ref={inputRef}
-            value={value}
+            value={inputValue}
             onChange={e => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about blog content..."
-            disabled={disabled || isProcessing}
+            placeholder={safePlaceholder}
+            aria-label={safeInputLabel}
+            disabled={isInputDisabled}
             rows={1}
             className={cn(
               'w-full bg-transparent text-foreground placeholder:text-muted-foreground',
@@ -187,13 +260,14 @@ export const ConsoleInput = memo(function ConsoleInput({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={disabled || (!isProcessing && !value.trim())}
+          disabled={disabled || (!isProcessing && !hasInput)}
+          aria-label={isProcessing ? safeStopLabel : safeSubmitLabel}
           className={cn(
             'flex-shrink-0 rounded flex items-center justify-center transition-all',
             isMobile ? 'w-11 h-11 min-w-[44px] min-h-[44px]' : 'w-8 h-8',
             isProcessing
               ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-              : value.trim()
+              : hasInput
                 ? 'bg-primary/20 text-primary hover:bg-primary/30'
                 : isTerminal
                   ? 'bg-muted/50 text-muted-foreground cursor-not-allowed'
@@ -201,9 +275,9 @@ export const ConsoleInput = memo(function ConsoleInput({
           )}
         >
           {isProcessing ? (
-            <Square className={cn(isMobile ? 'w-5 h-5' : 'w-4 h-4')} />
+            <Square className={cn(isMobile ? 'w-5 h-5' : 'w-4 h-4')} aria-hidden="true" />
           ) : (
-            <Send className={cn(isMobile ? 'w-5 h-5' : 'w-4 h-4')} />
+            <Send className={cn(isMobile ? 'w-5 h-5' : 'w-4 h-4')} aria-hidden="true" />
           )}
         </button>
       </div>

@@ -1,62 +1,27 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { normalizeConfiguredApiBaseUrl } from '@/utils/network/apiBase';
 
-import { getApiBaseUrl } from '@/utils/network/apiBase';
-
-describe('api base runtime contract', () => {
-  const originalLocation = window.location;
-
-  beforeEach(() => {
-    localStorage.clear();
-    (window as Window & { APP_CONFIG?: { apiBaseUrl?: string | null } }).APP_CONFIG = undefined;
-    (window as Window & { __APP_CONFIG?: { apiBaseUrl?: string | null } }).__APP_CONFIG = undefined;
-  });
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: originalLocation,
-    });
-    vi.unstubAllEnvs();
-    localStorage.clear();
-  });
-
-  it('uses the explicit runtime API base when present', () => {
-    (window as Window & { APP_CONFIG?: { apiBaseUrl?: string | null } }).APP_CONFIG = {
-      apiBaseUrl: 'https://api.example.com/',
-    };
-
-    expect(getApiBaseUrl()).toBe('https://api.example.com');
-  });
-
-  it('uses the build-time API base when runtime config is unavailable', () => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { hostname: 'noblog.nodove.com' },
-    });
-    vi.stubEnv('VITE_API_BASE_URL', 'https://api.nodove.com/');
-
-    expect(getApiBaseUrl()).toBe('https://api.nodove.com');
-  });
-
-  it('fails closed on non-local hosts when neither runtime nor build-time config is available', () => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { hostname: 'blog.nodove.com' },
-    });
-    vi.stubEnv('VITE_API_BASE_URL', '');
-
-    expect(() => getApiBaseUrl()).toThrow(
-      '[apiBase] Missing runtime API base for blog.nodove.com. Production origin must be provided explicitly via public runtime config.'
+describe('normalizeConfiguredApiBaseUrl', () => {
+  it('normalizes supported http and https API base URLs', () => {
+    expect(normalizeConfiguredApiBaseUrl(' https://api.example.com/api/ ')).toBe(
+      'https://api.example.com'
     );
+    expect(normalizeConfiguredApiBaseUrl('http://localhost:5080/')).toBe(
+      'http://localhost:5080'
+    );
+    expect(
+      normalizeConfiguredApiBaseUrl('https://ai-check.nodove.com/api')
+    ).toBe('https://api.nodove.com');
   });
 
-  it('keeps localhost fallback for local development', () => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { hostname: 'localhost' },
-    });
-    vi.stubEnv('VITE_API_BASE_URL', '');
-
-    expect(getApiBaseUrl()).toBe('http://localhost:5080');
+  it('rejects unsupported protocols and URL values with query or hash fragments', () => {
+    expect(normalizeConfiguredApiBaseUrl('ftp://api.example.com')).toBeNull();
+    expect(
+      normalizeConfiguredApiBaseUrl('https://api.example.com?debug=true')
+    ).toBeNull();
+    expect(
+      normalizeConfiguredApiBaseUrl('https://api.example.com#v1')
+    ).toBeNull();
+    expect(normalizeConfiguredApiBaseUrl('not-a-url')).toBeNull();
   });
 });

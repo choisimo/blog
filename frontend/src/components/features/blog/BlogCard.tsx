@@ -21,9 +21,99 @@ import useLanguage from '@/hooks/i18n/useLanguage';
 
 interface BlogCardProps {
   post: BlogPost;
+  label?: string;
+  title?: string;
+  readMoreLabel?: string;
 }
 
-const BlogCard = memo(({ post }: BlogCardProps) => {
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const SINGLE_LINE_CONTROL_TEST_PATTERN = /[\u0000-\u001F\u007F]/;
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const WHITESPACE_PATTERN = /\s+/g;
+const ENCODED_CONTROL_PATTERN = /%(?:0[0-9A-Fa-f]|1[0-9A-Fa-f]|7[Ff])/;
+const SAFE_IMAGE_PROTOCOLS = new Set(['http:', 'https:']);
+const DEFAULT_BLOG_CARD_LABEL = 'Blog post';
+
+function decodeBlogCardSegment(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeSingleLineText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return fallback;
+
+  const normalized = String(value)
+    .replace(ANSI_ESCAPE_PATTERN, ' ')
+    .replace(SINGLE_LINE_CONTROL_PATTERN, ' ')
+    .replace(WHITESPACE_PATTERN, ' ')
+    .trim();
+
+  return normalized || fallback;
+}
+
+function normalizeOptionalSingleLineText(value: unknown): string | undefined {
+  return normalizeSingleLineText(value) || undefined;
+}
+
+function normalizePathSegment(value: unknown): string | undefined {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const raw = String(value).trim();
+  const decoded = decodeBlogCardSegment(raw);
+  if (
+    !raw ||
+    !decoded ||
+    raw.includes('/') ||
+    raw.includes('\\') ||
+    decoded.includes('/') ||
+    decoded.includes('\\') ||
+    SINGLE_LINE_CONTROL_TEST_PATTERN.test(raw) ||
+    SINGLE_LINE_CONTROL_TEST_PATTERN.test(decoded)
+  ) {
+    return undefined;
+  }
+  const normalized = normalizeSingleLineText(raw);
+  return encodeURIComponent(normalized);
+}
+
+function normalizeImageSrc(value: unknown): string | undefined {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const raw = String(value).trim();
+  if (
+    !raw ||
+    SINGLE_LINE_CONTROL_TEST_PATTERN.test(raw) ||
+    ENCODED_CONTROL_PATTERN.test(raw) ||
+    /\s/.test(raw)
+  ) {
+    return undefined;
+  }
+  const src = normalizeSingleLineText(raw);
+  if (!src) return undefined;
+
+  if (src.startsWith('/') && !src.startsWith('//')) {
+    return src;
+  }
+
+  try {
+    const parsed = new URL(src);
+    return SAFE_IMAGE_PROTOCOLS.has(parsed.protocol) &&
+      !parsed.username &&
+      !parsed.password
+      ? parsed.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const BlogCard = memo(({
+  post,
+  label = DEFAULT_BLOG_CARD_LABEL,
+  title: cardTitle,
+  readMoreLabel: readMoreLabelOverride,
+}: BlogCardProps) => {
   const location = useLocation();
   const { language } = useLanguage();
   const localized = useMemo(
@@ -37,17 +127,37 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
     search,
   } as const;
 
-  // Create the proper blog post URL using year and slug
-  const postUrl = `/blog/${post.year}/${post.slug}`;
+  const safeYear = normalizePathSegment(post.year);
+  const safeSlug = normalizePathSegment(post.slug);
+  const postUrl = safeYear && safeSlug ? `/blog/${safeYear}/${safeSlug}` : '/blog';
+  const coverImage = normalizeImageSrc(post.coverImage);
+  const title = normalizeSingleLineText(localized.title, 'Untitled');
+  const safeCardLabel = normalizeSingleLineText(label, DEFAULT_BLOG_CARD_LABEL);
+  const safeCardTitle = normalizeOptionalSingleLineText(cardTitle);
+  const category = normalizeSingleLineText(post.category, 'Uncategorized');
+  const author = normalizeSingleLineText(post.author);
+  const tags = Array.isArray(post.tags)
+    ? post.tags
+        .map(tag => normalizeSingleLineText(tag))
+        .filter(Boolean)
+    : [];
+
+  const handlePrefetch = () => {
+    if (safeYear && safeSlug) {
+      prefetchPost(safeYear, safeSlug);
+    }
+  };
 
   // Display excerpt or description with markdown stripped
   const displayText = useMemo(() => {
     const raw = localized.excerpt || localized.description || '';
-    return stripMarkdown(raw, 150);
+    return normalizeSingleLineText(stripMarkdown(raw, 150));
   }, [localized.excerpt, localized.description]);
 
   const readingTimeLabel = useMemo(() => {
-    const raw = post.readingTime || (post.readTime ? `${post.readTime} min read` : '');
+    const raw = normalizeSingleLineText(
+      post.readingTime || (post.readTime ? `${post.readTime} min read` : '')
+    );
     if (!raw) return '';
     const match = raw.match(/(\d+)/);
     if (language === 'ko') {
@@ -63,18 +173,26 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
     return raw;
   }, [language, post.readTime, post.readingTime]);
 
-  const readMoreLabel = language === 'ko' ? '더 읽기' : 'Read more';
+  const readMoreLabel = normalizeSingleLineText(
+    readMoreLabelOverride,
+    language === 'ko' ? '더 읽기' : 'Read more'
+  );
 
-  const formattedDate = formatDate(post.date, language);
+  const formattedDate = normalizeSingleLineText(formatDate(post.date, language));
 
   return (
-    <Card className='h-full flex flex-col hover:shadow-lg transition-all duration-300 group border-border/50 hover:border-border'>
+    <Card
+      role='article'
+      aria-label={`${safeCardLabel}: ${title}`}
+      title={safeCardTitle}
+      className='h-full flex flex-col hover:shadow-lg transition-all duration-300 group border-border/50 hover:border-border'
+    >
       {/* Cover image or placeholder */}
       <div className='aspect-video overflow-hidden bg-muted/40'>
-        {post.coverImage ? (
+        {coverImage ? (
           <OptimizedImage
-            src={post.coverImage}
-            alt={localized.title}
+            src={coverImage}
+            alt={title}
             className='w-full h-full object-cover group-hover:scale-105 transition-transform duration-300'
           />
         ) : (
@@ -100,19 +218,20 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
       <CardHeader className='pb-0 px-6 pt-6 md:px-8 md:pt-8'>
         <div className='flex justify-between items-start gap-2 mb-3'>
           <Badge variant='secondary' className='text-xs'>
-            {post.category}
+            {category}
           </Badge>
           <DateDisplay date={formattedDate} />
         </div>
         <CardTitle className='line-clamp-2 group-hover:text-primary transition-colors leading-tight font-extrabold'>
           <Link
             to={{ pathname: postUrl, search: search || undefined }}
-            state={{ from: fromState }}
-            className='hover:underline'
-            onMouseEnter={() => prefetchPost(post.year, post.slug)}
-            onFocus={() => prefetchPost(post.year, post.slug)}
-          >
-            {localized.title}
+              state={{ from: fromState }}
+              className='hover:underline'
+              aria-label={title}
+              onMouseEnter={handlePrefetch}
+              onFocus={handlePrefetch}
+            >
+            {title}
           </Link>
         </CardTitle>
       </CardHeader>
@@ -130,26 +249,26 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
             {/* Reading time */}
             {(post.readingTime || post.readTime) && readingTimeLabel && (
               <div className='flex items-center gap-1'>
-                <Clock className='h-3 w-3' />
+                <Clock aria-hidden='true' className='h-3 w-3' />
                 <span>{readingTimeLabel}</span>
               </div>
             )}
 
             {/* Author */}
-            {post.author && (
+            {author && (
               <div className='flex items-center gap-1'>
-                <User className='h-3 w-3' />
-                <span>{post.author}</span>
+                <User aria-hidden='true' className='h-3 w-3' />
+                <span>{author}</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Tags */}
-        {post.tags && post.tags.length > 0 && (
+        {tags.length > 0 && (
           <div className='w-full'>
             <TagList
-              tags={post.tags}
+              tags={tags}
               maxVisible={3}
               size='sm'
               showIcon={false}
@@ -163,11 +282,12 @@ const BlogCard = memo(({ post }: BlogCardProps) => {
           <Link
             to={{ pathname: postUrl, search: search || undefined }}
             state={{ from: fromState }}
-            onMouseEnter={() => prefetchPost(post.year, post.slug)}
-            onFocus={() => prefetchPost(post.year, post.slug)}
+            aria-label={`${readMoreLabel}: ${title}`}
+            onMouseEnter={handlePrefetch}
+            onFocus={handlePrefetch}
           >
             {readMoreLabel}
-            <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover/button:translate-x-1' />
+            <ArrowRight aria-hidden='true' className='ml-2 h-4 w-4 transition-transform group-hover/button:translate-x-1' />
           </Link>
         </Button>
       </CardFooter>

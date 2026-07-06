@@ -23,14 +23,78 @@ const ALLOWED_DESCRIPTION_ELEMENTS = [
   "ul",
 ] as const;
 
-function isSafeDescriptionHref(href: string): boolean {
-  return (
-    href.startsWith("https://") ||
-    href.startsWith("http://") ||
-    href.startsWith("mailto:") ||
-    href.startsWith("#") ||
-    /^\/(?!\/)/.test(href)
-  );
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const WHITESPACE_PATTERN = /\s+/g;
+const ENCODED_DESCRIPTION_HREF_CONTROL_PATTERN = /%(?:0[0-9a-f]|1[0-9a-f]|7f)/i;
+const ENCODED_DESCRIPTION_HREF_SEPARATOR_PATTERN = /%(?:2f|5c)/i;
+const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+
+function normalizeDescriptionText(value: unknown): string {
+  if (typeof value !== "string" && typeof value !== "number") return "";
+
+  return String(value)
+    .replace(ANSI_ESCAPE_PATTERN, " ")
+    .replace(/\r\n?/g, "\n")
+    .replace(MULTILINE_CONTROL_PATTERN, " ")
+    .trim();
+}
+
+function normalizeDescriptionLine(value: unknown): string {
+  if (typeof value !== "string" && typeof value !== "number") return "";
+
+  return String(value)
+    .replace(ANSI_ESCAPE_PATTERN, " ")
+    .replace(SINGLE_LINE_CONTROL_PATTERN, " ")
+    .replace(WHITESPACE_PATTERN, " ")
+    .trim();
+}
+
+function hasUnsafeEncodedHref(value: string): boolean {
+  if (
+    ENCODED_DESCRIPTION_HREF_CONTROL_PATTERN.test(value) ||
+    ENCODED_DESCRIPTION_HREF_SEPARATOR_PATTERN.test(value)
+  ) {
+    return true;
+  }
+
+  try {
+    decodeURI(value);
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+export function normalizeDescriptionHref(href: unknown): string | null {
+  if (typeof href !== "string") return null;
+
+  const normalized = normalizeDescriptionLine(href);
+  if (!normalized) return null;
+  if (hasUnsafeEncodedHref(normalized)) return null;
+
+  if (normalized.startsWith("#")) {
+    return normalized;
+  }
+
+  if (normalized.startsWith("/") && !normalized.startsWith("//") && !normalized.includes("\\")) {
+    return normalized;
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (!SAFE_LINK_PROTOCOLS.has(parsed.protocol)) return null;
+    if (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      (parsed.username || parsed.password)
+    ) {
+      return null;
+    }
+    return parsed.href;
+  } catch {
+    return null;
+  }
 }
 
 function DescriptionHeading({
@@ -48,18 +112,30 @@ function DescriptionHeading({
 interface SafeDescriptionMarkdownProps {
   text: string;
   className?: string;
+  label?: string;
+  title?: string;
 }
 
 export function SafeDescriptionMarkdown({
   text,
   className,
+  label,
+  title,
 }: SafeDescriptionMarkdownProps) {
-  if (!text) {
+  const markdown = normalizeDescriptionText(text);
+  if (!markdown) {
     return null;
   }
+  const safeLabel = normalizeDescriptionLine(label);
+  const safeTitle = normalizeDescriptionLine(title) || undefined;
 
   return (
-    <div className={className}>
+    <div
+      className={className}
+      role={safeLabel ? "region" : undefined}
+      aria-label={safeLabel || undefined}
+      title={safeTitle}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         skipHtml
@@ -117,18 +193,19 @@ export function SafeDescriptionMarkdown({
             );
           },
           a: ({ href, children }) => {
-            if (typeof href !== "string" || !isSafeDescriptionHref(href)) {
+            const safeHref = normalizeDescriptionHref(href);
+            if (!safeHref) {
               return <>{children}</>;
             }
 
             const isExternal =
-              href.startsWith("http://") ||
-              href.startsWith("https://") ||
-              href.startsWith("mailto:");
+              safeHref.startsWith("http://") ||
+              safeHref.startsWith("https://") ||
+              safeHref.startsWith("mailto:");
 
             return (
               <a
-                href={href}
+                href={safeHref}
                 target={isExternal ? "_blank" : undefined}
                 rel={isExternal ? "noopener noreferrer" : undefined}
                 className="text-primary hover:underline"
@@ -140,7 +217,7 @@ export function SafeDescriptionMarkdown({
           img: () => null,
         }}
       >
-        {text}
+        {markdown}
       </ReactMarkdown>
     </div>
   );

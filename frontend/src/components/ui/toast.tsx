@@ -5,6 +5,34 @@ import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+function sanitizeToastText(value: unknown): string {
+  return String(value ?? '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+}
+
+function sanitizeToastNode(node: React.ReactNode): React.ReactNode {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return sanitizeToastText(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(sanitizeToastNode);
+  }
+
+  return node;
+}
+
+function sanitizeOptionalText(value: unknown): string | undefined {
+  const sanitized = sanitizeToastText(value);
+  return sanitized || undefined;
+}
+
 const ToastProvider = ToastPrimitives.Provider;
 
 const ToastViewport = React.forwardRef<
@@ -60,22 +88,26 @@ Toast.displayName = ToastPrimitives.Root.displayName;
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
->(({ className, ...props }, ref) => (
+>(({ className, children, title, 'aria-label': ariaLabel, ...props }, ref) => (
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
       'inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-destructive/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive',
       className
     )}
+    title={sanitizeOptionalText(title)}
+    aria-label={sanitizeOptionalText(ariaLabel)}
     {...props}
-  />
+  >
+    {sanitizeToastNode(children)}
+  </ToastPrimitives.Action>
 ));
 ToastAction.displayName = ToastPrimitives.Action.displayName;
 
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
->(({ className, ...props }, ref) => (
+>(({ className, title, 'aria-label': ariaLabel, ...props }, ref) => (
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
@@ -83,6 +115,8 @@ const ToastClose = React.forwardRef<
       className
     )}
     toast-close=''
+    title={sanitizeOptionalText(title)}
+    aria-label={sanitizeOptionalText(ariaLabel) || 'Close notification'}
     {...props}
   >
     <X className='h-4 w-4' />
@@ -93,24 +127,28 @@ ToastClose.displayName = ToastPrimitives.Close.displayName;
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
     className={cn('text-sm font-semibold', className)}
     {...props}
-  />
+  >
+    {sanitizeToastNode(children)}
+  </ToastPrimitives.Title>
 ));
 ToastTitle.displayName = ToastPrimitives.Title.displayName;
 
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
     className={cn('text-sm opacity-90', className)}
     {...props}
-  />
+  >
+    {sanitizeToastNode(children)}
+  </ToastPrimitives.Description>
 ));
 ToastDescription.displayName = ToastPrimitives.Description.displayName;
 

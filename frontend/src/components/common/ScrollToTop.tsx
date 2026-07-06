@@ -7,9 +7,21 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 type ScrollToTopProps = {
   className?: string;
+  label?: string;
 };
 
-export const ScrollToTop = ({ className }: ScrollToTopProps = {}) => {
+const DEFAULT_SCROLL_TO_TOP_LABEL = '맨 위로 이동';
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeScrollToTopLabel = (value: string): string =>
+  value.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
+
+export const ScrollToTop = ({
+  className,
+  label = DEFAULT_SCROLL_TO_TOP_LABEL,
+}: ScrollToTopProps = {}) => {
   const [isVisible, setIsVisible] = useState(false);
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -46,11 +58,14 @@ export const ScrollToTop = ({ className }: ScrollToTopProps = {}) => {
     return null;
   }
 
+  const sanitizedLabel =
+    sanitizeScrollToTopLabel(label) || DEFAULT_SCROLL_TO_TOP_LABEL;
+
   return (
     <TouchIconButton
       onClick={scrollToTop}
       variant='outline'
-      aria-label='맨 위로 이동'
+      aria-label={sanitizedLabel}
       className={cn(
         'fixed right-4 md:right-6 lg:right-8 z-[var(--z-fab-bar)] rounded-full shadow-lg transition-all duration-300',
         'bottom-[calc(92px+env(safe-area-inset-bottom,0px))] md:bottom-28 lg:bottom-[calc(108px+env(safe-area-inset-bottom,0px))]',

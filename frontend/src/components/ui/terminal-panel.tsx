@@ -1,6 +1,35 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeTerminalText = (value: string | number): string =>
+  String(value).replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
+
+const sanitizeTerminalOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeTerminalText(value);
+
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeTerminalNode = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeTerminalText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeTerminalNode);
+  }
+
+  return children;
+};
+
 /**
  * TerminalPanel - 터미널 출력 창 스타일의 정보 패널 컴포넌트
  * 
@@ -17,7 +46,7 @@ interface TerminalPanelProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TerminalPanel = React.forwardRef<HTMLDivElement, TerminalPanelProps>(
-  ({ className, label = 'OUTPUT_LOG', children, ...props }, ref) => (
+  ({ className, label = 'OUTPUT_LOG', children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
@@ -35,6 +64,8 @@ const TerminalPanel = React.forwardRef<HTMLDivElement, TerminalPanelProps>(
         'relative',
         className
       )}
+      aria-label={sanitizeTerminalOptionalText(ariaLabel)}
+      title={sanitizeTerminalOptionalText(title)}
       {...props}
     >
       {/* OUTPUT_LOG label */}
@@ -47,9 +78,9 @@ const TerminalPanel = React.forwardRef<HTMLDivElement, TerminalPanelProps>(
         )}
         aria-hidden
       >
-        {label}
+        {sanitizeTerminalText(label)}
       </span>
-      {children}
+      {sanitizeTerminalNode(children)}
     </div>
   )
 );
@@ -61,24 +92,29 @@ interface TerminalSectionProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TerminalSection = React.forwardRef<HTMLDivElement, TerminalSectionProps>(
-  ({ className, title, children, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn('mb-6 last:mb-0', className)}
-      {...props}
-    >
-      {/* 주석(//) 스타일 제목 */}
-      <h3 className={cn(
-        'text-muted-foreground',
-        'font-mono text-sm',
-        'mb-3',
-        'font-normal'
-      )}>
-        {title.startsWith('//') ? title : `// ${title}`}
-      </h3>
-      {children}
-    </div>
-  )
+  ({ className, title, children, 'aria-label': ariaLabel, ...props }, ref) => {
+    const sanitizedTitle = sanitizeTerminalText(title);
+
+    return (
+      <div
+        ref={ref}
+        className={cn('mb-6 last:mb-0', className)}
+        aria-label={sanitizeTerminalOptionalText(ariaLabel)}
+        {...props}
+      >
+        {/* 주석(//) 스타일 제목 */}
+        <h3 className={cn(
+          'text-muted-foreground',
+          'font-mono text-sm',
+          'mb-3',
+          'font-normal'
+        )}>
+          {sanitizedTitle.startsWith('//') ? sanitizedTitle : `// ${sanitizedTitle}`}
+        </h3>
+        {sanitizeTerminalNode(children)}
+      </div>
+    );
+  }
 );
 TerminalSection.displayName = 'TerminalSection';
 
@@ -87,13 +123,15 @@ interface TerminalListProps extends React.HTMLAttributes<HTMLUListElement> {
 }
 
 const TerminalList = React.forwardRef<HTMLUListElement, TerminalListProps>(
-  ({ className, children, ...props }, ref) => (
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <ul
       ref={ref}
       className={cn('list-none p-0 m-0 space-y-2', className)}
+      aria-label={sanitizeTerminalOptionalText(ariaLabel)}
+      title={sanitizeTerminalOptionalText(title)}
       {...props}
     >
-      {children}
+      {sanitizeTerminalNode(children)}
     </ul>
   )
 );
@@ -105,7 +143,7 @@ interface TerminalListItemProps extends React.LiHTMLAttributes<HTMLLIElement> {
 }
 
 const TerminalListItem = React.forwardRef<HTMLLIElement, TerminalListItemProps>(
-  ({ className, highlight = false, children, ...props }, ref) => (
+  ({ className, highlight = false, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <li
       ref={ref}
       className={cn(
@@ -117,6 +155,8 @@ const TerminalListItem = React.forwardRef<HTMLLIElement, TerminalListItemProps>(
         ],
         className
       )}
+      aria-label={sanitizeTerminalOptionalText(ariaLabel)}
+      title={sanitizeTerminalOptionalText(title)}
       {...props}
     >
       {/* 프롬프트 아이콘 (>) */}
@@ -129,7 +169,7 @@ const TerminalListItem = React.forwardRef<HTMLLIElement, TerminalListItemProps>(
       >
         {'>'}
       </span>
-      <span className="flex-1">{children}</span>
+      <span className="flex-1">{sanitizeTerminalNode(children)}</span>
     </li>
   )
 );
@@ -143,7 +183,7 @@ interface TerminalOutputProps extends React.HTMLAttributes<HTMLPreElement> {
 }
 
 const TerminalOutput = React.forwardRef<HTMLPreElement, TerminalOutputProps>(
-  ({ className, children, ...props }, ref) => (
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <pre
       ref={ref}
       className={cn(
@@ -158,9 +198,11 @@ const TerminalOutput = React.forwardRef<HTMLPreElement, TerminalOutputProps>(
         'overflow-auto',
         className
       )}
+      aria-label={sanitizeTerminalOptionalText(ariaLabel)}
+      title={sanitizeTerminalOptionalText(title)}
       {...props}
     >
-      {children}
+      {sanitizeTerminalNode(children)}
     </pre>
   )
 );
@@ -175,7 +217,7 @@ interface TerminalPromptProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const TerminalPrompt = React.forwardRef<HTMLDivElement, TerminalPromptProps>(
-  ({ className, path = '~', children, ...props }, ref) => (
+  ({ className, path = '~', children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
@@ -183,11 +225,13 @@ const TerminalPrompt = React.forwardRef<HTMLDivElement, TerminalPromptProps>(
         'font-mono text-sm',
         className
       )}
+      aria-label={sanitizeTerminalOptionalText(ariaLabel)}
+      title={sanitizeTerminalOptionalText(title)}
       {...props}
     >
-      <span className="text-primary/60">{path}</span>
+      <span className="text-primary/60">{sanitizeTerminalText(path)}</span>
       <span className="text-primary font-bold">$</span>
-      {children && <span className="text-foreground">{children}</span>}
+      {children && <span className="text-foreground">{sanitizeTerminalNode(children)}</span>}
     </div>
   )
 );

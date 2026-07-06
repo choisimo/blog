@@ -16,9 +16,61 @@ export interface SitemapEntry {
 }
 
 const SITE_BASE_URL_FALLBACK = 'https://blog.nodove.com';
+const XML_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const XML_CONTROL_TEST_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+const URL_SEGMENT_CONTROL_PATTERN = /[\u0000-\u001F\u007F/\\]/;
+
+function normalizeSiteBaseUrl(value: unknown): string {
+  const candidate = typeof value === 'string' ? value.trim() : '';
+  if (!candidate || XML_CONTROL_TEST_PATTERN.test(candidate)) {
+    return SITE_BASE_URL_FALLBACK;
+  }
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return SITE_BASE_URL_FALLBACK;
+    }
+    return url.href.replace(/\/$/, '');
+  } catch {
+    return SITE_BASE_URL_FALLBACK;
+  }
+}
+
+function escapeXmlText(value: unknown): string {
+  return String(value ?? '')
+    .replace(XML_CONTROL_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function normalizeUrlSegment(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || URL_SEGMENT_CONTROL_PATTERN.test(trimmed)) return null;
+
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    if (!decoded || URL_SEGMENT_CONTROL_PATTERN.test(decoded)) return null;
+    return encodeURIComponent(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function getPostUrl(baseUrl: string, post: BlogPost): string | null {
+  const year = normalizeUrlSegment(post.year);
+  const slug = normalizeUrlSegment(post.slug);
+  return year && slug ? `${baseUrl}/blog/${year}/${slug}` : null;
+}
 
 export const generateSitemap = async (): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || SITE_BASE_URL_FALLBACK;
+  const baseUrl = normalizeSiteBaseUrl(import.meta.env.VITE_SITE_BASE_URL);
   const posts = await getPosts();
 
   const entries: SitemapEntry[] = [
@@ -49,12 +101,18 @@ export const generateSitemap = async (): Promise<string> => {
     },
 
     // Blog posts
-    ...posts.map((post: BlogPost) => ({
-      url: `${baseUrl}/blog/${post.year}/${post.slug}`,
-      lastModified: new Date(post.date).toISOString(),
-      changeFreq: 'monthly' as const,
-      priority: 0.8,
-    })),
+    ...posts.flatMap((post: BlogPost) => {
+      const url = getPostUrl(baseUrl, post);
+      if (!url) return [];
+      return [
+        {
+          url,
+          lastModified: new Date(post.date).toISOString(),
+          changeFreq: 'monthly' as const,
+          priority: 0.8,
+        },
+      ];
+    }),
   ];
 
   const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
@@ -62,7 +120,7 @@ export const generateSitemap = async (): Promise<string> => {
 ${entries
   .map(
     entry => `  <url>
-    <loc>${entry.url}</loc>
+    <loc>${escapeXmlText(entry.url)}</loc>
     <lastmod>${entry.lastModified}</lastmod>
     <changefreq>${entry.changeFreq}</changefreq>
     <priority>${entry.priority}</priority>
@@ -75,7 +133,7 @@ ${entries
 };
 
 export const generateRobotsTxt = (): string => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || SITE_BASE_URL_FALLBACK;
+  const baseUrl = normalizeSiteBaseUrl(import.meta.env.VITE_SITE_BASE_URL);
 
   return `User-agent: *
 Allow: /
@@ -85,7 +143,7 @@ Sitemap: ${baseUrl}/sitemap.xml`;
 
 // Generate RSS feed
 export const generateRSSFeed = async (): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_SITE_BASE_URL || SITE_BASE_URL_FALLBACK;
+  const baseUrl = normalizeSiteBaseUrl(import.meta.env.VITE_SITE_BASE_URL);
   const siteName = 'Your Blog Name';
   const siteDescription =
     'A blog about technology, programming, and web development';
@@ -94,26 +152,28 @@ export const generateRSSFeed = async (): Promise<string> => {
   const rssContent = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${siteName}</title>
-    <description>${siteDescription}</description>
-    <link>${baseUrl}</link>
-    <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml"/>
+    <title>${escapeXmlText(siteName)}</title>
+    <description>${escapeXmlText(siteDescription)}</description>
+    <link>${escapeXmlText(baseUrl)}</link>
+    <atom:link href="${escapeXmlText(`${baseUrl}/rss.xml`)}" rel="self" type="application/rss+xml"/>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <language>ko-KR</language>
     
 ${posts
   .slice(0, 20)
-  .map(
-    (post: BlogPost) => `    <item>
-      <title>${post.title}</title>
-      <description>${post.description}</description>
-      <link>${baseUrl}/blog/${post.year}/${post.slug}</link>
-      <guid isPermaLink="true">${baseUrl}/blog/${post.year}/${post.slug}</guid>
+  .flatMap((post: BlogPost) => {
+    const url = getPostUrl(baseUrl, post);
+    if (!url) return [];
+    return [`    <item>
+      <title>${escapeXmlText(post.title)}</title>
+      <description>${escapeXmlText(post.description)}</description>
+      <link>${escapeXmlText(url)}</link>
+      <guid isPermaLink="true">${escapeXmlText(url)}</guid>
       <pubDate>${new Date(post.date).toUTCString()}</pubDate>
-      <category>${post.category}</category>
-${post.tags.map(tag => `      <category>${tag}</category>`).join('\n')}
-    </item>`
-  )
+      <category>${escapeXmlText(post.category)}</category>
+${post.tags.map(tag => `      <category>${escapeXmlText(tag)}</category>`).join('\n')}
+    </item>`];
+  })
   .join('\n')}
   </channel>
 </rss>`;

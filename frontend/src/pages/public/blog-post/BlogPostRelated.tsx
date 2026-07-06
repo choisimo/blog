@@ -14,6 +14,59 @@ interface BlogPostRelatedProps {
   relatedPostsDescLabel: string;
 }
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const HAS_CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeRelatedText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string" && typeof value !== "number") return fallback;
+  const normalized = String(value)
+    .replace(CONTROL_TEXT_PATTERN, " ")
+    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeRelatedPathSegment(value: unknown): string | null {
+  const normalized = normalizeRelatedText(value);
+  if (!normalized || normalized.includes("/") || normalized.includes("\\")) {
+    return null;
+  }
+  try {
+    const decoded = decodeURIComponent(normalized);
+    if (
+      !decoded.trim() ||
+      decoded === "." ||
+      decoded === ".." ||
+      HAS_CONTROL_TEXT_PATTERN.test(decoded) ||
+      decoded.includes("/") ||
+      decoded.includes("\\")
+    ) {
+      return null;
+    }
+    return encodeURIComponent(decoded.trim());
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRelatedPost(
+  relatedPost: ResolvedRelatedPostCard,
+): ResolvedRelatedPostCard | null {
+  const year = normalizeRelatedPathSegment(relatedPost.year);
+  const slug = normalizeRelatedPathSegment(relatedPost.slug);
+  if (!year || !slug || !/^\d{4}$/.test(year)) return null;
+  return {
+    ...relatedPost,
+    year,
+    slug,
+    title: normalizeRelatedText(relatedPost.title, "Untitled post"),
+    excerpt: normalizeRelatedText(relatedPost.excerpt),
+    categoryLabel: normalizeRelatedText(relatedPost.categoryLabel, "Post"),
+    readingTimeLabel: normalizeRelatedText(relatedPost.readingTimeLabel),
+  };
+}
+
 export function BlogPostRelated({
   relatedPosts,
   preservedSearch,
@@ -22,7 +75,14 @@ export function BlogPostRelated({
   relatedPostsLabel,
   relatedPostsDescLabel,
 }: BlogPostRelatedProps) {
-  if (relatedPosts.length === 0) return null;
+  const safeRelatedPosts = relatedPosts.flatMap((relatedPost) => {
+    const normalized = normalizeRelatedPost(relatedPost);
+    return normalized ? [normalized] : [];
+  });
+  const safeRelatedPostsLabel = normalizeRelatedText(relatedPostsLabel, "Related posts");
+  const safeRelatedPostsDescLabel = normalizeRelatedText(relatedPostsDescLabel);
+
+  if (safeRelatedPosts.length === 0) return null;
 
   return (
     <section className="space-y-6">
@@ -42,7 +102,7 @@ export function BlogPostRelated({
               isTerminal && "font-mono text-primary",
             )}
           >
-            {isTerminal ? `> ${relatedPostsLabel}` : relatedPostsLabel}
+            {isTerminal ? `> ${safeRelatedPostsLabel}` : safeRelatedPostsLabel}
           </h2>
           <p
             className={cn(
@@ -50,12 +110,12 @@ export function BlogPostRelated({
               isTerminal && "font-mono text-xs",
             )}
           >
-            {relatedPostsDescLabel}
+            {safeRelatedPostsDescLabel}
           </p>
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        {relatedPosts.map((relatedPost) => (
+        {safeRelatedPosts.map((relatedPost) => (
           <Link
             key={`${relatedPost.year}/${relatedPost.slug}`}
             to={{

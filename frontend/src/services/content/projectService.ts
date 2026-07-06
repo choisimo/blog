@@ -12,11 +12,60 @@ type RawProjectsManifest = {
   format?: number;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseRawManifestItem(value: unknown): RawManifestItem | null {
+  return isRecord(value) ? (value as RawManifestItem) : null;
+}
+
+function parseProjectsManifest(value: unknown): RawProjectsManifest | null {
+  if (!isRecord(value)) return null;
+
+  const items = Array.isArray(value.items)
+    ? value.items
+        .map(parseRawManifestItem)
+        .filter((item): item is RawManifestItem => item !== null)
+    : [];
+
+  return {
+    total:
+      typeof value.total === 'number' && Number.isFinite(value.total)
+        ? value.total
+        : items.length,
+    items,
+    generatedAt: typeof value.generatedAt === 'string' ? value.generatedAt : undefined,
+    format:
+      typeof value.format === 'number' && Number.isFinite(value.format)
+        ? value.format
+        : undefined,
+  };
+}
+
 function sanitizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
     .map(item => (typeof item === 'string' ? item.trim() : ''))
     .filter(Boolean);
+}
+
+function normalizeProjectUrl(value: unknown): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+
+  if (raw.startsWith('/') && !raw.startsWith('//')) {
+    return raw;
+  }
+
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.href
+      : '';
+  } catch {
+    return '';
+  }
 }
 
 function normalizeProjectType(value: unknown): ProjectType {
@@ -53,12 +102,12 @@ function normalizeProject(item: RawManifestItem, index: number): ProjectItem | n
 
   const title = typeof item.title === 'string' ? item.title.trim() : '';
   const description = typeof item.description === 'string' ? item.description.trim() : '';
-  const url = typeof item.url === 'string' ? item.url.trim() : '';
+  const url = normalizeProjectUrl(item.url);
 
   if (!title || !url) return null;
 
-  const codeUrl = typeof item.codeUrl === 'string' ? item.codeUrl.trim() : '';
-  const thumbnail = typeof item.thumbnail === 'string' ? item.thumbnail.trim() : '';
+  const codeUrl = normalizeProjectUrl(item.codeUrl);
+  const thumbnail = normalizeProjectUrl(item.thumbnail);
   const category = typeof item.category === 'string' && item.category.trim()
     ? item.category.trim()
     : 'Web';
@@ -99,7 +148,7 @@ export class ProjectService {
       if (!response.ok) {
         throw new Error(`Failed to load projects manifest: ${response.status}`);
       }
-      return (await response.json()) as RawProjectsManifest;
+      return parseProjectsManifest(await response.json());
     } catch (error) {
       console.error('Error loading projects manifest:', error);
       return null;

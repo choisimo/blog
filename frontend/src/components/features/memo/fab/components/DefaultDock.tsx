@@ -7,6 +7,19 @@ type DefaultDockProps = {
   isLeft?: boolean;
 };
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const DEFAULT_DOCK_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function normalizeDockLabel(value: unknown, fallback = "Action"): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(DEFAULT_DOCK_CONTROL_TEXT_PATTERN, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
 export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps) {
   return (
     <div
@@ -24,13 +37,17 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
         <div className="flex w-full items-center justify-around">
           {dockActions.map((action) => {
             const Icon = action.icon;
+            const label = normalizeDockLabel(action.label, action.key);
+            const title = normalizeDockLabel(action.title || action.desktopLabel || action.label, label);
             return (
               <button
                 key={action.key}
                 type="button"
                 onClick={action.onClick}
                 disabled={action.disabled}
-                aria-label={action.label}
+                aria-disabled={action.disabled}
+                aria-label={label}
+                title={title}
                 className={cn(
                   "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 min-w-0 flex-1 transition-all active:scale-95",
                   action.disabled && "opacity-40",
@@ -45,13 +62,13 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
                       : "bg-muted/70 text-foreground/85 dark:bg-white/10 dark:text-white/80",
                   )}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon aria-hidden="true" className="h-5 w-5" focusable="false" />
                 </span>
                 <span className="text-[10px] text-foreground/75 dark:text-white/70">
-                  {action.label}
+                  {label}
                 </span>
                 {action.badge && (
-                  <span className="absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span aria-hidden="true" className="absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
                 )}
               </button>
             );
@@ -62,14 +79,17 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
         <div className="flex flex-col items-center gap-1 py-1">
           {dockActions.map((action) => {
             const Icon = action.icon;
+            const displayLabel = normalizeDockLabel(action.desktopLabel || action.label, action.key);
+            const title = normalizeDockLabel(action.title || action.desktopLabel || action.label, displayLabel);
             return (
               <button
                 key={action.key}
                 type="button"
                 onClick={action.onClick}
                 disabled={action.disabled}
-                aria-label={action.desktopLabel || action.label}
-                title={action.title || action.desktopLabel || action.label}
+                aria-disabled={action.disabled}
+                aria-label={displayLabel}
+                title={title}
                 className={cn(
                   "group relative flex items-center justify-center rounded-xl p-3 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 hover:scale-105",
                   action.primary
@@ -77,7 +97,7 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
                     : "text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white",
                 )}
               >
-                <Icon className="h-5 w-5" />
+                <Icon aria-hidden="true" className="h-5 w-5" focusable="false" />
                 {action.badge && (
                   <span
                     className="absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse"
@@ -93,7 +113,8 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
         <div className="flex flex-wrap items-center justify-center gap-2">
           {dockActions.map((action) => {
             const Icon = action.icon;
-            const displayLabel = action.desktopLabel || action.label;
+            const displayLabel = normalizeDockLabel(action.desktopLabel || action.label, action.key);
+            const title = normalizeDockLabel(action.title || action.desktopLabel || action.label, displayLabel);
             return (
               <button
                 key={action.key}
@@ -102,7 +123,7 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
                 disabled={action.disabled}
                 aria-label={displayLabel}
                 aria-disabled={action.disabled}
-                title={action.title || displayLabel}
+                title={title}
                 className={cn(
                   "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
                   action.primary
@@ -111,10 +132,12 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
                 )}
               >
                 <Icon
+                  aria-hidden="true"
                   className={cn(
                     "h-[18px] w-[18px]",
                     action.primary && "text-primary-foreground",
                   )}
+                  focusable="false"
                 />
                 <span
                   className={cn(

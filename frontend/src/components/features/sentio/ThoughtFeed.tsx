@@ -13,6 +13,33 @@ type ThoughtFeedProps = {
   onReady?: (cards: ThoughtCardData[], source: ThoughtFeedSource) => void;
 };
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeDisplayText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || undefined;
+}
+
+function normalizeCacheKey(value: unknown): string {
+  const normalized =
+    typeof value === 'string'
+      ? value
+          .trim()
+          .replace(CONTROL_TEXT_PATTERN, '-')
+          .replace(/[|/\\\s]+/g, '-')
+          .replace(/[^A-Za-z0-9:_-]+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 160)
+      : '';
+  return normalized || 'thought-feed';
+}
+
 export default function ThoughtFeed({
   paragraph,
   postTitle,
@@ -20,6 +47,8 @@ export default function ThoughtFeed({
   enabled,
   onReady,
 }: ThoughtFeedProps) {
+  const safePostTitle = normalizeDisplayText(postTitle);
+  const safeCacheKey = normalizeCacheKey(cacheKey);
   const {
     cards,
     loading,
@@ -30,8 +59,8 @@ export default function ThoughtFeed({
     loadMore,
   } = useThoughtFeed({
     paragraph,
-    postTitle,
-    cacheKey,
+    postTitle: safePostTitle,
+    cacheKey: safeCacheKey,
     enabled,
     onReady,
   });

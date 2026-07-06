@@ -50,17 +50,145 @@ interface ConfigStateResponse {
 }
 
 const EMPTY_CONFIG_VALUES: Record<string, ConfigValue> = {};
+const CONFIG_TYPES = new Set<ConfigVariable['type']>([
+  'text',
+  'number',
+  'boolean',
+  'select',
+  'password',
+  'url',
+  'textarea',
+]);
 
-function getAdminErrorMessage(payload: unknown, fallback: string): string {
+const CONFIG_ANSI_ESCAPE_RE =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+
+export function normalizeSafeConfigText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(CONFIG_ANSI_ESCAPE_RE, '')
+    .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeConfigCategoryId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || /[\r\n/\\]/.test(normalized) || !/^[a-z0-9-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeConfigKey(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized) || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeConfigVariable(value: unknown): ConfigVariable | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const key = normalizeConfigKey(record.key);
+  const type = CONFIG_TYPES.has(record.type as ConfigVariable['type'])
+    ? (record.type as ConfigVariable['type'])
+    : 'text';
+  if (!key) return null;
+
+  return {
+    key,
+    type,
+    options: Array.isArray(record.options)
+      ? record.options.flatMap(option => {
+          const normalized = normalizeSafeConfigText(option);
+          return normalized ? [normalized] : [];
+        })
+      : undefined,
+    default: typeof record.default === 'string' ? record.default : undefined,
+    isSecret: Boolean(record.isSecret),
+    description: normalizeSafeConfigText(record.description) || undefined,
+    delimiter: typeof record.delimiter === 'string' ? record.delimiter : undefined,
+  };
+}
+
+function normalizeConfigCategory(value: unknown): ConfigCategory | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  const id = normalizeConfigCategoryId(record.id);
+  if (!id) return null;
+  const variables = Array.isArray(record.variables)
+    ? record.variables.flatMap(variable => {
+        const normalized = normalizeConfigVariable(variable);
+        return normalized ? [normalized] : [];
+      })
+    : [];
+
+  return {
+    id,
+    name: normalizeSafeConfigText(record.name, id),
+    description: normalizeSafeConfigText(record.description),
+    variables,
+  };
+}
+
+export function normalizeConfigCategories(value: unknown): ConfigCategory[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(category => {
+    const normalized = normalizeConfigCategory(category);
+    return normalized ? [normalized] : [];
+  });
+}
+
+function normalizeConfigValues(
+  value: Record<string, ConfigValue> | undefined,
+): Record<string, ConfigValue> {
+  if (!value || typeof value !== 'object') return EMPTY_CONFIG_VALUES;
+  return Object.entries(value).reduce<Record<string, ConfigValue>>((next, [key, configValue]) => {
+    const normalizedKey = normalizeConfigKey(key);
+    if (!normalizedKey || !configValue || typeof configValue !== 'object') {
+      return next;
+    }
+    const record = configValue as Partial<ConfigValue>;
+    next[normalizedKey] = {
+      value: typeof record.value === 'string' ? record.value : '',
+      isSecret: Boolean(record.isSecret),
+      isSet: Boolean(record.isSet),
+      default: typeof record.default === 'string' ? record.default : '',
+    };
+    return next;
+  }, {});
+}
+
+function normalizeEditedValues(
+  values: Record<string, string>,
+): Record<string, string> {
+  return Object.entries(values).reduce<Record<string, string>>((next, [key, value]) => {
+    const normalizedKey = normalizeConfigKey(key);
+    if (!normalizedKey) return next;
+    next[normalizedKey] = value;
+    return next;
+  }, {});
+}
+
+export function getAdminErrorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== 'object') return fallback;
   const record = payload as { error?: unknown; message?: unknown };
-  if (typeof record.error === 'string' && record.error) return record.error;
+  const errorText = normalizeSafeConfigText(record.error);
+  if (errorText) return errorText;
   if (record.error && typeof record.error === 'object') {
     const nested = record.error as { message?: unknown; code?: unknown };
-    if (typeof nested.message === 'string' && nested.message) return nested.message;
-    if (typeof nested.code === 'string' && nested.code) return nested.code;
+    const nestedMessage = normalizeSafeConfigText(nested.message);
+    if (nestedMessage) return nestedMessage;
+    const nestedCode = normalizeSafeConfigText(nested.code);
+    if (nestedCode) return nestedCode;
   }
-  if (typeof record.message === 'string' && record.message) return record.message;
+  const message = normalizeSafeConfigText(record.message);
+  if (message) return message;
   return fallback;
 }
 
@@ -94,7 +222,7 @@ export function ConfigManager() {
         res,
         'Failed to fetch categories',
       );
-      return json.data.categories as ConfigCategory[];
+      return normalizeConfigCategories(json.data.categories);
     },
   });
 
@@ -115,11 +243,13 @@ export function ConfigManager() {
     },
   });
 
-  const configValues = configData?.config ?? EMPTY_CONFIG_VALUES;
+  const configValues = normalizeConfigValues(configData?.config);
   const mutationsEnabled = configData?.mutationsEnabled !== false;
   const mutationGuidance =
-    configData?.mutationGuidance ||
-    'Runtime edits are disabled in this environment. Update the source of truth and redeploy.';
+    normalizeSafeConfigText(
+      configData?.mutationGuidance,
+      'Runtime edits are disabled in this environment. Update the source of truth and redeploy.',
+    );
 
   const exportMutation = useMutation({
     mutationFn: async (format: string) => {
@@ -127,7 +257,10 @@ export function ConfigManager() {
         method: 'POST',
         body: JSON.stringify({ format, includeSecrets: false }),
       });
-      if (!res.ok) throw new Error('Export failed');
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(getAdminErrorMessage(payload, 'Export failed'));
+      }
       return res.json();
     },
     onSuccess: (data, format) => {
@@ -146,8 +279,12 @@ export function ConfigManager() {
       URL.revokeObjectURL(url);
       toast({ title: 'Export complete', description: `Downloaded ${format} file` });
     },
-    onError: () => {
-      toast({ title: 'Export failed', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({
+        title: 'Export failed',
+        description: normalizeSafeConfigText(error.message, 'Export failed'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -160,11 +297,7 @@ export function ConfigManager() {
 
       if (!res.ok) {
         const payload = await res.json().catch(() => null);
-        const message =
-          typeof payload?.error === 'string'
-            ? payload.error
-            : payload?.error?.message || 'Save failed';
-        throw new Error(message);
+        throw new Error(getAdminErrorMessage(payload, 'Save failed'));
       }
 
       return res.json();
@@ -180,7 +313,7 @@ export function ConfigManager() {
     onError: (error: Error) => {
       toast({
         title: 'Save failed',
-        description: error.message,
+        description: normalizeSafeConfigText(error.message, 'Save failed'),
         variant: 'destructive',
       });
     },
@@ -188,15 +321,19 @@ export function ConfigManager() {
 
   const updateValue = useCallback((key: string, value: string) => {
     if (!mutationsEnabled) return;
-    setEditedValues((prev) => ({ ...prev, [key]: value }));
+    const normalizedKey = normalizeConfigKey(key);
+    if (!normalizedKey) return;
+    setEditedValues((prev) => ({ ...prev, [normalizedKey]: value }));
     setHasChanges(true);
   }, [mutationsEnabled]);
 
   const toggleSecretVisibility = useCallback((key: string) => {
+    const normalizedKey = normalizeConfigKey(key);
+    if (!normalizedKey) return;
     setVisibleSecrets((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(normalizedKey)) next.delete(normalizedKey);
+      else next.add(normalizedKey);
       return next;
     });
   }, []);
@@ -211,8 +348,10 @@ export function ConfigManager() {
 
   const getValue = useCallback(
     (key: string): string => {
-      if (key in editedValues) return editedValues[key];
-      return configValues[key]?.value || '';
+      const normalizedKey = normalizeConfigKey(key);
+      if (!normalizedKey) return '';
+      if (normalizedKey in editedValues) return editedValues[normalizedKey];
+      return configValues[normalizedKey]?.value || '';
     },
     [configValues, editedValues]
   );
@@ -226,7 +365,16 @@ export function ConfigManager() {
       return;
     }
 
-    saveMutation.mutate(editedValues);
+    const variables = normalizeEditedValues(editedValues);
+    if (!Object.keys(variables).length) {
+      toast({
+        title: 'No valid config changes',
+        description: 'No valid environment variable keys are ready to save.',
+      });
+      return;
+    }
+
+    saveMutation.mutate(variables);
   };
 
   const renderField = (variable: ConfigVariable) => {
@@ -362,7 +510,7 @@ export function ConfigManager() {
   if (loadError) {
     const message =
       loadError instanceof Error
-        ? loadError.message
+        ? normalizeSafeConfigText(loadError.message, 'Failed to load configuration')
         : 'Failed to load configuration';
 
     return (
@@ -469,7 +617,10 @@ export function ConfigManager() {
           <AdminSubtabs
             tabs={configTabs}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={nextTab => {
+              const normalizedTab = normalizeConfigCategoryId(nextTab);
+              if (normalizedTab) setActiveTab(normalizedTab);
+            }}
             renderTab={(tab, isActive) => (
               <>
                 {tab.label}

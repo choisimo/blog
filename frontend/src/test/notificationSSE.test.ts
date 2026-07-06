@@ -46,4 +46,55 @@ describe('notification SSE strict id handling', () => {
       })
     );
   });
+
+  it('drops notification events with blank notification IDs', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { handleNotificationEvent } = await import('@/services/realtime/notificationSSE');
+
+    handleNotificationEvent({
+      notificationId: ' \n\t ',
+      title: 'Blank ID',
+      message: 'Should not reach the store',
+    });
+
+    expect(addNotification).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('trims string fields and drops malformed payloads before storing', async () => {
+    const { handleNotificationEvent } = await import('@/services/realtime/notificationSSE');
+
+    handleNotificationEvent({
+      notificationId: ' nin-2 ',
+      title: '  Trimmed title  ',
+      message: '  Trimmed message  ',
+      sourceId: ' source-2 ',
+      payload: [] as unknown as Record<string, unknown>,
+      createdAt: ' 2026-07-03T00:00:00.000Z ',
+    });
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'nin-2',
+        title: 'Trimmed title',
+        message: 'Trimmed message',
+        sourceId: 'source-2',
+        createdAt: '2026-07-03T00:00:00.000Z',
+      })
+    );
+    expect(addNotification.mock.calls[0]?.[0]).not.toHaveProperty('payload');
+  });
+
+  it('parses only object notification SSE payloads', async () => {
+    const { parseSSEData } = await import('@/services/realtime/notificationSSE');
+
+    expect(parseSSEData('{"notificationId":"nin-3","title":"Ready"}')).toEqual({
+      notificationId: 'nin-3',
+      title: 'Ready',
+    });
+    expect(parseSSEData('[]')).toBeNull();
+    expect(parseSSEData('"message"')).toBeNull();
+    expect(parseSSEData('null')).toBeNull();
+    expect(parseSSEData('{bad json')).toBeNull();
+  });
 });

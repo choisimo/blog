@@ -106,6 +106,29 @@ function isNavTab(value: string | undefined): value is NavTab {
   return value !== undefined && NAV_TABS.some(tab => tab.id === value);
 }
 
+function normalizeAdminSubtab(value: string | undefined): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (
+    !normalized ||
+    /[\r\n/\\]/.test(normalized) ||
+    /%(?:0a|0d|2f|5c)/i.test(normalized) ||
+    !/^[a-z0-9-]+$/.test(normalized)
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function normalizeAdminDisplayText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized ? normalized.slice(0, 160) : null;
+}
+
 export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
   const navigate = useNavigate();
   const { section, subtab } = useParams<{ section?: string; subtab?: string }>();
@@ -115,9 +138,15 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
   }
 
   const activeTab = section;
+  const activeSubtab = normalizeAdminSubtab(subtab);
+  if (subtab !== undefined && !activeSubtab) {
+    return <Navigate to={`/admin/config/${activeTab}`} replace />;
+  }
   const activeTabIndex = NAV_TABS.findIndex(tab => tab.id === activeTab);
+  const safeUserEmail = normalizeAdminDisplayText(userEmail);
 
   const setActiveTab = (tab: NavTab) => {
+    if (tab === activeTab) return;
     navigate(`/admin/config/${tab}`, { replace: false });
   };
 
@@ -142,6 +171,12 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
     if (!tab) return;
     setActiveTab(tab.id);
     focusNavTab(index);
+  };
+
+  const navigateToSubtab = (sectionId: NavTab, nextSubtab: string) => {
+    const normalizedSubtab = normalizeAdminSubtab(nextSubtab);
+    if (!normalizedSubtab) return;
+    navigate(`/admin/config/${sectionId}/${normalizedSubtab}`, { replace: true });
   };
 
   const handleNavKeyDown = (
@@ -233,9 +268,9 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
 
           {/* Right: User + Logout */}
           <div className='flex items-center gap-1.5 shrink-0 ml-2'>
-            {userEmail && (
+            {safeUserEmail && (
               <span className='hidden sm:inline font-mono text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700 max-w-[160px] truncate'>
-                {userEmail}
+                {safeUserEmail}
               </span>
             )}
             <button
@@ -277,32 +312,32 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
           {activeTab === 'logs' && <LogViewer />}
           {activeTab === 'content' && (
             <ContentManager
-              subtab={subtab}
+              subtab={activeSubtab}
               onSubtabChange={nextSubtab =>
-                navigate(`/admin/config/content/${nextSubtab}`, { replace: true })
+                navigateToSubtab('content', nextSubtab)
               }
             />
           )}
           {activeTab === 'ai' && (
             <AIManager
-              subtab={subtab}
-              onSubtabChange={nextSubtab => navigate(`/admin/config/ai/${nextSubtab}`, { replace: true })}
+              subtab={activeSubtab}
+              onSubtabChange={nextSubtab => navigateToSubtab('ai', nextSubtab)}
             />
           )}
           {activeTab === 'config' && <ConfigManager />}
           {activeTab === 'secrets' && (
             <SecretsManager
-              subtab={subtab}
+              subtab={activeSubtab}
               onSubtabChange={nextSubtab =>
-                navigate(`/admin/config/secrets/${nextSubtab}`, { replace: true })
+                navigateToSubtab('secrets', nextSubtab)
               }
             />
           )}
           {activeTab === 'workers' && (
             <WorkersManager
-              subtab={subtab}
+              subtab={activeSubtab}
               onSubtabChange={nextSubtab =>
-                navigate(`/admin/config/workers/${nextSubtab}`, { replace: true })
+                navigateToSubtab('workers', nextSubtab)
               }
             />
           )}

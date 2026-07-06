@@ -41,6 +41,35 @@ export type UseRealTerminalReturn = {
   checkHealth: () => Promise<boolean>;
 };
 
+const TERMINAL_ANSI_ESCAPE_RE =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const TERMINAL_CONTROL_CHARS_RE =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
+const MAX_TERMINAL_ERROR_LENGTH = 300;
+const MIN_TERMINAL_DIMENSION = 1;
+const MAX_TERMINAL_DIMENSION = 500;
+
+export function normalizeTerminalErrorText(raw: unknown): string {
+  return String(raw ?? "")
+    .replace(TERMINAL_ANSI_ESCAPE_RE, "")
+    .replace(TERMINAL_CONTROL_CHARS_RE, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_TERMINAL_ERROR_LENGTH);
+}
+
+export function normalizeTerminalDimension(
+  raw: unknown,
+  fallback: number,
+): number {
+  const value = Math.floor(Number(raw));
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(
+    MAX_TERMINAL_DIMENSION,
+    Math.max(MIN_TERMINAL_DIMENSION, value),
+  );
+}
+
 export function useRealTerminal(
   options: UseRealTerminalOptions = {}
 ): UseRealTerminalReturn {
@@ -137,8 +166,8 @@ export function useRealTerminal(
     setError(null);
 
     const terminalOptions: TerminalOptions = {
-      cols,
-      rows,
+      cols: normalizeTerminalDimension(cols, 80),
+      rows: normalizeTerminalDimension(rows, 24),
       onOpen: () => {
         setStatus("connected");
         setError(null);
@@ -150,7 +179,8 @@ export function useRealTerminal(
         setStatus("disconnected");
         connectionRef.current = null;
         if (code !== 1000) {
-          setError(`연결 종료: ${reason || `코드 ${code}`}`);
+          const safeReason = normalizeTerminalErrorText(reason);
+          setError(`연결 종료: ${safeReason || `코드 ${code}`}`);
         }
       },
       onError: () => {
@@ -188,7 +218,10 @@ export function useRealTerminal(
 
   const resize = useCallback((newCols: number, newRows: number) => {
     if (connectionRef.current?.isConnected()) {
-      connectionRef.current.resize(newCols, newRows);
+      connectionRef.current.resize(
+        normalizeTerminalDimension(newCols, 80),
+        normalizeTerminalDimension(newRows, 24),
+      );
     }
   }, []);
 

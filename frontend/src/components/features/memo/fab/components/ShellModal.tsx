@@ -25,6 +25,18 @@ type ShellModalProps = {
   onSwitchToRealTerminal?: () => void;
 };
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const SHELL_MODAL_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function normalizeShellModalText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(SHELL_MODAL_CONTROL_TEXT_PATTERN, "")
+    .trim();
+  return normalized || fallback;
+}
+
 export function ShellModal({
   isOpen,
   onClose,
@@ -46,13 +58,30 @@ export function ShellModal({
 }: ShellModalProps) {
   const shellContentRef = useRef<HTMLDivElement>(null);
   const canSwitchToReal = onSwitchToRealTerminal && hasAuthToken();
+  const safeDisplayPath = normalizeShellModalText(displayPath, "~/");
+  const safeSuggestions = suggestions.flatMap((suggestion) => {
+    const safeSuggestion = normalizeShellModalText(suggestion);
+    return safeSuggestion ? [safeSuggestion] : [];
+  });
+  const safeLogs = shellLogs.map((log) => ({
+    ...log,
+    text: normalizeShellModalText(log.text),
+  }));
+  const safeCommandHistory = commandHistory.flatMap((cmd) => {
+    const safeCommand = normalizeShellModalText(cmd);
+    return safeCommand ? [safeCommand] : [];
+  });
+  const hasVisibleOutput = safeLogs.some((log) => log.text) || Boolean(normalizeShellModalText(shellOutput));
 
   if (!isOpen) return null;
 
   return createPortal(
     <div
       ref={shellContentRef}
+      aria-label="터미널 명령 입력"
+      aria-modal="true"
       className="fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      role="dialog"
       style={{ height: viewportHeight }}
     >
       {/* Backdrop - clicking closes the shell */}
@@ -72,9 +101,9 @@ export function ShellModal({
           <div className="flex items-center justify-between px-3 pt-2 pb-1">
             <span
               className="text-primary/60 font-mono text-[10px] truncate max-w-[50%]"
-              title={displayPath}
+              title={safeDisplayPath}
             >
-              {displayPath}
+              {safeDisplayPath}
             </span>
             <div className="flex items-center gap-2">
               {/* Switch to Real Terminal button */}
@@ -89,9 +118,10 @@ export function ShellModal({
                     "text-primary/70 hover:text-primary hover:bg-primary/20",
                     "transition-colors"
                   )}
+                  aria-label="실제 Linux 터미널로 전환"
                   title="Switch to real Linux terminal"
                 >
-                  <MonitorUp className="h-3 w-3" />
+                  <MonitorUp aria-hidden="true" className="h-3 w-3" focusable="false" />
                   <span>Real Shell</span>
                 </button>
               )}
@@ -99,20 +129,23 @@ export function ShellModal({
                 type="button"
                 onClick={onClose}
                 className="p-1 text-muted-foreground hover:text-primary transition-colors"
-                aria-label="Close"
+                aria-label="터미널 닫기"
               >
-                <X className="h-4 w-4" />
+                <X aria-hidden="true" className="h-4 w-4" focusable="false" />
               </button>
             </div>
           </div>
           {/* Input row */}
           <div className="relative flex items-center gap-1.5 px-3 pb-2.5">
-            <span className="text-primary font-mono text-sm font-bold shrink-0">
+            <span aria-hidden="true" className="text-primary font-mono text-sm font-bold shrink-0">
               $
             </span>
             <input
               ref={shellInputRef}
               type="text"
+              aria-label="터미널 명령어"
+              aria-autocomplete="list"
+              aria-expanded={safeSuggestions.length > 0}
               value={shellInput}
               onChange={(e) => setShellInput(e.target.value)}
               onKeyDown={onKeyDown}
@@ -125,17 +158,24 @@ export function ShellModal({
           </div>
 
           {/* Autocomplete suggestions dropdown */}
-          {suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-[var(--z-terminal-floating)] mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden">
+          {safeSuggestions.length > 0 && (
+            <div
+              aria-label="명령어 제안"
+              className="absolute left-0 right-0 top-full z-[var(--z-terminal-floating)] mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden"
+              role="listbox"
+            >
               <div className="text-[9px] font-mono text-primary/50 uppercase tracking-wider px-2 py-1 border-b border-border/30">
                 // Suggestions (Tab/Enter to select)
               </div>
               <div className="max-h-40 overflow-y-auto overscroll-contain">
-                {suggestions.map((suggestion, index) => (
+                {safeSuggestions.map((suggestion, index) => (
                   <button
-                    key={suggestion}
+                    key={`${suggestion}-${index}`}
                     type="button"
+                    aria-label={`명령어 제안 선택: ${suggestion}`}
+                    aria-selected={index === selectedSuggestionIndex}
                     onClick={() => selectSuggestion(suggestion)}
+                    role="option"
                     className={cn(
                       "w-full text-left px-3 py-1.5 font-mono text-xs transition-colors",
                       index === selectedSuggestionIndex
@@ -143,7 +183,7 @@ export function ShellModal({
                         : "text-foreground/80 hover:bg-primary/10 hover:text-primary",
                     )}
                   >
-                    <span className="text-primary/60">$ </span>
+                    <span aria-hidden="true" className="text-primary/60">$ </span>
                     {suggestion}
                   </button>
                 ))}
@@ -156,9 +196,9 @@ export function ShellModal({
         <div className="flex-1 min-h-0 relative">
           <div className="absolute inset-0 overflow-y-auto overscroll-contain p-3 bg-black/30">
             {/* Empty state */}
-            {shellLogs.length === 0 && !shellOutput && (
+            {!hasVisibleOutput && (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 text-center">
-                <Terminal className="h-8 w-8 mb-2 opacity-30" />
+                <Terminal aria-hidden="true" className="h-8 w-8 mb-2 opacity-30" focusable="false" />
                 <p className="text-xs font-mono">
                   Run a command to see output here...
                 </p>
@@ -169,9 +209,10 @@ export function ShellModal({
             )}
 
             {/* Execution logs */}
-            {shellLogs.map((log, index) => (
+            {safeLogs.map((log, index) => (
               <div
                 key={index}
+                aria-label={log.type === "input" ? `입력: ${log.text}` : `출력: ${log.text}`}
                 className={cn(
                   "mb-1 font-mono text-xs whitespace-pre-wrap break-all leading-relaxed",
                   log.type === "input"
@@ -198,6 +239,7 @@ export function ShellModal({
               <button
                 key={cmd}
                 type="button"
+                aria-label={`빠른 명령 실행: ${cmd}`}
                 onClick={() => executeCommand(cmd)}
                 className={cn(
                   "py-2 px-1 font-mono text-xs uppercase tracking-wider",
@@ -212,19 +254,20 @@ export function ShellModal({
               </button>
             ))}
           </div>
-          {commandHistory.length > 0 && (
+          {safeCommandHistory.length > 0 && (
             <div className="mt-2 pt-2 border-t border-border/20">
               <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5">
                 // History
               </div>
               <div className="flex flex-wrap gap-1">
-                {commandHistory
+                {safeCommandHistory
                   .slice(-4)
                   .reverse()
                   .map((cmd, idx) => (
                     <button
                       key={`${cmd}-${idx}`}
                       type="button"
+                      aria-label={`명령 기록 실행: ${cmd}`}
                       onClick={() => executeCommand(cmd)}
                       className={cn(
                         "py-1 px-2 rounded-[4px] text-[10px] font-mono",

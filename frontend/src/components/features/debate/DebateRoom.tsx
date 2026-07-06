@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   X,
   Send,
@@ -67,8 +74,88 @@ const DEFAULT_FOLLOW_UP_PROMPTS = [
   "지금 내가 놓치고 있는 포인트가 있다면 알려줘",
 ];
 
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const MESSAGE_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g;
+
+function sanitizePlainText(value: unknown, fallback = ""): string {
+  const sanitized = String(value ?? "")
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(CONTROL_TEXT_PATTERN, "")
+    .trim();
+  return sanitized || fallback;
+}
+
+function sanitizeMessageText(value: unknown, fallback = ""): string {
+  const sanitized = String(value ?? "")
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(MESSAGE_CONTROL_TEXT_PATTERN, "")
+    .trim();
+  return sanitized || fallback;
+}
+
+function sanitizeStreamText(value: unknown): string {
+  return String(value ?? "")
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(MESSAGE_CONTROL_TEXT_PATTERN, "");
+}
+
+function sanitizeDebateFacets(
+  facets: DebateTopic["facets"],
+): DebateTopic["facets"] {
+  if (!Array.isArray(facets)) return undefined;
+
+  const sanitized = facets
+    .map((facet) => {
+      const title = sanitizePlainText(facet.title);
+      const points = Array.isArray(facet.points)
+        ? facet.points.map((point) => sanitizeMessageText(point)).filter(Boolean)
+        : [];
+
+      if (!title && points.length === 0) return null;
+
+      return {
+        ...facet,
+        title: title || "관점",
+        points,
+      };
+    })
+    .filter(
+      (facet): facet is NonNullable<DebateTopic["facets"]>[number] =>
+        facet !== null,
+    );
+
+  return sanitized.length > 0 ? sanitized : undefined;
+}
+
+function sanitizeDebateTopic(topic: DebateTopic): DebateTopic {
+  return {
+    ...topic,
+    title: sanitizePlainText(topic.title, "대화 주제"),
+    context: sanitizeMessageText(topic.context, "추가 맥락이 없습니다."),
+    originalParagraph: topic.originalParagraph
+      ? sanitizeMessageText(topic.originalParagraph)
+      : undefined,
+    facets: sanitizeDebateFacets(topic.facets),
+  };
+}
+
+function sanitizeIntentOptions(
+  options: DebateIntentOption[],
+): DebateIntentOption[] {
+  return options
+    .map((option) => ({
+      ...option,
+      label: sanitizePlainText(option.label, "대화 시작"),
+      sublabel: sanitizePlainText(option.sublabel),
+      starterText: sanitizeMessageText(option.starterText, option.label),
+    }))
+    .filter((option) => option.label && option.starterText);
+}
+
 function normalizePrompt(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
+  return sanitizeMessageText(text).replace(/\s+/g, " ").trim();
 }
 
 function pickUniquePrompts(items: string[], max = 3): string[] {
@@ -299,8 +386,12 @@ function StepProgress({
 
 export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const { isTerminal } = useTheme();
-  const entryIntro = getModeIntro(topic);
-  const intentOptions = getModeIntentOptions(topic);
+  const safeTopic = useMemo(() => sanitizeDebateTopic(topic), [topic]);
+  const entryIntro = useMemo(() => getModeIntro(safeTopic), [safeTopic]);
+  const intentOptions = useMemo(
+    () => sanitizeIntentOptions(getModeIntentOptions(safeTopic)),
+    [safeTopic],
+  );
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -320,7 +411,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   const abortRef = useRef<AbortController | null>(null);
   const autoStartedIntentKeyRef = useRef<string | null>(null);
 
-  const canSend = input.trim().length > 0 && !busy;
+  const canSend = sanitizeMessageText(input).length > 0 && !busy;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -357,12 +448,14 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
 
       try {
         const result = await invokeChatTask<{
-          questions?: Array<{ q?: string }>;
+            questions?: Array<{ q?: string }>;
         }>({
           mode: "chain",
           payload: {
-            paragraph: `${topic.title}\n\n${assistantText}`.slice(0, 1600),
-            postTitle: topic.title,
+            paragraph: `${safeTopic.title}\n\n${sanitizeStreamText(
+              assistantText,
+            )}`.slice(0, 1600),
+            postTitle: safeTopic.title,
           },
         });
 
@@ -385,7 +478,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         setFollowUpPrompts(DEFAULT_FOLLOW_UP_PROMPTS.slice(0, 3));
       }
     },
-    [topic.title],
+    [safeTopic.title],
   );
 
   const startDebateWithIntent = useCallback(
@@ -427,7 +520,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         timeoutId.current = setTimeout(() => controller.abort(), 120000);
 
         const systemPrompt = buildDebateSystemPrompt(
-          topic,
+          safeTopic,
           stance,
           persona ?? undefined,
         );
@@ -440,7 +533,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           useArticleContext: false,
         })) {
           if (ev.type === "text") {
-            acc += ev.text;
+            acc += sanitizeStreamText(ev.text);
             setMessages((prev) =>
               prev.map((m) => (m.id === aiId ? { ...m, content: acc } : m)),
             );
@@ -483,13 +576,15 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         setBusy(false);
       }
     },
-    [topic, addMessage, refreshFollowUps],
+    [safeTopic, addMessage, refreshFollowUps],
   );
 
   const sendMessage = useCallback(async () => {
     if (!canSend) return;
 
-    const text = input.trim();
+    const text = sanitizeMessageText(input);
+    if (!text) return;
+
     setInput("");
 
     if (inputRef.current) {
@@ -528,7 +623,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         .join("\n\n");
 
       const systemPrompt = buildDebateSystemPrompt(
-        topic,
+        safeTopic,
         currentStance || undefined,
         selectedPersona || undefined,
       );
@@ -551,7 +646,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         useArticleContext: false,
       })) {
         if (ev.type === "text") {
-          acc += ev.text;
+          acc += sanitizeStreamText(ev.text);
           setMessages((prev) =>
             prev.map((m) => (m.id === aiId ? { ...m, content: acc } : m)),
           );
@@ -597,7 +692,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     canSend,
     input,
     messages,
-    topic,
+    safeTopic,
     currentStance,
     selectedPersona,
     addMessage,
@@ -626,7 +721,10 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   }, []);
 
   const handleFollowUp = useCallback((prompt: string) => {
-    setInput(prompt);
+    const safePrompt = normalizePrompt(prompt);
+    if (!safePrompt) return;
+
+    setInput(safePrompt);
     inputRef.current?.focus();
   }, []);
 
@@ -640,7 +738,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   );
 
   useEffect(() => {
-    const intentId = topic.entryIntentId;
+    const intentId = safeTopic.entryIntentId;
     if (!intentId) {
       autoStartedIntentKeyRef.current = null;
       return;
@@ -651,7 +749,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     );
     if (!matchedIntent) return;
 
-    const autoKey = `${topic.title}::${topic.context}::${intentId}`;
+    const autoKey = `${safeTopic.title}::${safeTopic.context}::${intentId}`;
     if (autoStartedIntentKeyRef.current === autoKey) return;
 
     autoStartedIntentKeyRef.current = autoKey;
@@ -659,9 +757,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   }, [
     intentOptions,
     startDebateWithIntent,
-    topic.context,
-    topic.entryIntentId,
-    topic.title,
+    safeTopic.context,
+    safeTopic.entryIntentId,
+    safeTopic.title,
   ]);
 
   return (
@@ -725,7 +823,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
               )}
             </h3>
             <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-[280px]">
-              {topic.title}
+              {safeTopic.title}
             </p>
           </div>
         </div>
@@ -796,11 +894,13 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-primary/80">
                     {entryIntro.eyebrow}
                   </p>
-                  <h4 className="font-medium text-sm mb-2">{topic.title}</h4>
+                  <h4 className="font-medium text-sm mb-2">
+                    {safeTopic.title}
+                  </h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    {topic.context.length > 200
-                      ? `${topic.context.slice(0, 200)}...`
-                      : topic.context}
+                    {safeTopic.context.length > 200
+                      ? `${safeTopic.context.slice(0, 200)}...`
+                      : safeTopic.context}
                   </p>
                 </div>
               </div>

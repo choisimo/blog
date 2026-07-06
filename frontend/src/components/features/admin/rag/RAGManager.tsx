@@ -23,6 +23,52 @@ interface HealthStatus {
   chroma: { ok: boolean; error?: string };
 }
 
+const RAG_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRAGSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return RAG_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeDisplayText(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const decoded = decodeSelector(value);
+  if (!decoded || /[\u0000-\u001F\u007F]/.test(decoded)) return fallback;
+  const cleaned = value
+    .replace(/[\u0000-\u001F\u007F]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || fallback;
+}
+
+function normalizeCollection(collection: RAGCollection): RAGCollection | null {
+  const name = normalizeRAGSelector(collection.name);
+  if (!name) return null;
+  return { ...collection, name };
+}
+
+function isRAGCollection(collection: RAGCollection | null): collection is RAGCollection {
+  return collection !== null;
+}
+
 function RAGHealthSection() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,7 +179,7 @@ function CollectionsSection() {
     try {
       const response = await getCollections();
       if (response.ok && response.data) {
-        setCollections(response.data.collections);
+        setCollections(response.data.collections.map(normalizeCollection).filter(isRAGCollection));
       } else {
         setCollections([]);
         setError(response.error || 'Failed to fetch collections');
@@ -151,9 +197,11 @@ function CollectionsSection() {
   }, [fetchCollections]);
 
   const handleSelectCollection = async (name: string) => {
-    setSelectedCollection(name);
+    const collectionName = normalizeRAGSelector(name);
+    if (!collectionName) return;
+    setSelectedCollection(collectionName);
     try {
-      const status = await getCollectionStatus(name);
+      const status = await getCollectionStatus(collectionName);
       if (status.ok && status.data) {
         setCollectionStats({ count: status.data.count, exists: status.data.exists });
       }
@@ -237,7 +285,10 @@ function IndexStatusSection() {
     try {
       const response = await getCollectionStatus();
       if (response.ok && response.data) {
-        setStatus({ count: response.data.count, collection: response.data.collection });
+        setStatus({
+          count: response.data.count,
+          collection: normalizeRAGSelector(response.data.collection) || 'unknown',
+        });
       } else {
         setStatus(null);
         setError(response.error || 'Failed to fetch index status');
@@ -302,6 +353,7 @@ function SearchTesterSection() {
   const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
+    if (loading) return;
     if (!query.trim()) return;
     setLoading(true);
     setError(null);
@@ -333,7 +385,9 @@ function SearchTesterSection() {
             placeholder="Enter search query..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleSearch();
+            }}
             className="h-8 text-sm rounded-md border-zinc-200 flex-1"
           />
           <button
@@ -378,14 +432,14 @@ function SearchTesterSection() {
                   </div>
                   <div className="col-span-7">
                     <p className="text-xs font-medium text-zinc-800">
-                      {result.metadata.title || 'Untitled'}
+                      {normalizeDisplayText(result.metadata.title, 'Untitled')}
                     </p>
                     <p className="text-xs text-zinc-400 line-clamp-2 mt-0.5">
                       {result.content.slice(0, 150)}...
                     </p>
                   </div>
                   <span className="col-span-3 font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded w-fit">
-                    {result.metadata.category || '-'}
+                    {normalizeRAGSelector(result.metadata.category) || '-'}
                   </span>
                 </div>
               ))}

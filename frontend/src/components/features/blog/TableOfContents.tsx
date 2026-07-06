@@ -23,6 +23,80 @@ interface TableOfContentsProps {
   onClose?: () => void;
   postTitle?: string;
   sticky?: boolean;
+  label?: string;
+  title?: string;
+  headingLabel?: string;
+  itemLabel?: string;
+}
+
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const HAS_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const MALFORMED_PERCENT_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const WHITESPACE_PATTERN = /\s+/g;
+const DEFAULT_TOC_LABEL = "글 목차";
+const DEFAULT_TOC_HEADING = "목차";
+const DEFAULT_TOC_ITEM_LABEL = "목차 항목";
+const DEFAULT_DRAWER_TRIGGER_LABEL = "목차 열기";
+const DEFAULT_DRAWER_CLOSE_LABEL = "닫기";
+
+function normalizeTocText(value: unknown): string {
+  if (typeof value !== "string" && typeof value !== "number") return "";
+
+  return String(value)
+    .replace(ANSI_ESCAPE_PATTERN, " ")
+    .replace(SINGLE_LINE_CONTROL_PATTERN, " ")
+    .replace(WHITESPACE_PATTERN, " ")
+    .trim();
+}
+
+function normalizeOptionalTocText(value: unknown): string | undefined {
+  return normalizeTocText(value) || undefined;
+}
+
+function normalizeTocId(value: unknown): string {
+  const id = normalizeTocText(value);
+  if (
+    !id ||
+    id.includes("/") ||
+    id.includes("\\") ||
+    id.includes("#") ||
+    MALFORMED_PERCENT_PATTERN.test(id)
+  ) {
+    return "";
+  }
+  try {
+    const decoded = decodeURIComponent(id);
+    if (
+      !decoded.trim() ||
+      decoded === "." ||
+      decoded === ".." ||
+      HAS_CONTROL_PATTERN.test(decoded) ||
+      decoded.includes("/") ||
+      decoded.includes("\\") ||
+      decoded.includes("#")
+    ) {
+      return "";
+    }
+    return decoded.trim();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeTocLevel(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 2;
+  return Math.max(1, Math.min(6, Math.floor(value)));
+}
+
+function normalizeTocItems(items: TocItem[]): TocItem[] {
+  return items
+    .map((item) => ({
+      id: normalizeTocId(item.id),
+      title: normalizeTocText(item.title),
+      level: normalizeTocLevel(item.level),
+    }))
+    .filter((item) => item.id && item.title);
 }
 
 export const TableOfContents = ({
@@ -30,6 +104,10 @@ export const TableOfContents = ({
   onClose,
   postTitle,
   sticky = true,
+  label = DEFAULT_TOC_LABEL,
+  title,
+  headingLabel = DEFAULT_TOC_HEADING,
+  itemLabel = DEFAULT_TOC_ITEM_LABEL,
 }: TableOfContentsProps) => {
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
@@ -41,7 +119,7 @@ export const TableOfContents = ({
   const STICKY_TOP_PX = 96;
 
   useEffect(() => {
-    const headings = buildMarkdownToc(content, postTitle) as TocItem[];
+    const headings = normalizeTocItems(buildMarkdownToc(content, postTitle) as TocItem[]);
     setToc(headings);
     setActiveId(headings[0]?.id ?? "");
     itemRefs.current = {};
@@ -144,10 +222,17 @@ export const TableOfContents = ({
   };
 
   if (toc.length === 0) return null;
+  const safeLabel = normalizeTocText(label) || DEFAULT_TOC_LABEL;
+  const safeTitle = normalizeOptionalTocText(title);
+  const safeHeadingLabel = normalizeTocText(headingLabel) || DEFAULT_TOC_HEADING;
+  const safeItemLabel = normalizeTocText(itemLabel) || DEFAULT_TOC_ITEM_LABEL;
 
   return (
     <div
       data-testid="toc-panel"
+      role="region"
+      aria-label={safeLabel}
+      title={safeTitle}
       className={cn("w-full", sticky && "sticky top-24")}
     >
       <div
@@ -161,9 +246,9 @@ export const TableOfContents = ({
         {/* Terminal-style header */}
         {isTerminal && (
           <div className="flex items-center gap-1.5 mb-4 pb-3 border-b border-border">
-            <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
-            <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
+            <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
+            <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
+            <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
           </div>
         )}
 
@@ -176,12 +261,12 @@ export const TableOfContents = ({
           {isTerminal ? (
             <>
               <span className="text-muted-foreground mr-2">$</span>
-              cat TOC
+              cat {safeHeadingLabel}
             </>
           ) : (
             <>
               <Menu className="h-5 w-5" aria-hidden="true" />
-              목차
+              {safeHeadingLabel}
             </>
           )}
         </h3>
@@ -192,7 +277,7 @@ export const TableOfContents = ({
             sticky ? "h-[calc(100vh-15rem)]" : "max-h-[calc(100vh-12rem)]",
           )}
         >
-          <nav className="space-y-3 pr-2" aria-label="글 목차">
+          <nav className="space-y-3 pr-2" aria-label={safeLabel}>
             {toc.map((item, index) => (
               <button
                 key={`${item.id}-${index}`}
@@ -205,6 +290,7 @@ export const TableOfContents = ({
                 }}
                 title={item.title}
                 onClick={() => scrollToHeading(item.id)}
+                aria-label={`${safeItemLabel} ${index + 1}: ${item.title}`}
                 aria-current={activeId === item.id ? "location" : undefined}
                 className={cn(
                   "block w-full rounded-lg border-l-2 border-transparent py-3 pr-3 text-left text-sm transition-colors duration-200",
@@ -224,7 +310,7 @@ export const TableOfContents = ({
               >
                 <span className="block break-words leading-snug">
                   {isTerminal && (
-                    <span className="text-muted-foreground mr-2">
+                    <span aria-hidden="true" className="text-muted-foreground mr-2">
                       {String(index + 1).padStart(2, "0")}
                     </span>
                   )}
@@ -247,6 +333,10 @@ export const TocDrawer = ({
   triggerClassName,
   triggerPlacement = "floating",
   scrollThreshold = 300,
+  label = DEFAULT_TOC_LABEL,
+  title,
+  triggerLabel = DEFAULT_DRAWER_TRIGGER_LABEL,
+  closeLabel = DEFAULT_DRAWER_CLOSE_LABEL,
 }: {
   content: string;
   postTitle?: string;
@@ -254,6 +344,10 @@ export const TocDrawer = ({
   triggerClassName?: string;
   triggerPlacement?: "floating" | "inline";
   scrollThreshold?: number;
+  label?: string;
+  title?: string;
+  triggerLabel?: string;
+  closeLabel?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isTriggerVisible, setIsTriggerVisible] = useState(!showAfterScroll);
@@ -300,6 +394,10 @@ export const TocDrawer = ({
   if (!hasToc) return null;
 
   const isFloatingTrigger = triggerPlacement === "floating";
+  const safeLabel = normalizeTocText(label) || DEFAULT_TOC_LABEL;
+  const safeTitle = normalizeOptionalTocText(title);
+  const safeTriggerLabel = normalizeTocText(triggerLabel) || DEFAULT_DRAWER_TRIGGER_LABEL;
+  const safeCloseLabel = normalizeTocText(closeLabel) || DEFAULT_DRAWER_CLOSE_LABEL;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -307,7 +405,7 @@ export const TocDrawer = ({
         <button
           type="button"
           data-testid="toc-mobile-trigger"
-          aria-label="목차 열기"
+          aria-label={safeTriggerLabel}
           aria-hidden={!isTriggerVisible}
           tabIndex={isTriggerVisible ? undefined : -1}
           className={cn(
@@ -335,11 +433,13 @@ export const TocDrawer = ({
             triggerClassName,
           )}
         >
-          <BookOpen className={cn(isFloatingTrigger ? "h-5 w-5" : "h-4 w-4")} />
+          <BookOpen aria-hidden="true" className={cn(isFloatingTrigger ? "h-5 w-5" : "h-4 w-4")} />
         </button>
       </SheetTrigger>
       <SheetContent
         side="right"
+        aria-label={safeLabel}
+        title={safeTitle}
         className={cn(
           "w-80 p-0 overflow-y-auto",
           isTerminal && "bg-[hsl(var(--terminal-code-bg))] border-primary/20",
@@ -352,15 +452,15 @@ export const TocDrawer = ({
               isTerminal && "font-mono text-primary",
             )}
           >
-            {isTerminal ? "$ cat TOC" : "목차"}
+            {isTerminal ? `$ cat ${safeLabel}` : safeLabel}
           </SheetTitle>
           <button
             type="button"
             onClick={() => setOpen(false)}
             className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted transition-colors"
-            aria-label="닫기"
+            aria-label={safeCloseLabel}
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
         <div className="p-4">
@@ -369,6 +469,8 @@ export const TocDrawer = ({
             postTitle={postTitle}
             onClose={() => setOpen(false)}
             sticky={false}
+            label={safeLabel}
+            title={safeTitle}
           />
         </div>
       </SheetContent>

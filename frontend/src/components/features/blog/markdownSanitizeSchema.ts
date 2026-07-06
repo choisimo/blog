@@ -2,6 +2,12 @@ import { defaultSchema } from "rehype-sanitize";
 
 export const blogMarkdownSanitizeSchema = {
   ...defaultSchema,
+  protocols: {
+    ...(defaultSchema.protocols ?? {}),
+    href: ["http", "https", "mailto"],
+    src: ["http", "https"],
+    poster: ["http", "https"],
+  },
   attributes: {
     ...defaultSchema.attributes,
     "*": [

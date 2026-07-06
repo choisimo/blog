@@ -167,6 +167,149 @@ function parseTranslationPayload(
   });
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseTranslationJobStatus(value: unknown): TranslationJobStatus | null {
+  if (!isRecord(value)) return null;
+  const id = normalizeJobId(value.id);
+  const statusUrl = normalizeJobText(value.statusUrl);
+  const cacheUrl = normalizeJobText(value.cacheUrl);
+  const generateUrl = normalizeJobText(value.generateUrl);
+
+  if (
+    !id ||
+    (value.status !== "running" &&
+      value.status !== "succeeded" &&
+      value.status !== "failed") ||
+    !statusUrl ||
+    !cacheUrl ||
+    !generateUrl
+  ) {
+    return null;
+  }
+
+  const job: TranslationJobStatus = {
+    id,
+    status: value.status,
+    statusUrl,
+    cacheUrl,
+    generateUrl,
+  };
+
+  const errorMessage = isRecord(value.error)
+    ? normalizeJobText(value.error.message)
+    : null;
+  if (isRecord(value.error) && errorMessage) {
+    job.error = {
+      message: errorMessage,
+      ...(normalizeJobText(value.error.code)
+        ? { code: normalizeJobText(value.error.code) as string }
+        : {}),
+      ...(typeof value.error.retryable === "boolean"
+        ? { retryable: value.error.retryable }
+        : {}),
+      ...(typeof value.error.retryAfterSeconds === "number" &&
+      Number.isFinite(value.error.retryAfterSeconds)
+        ? { retryAfterSeconds: value.error.retryAfterSeconds }
+        : {}),
+    };
+  }
+
+  return job;
+}
+
+function invalidTranslationJobError(status: number): TranslationApiError {
+  return new TranslationApiError("Invalid translation job response", {
+    code: "UNKNOWN",
+    status,
+  });
+}
+
+const TRANSLATION_YEAR_PATTERN = /^\d{4}$/;
+const TRANSLATION_SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const TRANSLATION_LANGUAGE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
+const TRANSLATION_JOB_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const TRANSLATION_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+
+function decodeTranslationSelector(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    return decodeURIComponent(trimmed).trim();
+  } catch {
+    return trimmed;
+  }
+}
+
+function normalizeTranslationSegment(
+  value: string,
+  label: string,
+  pattern: RegExp,
+): string {
+  const normalized = decodeTranslationSelector(value);
+  if (!normalized || !pattern.test(normalized)) {
+    throw new TranslationApiError(`Invalid translation ${label}`, {
+      code: "UNKNOWN",
+      status: 400,
+    });
+  }
+
+  return encodeURIComponent(normalized);
+}
+
+function normalizeOptionalJobId(value?: string): string | null {
+  if (value === undefined) return null;
+
+  const normalized = decodeTranslationSelector(value);
+  if (!normalized) return null;
+  if (!TRANSLATION_JOB_ID_PATTERN.test(normalized)) {
+    throw new TranslationApiError("Invalid translation job id", {
+      code: "UNKNOWN",
+      status: 400,
+    });
+  }
+
+  return normalized;
+}
+
+function normalizeJobText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  const decoded = decodeTranslationSelector(normalized);
+  if (
+    !normalized ||
+    !decoded ||
+    [normalized, decoded].some((candidate) => TRANSLATION_CONTROL_PATTERN.test(candidate))
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeJobId(value: unknown): string | null {
+  const normalized = normalizeJobText(value);
+  if (!normalized) return null;
+  return TRANSLATION_JOB_ID_PATTERN.test(normalized) ? normalized : null;
+}
+
+function getTranslationPathSegments(
+  request: Pick<TranslationRequest, "year" | "slug" | "targetLang">,
+): { year: string; slug: string; targetLang: string } {
+  return {
+    year: normalizeTranslationSegment(request.year, "year", TRANSLATION_YEAR_PATTERN),
+    slug: normalizeTranslationSegment(request.slug, "slug", TRANSLATION_SLUG_PATTERN),
+    targetLang: normalizeTranslationSegment(
+      request.targetLang,
+      "target language",
+      TRANSLATION_LANGUAGE_PATTERN,
+    ),
+  };
+}
+
 function parseGenerateResult(
   payload: unknown,
   status: number,
@@ -181,18 +324,28 @@ function parseGenerateResult(
 
   const body = parsed.data;
   if ("job" in body && body.data === null) {
+    const job = parseTranslationJobStatus(body.job);
+    if (!job) {
+      throw invalidTranslationJobError(status);
+    }
+
     return {
       translation: null,
-      job: body.job as TranslationJobStatus,
+      job,
       accepted: true,
     };
   }
 
-  if ("job" in body.data) {
+  if (isRecord(body.data) && "job" in body.data) {
+    const job = parseTranslationJobStatus(body.data.job);
+    if (!job) {
+      throw invalidTranslationJobError(status);
+    }
+
     return {
       translation:
         (body.data.translation as TranslationResult | undefined) ?? null,
-      job: body.data.job as TranslationJobStatus,
+      job,
       accepted: false,
     };
   }
@@ -247,17 +400,17 @@ function parseJobStatusPayload(
 
   const jobPayload = payload as {
     ok?: boolean;
-    data?: { job?: TranslationJobStatus };
+    data?: { job?: unknown };
   };
 
   if (jobPayload?.ok && jobPayload.data?.job) {
-    return jobPayload.data.job;
+    const job = parseTranslationJobStatus(jobPayload.data.job);
+    if (job) {
+      return job;
+    }
   }
 
-  throw new TranslationApiError("Invalid translation job response", {
-    code: "UNKNOWN",
-    status,
-  });
+  throw invalidTranslationJobError(status);
 }
 
 // ============================================================================
@@ -272,6 +425,7 @@ function parseJobStatusPayload(
 export async function translatePost(
   request: TranslationRequest,
 ): Promise<TranslationResult> {
+  const path = getTranslationPathSegments(request);
   const baseUrl = getApiBaseUrl();
   const headers = await getAuthHeadersAsync();
   const body = JSON.stringify({
@@ -287,7 +441,7 @@ export async function translatePost(
   );
 
   const response = await fetch(
-    `${baseUrl}/api/v1/internal/posts/${request.year}/${request.slug}/translations/${request.targetLang}/generate`,
+    `${baseUrl}/api/v1/internal/posts/${path.year}/${path.slug}/translations/${path.targetLang}/generate`,
     {
       method: "POST",
       headers,
@@ -315,6 +469,7 @@ export async function translatePost(
 export async function requestTranslationGeneration(
   request: TranslationRequest,
 ): Promise<TranslationGenerateResult> {
+  const path = getTranslationPathSegments(request);
   const baseUrl = getApiBaseUrl();
   const headers = {
     ...(await getAuthHeadersAsync()),
@@ -327,7 +482,7 @@ export async function requestTranslationGeneration(
   });
 
   const response = await fetch(
-    `${baseUrl}/api/v1/internal/posts/${request.year}/${request.slug}/translations/${request.targetLang}/generate?async=true`,
+    `${baseUrl}/api/v1/internal/posts/${path.year}/${path.slug}/translations/${path.targetLang}/generate?async=true`,
     {
       method: "POST",
       headers,
@@ -347,12 +502,14 @@ export async function getTranslationGenerationStatus(
   request: Pick<TranslationRequest, "year" | "slug" | "targetLang">,
   jobId?: string,
 ): Promise<TranslationJobStatus> {
+  const path = getTranslationPathSegments(request);
+  const normalizedJobId = normalizeOptionalJobId(jobId);
   const baseUrl = getApiBaseUrl();
   const headers = await getAuthHeadersAsync();
-  const params = jobId ? `?jobId=${encodeURIComponent(jobId)}` : "";
+  const params = normalizedJobId ? `?jobId=${encodeURIComponent(normalizedJobId)}` : "";
 
   const response = await fetch(
-    `${baseUrl}/api/v1/internal/posts/${request.year}/${request.slug}/translations/${request.targetLang}/generate/status${params}`,
+    `${baseUrl}/api/v1/internal/posts/${path.year}/${path.slug}/translations/${path.targetLang}/generate/status${params}`,
     {
       method: "GET",
       headers,
@@ -376,9 +533,10 @@ export async function getCachedTranslation(
   slug: string,
   targetLang: string,
 ): Promise<PublicTranslationLookupResult> {
+  const path = getTranslationPathSegments({ year, slug, targetLang });
   const baseUrl = getApiBaseUrl();
   const response = await fetch(
-    `${baseUrl}/api/v1/public/posts/${year}/${slug}/translations/${targetLang}`,
+    `${baseUrl}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}`,
   );
   const retryAfterSeconds = parseRetryAfterSeconds(
     response.headers.get("Retry-After"),
@@ -438,10 +596,11 @@ export async function deleteCachedTranslation(
   targetLang: string,
 ): Promise<boolean> {
   try {
+    const path = getTranslationPathSegments({ year, slug, targetLang });
     const baseUrl = getApiBaseUrl();
     const headers = await getAuthHeadersAsync();
     const response = await fetch(
-      `${baseUrl}/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}`,
+      `${baseUrl}/api/v1/internal/posts/${path.year}/${path.slug}/translations/${path.targetLang}`,
       {
         method: "DELETE",
         headers,

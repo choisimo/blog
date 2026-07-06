@@ -15,12 +15,69 @@ import { AuditLogViewer } from './AuditLogViewer';
 import { AdminSubtabs } from '@/components/molecules/AdminSubtabs';
 
 type TabId = 'overview' | 'secrets' | 'audit';
+type RecentActivityAction = 'created' | 'updated' | 'deleted' | 'rotated' | 'accessed';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'overview', label: 'Overview', icon: <Key className="h-3.5 w-3.5" /> },
   { id: 'secrets', label: 'All Secrets', icon: <List className="h-3.5 w-3.5" /> },
   { id: 'audit', label: 'Audit Log', icon: <History className="h-3.5 w-3.5" /> },
 ];
+const RECENT_ACTIVITY_ACTIONS = new Set<RecentActivityAction>([
+  'created',
+  'updated',
+  'deleted',
+  'rotated',
+  'accessed',
+]);
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+const OVERVIEW_ERROR_FALLBACK = 'Failed to load secrets overview';
+
+function normalizeSafeText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeOverviewError(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  return normalizeSafeText(value, OVERVIEW_ERROR_FALLBACK);
+}
+
+function normalizeCategoryId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || /[\u0000-\u001F\u007F/\\]/.test(normalized) || !/^[a-z0-9_-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeActivityAction(value: unknown): RecentActivityAction | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return RECENT_ACTIVITY_ACTIONS.has(normalized as RecentActivityAction)
+    ? (normalized as RecentActivityAction)
+    : null;
+}
+
+function normalizeActivitySelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\u0000-\u001F\u007F/\\]/.test(normalized) || !/^[A-Za-z0-9_-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : 0;
+}
 
 interface SecretsManagerProps {
   subtab?: string;
@@ -30,9 +87,41 @@ interface SecretsManagerProps {
 export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) {
   const { overview, health, loading, error, fetchOverview } = useSecretsOverview();
   const validTabs = TABS.map(t => t.id);
+  const [localTab, setLocalTab] = useState<TabId>('overview');
   const activeTab: TabId =
-    subtab && validTabs.includes(subtab as TabId) ? (subtab as TabId) : 'overview';
+    subtab && validTabs.includes(subtab as TabId) ? (subtab as TabId) : localTab;
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const safeError = normalizeOverviewError(error);
+  const safeCategories = (overview?.categories ?? []).flatMap((cat) => {
+    const id = normalizeCategoryId(cat.id);
+    if (!id) return [];
+    return [{
+      ...cat,
+      id,
+      display_name: normalizeSafeText(cat.display_name, id),
+      description: normalizeSafeText(cat.description),
+      secret_count: normalizeCount(cat.secret_count),
+    }];
+  });
+  const safeRecentActivity = (overview?.recentActivity ?? []).flatMap((log) => {
+    const action = normalizeActivityAction(log.action);
+    const secretSelector = normalizeActivitySelector(log.key_name) ?? normalizeActivitySelector(log.secret_id);
+    if (!action || !secretSelector) return [];
+    return [{
+      ...log,
+      action,
+      key_name: secretSelector,
+      secret_id: secretSelector,
+    }];
+  });
+
+  const setActiveTab = (nextTab: string) => {
+    if (!validTabs.includes(nextTab as TabId)) return;
+    const tab = nextTab as TabId;
+    setLocalTab(tab);
+    onSubtabChange?.(tab);
+    if (tab !== 'secrets') setSelectedCategoryId(null);
+  };
 
   useEffect(() => {
     fetchOverview();
@@ -63,9 +152,9 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
         </button>
       </div>
 
-      {error && (
+      {safeError && (
         <div className="px-4 py-2 border-b border-zinc-100 bg-red-50">
-          <p className="text-xs text-red-600">{error}</p>
+          <p className="text-xs text-red-600">{safeError}</p>
         </div>
       )}
 
@@ -86,7 +175,7 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
               }`}
             />
             <span className="text-xs font-medium text-zinc-700 capitalize">
-              {health?.encryption || 'Unknown'}
+              {normalizeSafeText(health?.encryption, 'Unknown')}
             </span>
           </div>
         </div>
@@ -150,10 +239,7 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
       <AdminSubtabs
         tabs={TABS}
         activeTab={activeTab}
-        onTabChange={(id) => {
-          onSubtabChange?.(id);
-          if (id !== 'secrets') setSelectedCategoryId(null);
-        }}
+        onTabChange={setActiveTab}
       />
 
       <div className="p-4">
@@ -163,14 +249,15 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
               <div className="px-4 py-3 border-b border-zinc-100">
                 <span className="text-xs font-semibold text-zinc-700">Categories</span>
               </div>
-              {overview?.categories && overview.categories.length > 0 ? (
+              {safeCategories.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
-                  {overview.categories.map((cat) => (
+                  {safeCategories.map((cat) => (
                     <button
                       type="button"
                       key={cat.id}
                       onClick={() => {
                         setSelectedCategoryId(cat.id);
+                        setLocalTab('secrets');
                         onSubtabChange?.('secrets');
                       }}
                       className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 transition-colors text-left"
@@ -190,7 +277,7 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
                     </button>
                   ))}
                 </div>
-              ) : !error ? (
+              ) : !safeError ? (
                 <p className="px-4 py-3 text-xs text-zinc-400">No categories found.</p>
               ) : null}
             </div>
@@ -199,9 +286,9 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
               <div className="px-4 py-3 border-b border-zinc-100">
                 <span className="text-xs font-semibold text-zinc-700">Recent Activity</span>
               </div>
-              {overview?.recentActivity && overview.recentActivity.length > 0 ? (
+              {safeRecentActivity.length > 0 ? (
                 <div className="divide-y divide-zinc-100">
-                  {overview.recentActivity.map((log) => (
+                  {safeRecentActivity.map((log) => (
                     <div key={log.id} className="flex items-center justify-between px-4 py-2.5">
                       <div className="flex items-center gap-2">
                         <span
@@ -225,7 +312,7 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
                     </div>
                   ))}
                 </div>
-              ) : !error ? (
+              ) : !safeError ? (
                 <p className="px-4 py-4 text-xs text-zinc-400 text-center">No recent activity.</p>
               ) : null}
             </div>
@@ -234,7 +321,7 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
 
         {activeTab === 'secrets' && (
           <SecretsListManager
-            categories={overview?.categories ?? []}
+            categories={safeCategories}
             initialCategoryFilter={selectedCategoryId}
           />
         )}

@@ -46,6 +46,23 @@ type ChatHeaderProps = {
   transportStatus?: ChatTransportStatus | null;
 };
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const HEADER_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function stripUnsafeHeaderControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(HEADER_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizeHeaderLabel(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeHeaderControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
 function getTransportPillClass(
   status: ChatTransportStatus | null | undefined,
   isTerminal: boolean,
@@ -96,8 +113,10 @@ export function ChatHeader({
   onToggleExpanded,
   transportStatus,
 }: ChatHeaderProps) {
+  const liveRoomLabel = normalizeHeaderLabel(currentLiveRoomLabel, "room");
+  const transportLabel = normalizeHeaderLabel(transportStatus?.label, "상태");
   const liveStatus = livePinned
-    ? `LIVE 고정 ON (${currentLiveRoomLabel || "room"})`
+    ? `LIVE 고정 ON (${liveRoomLabel})`
     : null;
   const statusMeta = busy
     ? "생성 중…"
@@ -106,6 +125,7 @@ export function ChatHeader({
       : persistOptIn
         ? "기록 저장 ON"
         : "기록 저장 OFF";
+  const transportLiveMode = transportStatus?.tone === "error" ? "assertive" : "polite";
 
   return (
     <div
@@ -135,12 +155,12 @@ export function ChatHeader({
             )}
             onClick={onToggleSidebar}
           >
-            <Menu className="h-3.5 w-3.5" />
+            <Menu aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
           </button>
         )}
         {/* Terminal window controls (PC only) */}
         {isTerminal && !isMobile && (
-          <div className="flex items-center gap-1.5 mr-2">
+          <div aria-hidden="true" className="flex items-center gap-1.5 mr-2">
             <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]" />
             <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]" />
             <span className="w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]" />
@@ -159,6 +179,7 @@ export function ChatHeader({
           )}
         >
           <Sparkles
+            aria-hidden="true"
             className={cn(
               isTerminal
                 ? cn(
@@ -170,6 +191,7 @@ export function ChatHeader({
                     isMobile ? "h-4 w-4" : "h-3.5 w-3.5",
                   ),
             )}
+            focusable="false"
           />
         </div>
         {/* Title + subtitle */}
@@ -193,15 +215,22 @@ export function ChatHeader({
           <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
             {transportStatus ? (
               <span
+                aria-atomic="true"
+                aria-label={transportLabel}
+                aria-live={transportLiveMode}
                 className={cn(
                   "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
                   getTransportPillClass(transportStatus, isTerminal),
                 )}
+                role={transportStatus.tone === "error" ? "alert" : "status"}
               >
-                {transportStatus.label}
+                {transportLabel}
               </span>
             ) : null}
             <p
+              aria-atomic="true"
+              aria-label={statusMeta}
+              aria-live="polite"
               className={cn(
                 "truncate leading-tight",
                 isTerminal
@@ -211,7 +240,7 @@ export function ChatHeader({
             >
               {busy ? (
                 <span className="inline-flex items-center gap-1">
-                  <Loader2 className="h-2.5 w-2.5 animate-spin" /> {statusMeta}
+                  <Loader2 aria-hidden="true" className="h-2.5 w-2.5 animate-spin" focusable="false" /> {statusMeta}
                 </span>
               ) : (
                 statusMeta
@@ -237,9 +266,9 @@ export function ChatHeader({
             )}
           >
             {expanded ? (
-              <Minimize2 className="h-3.5 w-3.5" />
+              <Minimize2 aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             ) : (
-              <Maximize2 className="h-3.5 w-3.5" />
+              <Maximize2 aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             )}
           </button>
         )}
@@ -257,7 +286,7 @@ export function ChatHeader({
             )}
             onClick={onShowActionSheet}
           >
-            <MoreVertical className="h-5 w-5" />
+            <MoreVertical aria-hidden="true" className="h-5 w-5" focusable="false" />
           </Button>
         ) : (
           <DropdownMenu>
@@ -272,7 +301,7 @@ export function ChatHeader({
                     : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
                 )}
               >
-                <MoreVertical className="h-3.5 w-3.5" />
+                <MoreVertical aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 text-sm">
@@ -298,7 +327,7 @@ export function ChatHeader({
               >
                 <span className="truncate">
                   {currentLiveRoomLabel
-                    ? `현재 방 AI 토론 시작 (${currentLiveRoomLabel})`
+                    ? `현재 방 AI 토론 시작 (${liveRoomLabel})`
                     : "현재 방 AI 토론 시작"}
                 </span>
               </DropdownMenuItem>
@@ -324,7 +353,7 @@ export function ChatHeader({
                 : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
             )}
           >
-            <X className={isMobile ? "h-5 w-5" : "h-3.5 w-3.5"} />
+            <X aria-hidden="true" className={isMobile ? "h-5 w-5" : "h-3.5 w-3.5"} focusable="false" />
           </button>
         )}
       </div>

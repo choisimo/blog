@@ -44,6 +44,21 @@ import {
 interface HeaderSearchBarProps {
   className?: string;
   presentation?: "auto" | "inline";
+  label?: string;
+  title?: string;
+  inputLabel?: string;
+  placeholder?: string;
+  terminalPlaceholder?: string;
+  clearLabel?: string;
+  openSearchLabel?: string;
+  searchPostsLabel?: string;
+  openTerminalLabel?: string;
+  removeHistoryLabel?: string;
+  recentSearchLabel?: string;
+  recentSearchesLabel?: string;
+  quickJumpLabel?: string;
+  resultLabel?: string;
+  noResultsLabel?: string;
 }
 
 const HOME_SCROLL_THRESHOLD_PX = 220;
@@ -53,9 +68,115 @@ const QUICK_LINKS = [
   { label: "About", href: "/about", icon: User },
 ] as const;
 
+const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/g;
+const CONTROL_CHAR_TEST_PATTERN = /[\u0000-\u001F\u007F]/;
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const WHITESPACE_PATTERN = /\s+/g;
+const DEFAULT_SEARCH_LABEL = "Header search";
+const DEFAULT_INPUT_LABEL = "Search posts";
+const DEFAULT_PLACEHOLDER = "Search posts... (press /)";
+const DEFAULT_TERMINAL_PLACEHOLDER = "/ to search";
+const DEFAULT_CLEAR_LABEL = "Clear search";
+const DEFAULT_OPEN_SEARCH_LABEL = "Open search";
+const DEFAULT_SEARCH_POSTS_LABEL = "Search posts";
+const DEFAULT_OPEN_TERMINAL_LABEL = "Open terminal";
+const DEFAULT_REMOVE_HISTORY_LABEL = "Remove from history";
+const DEFAULT_RECENT_SEARCH_LABEL = "Recent search";
+const DEFAULT_RECENT_SEARCHES_LABEL = "Recent Searches";
+const DEFAULT_QUICK_JUMP_LABEL = "Quick Jump";
+const DEFAULT_RESULT_LABEL = "Open result";
+const DEFAULT_NO_RESULTS_LABEL = "No results for";
+
+function decodeSearchPathValue(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeSearchText(value: unknown): string {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return "";
+  }
+
+  return String(value)
+    .replace(ANSI_ESCAPE_PATTERN, " ")
+    .replace(CONTROL_CHAR_PATTERN, " ")
+    .replace(WHITESPACE_PATTERN, " ")
+    .trim();
+}
+
+function normalizeSearchLabel(value: unknown, fallback: string): string {
+  return normalizeSearchText(value) || fallback;
+}
+
+function normalizeOptionalSearchText(value: unknown): string | undefined {
+  return normalizeSearchText(value) || undefined;
+}
+
+function normalizeRecentQueries(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+
+  const normalized = values
+    .map((value) => normalizeSearchText(value))
+    .filter(Boolean);
+
+  return Array.from(new Set(normalized));
+}
+
+function normalizePathSegment(value: unknown): string | undefined {
+  if (typeof value !== "string" && typeof value !== "number") return undefined;
+  const raw = String(value).trim();
+  const decoded = decodeSearchPathValue(raw);
+  if (
+    !raw ||
+    !decoded ||
+    raw.includes("/") ||
+    raw.includes("\\") ||
+    decoded.includes("/") ||
+    decoded.includes("\\") ||
+    CONTROL_CHAR_TEST_PATTERN.test(raw) ||
+    CONTROL_CHAR_TEST_PATTERN.test(decoded)
+  ) {
+    return undefined;
+  }
+
+  const normalized = normalizeSearchText(raw);
+  return normalized ? encodeURIComponent(normalized) : undefined;
+}
+
+function buildPostPath(post: BlogPost): string {
+  const year = normalizePathSegment(post.year);
+  const slug = normalizePathSegment(post.slug);
+  return year && slug ? `/blog/${year}/${slug}` : "/blog";
+}
+
+function isComposingEvent(e: ReactKeyboardEvent<HTMLInputElement>): boolean {
+  const nativeEvent = e.nativeEvent as { isComposing?: boolean };
+  const syntheticEvent = e as unknown as { isComposing?: boolean };
+  return nativeEvent.isComposing === true || syntheticEvent.isComposing === true;
+}
+
 export function HeaderSearchBar({
   className,
   presentation = "auto",
+  label = DEFAULT_SEARCH_LABEL,
+  title,
+  inputLabel = DEFAULT_INPUT_LABEL,
+  placeholder = DEFAULT_PLACEHOLDER,
+  terminalPlaceholder = DEFAULT_TERMINAL_PLACEHOLDER,
+  clearLabel = DEFAULT_CLEAR_LABEL,
+  openSearchLabel = DEFAULT_OPEN_SEARCH_LABEL,
+  searchPostsLabel = DEFAULT_SEARCH_POSTS_LABEL,
+  openTerminalLabel = DEFAULT_OPEN_TERMINAL_LABEL,
+  removeHistoryLabel = DEFAULT_REMOVE_HISTORY_LABEL,
+  recentSearchLabel = DEFAULT_RECENT_SEARCH_LABEL,
+  recentSearchesLabel = DEFAULT_RECENT_SEARCHES_LABEL,
+  quickJumpLabel = DEFAULT_QUICK_JUMP_LABEL,
+  resultLabel = DEFAULT_RESULT_LABEL,
+  noResultsLabel = DEFAULT_NO_RESULTS_LABEL,
 }: HeaderSearchBarProps) {
   const [searchActive, setSearchActive] = useState(false);
   const { posts } = usePostsIndex(searchActive);
@@ -78,7 +199,50 @@ export function HeaderSearchBar({
   const usePopoverSearch = presentation !== "inline";
   const terminalPath =
     location.pathname === "/" ? "~" : `~${location.pathname}`;
-  const queryTrimmed = query.trim();
+  const queryTrimmed = normalizeSearchText(query);
+  const safeLabel = normalizeSearchLabel(label, DEFAULT_SEARCH_LABEL);
+  const safeTitle = normalizeOptionalSearchText(title);
+  const safeInputLabel = normalizeSearchLabel(inputLabel, DEFAULT_INPUT_LABEL);
+  const safePlaceholder = normalizeSearchLabel(placeholder, DEFAULT_PLACEHOLDER);
+  const safeTerminalPlaceholder = normalizeSearchLabel(
+    terminalPlaceholder,
+    DEFAULT_TERMINAL_PLACEHOLDER,
+  );
+  const safeClearLabel = normalizeSearchLabel(clearLabel, DEFAULT_CLEAR_LABEL);
+  const safeOpenSearchLabel = normalizeSearchLabel(
+    openSearchLabel,
+    DEFAULT_OPEN_SEARCH_LABEL,
+  );
+  const safeSearchPostsLabel = normalizeSearchLabel(
+    searchPostsLabel,
+    DEFAULT_SEARCH_POSTS_LABEL,
+  );
+  const safeOpenTerminalLabel = normalizeSearchLabel(
+    openTerminalLabel,
+    DEFAULT_OPEN_TERMINAL_LABEL,
+  );
+  const safeRemoveHistoryLabel = normalizeSearchLabel(
+    removeHistoryLabel,
+    DEFAULT_REMOVE_HISTORY_LABEL,
+  );
+  const safeRecentSearchLabel = normalizeSearchLabel(
+    recentSearchLabel,
+    DEFAULT_RECENT_SEARCH_LABEL,
+  );
+  const safeRecentSearchesLabel = normalizeSearchLabel(
+    recentSearchesLabel,
+    DEFAULT_RECENT_SEARCHES_LABEL,
+  );
+  const safeQuickJumpLabel = normalizeSearchLabel(
+    quickJumpLabel,
+    DEFAULT_QUICK_JUMP_LABEL,
+  );
+  const safeResultLabel = normalizeSearchLabel(resultLabel, DEFAULT_RESULT_LABEL);
+  const safeNoResultsLabel = normalizeSearchLabel(
+    noResultsLabel,
+    DEFAULT_NO_RESULTS_LABEL,
+  );
+  const safeTerminalPath = normalizeSearchText(terminalPath) || "~";
 
   const fuse = useMemo(
     () =>
@@ -104,9 +268,10 @@ export function HeaderSearchBar({
   }, [fuse, queryTrimmed]);
 
   useEffect(() => {
-    setRecentQueries(getRecentQueries());
+    setRecentQueries(normalizeRecentQueries(getRecentQueries()));
 
-    const handleUpdate = () => setRecentQueries(getRecentQueries());
+    const handleUpdate = () =>
+      setRecentQueries(normalizeRecentQueries(getRecentQueries()));
     window.addEventListener("searchHistory:update", handleUpdate);
     return () =>
       window.removeEventListener("searchHistory:update", handleUpdate);
@@ -133,7 +298,7 @@ export function HeaderSearchBar({
         addSearchQuery(queryTrimmed);
       }
 
-      navigate(`/blog/${post.year}/${post.slug}`);
+      navigate(buildPostPath(post));
       setQuery("");
       setIsOpen(false);
       setPanelOpen(false);
@@ -167,6 +332,8 @@ export function HeaderSearchBar({
         return;
       }
 
+      if (isComposingEvent(e)) return;
+
       if (results.length === 0) return;
 
       switch (e.key) {
@@ -192,7 +359,10 @@ export function HeaderSearchBar({
   );
 
   const handleRecentSelect = useCallback((recentQuery: string) => {
-    setQuery(recentQuery);
+    const safeQuery = normalizeSearchText(recentQuery);
+    if (!safeQuery) return;
+
+    setQuery(safeQuery);
     setShowHistory(false);
     window.setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
@@ -200,7 +370,10 @@ export function HeaderSearchBar({
   const handleRemoveRecent = useCallback(
     (recentQuery: string, e: ReactMouseEvent) => {
       e.stopPropagation();
-      removeSearchQuery(recentQuery);
+      const safeQuery = normalizeSearchText(recentQuery);
+      if (safeQuery) {
+        removeSearchQuery(safeQuery);
+      }
     },
     [],
   );
@@ -321,10 +494,10 @@ export function HeaderSearchBar({
           <PopoverTrigger asChild>
             <button
               className="flex shrink-0 cursor-pointer items-center gap-1.5 border-r border-border/50 px-3 py-2 text-primary transition-colors hover:bg-primary/10"
-              aria-label="Open terminal"
+              aria-label={safeOpenTerminalLabel}
               type="button"
             >
-              <Terminal className="h-4 w-4" />
+              <Terminal aria-hidden="true" className="h-4 w-4" />
               <span className="text-xs font-bold">grep</span>
             </button>
           </PopoverTrigger>
@@ -338,15 +511,16 @@ export function HeaderSearchBar({
             className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-xs text-muted-foreground"
           >
             <span className="flex-shrink-0 text-primary">user@blog:</span>
-            <span className="max-w-[180px] truncate" title={terminalPath}>
-              {terminalPath}
+            <span className="max-w-[180px] truncate" title={safeTerminalPath}>
+              {safeTerminalPath}
             </span>
             <span className="terminal-cursor flex-shrink-0" />
           </div>
           <Input
             ref={inputRef}
             type="text"
-            placeholder="/ to search"
+            aria-label={safeInputLabel}
+            placeholder={safeTerminalPlaceholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -365,9 +539,10 @@ export function HeaderSearchBar({
             variant="ghost"
             size="sm"
             onClick={handleClear}
+            aria-label={safeClearLabel}
             className="mr-1 h-7 w-7 rounded-none p-0 text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
           >
-            <X className="h-3.5 w-3.5" />
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
           </Button>
         )}
       </div>
@@ -378,14 +553,15 @@ export function HeaderSearchBar({
   );
 
   const renderDefaultInput = () => (
-    <div className="relative group">
+      <div className="relative group">
       <div className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-primary">
-        <Search className="h-4 w-4" />
+        <Search aria-hidden="true" className="h-4 w-4" />
       </div>
       <Input
         ref={inputRef}
         type="text"
-        placeholder="Search posts... (press /)"
+        aria-label={safeInputLabel}
+        placeholder={safePlaceholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -398,9 +574,10 @@ export function HeaderSearchBar({
           variant="ghost"
           size="sm"
           onClick={handleClear}
+          aria-label={safeClearLabel}
           className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-full p-0 transition-colors hover:bg-destructive/10 hover:text-destructive"
         >
-          <X className="h-3 w-3" />
+          <X aria-hidden="true" className="h-3 w-3" />
         </Button>
       )}
       <div className="absolute inset-x-0 bottom-0 h-0.5 scale-x-0 rounded-full bg-gradient-to-r from-primary to-accent transition-transform duration-300 group-focus-within:scale-x-100" />
@@ -427,9 +604,9 @@ export function HeaderSearchBar({
               : "px-4 py-6 text-center",
           )}
         >
-          <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+          <Search aria-hidden="true" className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
-            No results for "{queryTrimmed}"
+            {safeNoResultsLabel} "{queryTrimmed}"
           </p>
         </div>
       );
@@ -437,69 +614,76 @@ export function HeaderSearchBar({
 
     return (
       <div className={wrapperClass}>
-        {results.map((post, idx) => (
-          <button
-            key={`${post.year}/${post.slug}`}
-            type="button"
-            onClick={() => handleSelect(post)}
-            className={cn(
-              "w-full text-left transition-colors",
-              floating
-                ? cn(
-                    "rounded-xl border px-3 py-3",
-                    idx === selectedIndex
-                      ? "border-primary/40 bg-primary/10"
-                      : "border-border/40 hover:bg-muted/50",
-                  )
-                : cn(
-                    "border-b border-border/30 px-4 py-3 last:border-0",
-                    idx === selectedIndex
-                      ? "bg-primary/10"
-                      : "hover:bg-muted/50",
-                  ),
-              isTerminal &&
-                floating &&
-                (idx === selectedIndex
-                  ? "border-primary/40 bg-primary/10"
-                  : "border-border/40 bg-background/30 hover:bg-primary/5"),
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <div className="mt-1 shrink-0">
-                <div
-                  className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg",
-                    idx === selectedIndex
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  <FileText className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-foreground">
-                  {post.title}
-                </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <Badge
-                    variant="secondary"
-                    className="h-5 px-2 py-0 text-[10px]"
+        {results.map((post, idx) => {
+          const safePostTitle = normalizeSearchText(post.title) || "Untitled post";
+          const safePostCategory = normalizeSearchText(post.category) || "Blog";
+          const safeReadingTime = normalizeSearchText(post.readingTime);
+
+          return (
+            <button
+              key={`${post.year}/${post.slug}`}
+              type="button"
+              aria-label={`${safeResultLabel}: ${safePostTitle}`}
+              onClick={() => handleSelect(post)}
+              className={cn(
+                "w-full text-left transition-colors",
+                floating
+                  ? cn(
+                      "rounded-xl border px-3 py-3",
+                      idx === selectedIndex
+                        ? "border-primary/40 bg-primary/10"
+                        : "border-border/40 hover:bg-muted/50",
+                    )
+                  : cn(
+                      "border-b border-border/30 px-4 py-3 last:border-0",
+                      idx === selectedIndex
+                        ? "bg-primary/10"
+                        : "hover:bg-muted/50",
+                    ),
+                isTerminal &&
+                  floating &&
+                  (idx === selectedIndex
+                    ? "border-primary/40 bg-primary/10"
+                    : "border-border/40 bg-background/30 hover:bg-primary/5"),
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-1 shrink-0">
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg",
+                      idx === selectedIndex
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}
                   >
-                    {post.category}
-                  </Badge>
-                  {post.readingTime && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {post.readingTime}
-                    </span>
-                  )}
+                    <FileText aria-hidden="true" className="h-4 w-4" />
+                  </div>
                 </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-foreground">
+                    {safePostTitle}
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="h-5 px-2 py-0 text-[10px]"
+                    >
+                      {safePostCategory}
+                    </Badge>
+                    {safeReadingTime && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock aria-hidden="true" className="h-3 w-3" />
+                        {safeReadingTime}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ArrowRight aria-hidden="true" className="mt-2 h-4 w-4 shrink-0 text-primary" />
               </div>
-              <ArrowRight className="mt-2 h-4 w-4 shrink-0 text-primary" />
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
     );
   };
@@ -510,8 +694,8 @@ export function HeaderSearchBar({
         return (
           <div className="space-y-2">
             <div className="flex items-center gap-2 px-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              <History className="h-3.5 w-3.5" />
-              Recent Searches
+              <History aria-hidden="true" className="h-3.5 w-3.5" />
+              {safeRecentSearchesLabel}
             </div>
             <div className="space-y-1">
               {recentQueries.slice(0, 4).map((recentQuery, idx) => (
@@ -522,18 +706,19 @@ export function HeaderSearchBar({
                   <button
                     type="button"
                     onClick={() => handleRecentSelect(recentQuery)}
+                    aria-label={`${safeRecentSearchLabel}: ${recentQuery}`}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm"
                   >
-                    <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <Clock aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <span className="truncate">{recentQuery}</span>
                   </button>
                   <button
                     type="button"
                     onClick={(e) => handleRemoveRecent(recentQuery, e)}
                     className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Remove from history"
+                    aria-label={`${safeRemoveHistoryLabel}: ${recentQuery}`}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ))}
@@ -553,8 +738,8 @@ export function HeaderSearchBar({
         )}
       >
         <div className="flex items-center gap-2 border-b border-border/30 px-4 py-2 text-xs text-muted-foreground">
-          <History className="h-3.5 w-3.5" />
-          Recent Searches
+          <History aria-hidden="true" className="h-3.5 w-3.5" />
+          {safeRecentSearchesLabel}
         </div>
         {recentQueries.map((recentQuery, idx) => (
           <div
@@ -564,18 +749,19 @@ export function HeaderSearchBar({
             <button
               type="button"
               onClick={() => handleRecentSelect(recentQuery)}
+              aria-label={`${safeRecentSearchLabel}: ${recentQuery}`}
               className="flex min-w-0 flex-1 items-center gap-3 text-left text-sm"
             >
-              <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Clock aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate">{recentQuery}</span>
             </button>
             <button
               type="button"
               onClick={(e) => handleRemoveRecent(recentQuery, e)}
               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              aria-label="Remove from history"
+              aria-label={`${safeRemoveHistoryLabel}: ${recentQuery}`}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
@@ -586,7 +772,7 @@ export function HeaderSearchBar({
   const renderQuickLinks = () => (
     <div className="space-y-2">
       <div className="px-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-        Quick Jump
+        {safeQuickJumpLabel}
       </div>
       <div className="grid gap-2 sm:grid-cols-3">
         {QUICK_LINKS.map((link) => {
@@ -595,6 +781,7 @@ export function HeaderSearchBar({
             <button
               key={link.href}
               type="button"
+              aria-label={`${safeQuickJumpLabel}: ${link.label}`}
               onClick={() => handleQuickNavigate(link.href)}
               className={cn(
                 "flex items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm transition-colors",
@@ -603,7 +790,7 @@ export function HeaderSearchBar({
                   : "border-border/50 bg-background/80 hover:bg-muted/50",
               )}
             >
-              <Icon className="h-4 w-4 shrink-0 text-primary" />
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-primary" />
               <span>{link.label}</span>
             </button>
           );
@@ -613,7 +800,13 @@ export function HeaderSearchBar({
   );
 
   const renderInlineSearch = () => (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <div
+      ref={containerRef}
+      role="search"
+      aria-label={safeLabel}
+      title={safeTitle}
+      className={cn("relative", className)}
+    >
       {isTerminal ? renderTerminalInput() : renderDefaultInput()}
       {isOpen && renderResults()}
       {!isOpen && showHistory && renderHistoryList()}
@@ -633,11 +826,16 @@ export function HeaderSearchBar({
         }
       }}
     >
-      <div className={cn("flex items-center justify-start", className)}>
+      <div
+        role="search"
+        aria-label={safeLabel}
+        title={safeTitle}
+        className={cn("flex items-center justify-start", className)}
+      >
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label={homeScrolled ? "Search posts" : "Open search"}
+            aria-label={homeScrolled ? safeSearchPostsLabel : safeOpenSearchLabel}
             onMouseEnter={() => setSearchActive(true)}
             className={cn(
               "group inline-flex h-10 items-center rounded-full border transition-all duration-300",
@@ -650,7 +848,7 @@ export function HeaderSearchBar({
             )}
           >
             <span className="flex items-center gap-2">
-              <Search className="h-4 w-4 shrink-0" />
+              <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
               {homeScrolled && (
                 <span
                   className={cn(

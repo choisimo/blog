@@ -67,4 +67,33 @@ describe('AuthGuard admin routing', () => {
       '/admin/config/workers?tab=secrets'
     );
   });
+
+  it('does not carry URL fragments into the admin login return path', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/admin/config/workers?tab=secrets#access_token=secret']}
+      >
+        <Routes>
+          <Route
+            path="/admin/config/workers"
+            element={
+              <AuthGuard>
+                <div>protected</div>
+              </AuthGuard>
+            }
+          />
+          <Route path="/admin/login" element={<LoginProbe />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('path')).toHaveTextContent('/admin/login');
+    });
+
+    expect(screen.getByTestId('from')).toHaveTextContent(
+      '/admin/config/workers?tab=secrets'
+    );
+    expect(screen.getByTestId('from')).not.toHaveTextContent('access_token');
+  });
 });

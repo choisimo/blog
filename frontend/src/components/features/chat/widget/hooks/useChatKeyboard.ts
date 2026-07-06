@@ -31,9 +31,17 @@ export function useKeyboardHeight(isMobile: boolean) {
     baselineHeightRef.current = Math.round(vv?.height || window.innerHeight);
     let rafHandle: number | null = null;
 
+    const safeViewportNumber = (value: unknown, fallback: number): number =>
+      typeof value === "number" && Number.isFinite(value) && value > 0
+        ? value
+        : fallback;
+
     const measure = () => {
-      const visualHeight = vv?.height || window.innerHeight;
-      const top = vv?.offsetTop || 0;
+      const visualHeight = safeViewportNumber(vv?.height, window.innerHeight);
+      const top =
+        typeof vv?.offsetTop === "number" && Number.isFinite(vv.offsetTop)
+          ? vv.offsetTop
+          : 0;
 
       // Adapt baseline when viewport changed naturally (rotation/address bar) without keyboard.
       const tentativeKeyboard = Math.max(
@@ -110,6 +118,7 @@ export function useInputKeyDown({ canSend, send }: UseInputKeyDownProps) {
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
+        if (e.nativeEvent.isComposing) return;
         e.preventDefault();
         if (canSend) void send();
       }

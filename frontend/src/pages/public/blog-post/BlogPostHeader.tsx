@@ -54,6 +54,47 @@ interface BlogPostHeaderProps {
   retryLabel: string;
 }
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const HAS_CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeHeaderText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return fallback;
+  const normalized = String(value)
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeHeaderPathSegment(value: unknown): string | null {
+  const normalized = normalizeHeaderText(value);
+  if (!normalized || normalized.includes('/') || normalized.includes('\\')) {
+    return null;
+  }
+  try {
+    const decoded = decodeURIComponent(normalized);
+    if (
+      !decoded.trim() ||
+      decoded === '.' ||
+      decoded === '..' ||
+      HAS_CONTROL_TEXT_PATTERN.test(decoded) ||
+      decoded.includes('/') ||
+      decoded.includes('\\')
+    ) {
+      return null;
+    }
+    return encodeURIComponent(decoded.trim());
+  } catch {
+    return null;
+  }
+}
+
+function normalizeHeaderQueryValue(value: unknown): string | null {
+  const normalized = normalizeHeaderText(value);
+  return normalized ? encodeURIComponent(normalized) : null;
+}
+
 export function BlogPostHeader({
   post,
   postView,
@@ -83,6 +124,14 @@ export function BlogPostHeader({
 }: BlogPostHeaderProps) {
   const navigate = useNavigate();
   const description = postView.description;
+  const safeYear = normalizeHeaderPathSegment(year) ?? normalizeHeaderPathSegment(post.year) ?? 'post';
+  const safeSlug = normalizeHeaderPathSegment(slug) ?? normalizeHeaderPathSegment(post.slug) ?? 'untitled';
+  const safeCategoryLabel = normalizeHeaderText(postView.categoryLabel, 'Post');
+  const safeCategoryQuery = normalizeHeaderQueryValue(post.category);
+  const safeTitle = normalizeHeaderText(postView.title, 'Untitled post');
+  const safeAuthor = normalizeHeaderText(postView.author);
+  const safeReadingTimeLabel = normalizeHeaderText(postView.readingTimeLabel);
+  const safeTranslationErrorMessage = normalizeHeaderText(translationError?.message);
   const isTranslationWarming = translationStatus === 'warming';
   const hasAiTranslationReady =
     translationStatus === 'ready' && aiTranslation && !hasNativeTranslation;
@@ -105,10 +154,10 @@ export function BlogPostHeader({
         items={[
           { label: 'Blog', href: '/blog' },
           {
-            label: postView.categoryLabel,
-            href: `/blog?category=${encodeURIComponent(post.category)}`,
+            label: safeCategoryLabel,
+            href: safeCategoryQuery ? `/blog?category=${safeCategoryQuery}` : '/blog',
           },
-          { label: postView.title },
+          { label: safeTitle },
         ]}
         className={cn(isTerminal && 'font-mono text-xs')}
       />
@@ -149,7 +198,7 @@ export function BlogPostHeader({
           {/* Terminal-style path indicator */}
           {isTerminal && (
             <div className='font-mono text-xs text-muted-foreground'>
-              <span className='text-primary'>cat</span> ~/blog/{year}/{slug}.md
+              <span className='text-primary'>cat</span> ~/blog/{safeYear}/{safeSlug}.md
             </div>
           )}
 
@@ -160,7 +209,7 @@ export function BlogPostHeader({
             )}
           >
             {isTerminal && '['}
-            {postView.categoryLabel}
+            {safeCategoryLabel}
             {isTerminal && ']'}
           </div>
 
@@ -171,7 +220,7 @@ export function BlogPostHeader({
             )}
           >
             {isTerminal && '> '}
-            {postView.title}
+            {safeTitle}
           </h1>
 
           {description && (
@@ -201,7 +250,7 @@ export function BlogPostHeader({
                 {isTerminal ? `date: ${formattedDate}` : formattedDate}
               </span>
             </div>
-            {postView.readingTimeLabel && (
+            {safeReadingTimeLabel && (
               <div
                 className={cn(
                   'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
@@ -211,12 +260,12 @@ export function BlogPostHeader({
                 <Clock className='h-4 w-4 text-foreground/70' />
                 <span>
                   {isTerminal
-                    ? `time: ${postView.readingTimeLabel}`
-                    : postView.readingTimeLabel}
+                    ? `time: ${safeReadingTimeLabel}`
+                    : safeReadingTimeLabel}
                 </span>
               </div>
             )}
-            {postView.author && (
+            {safeAuthor && (
               <div
                 className={cn(
                   'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
@@ -225,7 +274,7 @@ export function BlogPostHeader({
               >
                 <User className='h-4 w-4 text-foreground/70' />
                 <span>
-                  {isTerminal ? `author: ${postView.author}` : postView.author}
+                  {isTerminal ? `author: ${safeAuthor}` : safeAuthor}
                 </span>
               </div>
             )}
@@ -290,7 +339,7 @@ export function BlogPostHeader({
                 <div>
                   <p className='font-medium mb-1'>{translationFailedLabel}</p>
                   <p className='text-xs opacity-80'>
-                    {translationError.message}
+                    {safeTranslationErrorMessage}
                   </p>
                   <p className='text-xs mt-1 opacity-60'>
                     {showingOriginalLabel}
@@ -323,9 +372,17 @@ export function BlogPostHeader({
             >
               <Tag className='h-4 w-4 text-foreground/75 dark:text-foreground/75' />
               {isTerminal && <span className='text-primary'>tags:</span>}
-              {post.tags.map((tag, index) => (
+              {post.tags.flatMap((tag, index) => {
+                const safeTag = normalizeHeaderText(tag);
+                const safeTagQuery = normalizeHeaderQueryValue(tag);
+                if (!safeTag || !safeTagQuery) return [];
+                const safeTagLabel = normalizeHeaderText(
+                  postView.tagLabels[index],
+                  safeTag,
+                );
+                return [
                 <Badge
-                  key={tag}
+                  key={`${safeTag}-${index}`}
                   variant='outline'
                   className={cn(
                     'rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white cursor-pointer hover:bg-primary/10 transition-colors',
@@ -334,17 +391,18 @@ export function BlogPostHeader({
                   )}
                   onClick={() => {
                     curiosityTracker.trackTagClick(
-                      tag,
-                      `${post.year}/${post.slug}`
+                      safeTag,
+                      `${safeYear}/${safeSlug}`
                     );
-                    navigate(`/blog?tag=${encodeURIComponent(tag)}`);
+                    navigate(`/blog?tag=${safeTagQuery}`);
                   }}
                 >
                   {isTerminal
-                    ? `[${postView.tagLabels[index] ?? tag}]`
-                    : `#${postView.tagLabels[index] ?? tag}`}
+                    ? `[${safeTagLabel}]`
+                    : `#${safeTagLabel}`}
                 </Badge>
-              ))}
+                ];
+              })}
             </div>
           )}
         </div>

@@ -32,6 +32,61 @@ import {
   type SiteContentBlock,
 } from '@/services/content/site-content';
 
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const CONTROL_TEXT_DETECTOR = /[\u0000-\u001f\u007f-\u009f]/;
+const UNSAFE_BLOG_SEGMENT_PATTERN = /[\\/#?]/;
+
+function sanitizeDisplayText(value: unknown): string {
+  return String(value ?? '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+}
+
+function normalizeBlogPathSegment(value: unknown): string | null {
+  const segment = sanitizeDisplayText(value);
+  if (!segment || UNSAFE_BLOG_SEGMENT_PATTERN.test(segment)) return null;
+
+  let decodedSegment: string;
+  try {
+    decodedSegment = decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+
+  if (
+    !decodedSegment ||
+    decodedSegment === '.' ||
+    decodedSegment === '..' ||
+    CONTROL_TEXT_DETECTOR.test(decodedSegment) ||
+    UNSAFE_BLOG_SEGMENT_PATTERN.test(decodedSegment)
+  ) {
+    return null;
+  }
+
+  return segment;
+}
+
+function sanitizeSearchResultPost(post: BlogPost): BlogPost | null {
+  const year = normalizeBlogPathSegment(post.year);
+  const slug = normalizeBlogPathSegment(post.slug);
+  if (!year || !slug) return null;
+
+  return {
+    ...post,
+    year,
+    slug,
+    title: sanitizeDisplayText(post.title),
+    category: sanitizeDisplayText(post.category),
+    excerpt: sanitizeDisplayText(post.excerpt),
+    readingTime: sanitizeDisplayText(post.readingTime),
+    tags: Array.isArray(post.tags)
+      ? post.tags.map(tag => sanitizeDisplayText(tag)).filter(Boolean)
+      : post.tags,
+  };
+}
+
 const Index = () => {
   useSEO(
     generateSEOData(undefined, 'home'),
@@ -256,6 +311,14 @@ const Index = () => {
     });
   }, [categoryCounts]);
 
+  const visibleSearchResults = useMemo(() => {
+    if (!searchResults) return null;
+    return searchResults
+      .slice(0, 9)
+      .map(sanitizeSearchResultPost)
+      .filter((post): post is BlogPost => post !== null);
+  }, [searchResults]);
+
   return (
     <div className='bg-[hsl(var(--blog-page))]'>
       <div className='mx-auto w-full max-w-6xl px-4 pb-24 pt-10 sm:px-6 lg:px-8'>
@@ -372,7 +435,7 @@ const Index = () => {
         {/* ============================================
           Search Results Section
           ============================================ */}
-        {searchActive && searchResults && (
+        {searchActive && visibleSearchResults && (
           <section className='mb-16'>
             <div className='flex items-center justify-between mb-6'>
               <h2
@@ -381,12 +444,12 @@ const Index = () => {
                 {isTerminal ? '> search_results' : 'Search Results'}
               </h2>
               <div className='text-sm text-muted-foreground'>
-                {searchResults.length} match
-                {searchResults.length === 1 ? '' : 'es'}
+                {visibleSearchResults.length} match
+                {visibleSearchResults.length === 1 ? '' : 'es'}
               </div>
             </div>
             <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-              {searchResults.slice(0, 9).map(post => (
+              {visibleSearchResults.map(post => (
                 <PostCard
                   key={`${post.year}/${post.slug}`}
                   post={post}

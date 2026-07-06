@@ -9,12 +9,48 @@ import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 type SubscribeStatus = 'idle' | 'loading' | 'success' | 'error';
 
+const FOOTER_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const FOOTER_EMAIL_PATTERN = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+
+export function normalizeFooterExternalHref(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+
+  const candidate = value.trim();
+  if (!candidate || FOOTER_CONTROL_PATTERN.test(candidate) || /[\s\\]/.test(candidate)) {
+    return null;
+  }
+
+  try {
+    const url = new URL(candidate);
+    if (!['https:', 'http:'].includes(url.protocol)) return null;
+    if (url.username || url.password) return null;
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+export function buildFooterMailtoHref(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+
+  const email = value.trim();
+  if (!email || FOOTER_CONTROL_PATTERN.test(email) || !FOOTER_EMAIL_PATTERN.test(email)) {
+    return null;
+  }
+
+  return `mailto:${email}`;
+}
+
 export function Footer() {
   const currentYear = new Date().getFullYear();
   const { isTerminal } = useTheme();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<SubscribeStatus>('idle');
   const [message, setMessage] = useState('');
+  const githubHref = normalizeFooterExternalHref(site.social.github);
+  const twitterHref = normalizeFooterExternalHref(site.social.twitter);
+  const linkedinHref = normalizeFooterExternalHref(site.social.linkedin);
+  const emailHref = buildFooterMailtoHref(site.email);
 
   const handleSubscribe = async (e: FormEvent) => {
     e.preventDefault();
@@ -77,62 +113,70 @@ export function Footer() {
                 유용한 글을 메일로 보내드려요.
               </p>
               <div className='flex space-x-4'>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
-                  asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                >
-                  <a
-                    href={site.social.github}
-                    target='_blank'
-                    rel='noopener noreferrer'
+                {githubHref && (
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    asChild
+                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
                   >
-                    <Github className='h-5 w-5' />
-                    <span className='sr-only'>GitHub</span>
-                  </a>
-                </Button>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
-                  asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                >
-                  <a
-                    href={site.social.twitter}
-                    target='_blank'
-                    rel='noopener noreferrer'
+                    <a
+                      href={githubHref}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      <Github className='h-5 w-5' />
+                      <span className='sr-only'>GitHub</span>
+                    </a>
+                  </Button>
+                )}
+                {twitterHref && (
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    asChild
+                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
                   >
-                    <Twitter className='h-5 w-5' />
-                    <span className='sr-only'>Twitter</span>
-                  </a>
-                </Button>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
-                  asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                >
-                  <a
-                    href={site.social.linkedin}
-                    target='_blank'
-                    rel='noopener noreferrer'
+                    <a
+                      href={twitterHref}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      <Twitter className='h-5 w-5' />
+                      <span className='sr-only'>Twitter</span>
+                    </a>
+                  </Button>
+                )}
+                {linkedinHref && (
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    asChild
+                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
                   >
-                    <Linkedin className='h-5 w-5' />
-                    <span className='sr-only'>LinkedIn</span>
-                  </a>
-                </Button>
-                <Button 
-                  variant='ghost' 
-                  size='icon' 
-                  asChild
-                  className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                >
-                  <a href={`mailto:${site.email}`}>
-                    <Mail className='h-5 w-5' />
-                    <span className='sr-only'>Email</span>
-                  </a>
-                </Button>
+                    <a
+                      href={linkedinHref}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                    >
+                      <Linkedin className='h-5 w-5' />
+                      <span className='sr-only'>LinkedIn</span>
+                    </a>
+                  </Button>
+                )}
+                {emailHref && (
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    asChild
+                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
+                  >
+                    <a href={emailHref}>
+                      <Mail className='h-5 w-5' />
+                      <span className='sr-only'>Email</span>
+                    </a>
+                  </Button>
+                )}
               </div>
             </div>
 

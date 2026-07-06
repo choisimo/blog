@@ -1,4 +1,4 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockNavigate = vi.fn();
@@ -17,7 +17,11 @@ import {
   cancelTokenRefresh,
   useAuthStore,
 } from '@/stores/session/useAuthStore';
-import { DEFAULT_ADMIN_PATH } from '@/services/session/adminReturnTo';
+import {
+  DEFAULT_ADMIN_PATH,
+  rememberAdminReturnPath,
+  resolveAdminReturnPath,
+} from '@/services/session/adminReturnTo';
 
 function createToken(expiresInSeconds = 3600) {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -171,6 +175,156 @@ describe('admin auth security hardening', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(DEFAULT_ADMIN_PATH, { replace: true });
     });
+  });
+
+  it('rejects absolute cross-origin admin return paths', () => {
+    expect(
+      rememberAdminReturnPath('https://evil.example.com/admin/config/secrets'),
+    ).toBe(DEFAULT_ADMIN_PATH);
+    expect(sessionStorage.getItem('admin.returnTo')).toBe(DEFAULT_ADMIN_PATH);
+
+    sessionStorage.clear();
+
+    expect(
+      resolveAdminReturnPath('//evil.example.com/admin/config/health'),
+    ).toBe(DEFAULT_ADMIN_PATH);
+  });
+
+  it('heals unsafe stored admin return paths during resolution', () => {
+    sessionStorage.setItem('admin.returnTo', 'https://evil.example.com/admin/config/logs');
+
+    expect(resolveAdminReturnPath('/admin/config/secrets')).toBe(DEFAULT_ADMIN_PATH);
+    expect(sessionStorage.getItem('admin.returnTo')).toBe(DEFAULT_ADMIN_PATH);
+
+    sessionStorage.setItem('admin.returnTo', ' /admin/config/logs?tab=errors ');
+
+    expect(resolveAdminReturnPath()).toBe('/admin/config/logs?tab=errors');
+    expect(sessionStorage.getItem('admin.returnTo')).toBe('/admin/config/logs?tab=errors');
+  });
+
+  it('normalizes safe admin return paths and rejects CRLF variants', () => {
+    expect(
+      rememberAdminReturnPath(' /admin/config/logs?tab=errors '),
+    ).toBe('/admin/config/logs?tab=errors');
+    expect(sessionStorage.getItem('admin.returnTo')).toBe(
+      '/admin/config/logs?tab=errors',
+    );
+
+    expect(
+      rememberAdminReturnPath('/admin/config/logs\r\nX-Injected: yes'),
+    ).toBe(DEFAULT_ADMIN_PATH);
+    expect(
+      resolveAdminReturnPath('/admin/config/logs?next=%0D%0AX-Injected%3Ayes'),
+    ).toBe(DEFAULT_ADMIN_PATH);
+  });
+
+  it('treats OAuth errors as authoritative before consuming a handoff', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            accessToken: createToken(),
+            refreshToken: createToken(7 * 24 * 3600),
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    window.history.replaceState(
+      null,
+      '',
+      '/admin/auth/callback#error=access_denied&handoff=oauth-handoff-test'
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: access_denied'),
+    ).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('rejects header-breaking OAuth handoff values before exchange', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 500 }),
+    );
+
+    window.history.replaceState(
+      null,
+      '',
+      '/admin/auth/callback#handoff=oauth-handoff%0D%0AX-Injected%3A%20yes'
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: invalid handoff'),
+    ).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('rejects control-contaminated OAuth handoff values before exchange', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 500 }),
+    );
+
+    window.history.replaceState(
+      null,
+      '',
+      '/admin/auth/callback#handoff=oauth-handoff%00evil'
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: invalid handoff'),
+    ).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('rejects header-breaking legacy OAuth token fragments before storing auth', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      `/admin/auth/callback#token=admin-token%0D%0AX-Injected%3A%20yes&refreshToken=${createToken(7 * 24 * 3600)}`
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: invalid tokens'),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBeNull();
+    expect(useAuthStore.getState().refreshToken).toBeNull();
+    expect(window.location.hash).toBe('');
+  });
+
+  it('normalizes control-contaminated OAuth error messages before rendering', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/admin/auth/callback#error=access%00denied%7Fnow'
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: access denied now'),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('');
   });
 
   it('no longer allows inline style or wildcard data attributes in blog markdown', () => {

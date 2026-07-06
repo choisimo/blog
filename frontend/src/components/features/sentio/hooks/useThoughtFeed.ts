@@ -56,6 +56,88 @@ type UseThoughtFeedResult = {
   source: ThoughtFeedSource | null;
   loadMore: () => Promise<void>;
 };
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeDisplayText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeCardKey(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .trim()
+    .replace(CONTROL_TEXT_PATTERN, '-')
+    .replace(/[|/\\\s]+/g, '-')
+    .replace(/[^A-Za-z0-9:_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 96);
+  return normalized || fallback;
+}
+
+function normalizeThoughtCursor(value: unknown): ThoughtCursor {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Partial<NonNullable<ThoughtCursor>>;
+  const seed = normalizeCardKey(raw.seed, '');
+  const page =
+    typeof raw.page === 'number' && Number.isFinite(raw.page)
+      ? Math.max(0, Math.trunc(raw.page))
+      : 0;
+  const seenKeys = Array.isArray(raw.seenKeys)
+    ? raw.seenKeys
+        .map((key, index) => normalizeCardKey(key, `seen-${index + 1}`))
+        .filter(Boolean)
+        .slice(0, 100)
+    : [];
+  return seed ? { seed, page, seenKeys } : null;
+}
+
+function normalizeThoughtCard(card: unknown, index: number): ThoughtCardData | null {
+  if (!card || typeof card !== 'object') return null;
+  const raw = card as Partial<ThoughtCardData>;
+  const fallbackKey = `thought-${index + 1}`;
+  const trackKey = normalizeCardKey(raw.trackKey ?? raw.id, fallbackKey);
+  const id = normalizeCardKey(raw.id ?? trackKey, trackKey);
+  const title = normalizeDisplayText(raw.title, `Thought ${index + 1}`);
+  const body = normalizeDisplayText(raw.body, title);
+  const bullets = Array.isArray(raw.bullets)
+    ? raw.bullets
+        .map((bullet) => normalizeDisplayText(bullet))
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags
+        .map((tag) => normalizeDisplayText(tag).toLowerCase())
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+
+  return {
+    ...raw,
+    id,
+    trackKey,
+    title,
+    subtitle: normalizeDisplayText(raw.subtitle),
+    body,
+    bullets,
+    tags,
+  } as ThoughtCardData;
+}
+
+function normalizeThoughtCards(cards: unknown): ThoughtCardData[] {
+  if (!Array.isArray(cards)) return [];
+  return cards.flatMap((card, index) => {
+    const normalized = normalizeThoughtCard(card, index);
+    return normalized ? [normalized] : [];
+  });
+}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -93,8 +175,8 @@ function normalizeChainQuestions(data: ChainTaskData | null): ChainQuestion[] {
   if (!data || !Array.isArray(data.questions)) return [];
   return data.questions
     .map(question => ({
-      q: typeof question.q === 'string' ? question.q.trim() : '',
-      why: typeof question.why === 'string' ? question.why.trim() : '',
+      q: normalizeDisplayText(question.q),
+      why: normalizeDisplayText(question.why),
     }))
     .filter(question => question.q);
 }
@@ -123,7 +205,7 @@ async function loadThoughtCardsViaTask({
     throw new Error('Chain task returned no questions');
   }
 
-  return mapChainQuestionsToThoughts(questions, 'feed');
+  return normalizeThoughtCards(mapChainQuestionsToThoughts(questions, 'feed'));
 }
 
 function mergeThoughtCards(
@@ -264,10 +346,10 @@ export function useThoughtFeed({
   }, [cards, exhausted, persistCache, source]);
 
   const applyFallbackCards = useCallback(() => {
-    const mapped = mapChainQuestionsToThoughts(
+    const mapped = normalizeThoughtCards(mapChainQuestionsToThoughts(
       FALLBACK_DATA.CHAIN.QUESTIONS,
       'fallback'
-    );
+    ));
     setCards(mapped);
     setAppendWarming(false);
     setExhausted(true);
@@ -314,13 +396,14 @@ export function useThoughtFeed({
           return;
         }
 
-        const items = response.items ?? [];
+        const items = normalizeThoughtCards(response.items);
+        const nextCursor = normalizeThoughtCursor(response.nextCursor);
         const responseSource = resolveResponseSource(response);
         if (responseSource === 'warming') {
           setCards(items);
           setExhausted(false);
           setSource('warming');
-          nextCursorRef.current = response.nextCursor;
+          nextCursorRef.current = nextCursor;
           return;
         }
 
@@ -330,9 +413,9 @@ export function useThoughtFeed({
 
         setCards(items);
         setAppendWarming(false);
-        setExhausted(response.exhausted);
+        setExhausted(response.exhausted === true);
         setSource('feed');
-        nextCursorRef.current = response.nextCursor;
+        nextCursorRef.current = nextCursor;
         appendWarmingAttemptsRef.current = 0;
         notifyReady(items, 'feed');
       } catch (error) {
@@ -488,7 +571,8 @@ export function useThoughtFeed({
         return;
       }
 
-      const incoming = response.items ?? [];
+      const incoming = normalizeThoughtCards(response.items);
+      const nextCursor = normalizeThoughtCursor(response.nextCursor);
       let appendedCount = 0;
       setCards(prev => {
         const merged = mergeThoughtCards(prev, incoming);
@@ -515,11 +599,11 @@ export function useThoughtFeed({
         appendWarmingAttemptsRef.current = nextAttempt;
         setAppendWarming(true);
         setExhausted(false);
-        nextCursorRef.current = response.nextCursor ?? cursor;
+        nextCursorRef.current = nextCursor ?? cursor;
         persistCache({
           exhausted: false,
           source: 'feed',
-          nextCursor: response.nextCursor ?? cursor,
+          nextCursor: nextCursor ?? cursor,
         });
         return;
       }
@@ -527,12 +611,12 @@ export function useThoughtFeed({
       appendWarmingAttemptsRef.current = 0;
       setAppendWarming(false);
       const isExhausted =
-        response.exhausted ||
-        response.nextCursor == null ||
+        response.exhausted === true ||
+        nextCursor == null ||
         incoming.length === 0 ||
         appendedCount === 0;
       setExhausted(isExhausted);
-      nextCursorRef.current = isExhausted ? null : response.nextCursor;
+      nextCursorRef.current = isExhausted ? null : nextCursor;
     } catch (error) {
       if (isAbortError(error) || requestId !== requestIdRef.current) {
         return;

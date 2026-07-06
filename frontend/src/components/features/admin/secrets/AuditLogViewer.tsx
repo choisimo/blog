@@ -23,11 +23,79 @@ import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuditLog } from './hooks';
 import type { SecretAuditLog } from './types';
 
+const AUDIT_ACTIONS = new Set<SecretAuditLog['action']>([
+  'created',
+  'updated',
+  'deleted',
+  'rotated',
+  'accessed',
+]);
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+const AUDIT_ERROR_FALLBACK = 'Failed to load audit logs';
+
+function normalizeAuditAction(value: unknown): SecretAuditLog['action'] | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return AUDIT_ACTIONS.has(normalized as SecretAuditLog['action'])
+    ? (normalized as SecretAuditLog['action'])
+    : null;
+}
+
+function normalizeAuditSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n/\\]/.test(normalized) || !/^[A-Za-z0-9_-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeAuditText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || null;
+}
+
+function normalizeAuditError(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  return normalizeAuditText(value) ?? AUDIT_ERROR_FALLBACK;
+}
+
+function normalizeAuditLog(log: SecretAuditLog): SecretAuditLog | null {
+  const action = normalizeAuditAction(log.action);
+  const secretId = normalizeAuditSelector(log.secret_id);
+  const keyName = normalizeAuditSelector(log.key_name);
+  if (!action || (!secretId && !keyName)) return null;
+
+  return {
+    ...log,
+    action,
+    secret_id: secretId ?? keyName ?? 'unknown-secret',
+    key_name: keyName,
+    changed_by: normalizeAuditText(log.changed_by),
+    ip_address: normalizeAuditText(log.ip_address),
+  };
+}
+
 export function AuditLogViewer() {
   const { logs, loading, error, pagination, fetchLogs } = useAuditLog();
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [page, setPage] = useState(0);
   const pageSize = 20;
+  const safeLogs = logs.flatMap((log) => {
+    const normalized = normalizeAuditLog(log);
+    return normalized ? [normalized] : [];
+  });
+  const safeError = normalizeAuditError(error);
+
+  const handleActionFilterChange = (nextAction: string) => {
+    setActionFilter(normalizeAuditAction(nextAction) ?? 'all');
+    setPage(0);
+  };
 
   useEffect(() => {
     fetchLogs({
@@ -59,7 +127,7 @@ export function AuditLogViewer() {
             <CardDescription>History of all secret changes and access</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={actionFilter} onValueChange={setActionFilter}>
+            <Select value={actionFilter} onValueChange={handleActionFilterChange}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
@@ -91,14 +159,14 @@ export function AuditLogViewer() {
         </div>
       </CardHeader>
       <CardContent>
-        {error && (
+        {safeError && (
           <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm mb-4">
-            {error}
+            {safeError}
           </div>
         )}
 
         <div className="space-y-2">
-          {logs.map((log) => (
+          {safeLogs.map((log) => (
             <div
               key={log.id}
               className="flex items-center justify-between p-3 border rounded-lg"
@@ -119,7 +187,7 @@ export function AuditLogViewer() {
             </div>
           ))}
 
-          {logs.length === 0 && !loading && !error && (
+          {safeLogs.length === 0 && !loading && !safeError && (
             <p className="text-center text-muted-foreground py-8">No audit logs found</p>
           )}
         </div>

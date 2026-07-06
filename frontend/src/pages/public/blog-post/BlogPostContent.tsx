@@ -14,6 +14,29 @@ interface BlogPostContentProps {
   isTerminal: boolean;
 }
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeContentMetadataText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return fallback;
+  const normalized = String(value)
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeContentPostPath(value: unknown): string {
+  const normalized = normalizeContentMetadataText(value);
+  if (!normalized) return '';
+  return normalized
+    .split('/')
+    .map((segment) => normalizeContentMetadataText(segment))
+    .filter((segment) => segment && segment !== '.' && segment !== '..')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
 export function BlogPostContent({
   content,
   inlineEnabled,
@@ -21,6 +44,9 @@ export function BlogPostContent({
   postPath,
   isTerminal,
 }: BlogPostContentProps) {
+  const safePostTitle = normalizeContentMetadataText(postTitle, 'Untitled post');
+  const safePostPath = normalizeContentPostPath(postPath);
+
   return (
     <section
       data-toc-boundary
@@ -53,8 +79,8 @@ export function BlogPostContent({
           <MarkdownRenderer
             content={content}
             inlineEnabled={inlineEnabled}
-            postTitle={postTitle}
-            postPath={postPath}
+            postTitle={safePostTitle}
+            postPath={safePostPath}
           />
         </Suspense>
       </div>

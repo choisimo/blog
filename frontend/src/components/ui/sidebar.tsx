@@ -24,6 +24,36 @@ const SIDEBAR_WIDTH_MOBILE = '18rem';
 const SIDEBAR_WIDTH_ICON = '3rem';
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b';
 
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeSidebarText = (value: string | number): string =>
+  String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+
+const sanitizeSidebarOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeSidebarText(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeSidebarNode = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeSidebarText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeSidebarNode);
+  }
+
+  return children;
+};
+
 type SidebarContext = {
   state: 'expanded' | 'collapsed';
   open: boolean;
@@ -61,6 +91,8 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
+      'aria-label': ariaLabel,
+      title,
       ...props
     },
     ref
@@ -141,9 +173,11 @@ const SidebarProvider = React.forwardRef<
               className
             )}
             ref={ref}
+            aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+            title={sanitizeSidebarOptionalText(title)}
             {...props}
           >
-            {children}
+            {sanitizeSidebarNode(children)}
           </div>
         </TooltipProvider>
       </SidebarContext.Provider>
@@ -167,6 +201,8 @@ const Sidebar = React.forwardRef<
       collapsible = 'offcanvas',
       className,
       children,
+      'aria-label': ariaLabel,
+      title,
       ...props
     },
     ref
@@ -181,9 +217,11 @@ const Sidebar = React.forwardRef<
             className
           )}
           ref={ref}
+          aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+          title={sanitizeSidebarOptionalText(title)}
           {...props}
         >
-          {children}
+          {sanitizeSidebarNode(children)}
         </div>
       );
     }
@@ -202,7 +240,9 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <div className='flex h-full w-full flex-col'>{children}</div>
+            <div className='flex h-full w-full flex-col'>
+              {sanitizeSidebarNode(children)}
+            </div>
           </SheetContent>
         </Sheet>
       );
@@ -240,13 +280,15 @@ const Sidebar = React.forwardRef<
               : 'group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l',
             className
           )}
+          aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+          title={sanitizeSidebarOptionalText(title)}
           {...props}
         >
           <div
             data-sidebar='sidebar'
             className='flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow'
           >
-            {children}
+            {sanitizeSidebarNode(children)}
           </div>
         </div>
       </div>
@@ -258,7 +300,7 @@ Sidebar.displayName = 'Sidebar';
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+>(({ className, children, onClick, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -272,9 +314,12 @@ const SidebarTrigger = React.forwardRef<
         onClick?.(event);
         toggleSidebar();
       }}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
     >
       <PanelLeft />
+      {sanitizeSidebarNode(children)}
       <span className='sr-only'>Toggle Sidebar</span>
     </Button>
   );
@@ -284,17 +329,17 @@ SidebarTrigger.displayName = 'SidebarTrigger';
 const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<'button'>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   return (
     <button
       ref={ref}
       data-sidebar='rail'
-      aria-label='Toggle Sidebar'
+      aria-label={sanitizeSidebarOptionalText(ariaLabel) || 'Toggle Sidebar'}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title='Toggle Sidebar'
+      title={sanitizeSidebarOptionalText(title) || 'Toggle Sidebar'}
       className={cn(
         'absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex',
         '[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize',
@@ -305,7 +350,9 @@ const SidebarRail = React.forwardRef<
         className
       )}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </button>
   );
 });
 SidebarRail.displayName = 'SidebarRail';
@@ -313,7 +360,7 @@ SidebarRail.displayName = 'SidebarRail';
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'main'>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   return (
     <main
       ref={ref}
@@ -322,8 +369,12 @@ const SidebarInset = React.forwardRef<
         'peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </main>
   );
 });
 SidebarInset.displayName = 'SidebarInset';
@@ -331,7 +382,11 @@ SidebarInset.displayName = 'SidebarInset';
 const SidebarInput = React.forwardRef<
   React.ElementRef<typeof Input>,
   React.ComponentProps<typeof Input>
->(({ className, ...props }, ref) => {
+>(
+  (
+    { className, 'aria-label': ariaLabel, placeholder, title, ...props },
+    ref
+  ) => {
   return (
     <Input
       ref={ref}
@@ -340,23 +395,31 @@ const SidebarInput = React.forwardRef<
         'h-8 w-full bg-background shadow-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      placeholder={sanitizeSidebarOptionalText(placeholder)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
     />
   );
-});
+  }
+);
 SidebarInput.displayName = 'SidebarInput';
 
 const SidebarHeader = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar='header'
       className={cn('flex flex-col gap-2 p-2', className)}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </div>
   );
 });
 SidebarHeader.displayName = 'SidebarHeader';
@@ -364,14 +427,18 @@ SidebarHeader.displayName = 'SidebarHeader';
 const SidebarFooter = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar='footer'
       className={cn('flex flex-col gap-2 p-2', className)}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </div>
   );
 });
 SidebarFooter.displayName = 'SidebarFooter';
@@ -379,12 +446,14 @@ SidebarFooter.displayName = 'SidebarFooter';
 const SidebarSeparator = React.forwardRef<
   React.ElementRef<typeof Separator>,
   React.ComponentProps<typeof Separator>
->(({ className, ...props }, ref) => {
+>(({ className, 'aria-label': ariaLabel, title, ...props }, ref) => {
   return (
     <Separator
       ref={ref}
       data-sidebar='separator'
       className={cn('mx-2 w-auto bg-sidebar-border', className)}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
     />
   );
@@ -394,7 +463,7 @@ SidebarSeparator.displayName = 'SidebarSeparator';
 const SidebarContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -403,8 +472,12 @@ const SidebarContent = React.forwardRef<
         'flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </div>
   );
 });
 SidebarContent.displayName = 'SidebarContent';
@@ -412,14 +485,18 @@ SidebarContent.displayName = 'SidebarContent';
 const SidebarGroup = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'>
->(({ className, ...props }, ref) => {
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar='group'
       className={cn('relative flex w-full min-w-0 flex-col p-2', className)}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </div>
   );
 });
 SidebarGroup.displayName = 'SidebarGroup';
@@ -427,7 +504,11 @@ SidebarGroup.displayName = 'SidebarGroup';
 const SidebarGroupLabel = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
+>(
+  (
+    { className, asChild = false, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => {
   const Comp = asChild ? Slot : 'div';
 
   return (
@@ -439,16 +520,25 @@ const SidebarGroupLabel = React.forwardRef<
         'group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </Comp>
   );
-});
+  }
+);
 SidebarGroupLabel.displayName = 'SidebarGroupLabel';
 
 const SidebarGroupAction = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<'button'> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
+>(
+  (
+    { className, asChild = false, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => {
   const Comp = asChild ? Slot : 'button';
 
   return (
@@ -462,48 +552,65 @@ const SidebarGroupAction = React.forwardRef<
         'group-data-[collapsible=icon]:hidden',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </Comp>
   );
-});
+  }
+);
 SidebarGroupAction.displayName = 'SidebarGroupAction';
 
 const SidebarGroupContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'>
->(({ className, ...props }, ref) => (
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <div
     ref={ref}
     data-sidebar='group-content'
     className={cn('w-full text-sm', className)}
+    aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+    title={sanitizeSidebarOptionalText(title)}
     {...props}
-  />
+  >
+    {sanitizeSidebarNode(children)}
+  </div>
 ));
 SidebarGroupContent.displayName = 'SidebarGroupContent';
 
 const SidebarMenu = React.forwardRef<
   HTMLUListElement,
   React.ComponentProps<'ul'>
->(({ className, ...props }, ref) => (
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <ul
     ref={ref}
     data-sidebar='menu'
     className={cn('flex w-full min-w-0 flex-col gap-1', className)}
+    aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+    title={sanitizeSidebarOptionalText(title)}
     {...props}
-  />
+  >
+    {sanitizeSidebarNode(children)}
+  </ul>
 ));
 SidebarMenu.displayName = 'SidebarMenu';
 
 const SidebarMenuItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<'li'>
->(({ className, ...props }, ref) => (
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <li
     ref={ref}
     data-sidebar='menu-item'
     className={cn('group/menu-item relative', className)}
+    aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+    title={sanitizeSidebarOptionalText(title)}
     {...props}
-  />
+  >
+    {sanitizeSidebarNode(children)}
+  </li>
 ));
 SidebarMenuItem.displayName = 'SidebarMenuItem';
 
@@ -545,6 +652,9 @@ const SidebarMenuButton = React.forwardRef<
       size = 'default',
       tooltip,
       className,
+      children,
+      'aria-label': ariaLabel,
+      title,
       ...props
     },
     ref
@@ -559,8 +669,12 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+        title={sanitizeSidebarOptionalText(title)}
         {...props}
-      />
+      >
+        {sanitizeSidebarNode(children)}
+      </Comp>
     );
 
     if (!tooltip) {
@@ -569,7 +683,12 @@ const SidebarMenuButton = React.forwardRef<
 
     if (typeof tooltip === 'string') {
       tooltip = {
-        children: tooltip,
+        children: sanitizeSidebarText(tooltip),
+      };
+    } else {
+      tooltip = {
+        ...tooltip,
+        children: sanitizeSidebarNode(tooltip.children),
       };
     }
 
@@ -594,7 +713,19 @@ const SidebarMenuAction = React.forwardRef<
     asChild?: boolean;
     showOnHover?: boolean;
   }
->(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
+>(
+  (
+    {
+      className,
+      asChild = false,
+      children,
+      showOnHover = false,
+      'aria-label': ariaLabel,
+      title,
+      ...props
+    },
+    ref
+  ) => {
   const Comp = asChild ? Slot : 'button';
 
   return (
@@ -613,16 +744,21 @@ const SidebarMenuAction = React.forwardRef<
           'group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground md:opacity-0',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </Comp>
   );
-});
+  }
+);
 SidebarMenuAction.displayName = 'SidebarMenuAction';
 
 const SidebarMenuBadge = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'>
->(({ className, ...props }, ref) => (
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <div
     ref={ref}
     data-sidebar='menu-badge'
@@ -635,8 +771,12 @@ const SidebarMenuBadge = React.forwardRef<
       'group-data-[collapsible=icon]:hidden',
       className
     )}
+    aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+    title={sanitizeSidebarOptionalText(title)}
     {...props}
-  />
+  >
+    {sanitizeSidebarNode(children)}
+  </div>
 ));
 SidebarMenuBadge.displayName = 'SidebarMenuBadge';
 
@@ -645,7 +785,7 @@ const SidebarMenuSkeleton = React.forwardRef<
   React.ComponentProps<'div'> & {
     showIcon?: boolean;
   }
->(({ className, showIcon = false, ...props }, ref) => {
+>(({ className, showIcon = false, 'aria-label': ariaLabel, title, ...props }, ref) => {
   // Random width between 50 to 90%.
   const width = React.useMemo(() => {
     return `${Math.floor(Math.random() * 40) + 50}%`;
@@ -656,6 +796,8 @@ const SidebarMenuSkeleton = React.forwardRef<
       ref={ref}
       data-sidebar='menu-skeleton'
       className={cn('rounded-md h-8 flex gap-2 px-2 items-center', className)}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
     >
       {showIcon && (
@@ -681,7 +823,7 @@ SidebarMenuSkeleton.displayName = 'SidebarMenuSkeleton';
 const SidebarMenuSub = React.forwardRef<
   HTMLUListElement,
   React.ComponentProps<'ul'>
->(({ className, ...props }, ref) => (
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <ul
     ref={ref}
     data-sidebar='menu-sub'
@@ -690,15 +832,28 @@ const SidebarMenuSub = React.forwardRef<
       'group-data-[collapsible=icon]:hidden',
       className
     )}
+    aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+    title={sanitizeSidebarOptionalText(title)}
     {...props}
-  />
+  >
+    {sanitizeSidebarNode(children)}
+  </ul>
 ));
 SidebarMenuSub.displayName = 'SidebarMenuSub';
 
 const SidebarMenuSubItem = React.forwardRef<
   HTMLLIElement,
   React.ComponentProps<'li'>
->(({ ...props }, ref) => <li ref={ref} {...props} />);
+>(({ children, 'aria-label': ariaLabel, title, ...props }, ref) => (
+  <li
+    ref={ref}
+    aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+    title={sanitizeSidebarOptionalText(title)}
+    {...props}
+  >
+    {sanitizeSidebarNode(children)}
+  </li>
+));
 SidebarMenuSubItem.displayName = 'SidebarMenuSubItem';
 
 const SidebarMenuSubButton = React.forwardRef<
@@ -708,7 +863,20 @@ const SidebarMenuSubButton = React.forwardRef<
     size?: 'sm' | 'md';
     isActive?: boolean;
   }
->(({ asChild = false, size = 'md', isActive, className, ...props }, ref) => {
+>(
+  (
+    {
+      asChild = false,
+      children,
+      size = 'md',
+      isActive,
+      className,
+      'aria-label': ariaLabel,
+      title,
+      ...props
+    },
+    ref
+  ) => {
   const Comp = asChild ? Slot : 'a';
 
   return (
@@ -725,10 +893,15 @@ const SidebarMenuSubButton = React.forwardRef<
         'group-data-[collapsible=icon]:hidden',
         className
       )}
+      aria-label={sanitizeSidebarOptionalText(ariaLabel)}
+      title={sanitizeSidebarOptionalText(title)}
       {...props}
-    />
+    >
+      {sanitizeSidebarNode(children)}
+    </Comp>
   );
-});
+  }
+);
 SidebarMenuSubButton.displayName = 'SidebarMenuSubButton';
 
 export {

@@ -22,6 +22,46 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 
+type NotificationPanelProps = {
+  label?: string;
+  title?: string;
+  markReadLabel?: string;
+  removeLabel?: string;
+  markAllReadLabel?: string;
+  clearReadLabel?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+};
+
+const NOTIFICATION_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const NOTIFICATION_ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const NOTIFICATION_WHITESPACE_PATTERN = /\s+/g;
+const DEFAULT_PANEL_LABEL = "Notifications";
+const DEFAULT_MARK_READ_LABEL = "읽음 표시";
+const DEFAULT_REMOVE_LABEL = "알림 삭제";
+const DEFAULT_MARK_ALL_READ_LABEL = "모두 읽음 표시";
+const DEFAULT_CLEAR_READ_LABEL = "읽은 알림 삭제";
+const DEFAULT_EMPTY_TITLE = "알림이 없습니다";
+const DEFAULT_EMPTY_TERMINAL_TITLE = "$ 알림 없음";
+const DEFAULT_EMPTY_DESCRIPTION = "AI 작업 완료 시 여기에 표시됩니다";
+
+export function normalizeNotificationText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string" && typeof value !== "number") return fallback;
+
+  const normalized = String(value)
+    .replace(NOTIFICATION_ANSI_ESCAPE_PATTERN, " ")
+    .replace(NOTIFICATION_CONTROL_PATTERN, " ")
+    .replace(NOTIFICATION_WHITESPACE_PATTERN, " ")
+    .trim();
+
+  return normalized || fallback;
+}
+
+function normalizeOptionalNotificationText(value: unknown): string | undefined {
+  return normalizeNotificationText(value) || undefined;
+}
+
 // ============================================================================
 // Icon helper
 // ============================================================================
@@ -37,19 +77,19 @@ function NotificationIcon({
   switch (type) {
     case "ai_task_complete":
     case "agent_complete":
-      return <BotMessageSquare className={cn(cls, "text-emerald-500")} />;
+      return <BotMessageSquare aria-hidden="true" className={cn(cls, "text-emerald-500")} />;
     case "ai_task_error":
     case "error":
-      return <AlertCircle className={cn(cls, "text-destructive")} />;
+      return <AlertCircle aria-hidden="true" className={cn(cls, "text-destructive")} />;
     case "rag_complete":
     case "chat_task_complete":
-      return <Zap className={cn(cls, "text-blue-500")} />;
+      return <Zap aria-hidden="true" className={cn(cls, "text-blue-500")} />;
     case "success":
-      return <CheckCircle2 className={cn(cls, "text-emerald-500")} />;
+      return <CheckCircle2 aria-hidden="true" className={cn(cls, "text-emerald-500")} />;
     case "info":
-      return <Info className={cn(cls, "text-muted-foreground")} />;
+      return <Info aria-hidden="true" className={cn(cls, "text-muted-foreground")} />;
     default:
-      return <Info className={cn(cls, "text-muted-foreground")} />;
+      return <Info aria-hidden="true" className={cn(cls, "text-muted-foreground")} />;
   }
 }
 
@@ -63,12 +103,16 @@ function NotificationRow({
   isMobile,
   onMarkRead,
   onRemove,
+  markReadLabel,
+  removeLabel,
 }: {
   notification: AppNotification;
   isTerminal: boolean;
   isMobile: boolean;
   onMarkRead: (id: string) => void;
   onRemove: (id: string) => void;
+  markReadLabel: string;
+  removeLabel: string;
 }) {
   let relativeTime = "";
   try {
@@ -79,9 +123,12 @@ function NotificationRow({
   } catch {
     relativeTime = "";
   }
+  const safeTitle = normalizeNotificationText(notification.title, "알림");
+  const safeMessage = normalizeOptionalNotificationText(notification.message);
 
   return (
     <div
+      aria-label={safeTitle}
       className={cn(
         "group flex items-start gap-3 px-4 py-3 border-b transition-colors cursor-default",
         isTerminal
@@ -95,13 +142,14 @@ function NotificationRow({
       <div className="mt-1 shrink-0 flex items-center justify-center w-5 h-5">
         {!notification.read ? (
           <span
+            aria-hidden="true"
             className={cn(
               "w-2 h-2 rounded-full",
               isTerminal ? "bg-primary" : "bg-primary",
             )}
           />
         ) : (
-          <span className="w-2 h-2 rounded-full bg-transparent" />
+          <span aria-hidden="true" className="w-2 h-2 rounded-full bg-transparent" />
         )}
       </div>
 
@@ -117,16 +165,16 @@ function NotificationRow({
             isTerminal && !notification.read && "font-mono text-primary",
           )}
         >
-          {notification.title}
+          {safeTitle}
         </p>
-        {notification.message && (
+        {safeMessage && (
           <p
             className={cn(
               "text-xs text-muted-foreground leading-relaxed line-clamp-2",
               isTerminal && "font-mono text-primary/60",
             )}
           >
-            {notification.message}
+            {safeMessage}
           </p>
         )}
         {relativeTime && (
@@ -151,7 +199,7 @@ function NotificationRow({
           <button
             type="button"
             onClick={() => onMarkRead(notification.id)}
-            aria-label="읽음 표시"
+            aria-label={markReadLabel}
             className={cn(
               "flex items-center justify-center h-6 w-6 rounded transition-colors",
               isTerminal
@@ -159,21 +207,21 @@ function NotificationRow({
                 : "text-muted-foreground hover:text-foreground hover:bg-muted",
             )}
           >
-            <Check className="h-3.5 w-3.5" />
+            <Check aria-hidden="true" className="h-3.5 w-3.5" />
           </button>
         )}
         <button
           type="button"
           onClick={() => onRemove(notification.id)}
-          aria-label="알림 삭제"
+          aria-label={removeLabel}
           className={cn(
             "flex items-center justify-center h-6 w-6 rounded transition-colors",
             isTerminal
               ? "text-primary/50 hover:text-destructive hover:bg-destructive/10"
-              : "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+            : "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
           )}
         >
-          <X className="h-3.5 w-3.5" />
+          <X aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -184,7 +232,16 @@ function NotificationRow({
 // NotificationPanel
 // ============================================================================
 
-export function NotificationPanel() {
+export function NotificationPanel({
+  label = DEFAULT_PANEL_LABEL,
+  title,
+  markReadLabel = DEFAULT_MARK_READ_LABEL,
+  removeLabel = DEFAULT_REMOVE_LABEL,
+  markAllReadLabel = DEFAULT_MARK_ALL_READ_LABEL,
+  clearReadLabel = DEFAULT_CLEAR_READ_LABEL,
+  emptyTitle,
+  emptyDescription = DEFAULT_EMPTY_DESCRIPTION,
+}: NotificationPanelProps = {}) {
   const { isTerminal } = useTheme();
   const isMobile = useIsMobile();
   const {
@@ -199,6 +256,26 @@ export function NotificationPanel() {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const hasRead = notifications.some((n) => n.read);
+  const safeLabel = normalizeNotificationText(label, DEFAULT_PANEL_LABEL);
+  const safeTitle = normalizeOptionalNotificationText(title);
+  const safeMarkReadLabel = normalizeNotificationText(markReadLabel, DEFAULT_MARK_READ_LABEL);
+  const safeRemoveLabel = normalizeNotificationText(removeLabel, DEFAULT_REMOVE_LABEL);
+  const safeMarkAllReadLabel = normalizeNotificationText(
+    markAllReadLabel,
+    DEFAULT_MARK_ALL_READ_LABEL,
+  );
+  const safeClearReadLabel = normalizeNotificationText(
+    clearReadLabel,
+    DEFAULT_CLEAR_READ_LABEL,
+  );
+  const safeEmptyTitle = normalizeNotificationText(
+    emptyTitle,
+    isTerminal ? DEFAULT_EMPTY_TERMINAL_TITLE : DEFAULT_EMPTY_TITLE,
+  );
+  const safeEmptyDescription = normalizeNotificationText(
+    emptyDescription,
+    DEFAULT_EMPTY_DESCRIPTION,
+  );
 
   const handleMarkRead = async (id: string) => {
     setSyncError(null);
@@ -225,7 +302,11 @@ export function NotificationPanel() {
   };
 
   return (
-    <div className={cn("flex flex-col", isTerminal && "font-mono")}>
+    <section
+      aria-label={safeLabel}
+      title={safeTitle}
+      className={cn("flex flex-col", isTerminal && "font-mono")}
+    >
       {/* Header */}
       <div
         className={cn(
@@ -237,6 +318,7 @@ export function NotificationPanel() {
       >
         <div className="flex items-center gap-2">
           <Bell
+            aria-hidden="true"
             className={cn(
               "h-4 w-4",
               isTerminal ? "text-primary" : "text-foreground",
@@ -272,30 +354,32 @@ export function NotificationPanel() {
               onClick={() => {
                 void handleMarkAllRead();
               }}
-              title="모두 읽음 표시"
+              aria-label={safeMarkAllReadLabel}
+              title={safeMarkAllReadLabel}
               className={cn(
                 "flex items-center justify-center h-7 w-7 rounded transition-colors",
                 isTerminal
                   ? "text-primary/60 hover:text-primary hover:bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
               )}
             >
-              <CheckCheck className="h-4 w-4" />
+              <CheckCheck aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
           {hasRead && (
             <button
               type="button"
               onClick={clearRead}
-              title="읽은 알림 삭제"
+              aria-label={safeClearReadLabel}
+              title={safeClearReadLabel}
               className={cn(
                 "flex items-center justify-center h-7 w-7 rounded transition-colors",
                 isTerminal
                   ? "text-primary/60 hover:text-destructive hover:bg-destructive/10"
-                  : "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                : "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
               )}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -322,12 +406,12 @@ export function NotificationPanel() {
               isTerminal ? "text-primary/40" : "text-muted-foreground",
             )}
           >
-            <Bell className="h-8 w-8 opacity-30" />
+            <Bell aria-hidden="true" className="h-8 w-8 opacity-30" />
             <p className={cn("text-sm", isTerminal && "font-mono")}>
-              {isTerminal ? "$ 알림 없음" : "알림이 없습니다"}
+              {safeEmptyTitle}
             </p>
             <p className="text-xs opacity-60">
-              AI 작업 완료 시 여기에 표시됩니다
+              {safeEmptyDescription}
             </p>
           </div>
         ) : (
@@ -337,6 +421,8 @@ export function NotificationPanel() {
               notification={notification}
               isTerminal={isTerminal}
               isMobile={isMobile}
+              markReadLabel={safeMarkReadLabel}
+              removeLabel={safeRemoveLabel}
               onMarkRead={(id) => {
                 void handleMarkRead(id);
               }}
@@ -359,6 +445,6 @@ export function NotificationPanel() {
           총 {notifications.length}개 · 읽지 않음 {unreadCount}개
         </div>
       )}
-    </div>
+    </section>
   );
 }

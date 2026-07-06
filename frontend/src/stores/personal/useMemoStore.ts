@@ -21,17 +21,95 @@ export type MemoStoreState = {
 
 type OptimisticMemo = MemoNote & { __optimistic?: boolean };
 
+const MAX_MEMO_TEXT_LENGTH = 20_000;
+const MAX_MEMO_ID_LENGTH = 160;
+const MAX_MEMO_TAG_LENGTH = 64;
+const MAX_MEMO_TAGS = 20;
+
+function normalizeMemoText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.replace(/\r\n?/g, '\n').trim();
+  if (!normalized) return null;
+  return normalized.length > maxLength
+    ? normalized.slice(0, maxLength).trim()
+    : normalized;
+}
+
+function normalizeMemoId(value: unknown): string | null {
+  const normalized = normalizeMemoText(value, MAX_MEMO_ID_LENGTH);
+  if (!normalized || /[\r\n]/.test(normalized) || /%(?:0a|0d)/i.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeMemoTags(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const tags = new Set<string>();
+
+  for (const item of value) {
+    const tag = normalizeMemoText(item, MAX_MEMO_TAG_LENGTH);
+    if (!tag || /[\r\n]/.test(tag) || /%(?:0a|0d)/i.test(tag)) continue;
+    tags.add(tag);
+    if (tags.size >= MAX_MEMO_TAGS) break;
+  }
+
+  return Array.from(tags);
+}
+
+function normalizeMemoDate(value: unknown): string {
+  if (typeof value === 'string' && !Number.isNaN(Date.parse(value))) {
+    return new Date(value).toISOString();
+  }
+  return new Date().toISOString();
+}
+
+export function normalizeMemoNote(memo: unknown): MemoNote | null {
+  if (!memo || typeof memo !== 'object') return null;
+  const record = memo as Partial<MemoNote>;
+  const id = normalizeMemoId(record.id);
+  const originalContent = normalizeMemoText(
+    record.originalContent,
+    MAX_MEMO_TEXT_LENGTH
+  );
+
+  if (!id || !originalContent) return null;
+
+  return {
+    ...record,
+    id,
+    originalContent,
+    userNote: normalizeMemoText(record.userNote, MAX_MEMO_TEXT_LENGTH) ?? '',
+    tags: normalizeMemoTags(record.tags),
+    createdAt: normalizeMemoDate(record.createdAt),
+    updatedAt: normalizeMemoDate(record.updatedAt),
+    etag: typeof record.etag === 'string' ? record.etag.trim() || null : null,
+  } as MemoNote;
+}
+
+function normalizeMemoList(memos: unknown): MemoNote[] {
+  if (!Array.isArray(memos)) return [];
+  const byId = new Map<string, MemoNote>();
+
+  for (const memo of memos) {
+    const normalized = normalizeMemoNote(memo);
+    if (normalized) byId.set(normalized.id, normalized);
+  }
+
+  return Array.from(byId.values());
+}
+
 export const useMemoStore = create<MemoStoreState>((set, get) => ({
   memos: [],
   isLoading: false,
 
-  replaceAll: memos => set({ memos }),
+  replaceAll: memos => set({ memos: normalizeMemoList(memos) }),
 
   fetchMemos: async () => {
     set({ isLoading: true });
     try {
       const { items } = await UserContentService.listMemos();
-      set({ memos: items, isLoading: false });
+      set({ memos: normalizeMemoList(items), isLoading: false });
     } catch (error) {
       console.error('[useMemoStore] fetchMemos error', error);
       toast({ title: '메모 불러오기 실패', description: '네트워크 상태를 확인하고 다시 시도해주세요.' });

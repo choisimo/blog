@@ -36,6 +36,47 @@ export type SEOResolvedPost = Pick<
   description: string;
 };
 
+const SITE_BASE_URL_FALLBACK = "https://noblog.nodove.com";
+const SEO_URL_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const SEO_PATH_SEGMENT_UNSAFE_PATTERN = /[\u0000-\u001F\u007F/\\]/;
+
+function normalizeSiteBaseUrl(value: unknown): string {
+  const candidate = typeof value === "string" ? value.trim() : "";
+  if (!candidate || SEO_URL_CONTROL_PATTERN.test(candidate)) {
+    return SITE_BASE_URL_FALLBACK;
+  }
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return SITE_BASE_URL_FALLBACK;
+    }
+    return url.href.replace(/\/$/, "");
+  } catch {
+    return SITE_BASE_URL_FALLBACK;
+  }
+}
+
+function normalizeSeoPathSegment(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || SEO_PATH_SEGMENT_UNSAFE_PATTERN.test(trimmed)) return null;
+
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    if (!decoded || SEO_PATH_SEGMENT_UNSAFE_PATTERN.test(decoded)) return null;
+    return encodeURIComponent(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function buildPostCanonicalUrl(baseUrl: string, post: SEOResolvedPost): string {
+  const year = normalizeSeoPathSegment(post.year);
+  const slug = normalizeSeoPathSegment(post.slug);
+  return year && slug ? `${baseUrl}/blog/${year}/${slug}` : `${baseUrl}/blog`;
+}
+
 const slugifyCategory = (value: string): string =>
   value
     .trim()
@@ -74,8 +115,7 @@ export const generateSEOData = (
   pageType: SEOPageType = "home",
   options: GenerateSEOOptions = {},
 ): SEOData => {
-  const baseUrl =
-    import.meta.env.VITE_SITE_BASE_URL || "https://noblog.nodove.com";
+  const baseUrl = normalizeSiteBaseUrl(import.meta.env.VITE_SITE_BASE_URL);
   const siteName = import.meta.env.VITE_SITE_NAME || "nodove-blog";
   const seoImageBase = `${baseUrl}/images/seo`;
   const defaultOgImage = `${seoImageBase}/default/seo.png`;
@@ -94,7 +134,7 @@ export const generateSEOData = (
         title: `${post.title} | ${siteName}`,
         description: post.description,
         keywords: [...post.tags, post.category],
-        canonicalUrl: `${baseUrl}/blog/${post.year}/${post.slug}`,
+        canonicalUrl: buildPostCanonicalUrl(baseUrl, post),
         ogImage: apiBase
           ? `${apiBase}/api/v1/og?title=${encodeURIComponent(post.title)}`
           : defaultOgImage,
@@ -182,8 +222,7 @@ export const generateStructuredData = (
   post?: SEOResolvedPost,
   pageType: string = "home",
 ) => {
-  const baseUrl =
-    import.meta.env.VITE_SITE_BASE_URL || "https://noblog.nodove.com";
+  const baseUrl = normalizeSiteBaseUrl(import.meta.env.VITE_SITE_BASE_URL);
   const siteName = import.meta.env.VITE_SITE_NAME || "nodove-blog";
   const authorName = import.meta.env.VITE_AUTHOR_NAME || "nodove";
   const defaultOgImage = `${baseUrl}/images/seo/default/seo.png`;
@@ -214,7 +253,7 @@ export const generateStructuredData = (
       dateModified: post.date,
       mainEntityOfPage: {
         "@type": "WebPage",
-        "@id": `${baseUrl}/blog/${post.year}/${post.slug}`,
+        "@id": buildPostCanonicalUrl(baseUrl, post),
       },
       keywords: post.tags.join(", "),
       articleSection: post.category,

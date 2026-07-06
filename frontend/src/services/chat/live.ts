@@ -103,6 +103,8 @@ type LiveChatStreamOptions = {
   onError?: (error: unknown) => void;
 };
 
+const MAX_LIVE_AGENT_MENTION_LENGTH = 64;
+
 function getLiveChatBaseUrl(): string {
   return getApiBaseUrl().replace(/\/$/, "");
 }
@@ -110,6 +112,53 @@ function getLiveChatBaseUrl(): string {
 function toSSEHttpUrl(path: string): string {
   const base = getLiveChatBaseUrl();
   return `${base}${path}`;
+}
+
+function requireNonBlank(value: string, message: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error(message);
+  }
+  return normalized;
+}
+
+function requireHeaderValue(value: string, message: string): string {
+  const normalized = requireNonBlank(value, message);
+  if (/[\r\n]/.test(normalized)) {
+    throw new Error(message);
+  }
+  return normalized;
+}
+
+function optionalTrimmed(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized || undefined;
+}
+
+export function normalizeMentionedAgents(value: string[] | undefined): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const normalized = new Set<string>();
+
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+
+    const agent = item.trim().toLowerCase();
+    if (
+      !agent ||
+      agent.length > MAX_LIVE_AGENT_MENTION_LENGTH ||
+      /[\r\n]/.test(agent) ||
+      /%(?:0a|0d)/i.test(agent)
+    ) {
+      continue;
+    }
+
+    normalized.add(agent);
+  }
+
+  return Array.from(normalized);
 }
 
 function parseLiveChatEventFrame(frame: string): LiveChatEvent | null {
@@ -216,6 +265,15 @@ export async function sendLiveChatMessage(input: {
   replyToName?: string;
   mentionedAgents?: string[];
 }): Promise<void> {
+  const sessionId = requireNonBlank(
+    input.sessionId,
+    "Live chat session ID is required",
+  );
+  const text = requireNonBlank(input.text, "Live chat message text is required");
+  const room = optionalTrimmed(input.room) || "global";
+  const name = optionalTrimmed(input.name) || "";
+  const replyToName = optionalTrimmed(input.replyToName);
+  const mentionedAgents = normalizeMentionedAgents(input.mentionedAgents);
   const principalToken = await getPrincipalToken();
 
   const headers: Record<string, string> = {
@@ -224,26 +282,17 @@ export async function sendLiveChatMessage(input: {
   };
 
   const payload: Record<string, unknown> = {
-    text: input.text,
-    room: input.room || "global",
-    name: input.name || "",
-    senderType: input.senderType || "client",
-    sessionId: input.sessionId,
+    text,
+    room,
+    name,
+    senderType: input.senderType === "agent" ? "agent" : "client",
+    sessionId,
   };
-  if (input.replyToName?.trim()) {
-    payload.replyToName = input.replyToName.trim();
+  if (replyToName) {
+    payload.replyToName = replyToName;
   }
-  if (
-    Array.isArray(input.mentionedAgents) &&
-    input.mentionedAgents.length > 0
-  ) {
-    payload.mentionedAgents = input.mentionedAgents
-      .map((value) =>
-        String(value || "")
-          .trim()
-          .toLowerCase(),
-      )
-      .filter(Boolean);
+  if (mentionedAgents.length > 0) {
+    payload.mentionedAgents = mentionedAgents;
   }
   const res = await fetch(toSSEHttpUrl("/api/v1/chat/live/message"), {
     method: "POST",
@@ -283,12 +332,16 @@ export async function updateLiveChatConfig(input: {
   >;
   configKey: string;
 }): Promise<LiveAgentPolicy> {
+  const configKey = requireHeaderValue(
+    input.configKey,
+    "Live chat config key is required",
+  );
   const res = await fetch(toSSEHttpUrl("/api/v1/chat/live/config"), {
     method: "PUT",
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      "X-Live-Config-Key": input.configKey,
+      "X-Live-Config-Key": configKey,
     },
     body: JSON.stringify(input.policy),
   });

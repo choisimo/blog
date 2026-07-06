@@ -38,6 +38,108 @@ function isChatSessionLite(item: unknown): item is ChatSessionLite {
   );
 }
 
+const MINIMAP_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const MINIMAP_CONTROL_REPLACE_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const DEFAULT_HISTORY_LABEL = 'Visited posts history';
+const DEFAULT_TRIGGER_LABEL = 'Open visited posts history';
+const DEFAULT_LIST_LABEL = 'Visited posts list';
+const DEFAULT_CLOSE_LABEL = 'Close history';
+
+function decodeMinimapValue(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeMinimapLine(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, ' ')
+    .replace(MINIMAP_CONTROL_REPLACE_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized || null;
+}
+
+function normalizeOptionalMinimapText(value: unknown): string | undefined {
+  return normalizeMinimapLine(value) ?? undefined;
+}
+
+function normalizeVisitedPostTitle(value: unknown): string {
+  return normalizeMinimapLine(value) ?? 'Untitled post';
+}
+
+function normalizeVisitedPostPart(value: unknown): string {
+  return normalizeMinimapLine(value) ?? '';
+}
+
+function normalizeMinimapSessionId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  const decoded = decodeMinimapValue(normalized);
+  if (
+    !normalized ||
+    !decoded ||
+    [normalized, decoded].some((candidate) => MINIMAP_CONTROL_PATTERN.test(candidate))
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeMinimapArticleUrl(value: unknown): string | undefined {
+  const url = normalizeMinimapLine(value);
+  const decoded = url ? decodeMinimapValue(url) : null;
+  if (
+    !url ||
+    !decoded ||
+    /\s/.test(url) ||
+    MINIMAP_CONTROL_PATTERN.test(decoded)
+  ) return undefined;
+  if (url.startsWith('/') && !url.startsWith('//')) return url;
+
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      !parsed.username &&
+      !parsed.password
+      ? parsed.toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeMinimapUpdatedAt(value: unknown): string | number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const label = normalizeMinimapLine(value);
+  return label ?? undefined;
+}
+
+export function normalizeMinimapChatSession(
+  item: unknown
+): ChatSessionLite | null {
+  if (!isChatSessionLite(item)) return null;
+  const id = normalizeMinimapSessionId(item.id);
+  if (!id) return null;
+
+  const title = normalizeMinimapLine(item.title) ?? undefined;
+  const articleTitle = normalizeMinimapLine(item.articleTitle) ?? undefined;
+  const articleUrl = normalizeMinimapArticleUrl(item.articleUrl);
+  const updatedAt = normalizeMinimapUpdatedAt(item.updatedAt);
+
+  return {
+    id,
+    ...(title ? { title } : {}),
+    ...(articleTitle ? { articleTitle } : {}),
+    ...(articleUrl ? { articleUrl } : {}),
+    ...(updatedAt !== undefined ? { updatedAt } : {}),
+  };
+}
+
 function FallbackAvatar({ title }: { title: string }) {
   const ch = (title || '?').trim().charAt(0).toUpperCase() || '?';
   return (
@@ -54,10 +156,20 @@ type VisitedPostsMinimapMode = 'default' | 'fab';
 
 type VisitedPostsMinimapProps = {
   mode?: VisitedPostsMinimapMode;
+  label?: string;
+  title?: string;
+  triggerLabel?: string;
+  listLabel?: string;
+  closeLabel?: string;
 };
 
 export function VisitedPostsMinimap({
   mode = 'default',
+  label = DEFAULT_HISTORY_LABEL,
+  title,
+  triggerLabel = DEFAULT_TRIGGER_LABEL,
+  listLabel = DEFAULT_LIST_LABEL,
+  closeLabel = DEFAULT_CLOSE_LABEL,
 }: VisitedPostsMinimapProps = {}) {
   const { items, storageAvailable } = useVisitedPostsState();
   const [open, setOpen] = useState(false);
@@ -71,6 +183,11 @@ export function VisitedPostsMinimap({
 
   const topStack = useMemo(() => items.slice(0, 4), [items]);
   const externalTrigger = mode === 'fab';
+  const safeHistoryLabel = normalizeMinimapLine(label) ?? DEFAULT_HISTORY_LABEL;
+  const safeTitle = normalizeOptionalMinimapText(title);
+  const safeTriggerLabel = normalizeMinimapLine(triggerLabel) ?? DEFAULT_TRIGGER_LABEL;
+  const safeListLabel = normalizeMinimapLine(listLabel) ?? DEFAULT_LIST_LABEL;
+  const safeCloseLabel = normalizeMinimapLine(closeLabel) ?? DEFAULT_CLOSE_LABEL;
 
   const go = (p: VisitedPostItem) => {
     setOpen(false);
@@ -96,7 +213,10 @@ export function VisitedPostsMinimap({
           setChatSessions([]);
           return;
         }
-        const validSessions = parsed.filter(isChatSessionLite);
+        const validSessions = parsed.flatMap(item => {
+          const normalized = normalizeMinimapChatSession(item);
+          return normalized ? [normalized] : [];
+        });
         setChatSessions(validSessions);
       } catch {
         setChatSessions([]);
@@ -144,6 +264,7 @@ export function VisitedPostsMinimap({
     <SheetContent
       side={isMobile ? 'bottom' : 'right'}
       hideClose
+      aria-label={safeHistoryLabel}
       className={cn(
         'p-0 bg-background/95',
         // Only apply backdrop-blur on desktop for performance
@@ -153,6 +274,7 @@ export function VisitedPostsMinimap({
           : 'h-full w-[420px] border-l border-border/40'
       )}
       aria-describedby={undefined}
+      title={safeTitle}
       style={
         isMobile
           ? { paddingBottom: 'env(safe-area-inset-bottom)' }
@@ -165,7 +287,7 @@ export function VisitedPostsMinimap({
           )}
           {/* Title row with count */}
           <div className='flex items-center gap-3'>
-            <MapIcon className='h-5 w-5 text-muted-foreground' />
+            <MapIcon aria-hidden='true' className='h-5 w-5 text-muted-foreground' />
             <SheetTitle className='text-base font-semibold'>
               방문 기록
             </SheetTitle>
@@ -175,34 +297,38 @@ export function VisitedPostsMinimap({
             <SheetClose asChild>
               <button
                 type='button'
-                aria-label='close history'
+                aria-label={safeCloseLabel}
                 className='ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors'
               >
-                <X className='h-4 w-4' />
+                <X aria-hidden='true' className='h-4 w-4' />
               </button>
             </SheetClose>
           </div>
           {/* Thumbnail stack row */}
           <div className='flex items-center gap-2 mt-3'>
             <div className='relative h-8 w-[100px]' aria-hidden>
-              {topStack.map((p, i) => (
-                <div
-                  key={p.path}
-                  className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
-                  style={{ left: i * 20 }}
-                  title={p.title}
-                >
-                  {p.coverImage ? (
-                    <OptimizedImage
-                      src={p.coverImage}
-                      alt=''
-                      className='h-full w-full object-cover'
-                    />
-                  ) : (
-                    <FallbackAvatar title={p.title} />
-                  )}
-                </div>
-              ))}
+              {topStack.map((p, i) => {
+                const postTitle = normalizeVisitedPostTitle(p.title);
+
+                return (
+                  <div
+                    key={p.path}
+                    className='absolute top-0 h-8 w-8 overflow-hidden rounded-full ring-2 ring-background shadow'
+                    style={{ left: i * 20 }}
+                    title={postTitle}
+                  >
+                    {p.coverImage ? (
+                      <OptimizedImage
+                        src={p.coverImage}
+                        alt=''
+                        className='h-full w-full object-cover'
+                      />
+                    ) : (
+                      <FallbackAvatar title={postTitle} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
           {/* View toggle buttons */}
@@ -216,6 +342,7 @@ export function VisitedPostsMinimap({
                   : 'text-muted-foreground hover:bg-muted-foreground/10'
               )}
               onClick={() => setView('list')}
+              aria-pressed={view === 'list'}
             >
               리스트
             </button>
@@ -228,6 +355,7 @@ export function VisitedPostsMinimap({
                   : 'text-muted-foreground hover:bg-muted-foreground/10'
               )}
               onClick={() => setView('graph')}
+              aria-pressed={view === 'graph'}
             >
               그래프
             </button>
@@ -256,46 +384,55 @@ export function VisitedPostsMinimap({
                 if (p) go(p);
               }
             }}
-            aria-label='Visited posts list'
+            aria-label={safeListLabel}
           >
             <ul className='space-y-2'>
-              {items.map((p, idx) => (
-                <li key={p.path}>
-                  <button
-                    type='button'
-                    onClick={() => go(p)}
-                    className={cn(
-                      'group flex w-full items-center gap-4 rounded-xl px-4 py-4 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring',
-                      activeIndex === idx && 'ring-2 ring-primary bg-primary/5'
-                    )}
-                  >
-                    <div className='h-12 w-12 overflow-hidden rounded-lg shrink-0'>
-                      {p.coverImage ? (
-                        <OptimizedImage
-                          src={p.coverImage}
-                          alt=''
-                          className='h-12 w-12 object-cover'
-                        />
-                      ) : (
-                        <div className='flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-primary/80 to-primary text-primary-foreground text-sm font-bold'>
-                          {(p.title || '?').charAt(0).toUpperCase()}
-                        </div>
+              {items.map((p, idx) => {
+                const postTitle = normalizeVisitedPostTitle(p.title);
+                const postYear = normalizeVisitedPostPart(p.year);
+                const postSlug = normalizeVisitedPostPart(p.slug);
+                const postMeta = [postYear, postSlug].filter(Boolean).join('/') || 'unknown';
+
+                return (
+                  <li key={p.path}>
+                    <button
+                      type='button'
+                      aria-label={`열기: ${postTitle}`}
+                      onClick={() => go(p)}
+                      className={cn(
+                        'group flex w-full items-center gap-4 rounded-xl px-4 py-4 text-left transition-colors hover:bg-muted/60 focus:outline-none focus:ring-2 focus:ring-ring',
+                        activeIndex === idx && 'ring-2 ring-primary bg-primary/5'
                       )}
-                    </div>
-                    <div className='min-w-0 flex-1'>
-                      <div className='text-sm font-medium leading-snug text-left group-hover:text-primary line-clamp-2'>
-                        {p.title}
+                    >
+                      <div className='h-12 w-12 overflow-hidden rounded-lg shrink-0'>
+                        {p.coverImage ? (
+                          <OptimizedImage
+                            src={p.coverImage}
+                            alt=''
+                            className='h-12 w-12 object-cover'
+                          />
+                        ) : (
+                          <div
+                            aria-hidden='true'
+                            className='flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-primary/80 to-primary text-primary-foreground text-sm font-bold'
+                          >
+                            {postTitle.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                       </div>
-                      <div className='flex items-center gap-1.5 mt-1 text-xs text-muted-foreground'>
-                        <Clock className='h-3.5 w-3.5' />
-                        <span>
-                          {p.year}/{p.slug}
-                        </span>
+                      <div className='min-w-0 flex-1'>
+                        <div className='text-sm font-medium leading-snug text-left group-hover:text-primary line-clamp-2'>
+                          {postTitle}
+                        </div>
+                        <div className='flex items-center gap-1.5 mt-1 text-xs text-muted-foreground'>
+                          <Clock aria-hidden='true' className='h-3.5 w-3.5' />
+                          <span>{postMeta}</span>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                </li>
-              ))}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
             {/* 기록 지우기 버튼 */}
             <div className='mt-6 pt-4 border-t'>
@@ -315,6 +452,10 @@ export function VisitedPostsMinimap({
             isMobile ? 'max-h-[calc(75vh-160px)]' : 'flex-1'
           )}>
             {items.map(p => {
+              const postTitle = normalizeVisitedPostTitle(p.title);
+              const postYear = normalizeVisitedPostPart(p.year);
+              const postSlug = normalizeVisitedPostPart(p.slug);
+              const postMeta = [postYear, postSlug].filter(Boolean).join('/') || 'unknown';
               const related = chatSessions.filter(s =>
                 s.articleUrl && s.articleUrl.endsWith(p.path)
               );
@@ -324,9 +465,9 @@ export function VisitedPostsMinimap({
                   key={p.path}
                   className='rounded-xl border bg-card/50 p-4 shadow-sm'
                 >
-                  <div className='text-sm font-semibold truncate'>{p.title}</div>
+                  <div className='text-sm font-semibold truncate'>{postTitle}</div>
                   <div className='text-xs text-muted-foreground mb-2'>
-                    {p.year}/{p.slug}
+                    {postMeta}
                   </div>
                   <ul className='mt-2 space-y-2'>
                     {related.map(s => {
@@ -350,7 +491,7 @@ export function VisitedPostsMinimap({
                           />
                           <div className='min-w-0 flex-1'>
                             <span className='text-sm font-medium truncate block'>
-                              {s.title || s.articleTitle || 'AI Chat 세션'}
+                              {normalizeMinimapLine(s.title || s.articleTitle) ?? 'AI Chat 세션'}
                             </span>
                             {s.updatedAt && (
                               <span className='text-xs text-muted-foreground'>
@@ -382,11 +523,17 @@ export function VisitedPostsMinimap({
                   className='h-10 px-4'
                   disabled={!selectedSessionIds.length}
                   onClick={() => {
-                    if (!selectedSessionIds.length) return;
+                    const validSelectedSessionIds = selectedSessionIds.flatMap(
+                      id => {
+                        const normalized = normalizeMinimapSessionId(id);
+                        return normalized ? [normalized] : [];
+                      }
+                    );
+                    if (!validSelectedSessionIds.length) return;
                     try {
                       window.dispatchEvent(
                         new CustomEvent('aiChat:aggregateFromGraph', {
-                          detail: { sessionIds: selectedSessionIds },
+                          detail: { sessionIds: validSelectedSessionIds },
                         })
                       );
                     } catch {
@@ -417,10 +564,10 @@ export function VisitedPostsMinimap({
         <SheetTrigger asChild>
           <button
             type='button'
-            aria-label='Open visited posts history'
+            aria-label={safeTriggerLabel}
             className='flex h-11 items-center gap-2 rounded-full bg-background/95 px-3 shadow-lg ring-1 ring-border/50 backdrop-blur hover:bg-muted/80 transition-colors'
           >
-            <Clock className='h-4 w-4 text-muted-foreground' />
+            <Clock aria-hidden='true' className='h-4 w-4 text-muted-foreground' />
             <span className='text-xs font-medium text-foreground tabular-nums'>
               {items.length}
             </span>

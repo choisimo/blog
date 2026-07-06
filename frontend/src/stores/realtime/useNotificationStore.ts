@@ -64,9 +64,76 @@ export interface NotificationState {
 // ============================================================================
 
 const MAX_NOTIFICATIONS = 50;
+const MAX_NOTIFICATION_TEXT_LENGTH = 500;
+const MAX_NOTIFICATION_ID_LENGTH = 160;
+const ALLOWED_NOTIFICATION_TYPES = new Set<NotificationType>([
+  "ai_task_complete",
+  "ai_task_error",
+  "rag_complete",
+  "chat_task_complete",
+  "agent_complete",
+  "system",
+  "info",
+  "error",
+  "success",
+]);
 
 function generateId(): string {
   return `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeNotificationText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  return normalized.length > maxLength
+    ? `${normalized.slice(0, maxLength).trim()}...`
+    : normalized;
+}
+
+function normalizeNotificationId(value: unknown): string | null {
+  const normalized = normalizeNotificationText(value, MAX_NOTIFICATION_ID_LENGTH);
+  if (!normalized || /[\r\n]/.test(normalized) || /%(?:0a|0d)/i.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeNotificationType(value: unknown): NotificationType | null {
+  return typeof value === "string" && ALLOWED_NOTIFICATION_TYPES.has(value as NotificationType)
+    ? (value as NotificationType)
+    : null;
+}
+
+export function normalizeNotification(
+  notification: Partial<AppNotification>,
+): AppNotification | null {
+  const type = normalizeNotificationType(notification.type);
+  const title = normalizeNotificationText(notification.title, MAX_NOTIFICATION_TEXT_LENGTH);
+  const message = normalizeNotificationText(notification.message, MAX_NOTIFICATION_TEXT_LENGTH);
+  if (!type || !title || !message) return null;
+
+  const id = normalizeNotificationId(notification.id) ?? generateId();
+  const createdAt = normalizeNotificationText(notification.createdAt, MAX_NOTIFICATION_ID_LENGTH);
+  const timestamp =
+    createdAt && !Number.isNaN(Date.parse(createdAt))
+      ? new Date(createdAt).toISOString()
+      : new Date().toISOString();
+  const sourceId = normalizeNotificationId(notification.sourceId) ?? undefined;
+
+  return {
+    id,
+    type,
+    title,
+    message,
+    createdAt: timestamp,
+    read: notification.read === true,
+    payload:
+      notification.payload && typeof notification.payload === "object"
+        ? notification.payload
+        : undefined,
+    sourceId,
+  };
 }
 
 function dedupeNotifications(
@@ -103,13 +170,8 @@ export const useNotificationStore = create<NotificationState>()(
       unreadCount: 0,
 
       addNotification: (notif) => {
-        const id = notif.id ?? generateId();
-        const newNotif: AppNotification = {
-          ...notif,
-          id,
-          createdAt: notif.createdAt ?? new Date().toISOString(),
-          read: notif.read ?? false,
-        };
+        const newNotif = normalizeNotification(notif);
+        if (!newNotif) return "";
 
         set((state) => {
           const next = dedupeNotifications(state.notifications, [newNotif]);
@@ -119,12 +181,15 @@ export const useNotificationStore = create<NotificationState>()(
           };
         });
 
-        return id;
+        return newNotif.id;
       },
 
       upsertNotifications: (notifications) => {
         set((state) => {
-          const next = dedupeNotifications(state.notifications, notifications);
+          const normalizedNotifications = notifications
+            .map(normalizeNotification)
+            .filter((item): item is AppNotification => item !== null);
+          const next = dedupeNotifications(state.notifications, normalizedNotifications);
           return {
             notifications: next,
             unreadCount: next.filter((n) => !n.read).length,

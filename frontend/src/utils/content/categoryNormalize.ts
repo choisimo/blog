@@ -154,10 +154,13 @@ export function normalizeCategoryName(category: unknown): string {
   // Handle null, undefined, or non-string values
   if (!category || typeof category !== 'string') return 'General';
 
-  const lower = category.toLowerCase().trim();
+  const normalized = category.trim();
+  if (!normalized) return 'General';
+
+  const lower = normalized.toLowerCase();
   const reverseMap = getReverseMap();
 
-  return reverseMap[lower] || category;
+  return reverseMap[lower] || normalized;
 }
 
 /**

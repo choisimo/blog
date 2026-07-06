@@ -61,6 +61,14 @@ export interface CuriositySettings {
 const STORAGE_KEY = 'curiosity.events';
 const SETTINGS_KEY = 'curiosity.settings';
 const SCHEMA_VERSION = 1;
+const MAX_EVENT_ID_LENGTH = 160;
+const MAX_CONTEXT_TEXT_LENGTH = 500;
+const MAX_CONTEXT_TAGS = 20;
+const MAX_UA_LENGTH = 512;
+const MAX_EVENTS_LIMIT = 5000;
+const MAX_RETENTION_DAYS = 365;
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 const DEFAULT_SETTINGS: CuriositySettings = {
   enabled: true,
@@ -68,6 +76,14 @@ const DEFAULT_SETTINGS: CuriositySettings = {
   maxEvents: 1500,
   retentionDays: 90,
 };
+
+const CURIOSITY_EVENT_TYPES: CuriosityEventType[] = [
+  'post_view',
+  'memo_create',
+  'tag_click',
+  'category_filter',
+  'search',
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Utility Functions
@@ -104,6 +120,153 @@ function inferReferrer(): CuriosityEventMeta['ref'] {
   return 'direct';
 }
 
+function isCuriosityEventType(value: unknown): value is CuriosityEventType {
+  return typeof value === 'string' && CURIOSITY_EVENT_TYPES.includes(value as CuriosityEventType);
+}
+
+function normalizePositiveInteger(
+  value: unknown,
+  fallback: number,
+  max: number
+): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(1, Math.floor(value)))
+    : fallback;
+}
+
+function normalizeSettings(value: unknown): CuriositySettings {
+  const candidate = value && typeof value === 'object'
+    ? value as Partial<CuriositySettings>
+    : {};
+
+  return {
+    enabled: typeof candidate.enabled === 'boolean'
+      ? candidate.enabled
+      : DEFAULT_SETTINGS.enabled,
+    storeSearchText: typeof candidate.storeSearchText === 'boolean'
+      ? candidate.storeSearchText
+      : DEFAULT_SETTINGS.storeSearchText,
+    maxEvents: normalizePositiveInteger(
+      candidate.maxEvents,
+      DEFAULT_SETTINGS.maxEvents,
+      MAX_EVENTS_LIMIT
+    ),
+    retentionDays: normalizePositiveInteger(
+      candidate.retentionDays,
+      DEFAULT_SETTINGS.retentionDays,
+      MAX_RETENTION_DAYS
+    ),
+  };
+}
+
+function normalizeSingleLineText(value: unknown, maxLength = MAX_CONTEXT_TEXT_LENGTH): string | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength || SINGLE_LINE_CONTROL_PATTERN.test(normalized)) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+function normalizeMultilineText(value: unknown, maxLength = MAX_CONTEXT_TEXT_LENGTH): string | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  const normalized = value
+    .replace(/\r\n?/g, '\n')
+    .replace(MULTILINE_CONTROL_PATTERN, ' ')
+    .trim();
+  if (!normalized) return undefined;
+
+  return normalized.slice(0, maxLength);
+}
+
+function normalizeTags(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const tags = value
+    .slice(0, MAX_CONTEXT_TAGS)
+    .map(tag => normalizeSingleLineText(tag))
+    .filter((tag): tag is string => Boolean(tag));
+
+  return tags.length > 0 ? tags : undefined;
+}
+
+function normalizeEventContext(value: unknown): CuriosityEventContext | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const context = value as CuriosityEventContext;
+  const normalized: CuriosityEventContext = {};
+
+  const postId = normalizeSingleLineText(context.postId);
+  const path = normalizeSingleLineText(context.path);
+  const title = normalizeSingleLineText(context.title);
+  const tags = normalizeTags(context.tags);
+  const selectionHash = normalizeSingleLineText(context.selectionHash);
+  const snippet = normalizeMultilineText(context.snippet, 200);
+  const tag = normalizeSingleLineText(context.tag);
+  const category = normalizeSingleLineText(context.category);
+  const queryHash = normalizeSingleLineText(context.queryHash);
+  const queryText = normalizeMultilineText(context.queryText);
+
+  if (postId) normalized.postId = postId;
+  if (path) normalized.path = path;
+  if (title) normalized.title = title;
+  if (tags) normalized.tags = tags;
+  if (selectionHash) normalized.selectionHash = selectionHash;
+  if (snippet) normalized.snippet = snippet;
+  if (tag) normalized.tag = tag;
+  if (category) normalized.category = category;
+  if (queryHash) normalized.queryHash = queryHash;
+  if (queryText) normalized.queryText = queryText;
+
+  return normalized;
+}
+
+function normalizeEventMeta(value: unknown): CuriosityEventMeta | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const meta = value as CuriosityEventMeta;
+  if (typeof meta.version !== 'number' || !Number.isFinite(meta.version)) {
+    return null;
+  }
+
+  const normalized: CuriosityEventMeta = {
+    version: Math.max(1, Math.floor(meta.version)),
+  };
+  const ua = normalizeSingleLineText(meta.ua, MAX_UA_LENGTH);
+  if (ua) normalized.ua = ua;
+  if (
+    meta.ref === 'search' ||
+    meta.ref === 'tag' ||
+    meta.ref === 'direct' ||
+    meta.ref === 'internal'
+  ) {
+    normalized.ref = meta.ref;
+  }
+
+  return normalized;
+}
+
+function normalizeCuriosityEvent(value: unknown): CuriosityEvent | null {
+  if (!value || typeof value !== 'object') return null;
+  const event = value as CuriosityEvent;
+  const id = normalizeSingleLineText(event.id, MAX_EVENT_ID_LENGTH);
+  const context = normalizeEventContext(event.context);
+  const meta = normalizeEventMeta(event.meta);
+
+  if (!id || !isCuriosityEventType(event.type) || !Number.isFinite(event.ts) || !context || !meta) {
+    return null;
+  }
+
+  return {
+    id,
+    type: event.type,
+    ts: event.ts,
+    context,
+    meta,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Storage Layer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -121,7 +284,7 @@ class CuriosityStorage {
       // Load settings
       const settingsRaw = localStorage.getItem(SETTINGS_KEY);
       if (settingsRaw) {
-        this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(settingsRaw) };
+        this.settings = normalizeSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(settingsRaw) });
       }
 
       // Load events
@@ -129,10 +292,9 @@ class CuriosityStorage {
       if (eventsRaw) {
         const parsed = JSON.parse(eventsRaw);
         if (Array.isArray(parsed)) {
-          this.events = parsed.filter(
-            (e): e is CuriosityEvent =>
-              e && typeof e.id === 'string' && typeof e.ts === 'number'
-          );
+          this.events = parsed
+            .map(normalizeCuriosityEvent)
+            .filter((event): event is CuriosityEvent => Boolean(event));
           this.cleanupOldEvents();
         }
       }
@@ -183,7 +345,7 @@ class CuriosityStorage {
   }
 
   updateSettings(updates: Partial<CuriositySettings>): void {
-    this.settings = { ...this.settings, ...updates };
+    this.settings = normalizeSettings({ ...this.settings, ...updates });
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
     } catch { void 0; }
@@ -203,10 +365,9 @@ class CuriosityStorage {
       const parsed = JSON.parse(json);
       if (!Array.isArray(parsed)) return false;
 
-      const valid = parsed.filter(
-        (e): e is CuriosityEvent =>
-          e && typeof e.id === 'string' && typeof e.ts === 'number'
-      );
+      const valid = parsed
+        .map(normalizeCuriosityEvent)
+        .filter((event): event is CuriosityEvent => Boolean(event));
 
       this.events = [...this.events, ...valid];
       this.cleanupOldEvents();
@@ -252,10 +413,13 @@ class CuriosityTracker {
    * Track a post view event
    */
   trackPostView(postId: string, path: string, title: string, tags: string[] = []): void {
+    const context = normalizeEventContext({ postId, path, title, tags });
+    if (!context?.postId || !context.path || !context.title) return;
+
     // Debounce: Don't track same post within 5 seconds
     if (
       this.lastPostView &&
-      this.lastPostView.postId === postId &&
+      this.lastPostView.postId === context.postId &&
       Date.now() - this.lastPostView.ts < 5000
     ) {
       return;
@@ -265,12 +429,7 @@ class CuriosityTracker {
       id: generateEventId(),
       type: 'post_view',
       ts: Date.now(),
-      context: {
-        postId,
-        path,
-        title,
-        tags,
-      },
+      context,
       meta: {
         version: SCHEMA_VERSION,
         ref: inferReferrer(),
@@ -278,7 +437,7 @@ class CuriosityTracker {
     };
 
     this.storage.addEvent(event);
-    this.lastPostView = { postId, ts: Date.now() };
+    this.lastPostView = { postId: context.postId, ts: Date.now() };
 
     // Dispatch event for FAB/other components to listen
     window.dispatchEvent(
@@ -294,15 +453,14 @@ class CuriosityTracker {
     snippet?: string,
     selectionHash?: string
   ): void {
+    const context = normalizeEventContext({ postId, snippet, selectionHash });
+    if (!context?.postId) return;
+
     const event: CuriosityEvent = {
       id: generateEventId(),
       type: 'memo_create',
       ts: Date.now(),
-      context: {
-        postId,
-        snippet: snippet?.slice(0, 200), // Limit snippet length
-        selectionHash,
-      },
+      context,
       meta: {
         version: SCHEMA_VERSION,
       },
@@ -318,14 +476,14 @@ class CuriosityTracker {
    * Track tag click
    */
   trackTagClick(tag: string, fromPostId?: string): void {
+    const context = normalizeEventContext({ tag, postId: fromPostId });
+    if (!context?.tag) return;
+
     const event: CuriosityEvent = {
       id: generateEventId(),
       type: 'tag_click',
       ts: Date.now(),
-      context: {
-        tag,
-        postId: fromPostId,
-      },
+      context,
       meta: {
         version: SCHEMA_VERSION,
       },
@@ -341,13 +499,14 @@ class CuriosityTracker {
    * Track category filter
    */
   trackCategoryFilter(category: string): void {
+    const context = normalizeEventContext({ category });
+    if (!context?.category) return;
+
     const event: CuriosityEvent = {
       id: generateEventId(),
       type: 'category_filter',
       ts: Date.now(),
-      context: {
-        category,
-      },
+      context,
       meta: {
         version: SCHEMA_VERSION,
       },
@@ -364,13 +523,16 @@ class CuriosityTracker {
    */
   trackSearch(query: string): void {
     const settings = this.storage.getSettings();
+    const normalizedQuery = normalizeMultilineText(query);
+    if (!normalizedQuery) return;
+
     const event: CuriosityEvent = {
       id: generateEventId(),
       type: 'search',
       ts: Date.now(),
       context: {
-        queryHash: hashString(query),
-        queryText: settings.storeSearchText ? query : undefined,
+        queryHash: hashString(normalizedQuery),
+        queryText: settings.storeSearchText ? normalizedQuery : undefined,
       },
       meta: {
         version: SCHEMA_VERSION,
@@ -396,16 +558,21 @@ class CuriosityTracker {
   }
 
   getEventsByTimeRange(startTs: number, endTs: number): CuriosityEvent[] {
+    if (!Number.isFinite(startTs) || !Number.isFinite(endTs) || startTs > endTs) {
+      return [];
+    }
+
     return this.storage.getEvents().filter(
       (e) => e.ts >= startTs && e.ts <= endTs
     );
   }
 
   getRecentEvents(limit: number = 50): CuriosityEvent[] {
+    const safeLimit = normalizePositiveInteger(limit, 50, MAX_EVENTS_LIMIT);
     return this.storage
       .getEvents()
       .sort((a, b) => b.ts - a.ts)
-      .slice(0, limit);
+      .slice(0, safeLimit);
   }
 
   getStats() {

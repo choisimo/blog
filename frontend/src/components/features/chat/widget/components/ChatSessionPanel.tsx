@@ -2,6 +2,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ChatSessionMeta, QuestionMode } from "../types";
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const ANSI_ESCAPE_DETECTOR = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/;
+const PANEL_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const PANEL_ID_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+
 type ChatSessionPanelProps = {
   sessions: ChatSessionMeta[];
   selectedSessionIds: string[];
@@ -13,6 +18,39 @@ type ChatSessionPanelProps = {
   isMobile: boolean;
 };
 
+function normalizePanelSessionId(sessionId: unknown): string | null {
+  if (typeof sessionId !== "string") return null;
+  const value = sessionId.trim();
+  if (!value || ANSI_ESCAPE_DETECTOR.test(value) || PANEL_ID_CONTROL_PATTERN.test(value)) return null;
+  return value;
+}
+
+function stripUnsafePanelControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(PANEL_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizePanelLabel(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafePanelControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizePanelDate(value: unknown): { label: string; dateTime?: string } {
+  const date = new Date(value as string | number | Date);
+  if (Number.isNaN(date.getTime())) {
+    return { label: "날짜 없음" };
+  }
+
+  return {
+    label: date.toLocaleDateString(),
+    dateTime: date.toISOString(),
+  };
+}
+
 export function ChatSessionPanel({
   sessions,
   selectedSessionIds,
@@ -23,16 +61,27 @@ export function ChatSessionPanel({
   isTerminal,
   isMobile,
 }: ChatSessionPanelProps) {
-  if (sessions.length === 0) return null;
+  const visibleSessions = sessions.flatMap((session) => {
+    const id = normalizePanelSessionId(session.id);
+    return id ? [{ ...session, id }] : [];
+  });
+  const normalizedSelectedSessionIds = selectedSessionIds.flatMap((id) => {
+    const normalized = normalizePanelSessionId(id);
+    return normalized ? [normalized] : [];
+  });
+
+  if (visibleSessions.length === 0) return null;
 
   return (
     <div
+      aria-label="최근 대화 세션"
       className={cn(
         "border-b shrink-0",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
           : "bg-muted/40",
       )}
+      role="region"
     >
       <div
         className={cn(
@@ -40,8 +89,11 @@ export function ChatSessionPanel({
           isMobile && "px-4",
         )}
       >
-        {sessions.map((s) => {
-          const checked = selectedSessionIds.includes(s.id);
+        {visibleSessions.map((s) => {
+          const checked = normalizedSelectedSessionIds.includes(s.id);
+          const title = normalizePanelLabel(s.title, "제목 없음");
+          const articleTitle = normalizePanelLabel(s.articleTitle);
+          const dateMeta = normalizePanelDate(s.updatedAt);
           return (
             <div
               key={s.id}
@@ -54,17 +106,20 @@ export function ChatSessionPanel({
             >
               <input
                 type="checkbox"
+                aria-label={`대화 선택: ${title}`}
                 className={cn("h-4 w-4 rounded", isTerminal && "accent-primary")}
                 checked={checked}
                 onChange={() => onToggleSession(s.id)}
               />
               <button
                 type="button"
+                aria-label={`대화 불러오기: ${title}`}
                 className="flex-1 text-left min-w-0"
                 onClick={() => {
                   onLoadSession(s.id);
                   onClose();
                 }}
+                title={title}
               >
                 <div
                   className={cn(
@@ -72,17 +127,17 @@ export function ChatSessionPanel({
                     isTerminal && "font-mono text-foreground",
                   )}
                 >
-                  {s.title || "제목 없음"}
+                  {title}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground truncate mt-0.5">
-                  {s.articleTitle && (
+                  {articleTitle && (
                     <span className="truncate max-w-[120px]">
-                      {s.articleTitle}
+                      {articleTitle}
                     </span>
                   )}
-                  <span className="shrink-0">
-                    {new Date(s.updatedAt).toLocaleDateString()}
-                  </span>
+                  <time className="shrink-0" dateTime={dateMeta.dateTime}>
+                    {dateMeta.label}
+                  </time>
                 </div>
               </button>
             </div>
@@ -96,9 +151,10 @@ export function ChatSessionPanel({
         )}
       >
         <span
+          aria-live="polite"
           className={cn("text-xs text-muted-foreground", isTerminal && "font-mono")}
         >
-          선택: {selectedSessionIds.length}개
+          선택: {normalizedSelectedSessionIds.length}개
         </span>
         <Button
           type="button"
@@ -108,7 +164,8 @@ export function ChatSessionPanel({
             isTerminal &&
               "bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30",
           )}
-          disabled={!selectedSessionIds.length}
+          disabled={!normalizedSelectedSessionIds.length}
+          aria-label={`선택한 대화 ${normalizedSelectedSessionIds.length}개 통합 질문하기`}
           onClick={onAggregateSelected}
         >
           통합 질문하기
@@ -143,6 +200,8 @@ export function ModeSelector({
         <div className="flex items-center gap-2 text-xs">
           <button
             type="button"
+            aria-label="모드 선택: 이 글 관련"
+            aria-pressed={questionMode === "article"}
             onClick={() => onModeChange("article")}
             className={cn(
               "flex items-center gap-1 px-2 py-1.5 border transition-all",
@@ -158,6 +217,8 @@ export function ModeSelector({
           </button>
           <button
             type="button"
+            aria-label="모드 선택: 자유 대화"
+            aria-pressed={questionMode === "general"}
             onClick={() => onModeChange("general")}
             className={cn(
               "flex items-center gap-1 px-2 py-1.5 border transition-all",
@@ -199,6 +260,8 @@ export function ModeSelector({
         <Button
           size="sm"
           type="button"
+          aria-label="모드 선택: 이 글 관련"
+          aria-pressed={questionMode === "article"}
           variant={questionMode === "article" ? "secondary" : "ghost"}
           className={cn(
             "h-7 px-3 text-xs rounded-full transition-colors",
@@ -215,6 +278,8 @@ export function ModeSelector({
         <Button
           size="sm"
           type="button"
+          aria-label="모드 선택: 자유 대화"
+          aria-pressed={questionMode === "general"}
           variant={questionMode === "general" ? "secondary" : "ghost"}
           className={cn(
             "h-7 px-3 text-xs rounded-full transition-colors",

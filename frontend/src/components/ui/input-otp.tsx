@@ -4,10 +4,47 @@ import { Dot } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeInputOTPText = (value: string | number): string =>
+  String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+
+const sanitizeInputOTPOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeInputOTPText(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeInputOTPNode = (
+  children: React.ReactNode
+): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeInputOTPText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeInputOTPNode);
+  }
+
+  return children;
+};
+
 const InputOTP = React.forwardRef<
   React.ElementRef<typeof OTPInput>,
   React.ComponentPropsWithoutRef<typeof OTPInput>
->(({ className, containerClassName, ...props }, ref) => (
+>(
+  (
+    { className, containerClassName, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => (
   <OTPInput
     ref={ref}
     containerClassName={cn(
@@ -15,23 +52,36 @@ const InputOTP = React.forwardRef<
       containerClassName
     )}
     className={cn('disabled:cursor-not-allowed', className)}
+    aria-label={sanitizeInputOTPOptionalText(ariaLabel)}
+    title={sanitizeInputOTPOptionalText(title)}
     {...props}
-  />
-));
+  >
+    {sanitizeInputOTPNode(children)}
+  </OTPInput>
+  )
+);
 InputOTP.displayName = 'InputOTP';
 
 const InputOTPGroup = React.forwardRef<
   React.ElementRef<'div'>,
   React.ComponentPropsWithoutRef<'div'>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('flex items-center', className)} {...props} />
+>(({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn('flex items-center', className)}
+    aria-label={sanitizeInputOTPOptionalText(ariaLabel)}
+    title={sanitizeInputOTPOptionalText(title)}
+    {...props}
+  >
+    {sanitizeInputOTPNode(children)}
+  </div>
 ));
 InputOTPGroup.displayName = 'InputOTPGroup';
 
 const InputOTPSlot = React.forwardRef<
   React.ElementRef<'div'>,
   React.ComponentPropsWithoutRef<'div'> & { index: number }
->(({ index, className, ...props }, ref) => {
+>(({ index, className, children, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext);
   const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index];
 
@@ -43,9 +93,12 @@ const InputOTPSlot = React.forwardRef<
         isActive && 'z-10 ring-2 ring-ring ring-offset-background',
         className
       )}
+      aria-label={sanitizeInputOTPOptionalText(ariaLabel)}
+      title={sanitizeInputOTPOptionalText(title)}
       {...props}
     >
-      {char}
+      {sanitizeInputOTPNode(char)}
+      {sanitizeInputOTPNode(children)}
       {hasFakeCaret && (
         <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
           <div className='h-4 w-px animate-caret-blink bg-foreground duration-1000' />
@@ -59,8 +112,15 @@ InputOTPSlot.displayName = 'InputOTPSlot';
 const InputOTPSeparator = React.forwardRef<
   React.ElementRef<'div'>,
   React.ComponentPropsWithoutRef<'div'>
->(({ ...props }, ref) => (
-  <div ref={ref} role='separator' {...props}>
+>(({ children, 'aria-label': ariaLabel, title, ...props }, ref) => (
+  <div
+    ref={ref}
+    role='separator'
+    aria-label={sanitizeInputOTPOptionalText(ariaLabel)}
+    title={sanitizeInputOTPOptionalText(title)}
+    {...props}
+  >
+    {sanitizeInputOTPNode(children)}
     <Dot />
   </div>
 ));

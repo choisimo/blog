@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCheckRAGHealth = vi.hoisted(() => vi.fn());
@@ -97,5 +97,100 @@ describe('RAGManager', () => {
 
     expect(await screen.findByText('Index status unavailable')).toBeInTheDocument();
     expect(screen.queryByText('Unable to fetch index status.')).not.toBeInTheDocument();
+  });
+
+  it('prevents Enter key duplicate semantic searches while a search is running', async () => {
+    let resolveSearch: (value: unknown) => void = () => undefined;
+    mockSemanticSearch.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSearch = resolve;
+      }),
+    );
+
+    render(<RAGManager />);
+
+    const input = screen.getByPlaceholderText('Enter search query...');
+    fireEvent.change(input, { target: { value: 'vector search' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(mockSemanticSearch).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled();
+    });
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockSemanticSearch).toHaveBeenCalledTimes(1);
+
+    resolveSearch({
+      ok: true,
+      data: {
+        results: [],
+      },
+    });
+  });
+
+  it('filters polluted collection selectors before rendering and status calls', async () => {
+    mockGetCollections.mockResolvedValue({
+      ok: true,
+      data: {
+        collections: [{ name: 'posts%0Aevil' }, { name: 'posts' }],
+        total: 2,
+      },
+    });
+
+    render(<RAGManager />);
+
+    expect(await screen.findByRole('button', { name: 'posts' })).toBeInTheDocument();
+    expect(screen.queryByText('posts%0Aevil')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'posts' }));
+
+    await waitFor(() => {
+      expect(mockGetCollectionStatus).toHaveBeenCalledWith('posts');
+    });
+    expect(mockGetCollectionStatus).not.toHaveBeenCalledWith('posts%0Aevil');
+  });
+
+  it('normalizes polluted RAG search result display metadata', async () => {
+    mockSemanticSearch.mockResolvedValue({
+      ok: true,
+      data: {
+        results: [
+          {
+            content: 'Result content',
+            score: 0.9,
+            metadata: {
+              title: 'Title%0Aevil',
+              category: 'blog%0Aevil',
+            },
+          },
+          {
+            content: 'Encoded control content',
+            score: 0.8,
+            metadata: {
+              title: 'Title%00evil',
+              category: 'docs%7F',
+            },
+          },
+        ],
+      },
+    });
+
+    render(<RAGManager />);
+
+    fireEvent.change(screen.getByPlaceholderText('Enter search query...'), {
+      target: { value: 'vector search' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByText('Untitled')).toBeInTheDocument();
+    expect(screen.getByText('-')).toBeInTheDocument();
+    expect(screen.queryByText('Title%0Aevil')).not.toBeInTheDocument();
+    expect(screen.queryByText('blog%0Aevil')).not.toBeInTheDocument();
+    expect(screen.queryByText('Title%00evil')).not.toBeInTheDocument();
+    expect(screen.queryByText('docs%7F')).not.toBeInTheDocument();
   });
 });

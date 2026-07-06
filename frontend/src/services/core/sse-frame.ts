@@ -3,9 +3,13 @@ export type SSEFrame = {
   data: string;
 };
 
+export const MAX_SSE_FRAME_CHARS = 1_000_000;
+
 export function findSSEFrameBoundary(
   buffer: string,
 ): { index: number; size: number } | null {
+  if (typeof buffer !== "string" || !buffer) return null;
+
   const lf = buffer.indexOf("\n\n");
   const crlf = buffer.indexOf("\r\n\r\n");
 
@@ -15,7 +19,27 @@ export function findSSEFrameBoundary(
   return lf < crlf ? { index: lf, size: 2 } : { index: crlf, size: 4 };
 }
 
+function normalizeEventName(value: string): string | null {
+  const normalized = value.trim();
+  if (!normalized || !/^[A-Za-z0-9_.:-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function stripUnsafeDataControls(value: string): string {
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+}
+
 export function parseSSEFrame(frameText: string): SSEFrame | null {
+  if (
+    typeof frameText !== "string" ||
+    frameText.length > MAX_SSE_FRAME_CHARS ||
+    !frameText.trim()
+  ) {
+    return null;
+  }
+
   const lines = frameText.split(/\r?\n/);
   let event: string | null = null;
   const dataLines: string[] = [];
@@ -26,12 +50,12 @@ export function parseSSEFrame(frameText: string): SSEFrame | null {
     if (line.startsWith(":")) continue;
 
     if (line.startsWith("event:")) {
-      event = line.slice(6).trim() || null;
+      event = normalizeEventName(line.slice(6));
       continue;
     }
 
     if (line.startsWith("data:")) {
-      dataLines.push(line.slice(5).trimStart());
+      dataLines.push(stripUnsafeDataControls(line.slice(5).trimStart()));
     }
   }
 

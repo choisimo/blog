@@ -20,6 +20,8 @@ import {
 
 type ContentSubtab = 'editor' | 'home-cta';
 
+const CONTENT_SUBTAB_IDS: ContentSubtab[] = ['editor', 'home-cta'];
+
 const CONTENT_SUBTABS: AdminSubtabsTab[] = [
   {
     id: 'editor',
@@ -39,6 +41,46 @@ export interface ContentManagerProps {
   onSubtabChange?: (subtab: ContentSubtab) => void;
 }
 
+function normalizeContentSubtab(value: unknown): ContentSubtab | null {
+  return CONTENT_SUBTAB_IDS.includes(value as ContentSubtab)
+    ? (value as ContentSubtab)
+    : null;
+}
+
+function decodeContentField(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function hasUnsafeLineOrPathChars(value: string): boolean {
+  const decoded = decodeContentField(value);
+  return !decoded || [value, decoded].some(candidate => /[\u0000-\u001F\u007F\s\\]/.test(candidate));
+}
+
+function normalizeCtaLabel(value: string): string | null {
+  const cleaned = value.replace(/[\r\n]+/g, ' ').trim();
+  return cleaned || null;
+}
+
+export function normalizeCtaHref(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (hasUnsafeLineOrPathChars(trimmed)) return null;
+  if (trimmed.startsWith('//')) return null;
+  if (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('?') ||
+    trimmed.startsWith('#') ||
+    /^https:\/\/[^\s]+$/.test(trimmed)
+  ) {
+    return trimmed;
+  }
+  return null;
+}
+
 export function ContentManager({
   initialHomeCtaBlock = null,
   subtab,
@@ -51,12 +93,15 @@ export function ContentManager({
   const [ctaLabel, setCtaLabel] = useState('');
   const [ctaHref, setCtaHref] = useState('');
   const [enabled, setEnabled] = useState(true);
+  const [homeCtaDirty, setHomeCtaDirty] = useState(false);
 
   const activeSubtab: ContentSubtab =
-    subtab === 'home-cta' || subtab === 'editor' ? subtab : localSubtab;
-  const setActiveSubtab = (nextSubtab: ContentSubtab) => {
-    setLocalSubtab(nextSubtab);
-    onSubtabChange?.(nextSubtab);
+    normalizeContentSubtab(subtab) ?? localSubtab;
+  const setActiveSubtab = (nextSubtab: string) => {
+    const safeSubtab = normalizeContentSubtab(nextSubtab);
+    if (!safeSubtab) return;
+    setLocalSubtab(safeSubtab);
+    onSubtabChange?.(safeSubtab);
   };
 
   const query = useQuery({
@@ -73,16 +118,18 @@ export function ContentManager({
     homeCtaUnavailable || (query.isLoading && !hasLoadedHomeCta);
 
   useEffect(() => {
+    if (homeCtaDirty) return;
     setMarkdown(block.markdown);
-    setCtaLabel(block.ctaLabel ?? '');
-    setCtaHref(block.ctaHref ?? '');
+    setCtaLabel(block.ctaLabel ? normalizeCtaLabel(block.ctaLabel) ?? '' : '');
+    setCtaHref(block.ctaHref ? normalizeCtaHref(block.ctaHref) ?? '' : '');
     setEnabled(block.enabled);
-  }, [block]);
+  }, [block, homeCtaDirty]);
 
   const saveMutation = useMutation({
     mutationFn: (draft: SiteContentBlockDraft) =>
       saveSiteContentBlock(HOME_AI_CTA_BLOCK_KEY, draft),
     onSuccess: saved => {
+      setHomeCtaDirty(false);
       queryClient.setQueryData(['site-content', HOME_AI_CTA_BLOCK_KEY], saved);
       toast({ title: 'Saved', description: 'Home CTA content updated.' });
     },
@@ -97,10 +144,20 @@ export function ContentManager({
 
   const handleSave = () => {
     if (homeCtaFormDisabled) return;
+    const safeCtaHref = normalizeCtaHref(ctaHref);
+    if (ctaHref.trim() && !safeCtaHref) {
+      toast({
+        title: 'Save failed',
+        description: 'CTA href is invalid.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     saveMutation.mutate({
       markdown,
-      ctaLabel: ctaLabel || null,
-      ctaHref: ctaHref || null,
+      ctaLabel: normalizeCtaLabel(ctaLabel),
+      ctaHref: safeCtaHref,
       enabled,
     });
   };
@@ -178,7 +235,10 @@ export function ContentManager({
             <Textarea
               id='home-ai-cta-markdown'
               value={markdown}
-              onChange={event => setMarkdown(event.target.value)}
+              onChange={event => {
+                setMarkdown(event.target.value);
+                setHomeCtaDirty(true);
+              }}
               rows={12}
               disabled={homeCtaFormDisabled}
               className='min-h-72 resize-y rounded-lg font-mono text-sm'
@@ -193,7 +253,10 @@ export function ContentManager({
               <Input
                 id='home-ai-cta-label'
                 value={ctaLabel}
-                onChange={event => setCtaLabel(event.target.value)}
+                onChange={event => {
+                  setCtaLabel(event.target.value);
+                  setHomeCtaDirty(true);
+                }}
                 disabled={homeCtaFormDisabled}
                 className='h-9 rounded-lg text-sm'
               />
@@ -205,7 +268,10 @@ export function ContentManager({
               <Input
                 id='home-ai-cta-href'
                 value={ctaHref}
-                onChange={event => setCtaHref(event.target.value)}
+                onChange={event => {
+                  setCtaHref(event.target.value);
+                  setHomeCtaDirty(true);
+                }}
                 disabled={homeCtaFormDisabled}
                 className='h-9 rounded-lg font-mono text-sm'
               />
@@ -222,7 +288,10 @@ export function ContentManager({
             <Switch
               id='home-ai-cta-enabled'
               checked={enabled}
-              onCheckedChange={setEnabled}
+              onCheckedChange={value => {
+                setEnabled(value);
+                setHomeCtaDirty(true);
+              }}
               disabled={homeCtaFormDisabled}
             />
           </div>

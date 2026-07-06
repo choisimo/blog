@@ -15,6 +15,12 @@ const LanguageContext = createContext<LanguageContextValue | undefined>(
 const STORAGE_KEY = 'site.language';
 const DEFAULT_LANGUAGE: SupportedLanguage = 'ko';
 
+const normalizeLanguage = (
+  value: unknown
+): SupportedLanguage | undefined => {
+  return value === 'ko' || value === 'en' ? value : undefined;
+};
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<SupportedLanguage>(
     DEFAULT_LANGUAGE
@@ -23,8 +29,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'ko' || stored === 'en') {
+      const stored = normalizeLanguage(localStorage.getItem(STORAGE_KEY));
+      if (stored) {
         setLanguageState(stored);
         return;
       }
@@ -41,7 +47,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (typeof window === 'undefined') return;
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== STORAGE_KEY) return;
-      const value = event.newValue === 'en' ? 'en' : 'ko';
+      const value = normalizeLanguage(event.newValue);
+      if (!value) return;
       setLanguageState(prev => (prev === value ? prev : value));
     };
     window.addEventListener('storage', handleStorage);

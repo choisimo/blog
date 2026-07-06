@@ -28,6 +28,47 @@ export const PERSIST_OPTIN_KEY = 'ai_chat_persist_optin';
 
 // Legacy key (마이그레이션용)
 const LEGACY_SESSION_KEY = 'ai_chat_current_session_key';
+const CHAT_SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const MAX_CHAT_TEXT_LENGTH = 1000;
+const MAX_CHAT_TITLE_LENGTH = 200;
+
+function normalizeSessionId(sessionId: unknown): string | null {
+  if (typeof sessionId !== 'string') return null;
+  const value = sessionId.trim();
+  if (!value || !CHAT_SESSION_ID_PATTERN.test(value) || /%(?:0a|0d)/i.test(value)) return null;
+  return value;
+}
+
+function requireSessionId(sessionId: unknown): string {
+  const normalized = normalizeSessionId(sessionId);
+  if (!normalized) {
+    throw new Error('Invalid chat session id');
+  }
+  return normalized;
+}
+
+function normalizeSingleLineText(value: unknown, maxLength = MAX_CHAT_TEXT_LENGTH): string {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength || /[\r\n]/.test(normalized)) return '';
+  return normalized;
+}
+
+function normalizeOptionalSingleLineText(value: unknown, maxLength = MAX_CHAT_TEXT_LENGTH): string | undefined {
+  return normalizeSingleLineText(value, maxLength) || undefined;
+}
+
+function normalizeBackendSessionTitle(title?: string): string {
+  if (title === undefined || title === null) {
+    return 'Nodove Blog Visitor Session';
+  }
+
+  const normalized = normalizeSingleLineText(title, MAX_CHAT_TITLE_LENGTH);
+  if (!normalized) {
+    throw new Error('Invalid chat session title');
+  }
+  return normalized;
+}
 
 // ============================================================================
 // Session ID Generation
@@ -52,18 +93,29 @@ export function generateLocalSessionId(): string {
 export function getStoredSessionId(): string | null {
   try {
     // 새 키에서 먼저 확인
-    const current = localStorage.getItem(SESSION_ID_KEY);
-    if (current && typeof current === 'string' && current.trim()) {
+    const current = normalizeSessionId(localStorage.getItem(SESSION_ID_KEY));
+    if (current) {
+      if (current !== localStorage.getItem(SESSION_ID_KEY)) {
+        localStorage.setItem(SESSION_ID_KEY, current);
+      }
       return current;
     }
 
+    if (localStorage.getItem(SESSION_ID_KEY)) {
+      localStorage.removeItem(SESSION_ID_KEY);
+    }
+
     // 레거시 키에서 마이그레이션
-    const legacy = localStorage.getItem(LEGACY_SESSION_KEY);
-    if (legacy && typeof legacy === 'string' && legacy.trim()) {
+    const legacy = normalizeSessionId(localStorage.getItem(LEGACY_SESSION_KEY));
+    if (legacy) {
       // 새 키로 마이그레이션
       localStorage.setItem(SESSION_ID_KEY, legacy);
       localStorage.removeItem(LEGACY_SESSION_KEY);
       return legacy;
+    }
+
+    if (localStorage.getItem(LEGACY_SESSION_KEY)) {
+      localStorage.removeItem(LEGACY_SESSION_KEY);
     }
   } catch {
     // localStorage 접근 실패
@@ -76,7 +128,13 @@ export function getStoredSessionId(): string | null {
  */
 export function storeSessionId(sessionId: string): void {
   try {
-    localStorage.setItem(SESSION_ID_KEY, sessionId);
+    const normalized = normalizeSessionId(sessionId);
+    if (!normalized) {
+      clearStoredSessionId();
+      return;
+    }
+
+    localStorage.setItem(SESSION_ID_KEY, normalized);
     // 레거시 키가 있다면 제거
     localStorage.removeItem(LEGACY_SESSION_KEY);
   } catch {
@@ -104,7 +162,7 @@ export function clearStoredSessionId(): void {
  * 세션의 메시지 저장 키 생성
  */
 export function getSessionMessagesKey(sessionId: string): string {
-  return `${SESSION_MESSAGES_PREFIX}${sessionId}`;
+  return `${SESSION_MESSAGES_PREFIX}${requireSessionId(sessionId)}`;
 }
 
 /**
@@ -112,6 +170,8 @@ export function getSessionMessagesKey(sessionId: string): string {
  */
 export function storeSessionMessages<T>(sessionId: string, messages: T[]): void {
   try {
+    const normalizedSessionId = normalizeSessionId(sessionId);
+    if (!normalizedSessionId) return;
     localStorage.setItem(getSessionMessagesKey(sessionId), JSON.stringify(messages));
   } catch {
     // localStorage 접근 실패 또는 용량 초과
@@ -123,7 +183,9 @@ export function storeSessionMessages<T>(sessionId: string, messages: T[]): void 
  */
 export function loadSessionMessages<T>(sessionId: string): T[] {
   try {
-    const raw = localStorage.getItem(getSessionMessagesKey(sessionId));
+    const normalizedSessionId = normalizeSessionId(sessionId);
+    if (!normalizedSessionId) return [];
+    const raw = localStorage.getItem(getSessionMessagesKey(normalizedSessionId));
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -141,7 +203,9 @@ export function loadSessionMessages<T>(sessionId: string): T[] {
  */
 export function clearSessionMessages(sessionId: string): void {
   try {
-    localStorage.removeItem(getSessionMessagesKey(sessionId));
+    const normalizedSessionId = normalizeSessionId(sessionId);
+    if (!normalizedSessionId) return;
+    localStorage.removeItem(getSessionMessagesKey(normalizedSessionId));
   } catch {
     // localStorage 접근 실패
   }
@@ -163,6 +227,52 @@ export type ChatSessionMeta = {
   articleTitle?: string;
 };
 
+function normalizeSessionMode(value: unknown): ChatSessionMeta['mode'] {
+  return value === 'general' ? 'general' : 'article';
+}
+
+function normalizeStringField(value: unknown): string {
+  return normalizeSingleLineText(value);
+}
+
+function normalizeOptionalStringField(value: unknown): string | undefined {
+  return normalizeOptionalSingleLineText(value);
+}
+
+function normalizeMessageCount(value: unknown): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : 0;
+}
+
+function normalizeSessionMeta(value: unknown): ChatSessionMeta | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const record = value as Record<string, unknown>;
+  const id = normalizeSessionId(record.id);
+  if (!id) return null;
+
+  return {
+    id,
+    title: normalizeSingleLineText(record.title, MAX_CHAT_TITLE_LENGTH) || 'Untitled session',
+    summary: normalizeStringField(record.summary),
+    createdAt: normalizeStringField(record.createdAt),
+    updatedAt: normalizeStringField(record.updatedAt),
+    messageCount: normalizeMessageCount(record.messageCount),
+    mode: normalizeSessionMode(record.mode),
+    articleUrl: normalizeOptionalStringField(record.articleUrl),
+    articleTitle: normalizeOptionalStringField(record.articleTitle),
+  };
+}
+
+function normalizeSessionsIndex(sessions: unknown): ChatSessionMeta[] {
+  if (!Array.isArray(sessions)) return [];
+  return sessions.flatMap((session) => {
+    const normalized = normalizeSessionMeta(session);
+    return normalized ? [normalized] : [];
+  });
+}
+
 /**
  * 모든 세션 메타데이터 로드
  */
@@ -171,12 +281,18 @@ export function loadSessionsIndex(): ChatSessionMeta[] {
     const raw = localStorage.getItem(SESSIONS_INDEX_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed as ChatSessionMeta[];
+      const normalized = normalizeSessionsIndex(parsed);
+      if (JSON.stringify(parsed) !== JSON.stringify(normalized)) {
+        localStorage.setItem(SESSIONS_INDEX_KEY, JSON.stringify(normalized));
       }
+      return normalized;
     }
   } catch {
-    // 파싱 실패
+    try {
+      localStorage.removeItem(SESSIONS_INDEX_KEY);
+    } catch {
+      // localStorage 정리 실패
+    }
   }
   return [];
 }
@@ -186,7 +302,10 @@ export function loadSessionsIndex(): ChatSessionMeta[] {
  */
 export function storeSessionsIndex(sessions: ChatSessionMeta[]): void {
   try {
-    localStorage.setItem(SESSIONS_INDEX_KEY, JSON.stringify(sessions));
+    localStorage.setItem(
+      SESSIONS_INDEX_KEY,
+      JSON.stringify(normalizeSessionsIndex(sessions)),
+    );
   } catch {
     // localStorage 접근 실패
   }
@@ -196,14 +315,21 @@ export function storeSessionsIndex(sessions: ChatSessionMeta[]): void {
  * 세션 인덱스에서 특정 세션 업데이트
  */
 export function updateSessionInIndex(session: ChatSessionMeta): ChatSessionMeta[] {
+  const normalizedSession = normalizeSessionMeta(session);
+  if (!normalizedSession) {
+    return loadSessionsIndex();
+  }
+
   const sessions = loadSessionsIndex();
-  const existing = sessions.find((s) => s.id === session.id);
+  const existing = sessions.find((s) => s.id === normalizedSession.id);
   
   let updated: ChatSessionMeta[];
   if (existing) {
-    updated = sessions.map((s) => (s.id === session.id ? session : s));
+    updated = sessions.map((s) =>
+      s.id === normalizedSession.id ? normalizedSession : s,
+    );
   } else {
-    updated = [session, ...sessions];
+    updated = [normalizedSession, ...sessions];
   }
   
   storeSessionsIndex(updated);
@@ -224,12 +350,17 @@ export function updateSessionInIndex(session: ChatSessionMeta): ChatSessionMeta[
  * 세션 인덱스에서 특정 세션 제거
  */
 export function removeSessionFromIndex(sessionId: string): ChatSessionMeta[] {
+  const normalizedSessionId = normalizeSessionId(sessionId);
+  if (!normalizedSessionId) {
+    return loadSessionsIndex();
+  }
+
   const sessions = loadSessionsIndex();
-  const updated = sessions.filter((s) => s.id !== sessionId);
+  const updated = sessions.filter((s) => s.id !== normalizedSessionId);
   storeSessionsIndex(updated);
   
   // 메시지도 함께 삭제
-  clearSessionMessages(sessionId);
+  clearSessionMessages(normalizedSessionId);
   
   return updated;
 }
@@ -269,6 +400,7 @@ export function setPersistEnabled(enabled: boolean): void {
  * 백엔드에 새 세션 생성 요청
  */
 export async function createBackendSession(title?: string): Promise<string> {
+  const normalizedTitle = normalizeBackendSessionTitle(title);
   const url = buildChatUrl('/session');
   const headers = buildChatHeaders('json');
   const token = await getPrincipalToken();
@@ -279,7 +411,7 @@ export async function createBackendSession(title?: string): Promise<string> {
       ...headers,
       ...bearerAuth(token),
     },
-    body: JSON.stringify({ title: title || 'Nodove Blog Visitor Session' }),
+    body: JSON.stringify({ title: normalizedTitle }),
   });
 
   if (!res.ok) {
@@ -295,11 +427,12 @@ export async function createBackendSession(title?: string): Promise<string> {
   const id =
     data?.sessionID || data?.id || data?.data?.sessionID || data?.data?.id;
 
-  if (!id || typeof id !== 'string') {
+  const normalizedId = normalizeSessionId(id);
+  if (!normalizedId) {
     throw new Error('Invalid session response');
   }
 
-  return id;
+  return normalizedId;
 }
 
 /**

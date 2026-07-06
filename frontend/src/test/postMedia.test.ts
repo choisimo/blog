@@ -18,6 +18,14 @@ describe('postMedia utils', () => {
     );
   });
 
+  it('rejects traversal-looking local manifest media paths', () => {
+    expect(normalizeManifestMediaPath('/images/../secrets.png', '2026/awk-1')).toBeUndefined();
+    expect(normalizeManifestMediaPath('images/2026/../secrets.png', '2026/awk-1')).toBeUndefined();
+    expect(normalizeManifestMediaPath('assets/../secrets.png', '2026/awk-1')).toBeUndefined();
+    expect(normalizeManifestMediaPath('images/2026/%2e%2e/secrets.png', '2026/awk-1')).toBeUndefined();
+    expect(normalizeManifestMediaPath('images/2026/%09tab.png', '2026/awk-1')).toBeUndefined();
+  });
+
   it('skips thumbnail conversion for gifs and videos', () => {
     expect(getThumbSrc('/images/2026/awk-1/12.gif')).toBe('/images/2026/awk-1/12.gif');
     expect(getThumbSrc('/posts/2026/image/demo/clip.mp4')).toBe(

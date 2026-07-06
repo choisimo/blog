@@ -179,6 +179,12 @@ const SYNONYM_MAP: SynonymEntry[] = [
 // 빠른 조회를 위한 인덱스 생성
 // ============================================================================
 
+const MAX_QUERY_CHARS = 300;
+const MAX_QUERY_TERMS = 24;
+const MAX_RELATED_KEYWORDS = 80;
+const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/g;
+const WHITESPACE_PATTERN = /\s+/g;
+
 /** 모든 용어를 소문자로 정규화한 맵 */
 const normalizedIndex = new Map<string, Set<string>>();
 
@@ -186,7 +192,9 @@ const normalizedIndex = new Map<string, Set<string>>();
 function initializeIndex() {
   for (const entry of SYNONYM_MAP) {
     const allTerms = [entry.term, ...entry.synonyms];
-    const normalizedTerms = allTerms.map(t => t.toLowerCase().trim());
+    const normalizedTerms = allTerms
+      .map(t => normalizeQueryText(t).toLowerCase())
+      .filter(Boolean);
     
     // 각 용어가 다른 모든 용어를 가리키도록 설정
     for (const term of normalizedTerms) {
@@ -210,6 +218,16 @@ initializeIndex();
 // Public API
 // ============================================================================
 
+function normalizeQueryText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(CONTROL_CHAR_PATTERN, ' ')
+    .replace(WHITESPACE_PATTERN, ' ')
+    .trim()
+    .slice(0, MAX_QUERY_CHARS)
+    .trim();
+}
+
 /**
  * 주어진 용어의 동의어/관련어 목록 반환
  * 
@@ -221,7 +239,9 @@ initializeIndex();
  * getSynonyms('LLM') // ['대규모 언어 모델', 'GPT', 'Claude', ...]
  */
 export function getSynonyms(term: string): string[] {
-  const normalized = term.toLowerCase().trim();
+  const normalized = normalizeQueryText(term).toLowerCase();
+  if (!normalized) return [];
+
   const synonyms = normalizedIndex.get(normalized);
   return synonyms ? Array.from(synonyms) : [];
 }
@@ -237,8 +257,11 @@ export function getSynonyms(term: string): string[] {
  * // ['DNA 분석', '유전자 분석', 'gene 분석', 'genetics 분석', ...]
  */
 export function expandQueryWithSynonyms(query: string): string[] {
-  const expanded: Set<string> = new Set([query]);
-  const words = query.split(/\s+/);
+  const normalizedQuery = normalizeQueryText(query);
+  if (!normalizedQuery) return [];
+
+  const expanded: Set<string> = new Set([normalizedQuery]);
+  const words = normalizedQuery.split(/\s+/).filter(Boolean).slice(0, MAX_QUERY_TERMS);
   
   // 각 단어에 대해 동의어 확인
   for (const word of words) {
@@ -246,18 +269,22 @@ export function expandQueryWithSynonyms(query: string): string[] {
     
     // 동의어로 대체한 쿼리 생성 (상위 3개만)
     for (const synonym of synonyms.slice(0, 3)) {
-      const expandedQuery = query.replace(new RegExp(escapeRegExp(word), 'gi'), synonym);
-      expanded.add(expandedQuery);
+      const expandedQuery = normalizeQueryText(
+        normalizedQuery.replace(new RegExp(escapeRegExp(word), 'gi'), synonym),
+      );
+      if (expandedQuery) expanded.add(expandedQuery);
     }
   }
   
   // 2-gram, 3-gram 체크 (복합 용어)
-  const queryLower = query.toLowerCase();
+  const queryLower = normalizedQuery.toLowerCase();
   for (const [term, synonyms] of normalizedIndex) {
     if (term.includes(' ') && queryLower.includes(term)) {
       for (const synonym of Array.from(synonyms).slice(0, 2)) {
-        const expandedQuery = query.replace(new RegExp(escapeRegExp(term), 'gi'), synonym);
-        expanded.add(expandedQuery);
+        const expandedQuery = normalizeQueryText(
+          normalizedQuery.replace(new RegExp(escapeRegExp(term), 'gi'), synonym),
+        );
+        if (expandedQuery) expanded.add(expandedQuery);
       }
     }
   }
@@ -273,16 +300,20 @@ export function expandQueryWithSynonyms(query: string): string[] {
  * @returns 관련 키워드 배열
  */
 export function getRelatedKeywords(query: string): string[] {
+  const normalizedQuery = normalizeQueryText(query);
+  if (!normalizedQuery) return [];
+
   const keywords: Set<string> = new Set();
-  const words = query.toLowerCase().split(/\s+/);
+  const words = normalizedQuery.toLowerCase().split(/\s+/).slice(0, MAX_QUERY_TERMS);
   
   for (const word of words) {
-    keywords.add(word);
+    const keyword = normalizeQueryText(word).toLowerCase();
+    if (keyword) keywords.add(keyword);
     const synonyms = getSynonyms(word);
     synonyms.forEach(s => keywords.add(s));
   }
   
-  return Array.from(keywords);
+  return Array.from(keywords).slice(0, MAX_RELATED_KEYWORDS);
 }
 
 /**
@@ -292,13 +323,17 @@ export function getRelatedKeywords(query: string): string[] {
  * @returns 추론된 카테고리 목록
  */
 export function inferCategories(query: string): string[] {
+  const normalizedQuery = normalizeQueryText(query);
+  if (!normalizedQuery) return [];
+
   const categories: Set<string> = new Set();
-  const queryLower = query.toLowerCase();
+  const queryLower = normalizedQuery.toLowerCase();
   
   for (const entry of SYNONYM_MAP) {
     const allTerms = [entry.term, ...entry.synonyms];
     for (const term of allTerms) {
-      if (queryLower.includes(term.toLowerCase())) {
+      const normalizedTerm = normalizeQueryText(term).toLowerCase();
+      if (normalizedTerm && queryLower.includes(normalizedTerm)) {
         if (entry.category) {
           categories.add(entry.category);
         }

@@ -7,11 +7,52 @@
 import type { PageContext } from './types';
 
 type ArticleContext = NonNullable<PageContext["article"]>;
+const MAX_CONTEXT_METADATA_FIELD_LENGTH = 300;
+const MAX_CONTEXT_HEADING_LENGTH = 160;
+
+function truncateContextText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength).trim()}...`;
+}
+
+function normalizeText(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const text = value.trim();
+  return text || null;
+}
+
+function normalizeSingleLineText(
+  value: unknown,
+  maxLength = MAX_CONTEXT_METADATA_FIELD_LENGTH,
+): string | null {
+  const text = normalizeText(value);
+  if (!text) {
+    return null;
+  }
+
+  const singleLine = text.replace(/\s+/g, " ").trim();
+  return singleLine ? truncateContextText(singleLine, maxLength) : null;
+}
+
+function normalizeTextList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => normalizeText(item))
+    .filter((item): item is string => item !== null);
+}
 
 function readText(selector: string): string | null {
   const element = document.querySelector(selector) as HTMLElement | null;
-  const text = (element?.innerText || "").trim();
-  return text || null;
+  return normalizeText(element?.innerText);
 }
 
 function parseArticlePath(url: URL): Pick<ArticleContext, "year" | "slug"> {
@@ -43,25 +84,24 @@ export function getArticleContext(): ArticleContext | null {
     readText("main h1") ||
     null;
   const description =
-    document.querySelector('meta[name="description"]')?.getAttribute("content") ||
-    document.querySelector('meta[property="og:description"]')?.getAttribute("content") ||
-    null;
+    normalizeText(document.querySelector('meta[name="description"]')?.getAttribute("content")) ||
+    normalizeText(document.querySelector('meta[property="og:description"]')?.getAttribute("content"));
 
   const headings = Array.from(
     document.querySelectorAll("article h2, article h3, main article h2, main article h3"),
   )
-    .map((node) => (node.textContent || "").trim())
-    .filter(Boolean)
+    .map((node) => normalizeText(node.textContent))
+    .filter((heading): heading is string => heading !== null)
     .slice(0, 6);
 
   if (!articleTitle && !articleSnippet && headings.length === 0) {
     return null;
   }
 
-  return {
-    title: articleTitle || undefined,
-    slug: parsedPath.slug,
-    year: parsedPath.year,
+    return {
+      title: articleTitle || undefined,
+      slug: parsedPath.slug,
+      year: parsedPath.year,
     description: description || articleSnippet || undefined,
     headings: headings.length > 0 ? headings : undefined,
   };
@@ -76,8 +116,8 @@ export function hasArticlePageContext(): boolean {
  */
 export function getPageContext(): PageContext {
   const w = typeof window !== 'undefined' ? window : null;
-  const url = w?.location?.href as string | undefined;
-  const title = w?.document?.title as string | undefined;
+  const url = normalizeText(w?.location?.href) || undefined;
+  const title = normalizeText(w?.document?.title) || undefined;
   return { url, title, article: getArticleContext() || undefined };
 }
 
@@ -144,16 +184,24 @@ export function buildContextPrompt(
   pageContext?: PageContext | null,
 ): string {
   const article = pageContext?.article;
+  const snippet = normalizeText(articleSnippet);
+  const title = normalizeSingleLineText(article?.title);
+  const year = normalizeSingleLineText(article?.year);
+  const slug = normalizeSingleLineText(article?.slug);
+  const description = normalizeSingleLineText(article?.description);
+  const headings = normalizeTextList(article?.headings)
+    .map((heading) => normalizeSingleLineText(heading, MAX_CONTEXT_HEADING_LENGTH))
+    .filter((heading): heading is string => heading !== null);
   const metadataLines = [
-    article?.title ? `제목: ${article.title}` : null,
-    article?.year && article?.slug ? `게시물: ${article.year}/${article.slug}` : null,
-    article?.description ? `설명: ${article.description}` : null,
-    article?.headings && article.headings.length > 0
-      ? `주요 섹션: ${article.headings.join(" | ")}`
+    title ? `제목: ${title}` : null,
+    year && slug ? `게시물: ${year}/${slug}` : null,
+    description ? `설명: ${description}` : null,
+    headings.length > 0
+      ? `주요 섹션: ${headings.join(" | ")}`
       : null,
-  ].filter(Boolean);
+  ].filter((line): line is string => line !== null);
 
-  if (!articleSnippet && metadataLines.length === 0) return '';
+  if (!snippet && metadataLines.length === 0) return '';
 
   return [
     metadataLines.length > 0
@@ -165,7 +213,7 @@ export function buildContextPrompt(
       ? ['[현재 게시물]', ...metadataLines, '']
       : []),
     '[페이지 본문]',
-    articleSnippet || '(본문 스니펫 없음)',
+    snippet || '(본문 스니펫 없음)',
     '',
     '---',
     '',
@@ -181,15 +229,18 @@ export function buildImageContext(
   userText: string
 ): string {
   let imageContext = '';
+  const normalizedImageUrl = normalizeSingleLineText(imageUrl) || "첨부 이미지";
+  const normalizedImageAnalysis = normalizeText(imageAnalysis);
+  const normalizedUserText = normalizeText(userText);
 
-  if (imageAnalysis) {
-    imageContext += `[첨부된 이미지 분석 결과]\n${imageAnalysis}\n\n`;
+  if (normalizedImageAnalysis) {
+    imageContext += `[첨부된 이미지 분석 결과]\n${normalizedImageAnalysis}\n\n`;
   }
 
-  imageContext += `[이미지 링크: ${imageUrl}]`;
+  imageContext += `[이미지 링크: ${normalizedImageUrl}]`;
 
-  if (userText) {
-    imageContext += `\n\n${userText}`;
+  if (normalizedUserText) {
+    imageContext += `\n\n${normalizedUserText}`;
   }
 
   return imageContext;
@@ -199,14 +250,15 @@ export function buildImageContext(
  * RAG 컨텍스트 프롬프트 생성
  */
 export function buildRAGContextPrompt(ragContext: string | null): string {
-  if (!ragContext) return '';
+  const context = normalizeText(ragContext);
+  if (!context) return '';
 
   return [
     '[관련 블로그 문서]',
     '다음은 블로그 전체에서 질문과 관련된 글들을 검색한 결과입니다.',
     '이 문서들을 기반으로 답변하세요. 관련 글이 여러 개 있으면 모두 언급해주세요:',
     '',
-    ragContext,
+    context,
     '',
     '---',
     '',
@@ -217,14 +269,15 @@ export function buildRAGContextPrompt(ragContext: string | null): string {
  * 사용자 메모리 컨텍스트 프롬프트 생성
  */
 export function buildMemoryContextPrompt(memoryContext: string | null): string {
-  if (!memoryContext) return '';
+  const context = normalizeText(memoryContext);
+  if (!context) return '';
 
   return [
     '[사용자 정보]',
     '다음은 이전 대화에서 파악한 사용자에 대한 정보입니다.',
     '답변 시 이 정보를 자연스럽게 활용하되, 명시적으로 언급하지는 마세요:',
     '',
-    memoryContext,
+    context,
     '',
     '---',
     '',

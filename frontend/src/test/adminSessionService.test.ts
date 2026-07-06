@@ -53,9 +53,72 @@ describe('admin session service', () => {
     expect(JSON.parse(String(options.body))).toEqual({
       title: 'Test Post',
       slug: 'test-post',
-      year: 2026,
+      year: '2026',
       content: '# Test',
     });
+  });
+
+  it('normalizes create post request payloads before admin fetch', async () => {
+    const data = {
+      prUrl: 'https://github.com/example/blog/pull/1',
+      status: 'pending',
+      branch: 'post/test-post',
+      path: 'frontend/public/posts/2026/test-post.md',
+    };
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(
+      createPostPR({
+        title: ' Test Post ',
+        slug: ' Test Post!! ',
+        year: ' 2026 ',
+        content: ' # Test\r\nBody ',
+        draft: true,
+      }),
+    ).resolves.toEqual(data);
+
+    const [, options] = mockAdminFetchRaw.mock.calls[0];
+    expect(JSON.parse(String(options.body))).toEqual({
+      title: 'Test Post',
+      slug: 'test-post',
+      year: '2026',
+      content: '# Test\nBody',
+      draft: true,
+    });
+  });
+
+  it('rejects invalid create post payloads before admin fetch', async () => {
+    await expect(
+      createPostPR({
+        title: 'Test\r\nPost',
+        slug: 'test-post',
+        year: 2026,
+        content: '# Test',
+      }),
+    ).rejects.toThrow('Invalid create post title');
+    await expect(
+      createPostPR({
+        title: 'Test Post',
+        slug: 'test-post',
+        year: '20\n26',
+        content: '# Test',
+      }),
+    ).rejects.toThrow('Invalid create post year');
+    await expect(
+      createPostPR({
+        title: 'Test Post',
+        slug: 'test-post',
+        year: 2026,
+        content: ' ',
+      }),
+    ).rejects.toThrow('Invalid create post content');
+
+    expect(mockAdminFetchRaw).not.toHaveBeenCalled();
   });
 
   it('surfaces create post backend error messages', async () => {
@@ -80,6 +143,109 @@ describe('admin session service', () => {
         content: '# Test',
       }),
     ).rejects.toThrow('Title is required');
+  });
+
+  it('fails closed when create post success data is malformed', async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { branch: 'post/test' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(
+      createPostPR({
+        title: 'Test Post',
+        slug: 'test-post',
+        year: 2026,
+        content: '# Test',
+      }),
+    ).rejects.toThrow('Create post PR returned an invalid response');
+  });
+
+  it('normalizes create post PR response path fields', async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            prUrl: ' https://github.com/example/blog/pull/1 ',
+            status: 'pending',
+            branch: ' post/test-post ',
+            path: ' frontend/public/posts/2026/test-post.md ',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    await expect(
+      createPostPR({
+        title: 'Test Post',
+        slug: 'test-post',
+        year: 2026,
+        content: '# Test',
+      }),
+    ).resolves.toMatchObject({
+      prUrl: 'https://github.com/example/blog/pull/1',
+      branch: 'post/test-post',
+      path: 'frontend/public/posts/2026/test-post.md',
+    });
+  });
+
+  it('fails closed when create post PR response paths contain line endings', async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            branch: 'post/test-post',
+            path: 'frontend/public/posts/2026/test-post.md\r\nX-Injected: yes',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    await expect(
+      createPostPR({
+        title: 'Test Post',
+        slug: 'test-post',
+        year: 2026,
+        content: '# Test',
+      }),
+    ).rejects.toThrow('Create post PR returned an invalid response');
+
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            branch: 'post/test-post%09tab',
+            path: 'frontend/public/posts/2026/test-post.md',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    await expect(
+      createPostPR({
+        title: 'Test Post',
+        slug: 'test-post',
+        year: 2026,
+        content: '# Test',
+      }),
+    ).rejects.toThrow('Create post PR returned an invalid response');
   });
 
   it('uploads post images through the shared admin API client', async () => {
@@ -140,6 +306,115 @@ describe('admin session service', () => {
     expect(uploadOptions.body).toBeInstanceOf(FormData);
   });
 
+  it('rejects invalid image upload path values before admin fetch', async () => {
+    const file = new File(['image'], 'cover.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages(
+        { year: '2026\r\nX-Injected: yes', slug: 'test-post' },
+        [file],
+      ),
+    ).rejects.toThrow('Invalid image upload path');
+    expect(mockAdminFetchRaw).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid image upload files before admin fetch', async () => {
+    const file = new File(['image'], 'cover.png\r\nX-Injected: yes', {
+      type: 'image/png',
+    });
+
+    await expect(
+      uploadPostImages({ year: 2026, slug: 'test-post' }, [file]),
+    ).rejects.toThrow('Invalid image upload file');
+    expect(mockAdminFetchRaw).not.toHaveBeenCalled();
+  });
+
+  it('normalizes direct image upload response URLs', async () => {
+    mockAdminFetchRaw
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { uploadUrl: ' /images/upload-direct ' },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { url: ' /images/2026/test-post/cover.png ' },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const file = new File(['image'], 'cover.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages({ year: '2026', slug: ' test-post ' }, [file]),
+    ).resolves.toEqual({
+      dir: '/images/2026/test-post',
+      items: [
+        {
+          url: '/images/2026/test-post/cover.png',
+          variantWebp: null,
+        },
+      ],
+    });
+  });
+
+  it('falls back when a direct image presign returns a cross-origin upload URL', async () => {
+    mockAdminFetchRaw
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { uploadUrl: 'https://evil.example.com/images/upload-direct' },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              dir: '/images/2026/test-post',
+              items: [{ url: '/images/2026/test-post/cover.png' }],
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const file = new File(['image'], 'cover.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages({ year: 2026, slug: 'test-post' }, [file]),
+    ).resolves.toEqual({
+      dir: '/images/2026/test-post',
+      items: [{ url: '/images/2026/test-post/cover.png' }],
+    });
+    expect(mockAdminFetchRaw).toHaveBeenCalledTimes(2);
+    expect(mockAdminFetchRaw.mock.calls[1][0]).toBe(
+      'https://worker.example.com/api/v1/images/upload',
+    );
+  });
+
   it('surfaces fallback image upload backend error messages', async () => {
     mockAdminFetchRaw
       .mockResolvedValueOnce(
@@ -172,5 +447,70 @@ describe('admin session service', () => {
     await expect(
       uploadPostImages({ year: 2026, slug: 'test-post' }, [file]),
     ).rejects.toThrow('Image upload too large');
+  });
+
+  it('fails closed when fallback image upload success data is malformed', async () => {
+    mockAdminFetchRaw
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: { message: 'Presign disabled' },
+          }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true, data: { dir: '/images/2026/test-post' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    const file = new File(['image'], 'cover.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages({ year: 2026, slug: 'test-post' }, [file]),
+    ).rejects.toThrow('Image upload returned an invalid response');
+  });
+
+  it('fails closed when fallback image upload returns unsafe image paths', async () => {
+    mockAdminFetchRaw
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: { message: 'Presign disabled' },
+          }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              dir: '/images/2026/test-post',
+              items: [{ url: 'https://evil.example.com/cover.png' }],
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const file = new File(['image'], 'cover.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages({ year: 2026, slug: 'test-post' }, [file]),
+    ).rejects.toThrow('Image upload returned an invalid response');
   });
 });

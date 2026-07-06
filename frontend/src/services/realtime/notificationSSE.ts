@@ -153,8 +153,22 @@ interface SSENotificationPayload {
   readAt?: string | null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized || undefined;
+}
+
 export function handleNotificationEvent(data: SSENotificationPayload) {
-  if (!data.notificationId) {
+  const notificationId = normalizeOptionalText(data.notificationId);
+  if (!notificationId) {
     console.warn("[NotificationSSE] Dropping notification event without notificationId", {
       type: data.type,
       sourceId: data.sourceId,
@@ -162,8 +176,10 @@ export function handleNotificationEvent(data: SSENotificationPayload) {
     return;
   }
 
-  const title = data.title || "알림";
-  const message = data.message || "";
+  const title = normalizeOptionalText(data.title) || "알림";
+  const message = normalizeOptionalText(data.message) || "";
+  const sourceId = normalizeOptionalText(data.sourceId);
+  const createdAt = normalizeOptionalText(data.createdAt);
   const type: NotificationType =
     (data.notificationType as NotificationType) ||
     (data.type === "error"
@@ -175,29 +191,30 @@ export function handleNotificationEvent(data: SSENotificationPayload) {
           : "info");
 
   const notification: Parameters<typeof addNotification>[0] = {
-    id: data.notificationId,
+    id: notificationId,
     type,
     title,
     message,
     read: Boolean(data.readAt),
   };
 
-  if (data.sourceId) {
-    notification.sourceId = data.sourceId;
+  if (sourceId) {
+    notification.sourceId = sourceId;
   }
-  if (data.payload) {
+  if (isRecord(data.payload)) {
     notification.payload = data.payload;
   }
-  if (data.createdAt) {
-    notification.createdAt = data.createdAt;
+  if (createdAt) {
+    notification.createdAt = createdAt;
   }
 
   addNotification(notification);
 }
 
-function parseSSEData(raw: string): SSENotificationPayload | null {
+export function parseSSEData(raw: string): SSENotificationPayload | null {
   try {
-    return JSON.parse(raw) as SSENotificationPayload;
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) ? (parsed as SSENotificationPayload) : null;
   } catch {
     return null;
   }

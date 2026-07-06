@@ -28,6 +28,25 @@ function normalizeBaseUrl(url: string): string {
   return normalized;
 }
 
+export function normalizeConfiguredApiBaseUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = normalizeBaseUrl(value);
+  if (!normalized) return null;
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    if (parsed.search || parsed.hash) {
+      return null;
+    }
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
 function isLocalHostname(hostname: string): boolean {
   return (
     hostname === "localhost" ||
@@ -38,19 +57,24 @@ function isLocalHostname(hostname: string): boolean {
 
 export function getApiBaseUrl(): string {
   let baseUrl: string | undefined;
+  let rawBaseUrl: string | undefined;
   let source: "runtime" | "build" | "localStorage" | "default" | undefined;
 
   const w = typeof window !== "undefined" ? (window as RuntimeWindow) : null;
   const fromRuntime = w?.APP_CONFIG?.apiBaseUrl || w?.__APP_CONFIG?.apiBaseUrl;
-  if (typeof fromRuntime === "string" && fromRuntime) {
-    baseUrl = fromRuntime;
+  const runtimeBaseUrl = normalizeConfiguredApiBaseUrl(fromRuntime);
+  if (runtimeBaseUrl) {
+    baseUrl = runtimeBaseUrl;
+    rawBaseUrl = fromRuntime;
     source = "runtime";
   }
 
   if (!baseUrl) {
     const fromBuild = import.meta.env.VITE_API_BASE_URL;
-    if (typeof fromBuild === "string" && fromBuild.trim()) {
-      baseUrl = fromBuild;
+    const buildBaseUrl = normalizeConfiguredApiBaseUrl(fromBuild);
+    if (buildBaseUrl) {
+      baseUrl = buildBaseUrl;
+      rawBaseUrl = fromBuild;
       source = "build";
     }
   }
@@ -60,13 +84,15 @@ export function getApiBaseUrl(): string {
       const v = localStorage.getItem("aiMemo.backendUrl");
       if (v) {
         const parsed = JSON.parse(v) as unknown;
-        if (typeof parsed === "string" && parsed) {
+        const localStorageBaseUrl = normalizeConfiguredApiBaseUrl(parsed);
+        if (localStorageBaseUrl) {
           // Require an explicit localhost host/port match to avoid suffix spoofing.
           const isLocalhostOverride =
-            /^http:\/\/localhost(:\d+)?(\/|$)/.test(parsed) ||
-            /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(parsed);
+            /^http:\/\/localhost(:\d+)?(\/|$)/.test(localStorageBaseUrl) ||
+            /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(localStorageBaseUrl);
           if (!import.meta.env.PROD || isLocalhostOverride) {
-            baseUrl = parsed;
+            baseUrl = localStorageBaseUrl;
+            rawBaseUrl = parsed;
             source = "localStorage";
           }
         }
@@ -81,6 +107,7 @@ export function getApiBaseUrl(): string {
 
     if (isLocalhost && !import.meta.env.PROD) {
       baseUrl = "http://localhost:5080";
+      rawBaseUrl = baseUrl;
       source = "default";
     } else {
       throw new Error(
@@ -98,12 +125,15 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  const normalized = normalizeBaseUrl(baseUrl);
+  const normalized = normalizeConfiguredApiBaseUrl(baseUrl);
+  if (!normalized) {
+    throw new Error("[apiBase] Invalid API base URL configuration.");
+  }
 
   if (
     source === "localStorage" &&
     typeof window !== "undefined" &&
-    normalized !== baseUrl
+    normalized !== (rawBaseUrl ?? baseUrl)
   ) {
     try {
       localStorage.setItem("aiMemo.backendUrl", JSON.stringify(normalized));
@@ -115,7 +145,7 @@ export function getApiBaseUrl(): string {
   if (
     (source === "runtime" || source === "build") &&
     typeof window !== "undefined" &&
-    normalized !== baseUrl
+    normalized !== (rawBaseUrl ?? baseUrl)
   ) {
     try {
       const w2 = window as RuntimeWindow;

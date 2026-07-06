@@ -2,8 +2,28 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+function sanitizeDisplayText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return value as string | undefined;
+  const sanitized = value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+  return sanitized || undefined;
+}
+
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
-  ({ className, type, ...props }, ref) => {
+  (
+    { className, type, placeholder, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => {
+    const safePlaceholder = sanitizeDisplayText(placeholder);
+    const safeAriaLabel = sanitizeDisplayText(ariaLabel);
+    const safeTitle = sanitizeDisplayText(title);
+
     return (
       <input
         type={type}
@@ -12,6 +32,9 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
           className
         )}
         ref={ref}
+        placeholder={safePlaceholder}
+        aria-label={safeAriaLabel}
+        title={safeTitle}
         {...props}
       />
     );

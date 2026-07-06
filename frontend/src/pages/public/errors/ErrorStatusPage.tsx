@@ -90,6 +90,54 @@ const toneStyles: Record<
   },
 };
 
+export interface NormalizedErrorActionHref {
+  href: string;
+  external: boolean;
+  opensNewTab: boolean;
+}
+
+export function normalizeErrorActionHref(
+  value: string,
+): NormalizedErrorActionHref | null {
+  const href = value.trim();
+  if (!href || /[\u0000-\u001F\u007F\s]/.test(href)) {
+    return null;
+  }
+
+  if (href.startsWith("//")) {
+    return null;
+  }
+
+  if (href.startsWith("/") || href.startsWith("#")) {
+    return { href, external: false, opensNewTab: false };
+  }
+
+  const scheme = href.match(/^([A-Za-z][A-Za-z0-9+.-]*):/);
+  if (!scheme) {
+    return null;
+  }
+
+  const protocol = `${scheme[1].toLowerCase()}:`;
+  if (protocol === "mailto:") {
+    return { href, external: true, opensNewTab: false };
+  }
+
+  if (protocol !== "http:" && protocol !== "https:") {
+    return null;
+  }
+
+  try {
+    const url = new URL(href);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+
+    return { href: url.href, external: true, opensNewTab: true };
+  } catch {
+    return null;
+  }
+}
+
 function ErrorActionButton({ action }: { action: ErrorStatusAction }) {
   const Icon = action.icon ?? ArrowRight;
   const variant = action.variant ?? "default";
@@ -106,21 +154,22 @@ function ErrorActionButton({ action }: { action: ErrorStatusAction }) {
   }
 
   if (action.href) {
-    const external =
-      action.href.startsWith("http://") ||
-      action.href.startsWith("https://") ||
-      action.href.startsWith("mailto:");
+    const normalizedHref = normalizeErrorActionHref(action.href);
+    if (!normalizedHref) {
+      return (
+        <Button size="lg" variant={variant} onClick={action.onClick}>
+          <Icon className="h-4 w-4" />
+          {action.label}
+        </Button>
+      );
+    }
 
     return (
       <Button asChild size="lg" variant={variant}>
         <a
-          href={action.href}
-          rel={external ? "noreferrer" : undefined}
-          target={
-            external && !action.href.startsWith("mailto:")
-              ? "_blank"
-              : undefined
-          }
+          href={normalizedHref.href}
+          rel={normalizedHref.external ? "noreferrer" : undefined}
+          target={normalizedHref.opensNewTab ? "_blank" : undefined}
         >
           <Icon className="h-4 w-4" />
           {action.label}

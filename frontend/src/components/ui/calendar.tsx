@@ -5,18 +5,58 @@ import { DayPicker } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  'aria-label'?: string | number;
+  title?: string | number;
+};
+
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeCalendarText = (value: string | number): string =>
+  String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+
+const sanitizeCalendarOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeCalendarText(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeCalendarNode = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeCalendarText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeCalendarNode);
+  }
+
+  return children;
+};
 
 function Calendar({
   className,
   classNames,
+  footer,
   showOutsideDays = true,
+  'aria-label': ariaLabel,
+  title,
   ...props
 }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn('p-3', className)}
+      aria-label={sanitizeCalendarOptionalText(ariaLabel)}
+      footer={sanitizeCalendarNode(footer)}
+      title={sanitizeCalendarOptionalText(title)}
       classNames={{
         months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
         month: 'space-y-4',

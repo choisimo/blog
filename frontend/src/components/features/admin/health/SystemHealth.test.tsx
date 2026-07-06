@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -221,6 +221,54 @@ describe("checkBackendHealth", () => {
     expect(providers[0].displayName).toBe("OpenAI");
   });
 
+  it("filters unsafe provider identifiers and normalizes provider display fields", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            providers: [
+              {
+                id: "bad%2Fprovider",
+                name: "bad",
+                displayName: "Bad Provider",
+                healthStatus: "unknown",
+                lastHealthCheck: null,
+                isEnabled: true,
+                modelCount: 1,
+                enabledModelCount: 1,
+              },
+              {
+                id: "openai",
+                name: "openai",
+                displayName: " OpenAI\u0000Gateway\r\nPrimary ",
+                healthStatus: "healthy",
+                lastHealthCheck: null,
+                isEnabled: true,
+                modelCount: 2,
+                enabledModelCount: 1,
+                healthError: " Error\u0000message ",
+              },
+            ],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const providers = await getProviders();
+
+    expect(providers).toHaveLength(1);
+    expect(providers[0]).toMatchObject({
+      id: "openai",
+      displayName: "OpenAI Gateway Primary",
+      healthError: "Error message",
+    });
+  });
+
   it("returns provider load errors from non-OK admin responses", async () => {
     mockAdminFetchRaw.mockResolvedValue(
       new Response(
@@ -335,6 +383,16 @@ describe("checkBackendHealth", () => {
     });
   });
 
+  it("rejects unsafe provider health selectors before admin fetch", async () => {
+    const health = await checkProviderHealth("openai%2Fadmin");
+
+    expect(health).toEqual({
+      status: "down",
+      error: "Invalid provider selector",
+    });
+    expect(mockAdminFetchRaw).not.toHaveBeenCalled();
+  });
+
   it("marks provider health checks down on non-OK admin responses", async () => {
     mockAdminFetchRaw.mockResolvedValue(
       new Response(
@@ -355,5 +413,123 @@ describe("checkBackendHealth", () => {
       status: "down",
       error: "Provider gateway unavailable",
     });
+  });
+
+  it("suppresses duplicate provider health checks while one is already running", async () => {
+    vi.spyOn(global, "fetch").mockImplementation(async (input) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/rag/health")) {
+        return new Response(
+          JSON.stringify({
+            services: {
+              embedding: { ok: true },
+              chroma: { ok: true },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(null, { status: 200 });
+    });
+
+    let resolveProviderHealth: (value: Response) => void = () => {};
+    const providerHealthPromise = new Promise<Response>((resolve) => {
+      resolveProviderHealth = resolve;
+    });
+    const providerHealthCalls: string[] = [];
+
+    mockAdminFetchRaw.mockImplementation(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.endsWith("/api/v1/admin/ai/providers/openai/health")) {
+        providerHealthCalls.push(url);
+        return providerHealthPromise;
+      }
+
+      if (url.endsWith("/api/v1/admin/ai/providers")) {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              providers: [
+                {
+                  id: "openai",
+                  name: "openai",
+                  displayName: "OpenAI",
+                  healthStatus: "unknown",
+                  lastHealthCheck: null,
+                  isEnabled: true,
+                  modelCount: 2,
+                  enabledModelCount: 1,
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            status: "healthy",
+            llm: { ok: true },
+            tools: { count: 7 },
+            uptime: 120,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    });
+
+    render(<SystemHealth />);
+
+    const providerButton = await screen.findByRole("button", { name: /OpenAI/ });
+
+    fireEvent.click(providerButton);
+    fireEvent.click(providerButton);
+
+    await waitFor(() => {
+      expect(providerHealthCalls).toHaveLength(1);
+    });
+
+    resolveProviderHealth(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            status: "healthy",
+            latencyMs: 84,
+            error: null,
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
   });
 });
