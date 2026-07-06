@@ -1,45 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
+import { normalizeChatBaseUrl } from '@/services/chat/config';
 
-import {
-  buildChatWebSocketUrl,
-  shouldUseChatWebSocket,
-} from "@/services/chat/config";
-
-describe("chat websocket capability gating", () => {
-  const originalAppConfig = (window as Window & {
-    APP_CONFIG?: unknown;
-    __APP_CONFIG?: unknown;
-  }).APP_CONFIG;
-
-  beforeEach(() => {
-    localStorage.clear();
-    (window as Window & {
-      APP_CONFIG?: Record<string, unknown>;
-      __APP_CONFIG?: Record<string, unknown>;
-    }).APP_CONFIG = {
-      chatBaseUrl: "https://api.nodove.com",
-      capabilities: {
-        supportsChatWebSocket: false,
-      },
-    };
-    delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
+describe('normalizeChatBaseUrl', () => {
+  it('normalizes safe absolute and site-relative chat base URLs', () => {
+    expect(normalizeChatBaseUrl(' https://chat.example.com/api/ ')).toBe(
+      'https://chat.example.com/api'
+    );
+    expect(normalizeChatBaseUrl('http://localhost:5080/')).toBe(
+      'http://localhost:5080'
+    );
+    expect(normalizeChatBaseUrl('/chat-api/')).toBe('/chat-api');
   });
 
-  afterEach(() => {
-    localStorage.clear();
-    (window as Window & { APP_CONFIG?: unknown }).APP_CONFIG = originalAppConfig;
-    delete (window as Window & { __APP_CONFIG?: unknown }).__APP_CONFIG;
-  });
-
-  it("refuses websocket transport even when legacy overrides are present", () => {
-    localStorage.setItem(
-      "aiMemo.chatWsBaseUrl",
-      JSON.stringify("wss://override.example.com"),
-    );
-
-    expect(shouldUseChatWebSocket()).toBe(false);
-    expect(() => buildChatWebSocketUrl("session-1")).toThrow(
-      "Chat WebSocket transport has been removed; use SSE streaming instead",
-    );
+  it('rejects unsupported, credentialed, query, and hash chat base URLs', () => {
+    expect(normalizeChatBaseUrl('ftp://chat.example.com')).toBeNull();
+    expect(normalizeChatBaseUrl('https://user:pass@chat.example.com')).toBeNull();
+    expect(normalizeChatBaseUrl('https://chat.example.com?debug=true')).toBeNull();
+    expect(normalizeChatBaseUrl('https://chat.example.com#stream')).toBeNull();
+    expect(normalizeChatBaseUrl('//chat.example.com')).toBeNull();
+    expect(normalizeChatBaseUrl('chat.example.com')).toBeNull();
   });
 });

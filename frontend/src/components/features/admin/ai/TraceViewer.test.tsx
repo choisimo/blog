@@ -102,4 +102,85 @@ describe('TraceViewer', () => {
       expect(mockFetchTraceStats).toHaveBeenCalled();
     });
   });
+
+  it('shows trace stats load errors instead of hiding the stats card', async () => {
+    mockFetchTraceStats.mockResolvedValue({
+      ok: false,
+      error: 'Trace stats unavailable',
+    });
+
+    render(<TraceViewer />);
+
+    expect(await screen.findByText('Trace stats unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('Last 24 Hours')).not.toBeInTheDocument();
+  });
+
+  it('filters polluted trace rows and search selectors before detail and query actions', async () => {
+    mockFetchTraceDetail.mockResolvedValue({
+      ok: false,
+      error: 'Trace not found',
+    });
+    mockUseTraces.mockReturnValue(
+      createUseTracesValue({
+        traces: [
+          {
+            trace_id: 'trace-1%0Aevil',
+            total_spans: 2,
+            total_latency_ms: 120,
+            status: 'success',
+            root_span_type: 'client_request',
+            model_id: null,
+            provider_id: null,
+            user_id: null,
+            request_path: '/api/v1/agent/run',
+            error_message: null,
+            created_at: '2026-01-01T01:02:03.000Z',
+            completed_at: '2026-01-01T01:02:03.120Z',
+          },
+          {
+            trace_id: 'trace-1',
+            total_spans: 2,
+            total_latency_ms: 120,
+            status: 'success%0Aevil',
+            root_span_type: 'client_request',
+            model_id: null,
+            provider_id: null,
+            user_id: null,
+            request_path: '/api/v1/agent/run%0Aevil',
+            error_message: null,
+            created_at: '2026-01-01T01:02:03.000Z',
+            completed_at: '2026-01-01T01:02:03.120Z',
+          },
+        ],
+        total: 2,
+      }),
+    );
+
+    render(<TraceViewer />);
+
+    expect(screen.queryByText('trace-1%0Aevil')).not.toBeInTheDocument();
+    expect(screen.queryByText('/api/v1/agent/run%0Aevil')).not.toBeInTheDocument();
+    expect(screen.getByText('-')).toBeInTheDocument();
+    expect(screen.getByText('pending')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Search by trace ID...'), {
+      target: { value: 'trace-1%0Aevil' },
+    });
+
+    await waitFor(() => {
+      expect(
+        mockFetchTraces.mock.calls.some(([, options]) =>
+          String(options?.traceId).includes('%0Aevil'),
+        ),
+      ).toBe(false);
+    });
+
+    const viewButton = screen.getByRole('button', { name: 'View trace trace-1' });
+    fireEvent.click(viewButton);
+
+    await waitFor(() => {
+      expect(mockFetchTraceDetail).toHaveBeenCalledWith('trace-1');
+    });
+    expect(mockFetchTraceDetail).not.toHaveBeenCalledWith('trace-1%0Aevil');
+  });
 });

@@ -5,6 +5,35 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+function sanitizeSheetText(value: unknown): string {
+  return String(value ?? '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+}
+
+function sanitizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return value as string | undefined;
+  const sanitized = sanitizeSheetText(value);
+  return sanitized || undefined;
+}
+
+function sanitizeSheetNode(node: React.ReactNode): React.ReactNode {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return sanitizeSheetText(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(sanitizeSheetNode);
+  }
+
+  return node;
+}
+
 const Sheet = SheetPrimitive.Root;
 
 const SheetTrigger = SheetPrimitive.Trigger;
@@ -56,12 +85,26 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, hideClose = false, ...props }, ref) => (
+>(
+  (
+    {
+      side = 'right',
+      className,
+      children,
+      hideClose = false,
+      'aria-label': ariaLabel,
+      title,
+      ...props
+    },
+    ref
+  ) => (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}
+      aria-label={sanitizeOptionalText(ariaLabel)}
+      title={sanitizeOptionalText(title)}
       {...props}
     >
       {children}
@@ -107,24 +150,28 @@ SheetFooter.displayName = 'SheetFooter';
 const SheetTitle = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
     className={cn('text-lg font-semibold text-foreground', className)}
     {...props}
-  />
+  >
+    {sanitizeSheetNode(children)}
+  </SheetPrimitive.Title>
 ));
 SheetTitle.displayName = SheetPrimitive.Title.displayName;
 
 const SheetDescription = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
     className={cn('text-sm text-muted-foreground', className)}
     {...props}
-  />
+  >
+    {sanitizeSheetNode(children)}
+  </SheetPrimitive.Description>
 ));
 SheetDescription.displayName = SheetPrimitive.Description.displayName;
 

@@ -38,6 +38,44 @@ const variantStyles: Record<PostImageVariant, { container: string; image: string
   },
 };
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizePostImageText = (value: string): string =>
+  value.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
+
+export function normalizePostImageSrc(src: string | undefined): string | null {
+  const candidate = src?.trim();
+  if (!candidate || /[\u0000-\u001F\u007F]/.test(candidate)) {
+    return null;
+  }
+
+  if (candidate.startsWith('//')) {
+    return null;
+  }
+
+  const scheme = candidate.match(/^([A-Za-z][A-Za-z0-9+.-]*):/);
+  if (!scheme) {
+    return candidate;
+  }
+
+  const protocol = `${scheme[1].toLowerCase()}:`;
+  if (protocol === 'http:' || protocol === 'https:') {
+    try {
+      return new URL(candidate).href;
+    } catch {
+      return null;
+    }
+  }
+
+  if (protocol === 'data:') {
+    return /^data:image\//i.test(candidate) ? candidate : null;
+  }
+
+  return protocol === 'blob:' ? candidate : null;
+}
+
 export function PostImage({
   src,
   alt = '',
@@ -62,8 +100,12 @@ export function PostImage({
   }, []);
 
   const styles = variantStyles[variant];
-  const fallbackChar = (title || alt || '?').trim().charAt(0).toUpperCase() || '?';
-  const shouldShowImage = src && !hasError;
+  const sanitizedAlt = sanitizePostImageText(alt);
+  const sanitizedTitle = sanitizePostImageText(title);
+  const fallbackChar =
+    (sanitizedTitle || sanitizedAlt || '?').charAt(0).toUpperCase() || '?';
+  const normalizedSrc = normalizePostImageSrc(src);
+  const shouldShowImage = normalizedSrc && !hasError;
 
   return (
     <div className={cn(styles.container, containerClassName)}>
@@ -82,8 +124,8 @@ export function PostImage({
             />
           )}
           <img
-            src={src}
-            alt={alt}
+            src={normalizedSrc}
+            alt={sanitizedAlt}
             className={cn(
               styles.image,
               isLoading && 'opacity-0 absolute',

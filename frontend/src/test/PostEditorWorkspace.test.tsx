@@ -151,6 +151,33 @@ describe('PostEditorWorkspace', () => {
     );
   });
 
+  it('normalizes post path fields before creating draft PRs', async () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText('제목'), {
+      target: { value: ' Draft Title\r\nX-Injected: yes ' },
+    });
+    fireEvent.change(screen.getByLabelText('슬러그'), {
+      target: { value: '../Draft Title\r\nX-Injected: yes' },
+    });
+    fireEvent.change(screen.getByLabelText('Markdown content editor'), {
+      target: { value: '# Draft Title\n\nBody' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Draft PR/i }));
+
+    await waitFor(() => {
+      expect(mocks.createPostPR).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mocks.createPostPR).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Draft Title X-Injected: yes',
+        slug: 'draft-title-x-injected-yes',
+      }),
+    );
+  });
+
   it('uploads a dropped image and inserts the returned markdown into content', async () => {
     renderEditor();
 
@@ -198,6 +225,39 @@ describe('PostEditorWorkspace', () => {
       .toHaveAttribute('title', 'hero.png URL 복사');
   });
 
+  it('normalizes the image upload path slug before uploading dropped images', async () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText('제목'), {
+      target: { value: 'Drag Hero' },
+    });
+    fireEvent.change(screen.getByLabelText('슬러그'), {
+      target: { value: '../Drag Hero\r\nX-Injected: yes' },
+    });
+
+    const file = new File(['image-bytes'], 'hero.png', { type: 'image/png' });
+    fireEvent.drop(screen.getByTestId('post-editor-dropzone'), {
+      dataTransfer: {
+        files: [file],
+        items: [
+          {
+            kind: 'file',
+            type: 'image/png',
+            getAsFile: () => file,
+          },
+        ],
+        types: ['Files'],
+      },
+    });
+
+    await waitFor(() => {
+      expect(mocks.uploadPostImages).toHaveBeenCalledWith(
+        { year: expect.any(String), slug: 'drag-hero-x-injected-yes' },
+        [file],
+      );
+    });
+  });
+
   it('lets assistant and generated-image panels attach content through the editor contract', async () => {
     renderEditor();
 
@@ -224,5 +284,90 @@ describe('PostEditorWorkspace', () => {
       (screen.getByLabelText('Markdown content editor') as HTMLTextAreaElement)
         .value,
     ).toContain('![generated](/images/generated.png)');
+  });
+
+  it('restores the cursor after generated markdown without adding phantom newline offset', async () => {
+    renderEditor();
+
+    const editor = screen.getByLabelText(
+      'Markdown content editor',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(editor, {
+      target: { value: '첫 문단\n둘째 문단' },
+    });
+    editor.focus();
+    editor.setSelectionRange(4, 4);
+
+    const imagesTab = screen.getByRole('tab', { name: /Images/i });
+    fireEvent.mouseDown(imagesTab, { button: 0, ctrlKey: false });
+    fireEvent.pointerDown(imagesTab, { button: 0, ctrlKey: false });
+    fireEvent.click(imagesTab);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Mock image generation attach',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(editor.selectionStart).toBe(
+        '첫 문단\n'.length + '![generated](/images/generated.png)\n'.length,
+      );
+    });
+    expect(editor.selectionEnd).toBe(editor.selectionStart);
+    expect(editor.value).toBe(
+      '첫 문단\n![generated](/images/generated.png)\n둘째 문단',
+    );
+  });
+});
+
+describe('PostEditorWorkspace cover image URL boundaries', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    mocks.createPostPR.mockResolvedValue({
+      status: 'pending',
+      outboxId: 'outbox-1',
+      branch: 'post/draft-title',
+      path: 'frontend/public/posts/2026/draft-title.md',
+    });
+    mocks.uploadPostImages.mockResolvedValue({
+      dir: '/images/2026/draft-title',
+      items: [],
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('omits unsafe cover image URLs from draft PR payloads', async () => {
+    renderEditor();
+
+    fireEvent.change(screen.getByLabelText('제목'), {
+      target: { value: 'Draft Title' },
+    });
+    fireEvent.change(screen.getByLabelText('슬러그'), {
+      target: { value: 'draft-title' },
+    });
+    fireEvent.change(screen.getByLabelText('Markdown content editor'), {
+      target: { value: '# Draft Title\n\nBody' },
+    });
+    fireEvent.change(screen.getByLabelText('커버 이미지 URL'), {
+      target: { value: 'https://user:pass@example.com/%0a.png' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Draft PR/i }));
+
+    await waitFor(() => {
+      expect(mocks.createPostPR).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mocks.createPostPR).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frontmatter: expect.objectContaining({
+          coverImage: undefined,
+        }),
+      }),
+    );
   });
 });

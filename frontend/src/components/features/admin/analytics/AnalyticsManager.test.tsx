@@ -325,6 +325,52 @@ describe("getAllPostStats", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("suppresses duplicate editor-pick removal requests while removal is in flight", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          data: {
+            picks: [
+              {
+                post_slug: "hello-world",
+                year: "2026",
+                title: "Hello World",
+                cover_image: null,
+                category: "Engineering",
+                rank: 1,
+                score: 99,
+                reason: "Featured",
+                is_active: 1,
+                expires_at: null,
+              },
+            ],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+    mockAdminFetchRaw.mockReturnValue(new Promise(() => undefined));
+
+    render(<EditorPicksSection />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Hello World")).toBeInTheDocument();
+    });
+
+    const removeButton = screen.getByRole("button", { name: /Remove/i });
+    fireEvent.click(removeButton);
+    fireEvent.click(removeButton);
+
+    expect(mockAdminFetchRaw).toHaveBeenCalledTimes(1);
+    expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+      "https://admin.example.com/api/v1/analytics/admin/editor-picks/2026/hello-world",
+      { method: "DELETE" },
+    );
+  });
+
   it("shows the backend message when adding an editor pick fails", async () => {
     global.fetch = vi.fn(async () => {
       return new Response(JSON.stringify({ data: { picks: [] } }), {
@@ -383,6 +429,106 @@ describe("getAllPostStats", () => {
     expect(
       screen.queryByText(/^Failed to add pick\.$/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("filters polluted editor-pick selectors before rendering and removing", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          data: {
+            picks: [
+              {
+                post_slug: "bad%0Aslug",
+                year: "2026",
+                title: "Polluted Pick",
+                cover_image: null,
+                category: "Engineering",
+                rank: 1,
+                score: 99,
+                reason: "Featured",
+                is_active: 1,
+                expires_at: null,
+              },
+              {
+                post_slug: "hello-world",
+                year: "2026",
+                title: "Hello%0AWorld",
+                cover_image: null,
+                category: "Engineering%0Aevil",
+                rank: 2,
+                score: 88,
+                reason: "Featured%0Aevil",
+                is_active: 1,
+                expires_at: null,
+              },
+            ],
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    render(<EditorPicksSection />);
+
+    expect(await screen.findByText("hello-world")).toBeInTheDocument();
+    expect(screen.queryByText("Polluted Pick")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hello%0AWorld")).not.toBeInTheDocument();
+    expect(screen.queryByText("Engineering%0Aevil")).not.toBeInTheDocument();
+    expect(screen.queryByText("Featured%0Aevil")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove/i }));
+
+    await waitFor(() => {
+      expect(mockAdminFetchRaw).toHaveBeenCalledWith(
+        "https://admin.example.com/api/v1/analytics/admin/editor-picks/2026/hello-world",
+        { method: "DELETE" },
+      );
+    });
+    expect(
+      mockAdminFetchRaw.mock.calls.some(([url]) =>
+        String(url).includes("bad%0Aslug"),
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects polluted editor-pick add selectors before admin requests", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(JSON.stringify({ data: { picks: [] } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    render(<EditorPicksSection />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/No editor picks configured/i),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Add Pick/i }));
+    fireEvent.change(screen.getByPlaceholderText("post-slug"), {
+      target: { value: "hello%0Aworld" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("2025"), {
+      target: { value: "2026" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Submit/i }));
+
+    expect(
+      await screen.findByText(/Invalid editor pick selector/i),
+    ).toBeInTheDocument();
+    expect(mockAdminFetchRaw).not.toHaveBeenCalled();
   });
 
   it("shows the backend message when stats refresh fails", async () => {

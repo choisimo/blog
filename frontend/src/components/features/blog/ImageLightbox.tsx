@@ -36,12 +36,71 @@ interface ImageLightboxProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const CONTROL_TEXT_DETECTOR = /[\u0000-\u001f\u007f-\u009f]/;
+const SAFE_MEDIA_PROTOCOLS = new Set(['http:', 'https:']);
+const IMAGE_PREVIEW_LOADING_LABEL = 'Loading image preview';
+const IMAGE_THUMBNAIL_LOADING_LABEL = 'Loading image thumbnail';
+
+function sanitizeMediaText(value: unknown): string {
+  return String(value ?? '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+}
+
+function hasUnsafePathSegment(path: string): boolean {
+  return path
+    .split('/')
+    .some(segment => segment === '.' || segment === '..');
+}
+
+function normalizeMediaSrc(value: unknown): string {
+  const src = String(value ?? '').replace(ANSI_ESCAPE_PATTERN, '').trim();
+  if (!src || CONTROL_TEXT_DETECTOR.test(src) || src.includes('\\')) return '';
+
+  let decodedSrc: string;
+  try {
+    decodedSrc = decodeURIComponent(src);
+  } catch {
+    return '';
+  }
+
+  if (CONTROL_TEXT_DETECTOR.test(decodedSrc) || decodedSrc.includes('\\')) {
+    return '';
+  }
+
+  if (src.startsWith('//')) return '';
+
+  if (/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(src)) {
+    let url: URL;
+    try {
+      url = new URL(src);
+    } catch {
+      return '';
+    }
+
+    if (!SAFE_MEDIA_PROTOCOLS.has(url.protocol)) return '';
+    if (url.username || url.password) return '';
+
+    return src;
+  }
+
+  const decodedPath = decodedSrc.split(/[?#]/, 1)[0] || '';
+  if (hasUnsafePathSegment(decodedPath)) return '';
+
+  return src;
+}
+
 export function ImageLightbox({
   src,
   alt,
   open,
   onOpenChange,
 }: ImageLightboxProps) {
+  const safeSrc = normalizeMediaSrc(src);
+  const safeAlt = sanitizeMediaText(alt);
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -53,6 +112,7 @@ export function ImageLightbox({
   const hasDragged = useRef(false);
   const scaleRef = useRef(scale);
   const translateRef = useRef(translate);
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
 
   // Keep refs in sync
   useEffect(() => {
@@ -98,20 +158,31 @@ export function ImageLightbox({
   // Callback ref: attaches wheel listener immediately when the Dialog portal renders the container DOM node.
   // This fixes the race condition where useEffect(,[open]) fires before the Radix Dialog portal mounts.
   const containerRef: RefCallback<HTMLDivElement> = useCallback(node => {
-    if (!node) return;
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? 0.15 : -0.15;
-      setScale(prev => {
-        const next = Math.min(Math.max(prev + delta, 0.5), 4);
-        if (next <= 1) setTranslate({ x: 0, y: 0 });
-        return next;
-      });
+    wheelCleanupRef.current?.();
+    wheelCleanupRef.current = null;
+
+    if (node) {
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.15 : -0.15;
+        setScale(prev => {
+          const next = Math.min(Math.max(prev + delta, 0.5), 4);
+          if (next <= 1) setTranslate({ x: 0, y: 0 });
+          return next;
+        });
+      };
+      node.addEventListener('wheel', handleWheel, { passive: false });
+      wheelCleanupRef.current = () => {
+        node.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      wheelCleanupRef.current?.();
+      wheelCleanupRef.current = null;
     };
-    node.addEventListener('wheel', handleWheel, { passive: false });
-    // React will call this with null when the node unmounts — but callback refs called with null
-    // don't get the previous node, so we store cleanup on the node itself.
-    // For cleanup, we rely on the Dialog unmounting the whole subtree when closed.
   }, []);
 
   // Pointer drag handlers
@@ -164,12 +235,14 @@ export function ImageLightbox({
 
   // Preload full image when lightbox opens
   useEffect(() => {
-    if (open && src) {
+    if (open && safeSrc) {
       const img = new Image();
       img.onload = () => setImageLoaded(true);
-      img.src = src;
+      img.src = safeSrc;
     }
-  }, [open, src]);
+  }, [open, safeSrc]);
+
+  if (!safeSrc) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -179,7 +252,7 @@ export function ImageLightbox({
         onPointerDownOutside={() => handleOpenChange(false)}
       >
         <VisuallyHidden>
-          <DialogTitle>{alt || 'Image preview'}</DialogTitle>
+          <DialogTitle>{safeAlt || 'Image preview'}</DialogTitle>
           <DialogDescription>
             Click outside or press Escape to close. Scroll to zoom. Drag to pan
             when zoomed.
@@ -199,7 +272,7 @@ export function ImageLightbox({
             className={overlayControlButtonClassName}
             disabled={scale <= 0.5}
           >
-            <ZoomOut className='h-4 w-4' />
+            <ZoomOut aria-hidden='true' className='h-4 w-4' focusable='false' />
           </TouchIconButton>
           <TouchIconButton
             variant='ghost'
@@ -208,7 +281,7 @@ export function ImageLightbox({
             className={overlayControlButtonClassName}
             disabled={scale >= 4}
           >
-            <ZoomIn className='h-4 w-4' />
+            <ZoomIn aria-hidden='true' className='h-4 w-4' focusable='false' />
           </TouchIconButton>
           <TouchIconButton
             variant='ghost'
@@ -216,7 +289,7 @@ export function ImageLightbox({
             aria-label='Rotate image preview'
             className={overlayControlButtonClassName}
           >
-            <RotateCw className='h-4 w-4' />
+            <RotateCw aria-hidden='true' className='h-4 w-4' focusable='false' />
           </TouchIconButton>
           <TouchIconButton
             variant='ghost'
@@ -225,7 +298,7 @@ export function ImageLightbox({
             autoFocus
             className={overlayControlCloseButtonClassName}
           >
-            <X className='h-4 w-4' />
+            <X aria-hidden='true' className='h-4 w-4' focusable='false' />
           </TouchIconButton>
         </div>
 
@@ -241,13 +314,17 @@ export function ImageLightbox({
           onPointerUp={handlePointerUp}
         >
           {!imageLoaded && (
-            <div className='absolute inset-0 flex items-center justify-center'>
-              <Loader2 className='h-8 w-8 animate-spin text-white/70' />
+            <div
+              aria-label={IMAGE_PREVIEW_LOADING_LABEL}
+              className='absolute inset-0 flex items-center justify-center'
+              role='status'
+            >
+              <Loader2 aria-hidden='true' className='h-8 w-8 animate-spin text-white/70' focusable='false' />
             </div>
           )}
           <img
-            src={src}
-            alt={alt || ''}
+            src={safeSrc}
+            alt={safeAlt}
             data-testid='lightbox-image'
             className={cn(
               'max-w-full max-h-[85vh] sm:max-h-[85vh] object-contain transition-[opacity] duration-300',
@@ -261,9 +338,9 @@ export function ImageLightbox({
           />
         </div>
 
-        {alt && (
+        {safeAlt && (
           <div className='absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4'>
-            <p className='text-white/90 text-sm text-center'>{alt}</p>
+            <p className='text-white/90 text-sm text-center'>{safeAlt}</p>
           </div>
         )}
       </DialogContent>
@@ -348,7 +425,9 @@ export function EmbeddedVideo({
   playsInline = true,
   children,
 }: EmbeddedVideoProps) {
-  const resolvedSrc = resolvePostMediaSrc(src, postPath);
+  const resolvedSrc = normalizeMediaSrc(resolvePostMediaSrc(src, postPath));
+  const safeAlt = sanitizeMediaText(alt);
+  const safeCaption = sanitizeMediaText(caption);
   const { isInView, mediaRef } = useInView<HTMLVideoElement>();
   const [loadFailed, setLoadFailed] = useState(false);
   const hasDirectSrc = !!resolvedSrc;
@@ -373,7 +452,7 @@ export function EmbeddedVideo({
             className
           )}
         >
-          {alt || 'Video unavailable'}
+          {safeAlt || 'Video unavailable'}
         </div>
       ) : (
         <video
@@ -396,19 +475,19 @@ export function EmbeddedVideo({
             isTerminal && 'rounded-lg border border-border',
             className
           )}
-          aria-label={alt || 'Embedded video'}
+          aria-label={safeAlt || 'Embedded video'}
         >
           {children}
         </video>
       )}
-      {(caption || alt) && (
+      {(safeCaption || safeAlt) && (
         <figcaption
           className={cn(
             'mt-3 text-sm text-muted-foreground',
             isTerminal && 'font-mono not-italic'
           )}
         >
-          {isTerminal ? `// ${caption || alt}` : caption || alt}
+          {isTerminal ? `// ${safeCaption || safeAlt}` : safeCaption || safeAlt}
         </figcaption>
       )}
     </figure>
@@ -421,7 +500,11 @@ export function NormalizedVideoSource({
   ...props
 }: ComponentProps<'source'> & { postPath?: string }) {
   const resolvedSrc =
-    typeof src === 'string' ? resolvePostMediaSrc(src, postPath) : src;
+    typeof src === 'string'
+      ? normalizeMediaSrc(resolvePostMediaSrc(src, postPath))
+      : src;
+
+  if (typeof src === 'string' && !resolvedSrc) return null;
 
   return <source {...props} src={resolvedSrc} />;
 }
@@ -437,7 +520,9 @@ export function ClickableImage({
   intrinsicWidth,
   intrinsicHeight,
 }: ClickableImageProps) {
-  const resolvedSrc = resolvePostMediaSrc(src, postPath);
+  const resolvedSrc = normalizeMediaSrc(resolvePostMediaSrc(src, postPath));
+  const safeAlt = sanitizeMediaText(alt);
+  const safeCaption = sanitizeMediaText(caption);
   const isVideo = isVideoMedia(resolvedSrc);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [thumbLoaded, setThumbLoaded] = useState(false);
@@ -452,12 +537,14 @@ export function ClickableImage({
     setThumbLoaded(true);
   }, []);
 
+  if (!resolvedSrc) return null;
+
   if (isVideo) {
     return (
       <EmbeddedVideo
         src={resolvedSrc}
-        alt={alt}
-        caption={caption}
+        alt={safeAlt}
+        caption={safeCaption}
         className={className}
         isTerminal={isTerminal}
         postPath={postPath}
@@ -481,7 +568,7 @@ export function ClickableImage({
     layout === 'aside-left' || layout === 'aside-right'
       ? 'aspect-[4/3]'
       : 'aspect-[16/9]';
-  const displayCaption = caption ?? alt;
+  const displayCaption = safeCaption || safeAlt;
 
   return (
     <>
@@ -511,18 +598,26 @@ export function ClickableImage({
             style={
               mediaAspectRatio ? { aspectRatio: mediaAspectRatio } : undefined
             }
-            aria-label={`View ${alt || caption || 'image'} in full size`}
+            aria-label={`View ${safeAlt || safeCaption || 'image'} in full size`}
           >
             {!thumbLoaded && (
-              <div className='absolute inset-0 flex items-center justify-center bg-muted/60'>
-                <Loader2 className='h-6 w-6 animate-spin text-muted-foreground/60' />
+              <div
+                aria-label={IMAGE_THUMBNAIL_LOADING_LABEL}
+                className='absolute inset-0 flex items-center justify-center bg-muted/60'
+                role='status'
+              >
+                <Loader2
+                  aria-hidden='true'
+                  className='h-6 w-6 animate-spin text-muted-foreground/60'
+                  focusable='false'
+                />
               </div>
             )}
             <img
               ref={imgRef}
               src={isInView ? displaySrc : undefined}
               data-src={displaySrc}
-              alt={alt || ''}
+              alt={safeAlt}
               loading='lazy'
               decoding='async'
               onLoad={handleThumbLoad}
@@ -543,7 +638,7 @@ export function ClickableImage({
               )}
               aria-hidden='true'
             >
-              <ZoomIn className='h-5 w-5' />
+              <ZoomIn aria-hidden='true' className='h-5 w-5' focusable='false' />
             </span>
           </button>
         </div>
@@ -562,7 +657,7 @@ export function ClickableImage({
 
       <ImageLightbox
         src={resolvedSrc}
-        alt={alt}
+        alt={safeAlt}
         open={lightboxOpen}
         onOpenChange={setLightboxOpen}
       />

@@ -17,15 +17,53 @@ interface ConsoleMessagesProps {
   isTerminal?: boolean;
   scrollKey?: unknown;
   className?: string;
+  label?: string;
+  title?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+}
+
+const ANSI_ESCAPE_PATTERN =
+  /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\))/g;
+const DEFAULT_MESSAGES_LABEL = 'Console messages';
+const DEFAULT_EMPTY_TITLE = 'AI Console';
+const DEFAULT_EMPTY_DESCRIPTION =
+  'Ask questions about blog posts. RAG-powered search retrieves relevant content.';
+
+function stripUnsafeConsoleMessageControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+}
+
+function normalizeConsoleMessageBody(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return stripUnsafeConsoleMessageControls(value)
+    .replace(/\r\n?/g, '\n')
+    .trim();
+}
+
+function normalizeConsoleMessageLine(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return stripUnsafeConsoleMessageControls(value)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeConsoleMessageText(value: unknown, fallback = ''): string {
+  const normalized = normalizeConsoleMessageLine(value);
+  return normalized || fallback;
 }
 
 function MessageContent({ content, isStreaming, isMobile }: { content: string; isStreaming?: boolean; isMobile?: boolean }) {
-  if (!content && isStreaming) {
+  const safeContent = normalizeConsoleMessageBody(content);
+
+  if (!safeContent && isStreaming) {
     return (
-      <span className="inline-flex items-center gap-1 text-zinc-500">
-        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse delay-75" />
-        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse delay-150" />
+        <span className="inline-flex items-center gap-1 text-zinc-500">
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" aria-hidden="true" />
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse delay-75" aria-hidden="true" />
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse delay-150" aria-hidden="true" />
       </span>
     );
   }
@@ -33,7 +71,7 @@ function MessageContent({ content, isStreaming, isMobile }: { content: string; i
   return (
     <div className={cn('prose prose-invert max-w-none', isMobile ? 'prose-base' : 'prose-sm')}>
       <p className="whitespace-pre-wrap break-words leading-relaxed m-0">
-        {content}
+        {safeContent}
         {isStreaming && (
           <span className="inline-block w-2 h-4 ml-0.5 bg-primary/80 animate-pulse" />
         )}
@@ -43,6 +81,7 @@ function MessageContent({ content, isStreaming, isMobile }: { content: string; i
 }
 
 function UserMessage({ message, isMobile }: { message: ConsoleMessage; isMobile?: boolean }) {
+  const content = normalizeConsoleMessageBody(message.content);
   return (
     <div className={cn(
       'flex gap-3 bg-zinc-900/30',
@@ -52,14 +91,14 @@ function UserMessage({ message, isMobile }: { message: ConsoleMessage; isMobile?
         'flex-shrink-0 rounded bg-zinc-800 flex items-center justify-center',
         isMobile ? 'w-8 h-8' : 'w-7 h-7'
       )}>
-        <User className={cn(isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4', 'text-zinc-400')} />
+          <User className={cn(isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4', 'text-zinc-400')} aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0 pt-0.5">
         <p className={cn(
           'text-foreground whitespace-pre-wrap break-words',
           isMobile ? 'text-base' : 'text-sm'
         )}>
-          {message.content}
+          {content}
         </p>
       </div>
     </div>
@@ -67,6 +106,7 @@ function UserMessage({ message, isMobile }: { message: ConsoleMessage; isMobile?
 }
 
 function AssistantMessage({ message, isMobile }: { message: ConsoleMessage; isMobile?: boolean }) {
+  const error = normalizeConsoleMessageLine(message.error);
   return (
     <div className={cn(
       'border-l-2 border-primary/30 bg-zinc-900/10',
@@ -77,7 +117,7 @@ function AssistantMessage({ message, isMobile }: { message: ConsoleMessage; isMo
           'flex-shrink-0 rounded bg-primary/10 border border-primary/20 flex items-center justify-center',
           isMobile ? 'w-8 h-8' : 'w-7 h-7'
         )}>
-          <Bot className={cn(isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4', 'text-primary')} />
+          <Bot className={cn(isMobile ? 'w-4.5 h-4.5' : 'w-4 h-4', 'text-primary')} aria-hidden="true" />
         </div>
         <div className="flex-1 min-w-0 pt-0.5">
           <MessageContent content={message.content} isStreaming={message.isStreaming} isMobile={isMobile} />
@@ -93,13 +133,13 @@ function AssistantMessage({ message, isMobile }: { message: ConsoleMessage; isMo
         </div>
       )}
 
-      {message.error && (
+      {error && (
         <div className={cn(
           'mt-2 flex items-center gap-2 text-red-400',
           isMobile ? 'ml-0 text-sm' : 'ml-10 text-xs'
         )}>
-          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>{message.error}</span>
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
     </div>
@@ -107,13 +147,14 @@ function AssistantMessage({ message, isMobile }: { message: ConsoleMessage; isMo
 }
 
 function SystemMessage({ message, isMobile }: { message: ConsoleMessage; isMobile?: boolean }) {
+  const content = normalizeConsoleMessageLine(message.content) || 'STATUS';
   return (
     <div className={cn('py-2 text-center', isMobile ? 'px-3' : 'px-4')}>
       <span className={cn(
         'font-mono uppercase tracking-wider text-zinc-600 bg-zinc-900/50 rounded-full',
         isMobile ? 'text-xs px-3 py-1.5' : 'text-[10px] px-3 py-1'
       )}>
-        {message.content}
+        {content}
       </span>
     </div>
   );
@@ -125,16 +166,28 @@ export const ConsoleMessages = memo(function ConsoleMessages({
   isTerminal,
   scrollKey,
   className,
+  label = DEFAULT_MESSAGES_LABEL,
+  title,
+  emptyTitle = DEFAULT_EMPTY_TITLE,
+  emptyDescription = DEFAULT_EMPTY_DESCRIPTION,
 }: ConsoleMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const safeMessages = Array.isArray(messages) ? messages : [];
+  const safeLabel = normalizeConsoleMessageText(label, DEFAULT_MESSAGES_LABEL);
+  const safeTitle = normalizeConsoleMessageLine(title);
+  const safeEmptyTitle = normalizeConsoleMessageText(emptyTitle, DEFAULT_EMPTY_TITLE);
+  const safeEmptyDescription = normalizeConsoleMessageText(
+    emptyDescription,
+    DEFAULT_EMPTY_DESCRIPTION
+  );
 
   useEffect(() => {
     requestAnimationFrame(() => {
       bottomRef.current?.scrollIntoView({ block: 'end' });
     });
-  }, [messages, scrollKey]);
+  }, [safeMessages, scrollKey]);
 
-  if (messages.length === 0) {
+  if (safeMessages.length === 0) {
     return (
       <div className={cn(
         'flex-1 flex flex-col items-center justify-center',
@@ -152,7 +205,7 @@ export const ConsoleMessages = memo(function ConsoleMessages({
             <Bot className={cn(
               isMobile ? 'w-6 h-6' : 'w-7 h-7',
               isTerminal ? 'text-primary' : 'text-muted-foreground'
-            )} />
+            )} aria-hidden="true" />
           </div>
           <div className="space-y-1.5">
             <h3 className={cn(
@@ -160,14 +213,14 @@ export const ConsoleMessages = memo(function ConsoleMessages({
               isTerminal ? 'text-primary' : 'text-foreground',
               isMobile ? 'text-sm' : 'text-sm'
             )}>
-              AI Console
+              {safeEmptyTitle}
             </h3>
             <p className={cn(
               'leading-relaxed',
               isTerminal ? 'text-muted-foreground' : 'text-muted-foreground',
               isMobile ? 'text-xs' : 'text-xs'
             )}>
-              Ask questions about blog posts. RAG-powered search retrieves relevant content.
+              {safeEmptyDescription}
             </p>
           </div>
         </div>
@@ -180,9 +233,13 @@ export const ConsoleMessages = memo(function ConsoleMessages({
       'flex-1 overflow-y-auto overscroll-contain',
       isMobile && 'min-h-[180px]',
       className
-    )}>
+    )}
+      role="log"
+      aria-label={safeLabel}
+      title={safeTitle || undefined}
+    >
       <div className="divide-y divide-zinc-800/30">
-        {messages.map(message => {
+        {safeMessages.map(message => {
           switch (message.role) {
             case 'user':
               return <UserMessage key={message.id} message={message} isMobile={isMobile} />;

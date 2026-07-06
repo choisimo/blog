@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContentManager } from '@/components/features/admin/content/ContentManager';
+import {
+  ContentManager,
+  normalizeCtaHref,
+} from '@/components/features/admin/content/ContentManager';
 
 const mocks = vi.hoisted(() => ({
   getAdminSiteContentBlock: vi.fn(),
@@ -94,5 +97,81 @@ describe('ContentManager', () => {
     fireEvent.click(saveButton);
 
     expect(mocks.saveSiteContentBlock).not.toHaveBeenCalled();
+  });
+
+  it('preserves unsaved Home CTA edits when content is refetched', async () => {
+    mocks.getAdminSiteContentBlock
+      .mockResolvedValueOnce({
+        key: 'home_ai_cta',
+        markdown: 'Remote CTA v1',
+        ctaLabel: 'Open',
+        ctaHref: '/open',
+        enabled: true,
+        updatedAt: null,
+      })
+      .mockResolvedValueOnce({
+        key: 'home_ai_cta',
+        markdown: 'Remote CTA v2',
+        ctaLabel: 'Updated elsewhere',
+        ctaHref: '/updated',
+        enabled: false,
+        updatedAt: null,
+      });
+
+    renderContentManager();
+
+    const markdown = await screen.findByLabelText('Markdown');
+    expect(markdown).toHaveValue('Remote CTA v1');
+
+    fireEvent.change(markdown, { target: { value: 'Unsaved local CTA' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh content' }));
+
+    await waitFor(() => {
+      expect(mocks.getAdminSiteContentBlock).toHaveBeenCalledTimes(2);
+    });
+
+    expect(markdown).toHaveValue('Unsaved local CTA');
+    expect(screen.getByTestId('markdown-preview')).toHaveTextContent(
+      'Unsaved local CTA',
+    );
+  });
+
+  it('rejects polluted Home CTA hrefs before saving', async () => {
+    mocks.getAdminSiteContentBlock.mockResolvedValueOnce({
+      key: 'home_ai_cta',
+      markdown: 'Remote CTA',
+      ctaLabel: 'Open',
+      ctaHref: '/open',
+      enabled: true,
+      updatedAt: null,
+    });
+
+    renderContentManager();
+
+    const href = await screen.findByLabelText('CTA href');
+    fireEvent.change(href, { target: { value: '/safe%0Aevil' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Save$/i }));
+
+    expect(mocks.saveSiteContentBlock).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Save failed',
+        description: 'CTA href is invalid.',
+        variant: 'destructive',
+      }),
+    );
+  });
+
+  it('normalizes Home CTA hrefs with a strict URL body boundary', () => {
+    expect(normalizeCtaHref(' /open ')).toBe('/open');
+    expect(normalizeCtaHref('https://example.com/path')).toBe(
+      'https://example.com/path',
+    );
+    expect(normalizeCtaHref('/open path')).toBeNull();
+    expect(normalizeCtaHref('/open%20path')).toBeNull();
+    expect(normalizeCtaHref('/open%0Apath')).toBeNull();
+    expect(normalizeCtaHref('/open\\path')).toBeNull();
+    expect(normalizeCtaHref('http://example.com')).toBeNull();
+    expect(normalizeCtaHref('javascript:alert(1)')).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   RefreshCw,
   CheckCircle,
@@ -41,6 +41,55 @@ interface ProviderHealth {
 interface ProvidersResult {
   providers: ProviderHealth[];
   errorMessage?: string;
+}
+
+const HEALTH_PROVIDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function normalizeHealthText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeHealthProviderId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    if ([trimmed, decoded].some((candidate) => /[\u0000-\u001F\u007F/\\]/.test(candidate))) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+
+  return HEALTH_PROVIDER_ID_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeProviderHealth(value: unknown): ProviderHealth | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Partial<ProviderHealth>;
+  const id = normalizeHealthProviderId(record.id);
+  if (!id) return null;
+
+  return {
+    id,
+    name: normalizeHealthText(record.name, id),
+    displayName: normalizeHealthText(record.displayName, id),
+    healthStatus: normalizeHealthText(record.healthStatus, "unknown"),
+    lastHealthCheck: typeof record.lastHealthCheck === "string" ? record.lastHealthCheck : null,
+    isEnabled: Boolean(record.isEnabled),
+    modelCount: Number.isSafeInteger(record.modelCount) ? record.modelCount : 0,
+    enabledModelCount: Number.isSafeInteger(record.enabledModelCount)
+      ? record.enabledModelCount
+      : 0,
+    healthError: normalizeHealthText(record.healthError) || null,
+  };
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -120,7 +169,14 @@ export async function getProvidersResult(): Promise<ProvidersResult> {
         ),
       };
     }
-    return { providers: data.data?.providers ?? [] };
+    return {
+      providers: Array.isArray(data.data?.providers)
+        ? data.data.providers.flatMap((provider: unknown) => {
+            const normalized = normalizeProviderHealth(provider);
+            return normalized ? [normalized] : [];
+          })
+        : [],
+    };
   } catch (err) {
     return {
       providers: [],
@@ -142,15 +198,15 @@ function getResponseErrorMessage(payload: unknown, fallback: string): string {
     "error" in payload
   ) {
     const error = payload.error;
-    if (typeof error === "string" && error) return error;
+    const errorText = normalizeHealthText(error);
+    if (errorText) return errorText;
     if (
       error &&
       typeof error === "object" &&
       "message" in error &&
-      typeof error.message === "string" &&
-      error.message
+      typeof error.message === "string"
     ) {
-      return error.message;
+      return normalizeHealthText(error.message, fallback);
     }
   }
   return fallback;
@@ -160,10 +216,15 @@ function getResponseErrorMessage(payload: unknown, fallback: string): string {
 export async function checkProviderHealth(
   providerId: string,
 ): Promise<{ status: string; latencyMs?: number; error?: string }> {
+  const safeProviderId = normalizeHealthProviderId(providerId);
+  if (!safeProviderId) {
+    return { status: "down", error: "Invalid provider selector" };
+  }
+
   const base = getApiBaseUrl();
   try {
     const res = await adminFetchRaw(
-      `${base}/api/v1/admin/ai/providers/${providerId}/health`,
+      `${base}/api/v1/admin/ai/providers/${encodeURIComponent(safeProviderId)}/health`,
       {
         method: "PUT",
         signal: AbortSignal.timeout(15000),
@@ -277,7 +338,10 @@ export function SystemHealth() {
   const [providers, setProviders] = useState<ProviderHealth[]>([]);
   const [providersError, setProvidersError] = useState<string | null>(null);
   const [providersLoading, setProvidersLoading] = useState(false);
-  const [checkingProvider, setCheckingProvider] = useState<string | null>(null);
+  const [checkingProviderIds, setCheckingProviderIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const providerChecksInFlightRef = useRef<Set<string>>(new Set());
 
   const [agentHealth, setAgentHealth] = useState<AgentHealth | null>(null);
   const [agentLoading, setAgentLoading] = useState(false);
@@ -336,21 +400,35 @@ export function SystemHealth() {
 
   const handleCheckProviderHealth = useCallback(
     async (providerId: string) => {
-      setCheckingProvider(providerId);
-      const result = await checkProviderHealth(providerId);
-      setProviders((prev) =>
-        prev.map((p) =>
-          p.id === providerId
-            ? {
-                ...p,
-                healthStatus: result.status,
-                healthError: result.error ?? null,
-                lastHealthCheck: new Date().toISOString(),
-              }
-            : p,
-        ),
-      );
-      setCheckingProvider(null);
+      if (providerChecksInFlightRef.current.has(providerId)) {
+        return;
+      }
+
+      providerChecksInFlightRef.current.add(providerId);
+      setCheckingProviderIds((prev) => new Set(prev).add(providerId));
+
+      try {
+        const result = await checkProviderHealth(providerId);
+        setProviders((prev) =>
+          prev.map((p) =>
+            p.id === providerId
+              ? {
+                  ...p,
+                  healthStatus: result.status,
+                  healthError: result.error ?? null,
+                  lastHealthCheck: new Date().toISOString(),
+                }
+              : p,
+          ),
+        );
+      } finally {
+        providerChecksInFlightRef.current.delete(providerId);
+        setCheckingProviderIds((prev) => {
+          const next = new Set(prev);
+          next.delete(providerId);
+          return next;
+        });
+      }
     },
     [],
   );
@@ -546,41 +624,45 @@ export function SystemHealth() {
                 {providersLoading ? "Loading..." : "No providers"}
               </p>
             ) : (
-              providers.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  disabled={!p.isEnabled || checkingProvider === p.id}
-                  onClick={() => p.isEnabled && handleCheckProviderHealth(p.id)}
-                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50 transition-colors disabled:cursor-default"
-                >
-                  <div className="text-left">
-                    <p className="text-sm text-zinc-700">{p.displayName}</p>
-                    <p
-                      className={`font-mono text-xs max-w-[140px] truncate ${
-                        p.healthError ? "text-red-600" : "text-zinc-400"
-                      }`}
-                    >
-                      {p.healthError ?? `${p.enabledModelCount}/${p.modelCount} models`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {checkingProvider === p.id ? (
-                      <RefreshCw className="h-3 w-3 text-zinc-400 animate-spin" />
-                    ) : !p.isEnabled ? (
-                      <span className="font-mono text-xs text-zinc-400">
-                        off
-                      </span>
-                    ) : p.healthStatus === "healthy" ? (
-                      <CheckCircle className="h-3 w-3 text-emerald-600" />
-                    ) : p.healthStatus === "down" ? (
-                      <XCircle className="h-3 w-3 text-red-600" />
-                    ) : (
-                      <AlertCircle className="h-3 w-3 text-zinc-400" />
-                    )}
-                  </div>
-                </button>
-              ))
+              providers.map((p) => {
+                const isCheckingProvider = checkingProviderIds.has(p.id);
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={!p.isEnabled || isCheckingProvider}
+                    onClick={() => p.isEnabled && handleCheckProviderHealth(p.id)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50 transition-colors disabled:cursor-default"
+                  >
+                    <div className="text-left">
+                      <p className="text-sm text-zinc-700">{p.displayName}</p>
+                      <p
+                        className={`font-mono text-xs max-w-[140px] truncate ${
+                          p.healthError ? "text-red-600" : "text-zinc-400"
+                        }`}
+                      >
+                        {p.healthError ?? `${p.enabledModelCount}/${p.modelCount} models`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {isCheckingProvider ? (
+                        <RefreshCw className="h-3 w-3 text-zinc-400 animate-spin" />
+                      ) : !p.isEnabled ? (
+                        <span className="font-mono text-xs text-zinc-400">
+                          off
+                        </span>
+                      ) : p.healthStatus === "healthy" ? (
+                        <CheckCircle className="h-3 w-3 text-emerald-600" />
+                      ) : p.healthStatus === "down" ? (
+                        <XCircle className="h-3 w-3 text-red-600" />
+                      ) : (
+                        <AlertCircle className="h-3 w-3 text-zinc-400" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

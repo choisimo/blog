@@ -14,6 +14,37 @@ type PrismDeckProps = {
   onReady?: (cards: LensCardData[], source: LensDeckSource) => void;
 };
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+export function normalizePrismDeckText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || undefined;
+}
+
+function normalizeCacheKey(value: unknown): string {
+  const normalized =
+    typeof value === 'string'
+      ? value
+          .trim()
+          .replace(ANSI_ESCAPE_PATTERN, '')
+          .replace(CONTROL_TEXT_PATTERN, '-')
+          .replace(/[|/\\\s]+/g, '-')
+          .replace(/[^A-Za-z0-9:_-]+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .slice(0, 160)
+      : '';
+  return normalized || 'prism-deck';
+}
+
 export default function PrismDeck({
   paragraph,
   postTitle,
@@ -21,6 +52,8 @@ export default function PrismDeck({
   enabled,
   onReady,
 }: PrismDeckProps) {
+  const safePostTitle = normalizePrismDeckText(postTitle);
+  const safeCacheKey = normalizeCacheKey(cacheKey);
   const {
     cards,
     activeCard,
@@ -35,8 +68,8 @@ export default function PrismDeck({
     goNext,
   } = useLensDeck({
     paragraph,
-    postTitle,
-    cacheKey,
+    postTitle: safePostTitle,
+    cacheKey: safeCacheKey,
     enabled,
     onReady,
   });
@@ -52,7 +85,7 @@ export default function PrismDeck({
 
   useEffect(() => {
     setShowEvidence(false);
-  }, [activeCard?.id, cacheKey]);
+  }, [activeCard?.id, safeCacheKey]);
 
   const handleGoPrev = useCallback(() => {
     setShowEvidence(false);

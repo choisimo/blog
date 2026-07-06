@@ -5,6 +5,8 @@ import { hapticSuccess, hapticError, hapticLight } from '@/utils/ui/haptics';
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -138,20 +140,52 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, 'id'>;
 
+function sanitizeToastText(value: unknown): string {
+  return String(value ?? '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+}
+
+function sanitizeToastNode(node: React.ReactNode): React.ReactNode {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return sanitizeToastText(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(sanitizeToastNode);
+  }
+
+  return node;
+}
+
+function sanitizeToastProps<T extends Partial<Toast>>(props: T): T {
+  return {
+    ...props,
+    ...(Object.prototype.hasOwnProperty.call(props, 'title')
+      ? { title: sanitizeToastNode(props.title) }
+      : {}),
+    ...(Object.prototype.hasOwnProperty.call(props, 'description')
+      ? { description: sanitizeToastNode(props.description) }
+      : {}),
+  };
+}
+
 function toast({ ...props }: Toast) {
   const id = genId();
+  const safeProps = sanitizeToastProps(props);
 
   const update = (props: ToasterToast) =>
     dispatch({
       type: 'UPDATE_TOAST',
-      toast: { ...props, id },
+      toast: { ...sanitizeToastProps(props), id },
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
   dispatch({
     type: 'ADD_TOAST',
     toast: {
-      ...props,
+      ...safeProps,
       id,
       open: true,
       onOpenChange: open => {
@@ -161,11 +195,11 @@ function toast({ ...props }: Toast) {
   });
 
   // Trigger haptic feedback based on toast variant
-  if (props.variant === 'destructive') {
+  if (safeProps.variant === 'destructive') {
     hapticError();
-  } else if (props.title?.toString().toLowerCase().includes('success') ||
-    props.title?.toString().toLowerCase().includes('완료') ||
-    props.title?.toString().toLowerCase().includes('저장')) {
+  } else if (safeProps.title?.toString().toLowerCase().includes('success') ||
+    safeProps.title?.toString().toLowerCase().includes('완료') ||
+    safeProps.title?.toString().toLowerCase().includes('저장')) {
     hapticSuccess();
   } else {
     hapticLight();

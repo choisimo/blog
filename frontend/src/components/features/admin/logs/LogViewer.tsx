@@ -38,6 +38,7 @@ const LEVEL_BADGE: Record<string, string> = {
   debug: "bg-slate-100 text-slate-500",
 };
 
+const LOG_LEVELS = new Set<LogEntry["level"]>(["error", "warn", "info", "debug"]);
 const LOG_STREAM_RECONNECT_MS = 3000;
 const LOG_BUFFER_CAP = 1000;
 
@@ -47,6 +48,36 @@ type AbortControllerRef = { current: AbortController | null };
 
 function appendLogEntry(setLogs: LogStateSetter, entry: LogEntry) {
   setLogs((prev) => [entry, ...prev].slice(0, LOG_BUFFER_CAP));
+}
+
+function normalizeLogText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized && normalized.length <= maxLength ? normalized : null;
+}
+
+function normalizeLogEntry(value: unknown): LogEntry | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as LogEntry & { type?: string };
+  const timestamp =
+    typeof record.timestamp === "string" && Number.isFinite(Date.parse(record.timestamp))
+      ? record.timestamp
+      : null;
+  const level = LOG_LEVELS.has(record.level) ? record.level : null;
+  const message = normalizeLogText(record.message, 4000);
+  const service = normalizeLogText(record.service, 128);
+  if (!timestamp || !level || !message) return null;
+
+  return {
+    ...record,
+    timestamp,
+    level,
+    message,
+    ...(service ? { service } : { service: undefined }),
+  };
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -72,7 +103,8 @@ export async function parseLogStream(
       if (data.type === "connected" || pausedRef.current) {
         return;
       }
-      appendLogEntry(setLogs, data);
+      const entry = normalizeLogEntry(data);
+      if (entry) appendLogEntry(setLogs, entry);
     } catch {
       void 0;
     }

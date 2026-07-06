@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   AlertCircle,
   RefreshCw,
@@ -60,6 +60,99 @@ interface StatsRefreshResult {
   message: string;
 }
 
+const ANALYTICS_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const SORT_FIELDS = [
+  "total_views",
+  "views_7d",
+  "views_30d",
+  "last_viewed_at",
+] as const;
+
+type SortField = (typeof SORT_FIELDS)[number];
+
+function decodeAnalyticsSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAnalyticsSelector(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeAnalyticsSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ANALYTICS_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeAnalyticsYear(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return /^\d{4}$/.test(trimmed) ? trimmed : null;
+}
+
+export function buildAnalyticsBlogHref(year: unknown, slug: unknown): string | null {
+  const safeYear = normalizeAnalyticsYear(year);
+  const safeSlug = normalizeAnalyticsSelector(slug);
+  if (!safeYear || !safeSlug) return null;
+
+  return `/#/blog/${encodeURIComponent(safeYear)}/${encodeURIComponent(safeSlug)}`;
+}
+
+function normalizeSortField(value: unknown): SortField {
+  return SORT_FIELDS.includes(value as SortField)
+    ? (value as SortField)
+    : "total_views";
+}
+
+function normalizeDisplayText(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const decoded = decodeAnalyticsSelector(value);
+  if (!decoded || /[\r\n]/.test(decoded)) return fallback;
+  const cleaned = value.replace(/[\r\n]+/g, " ").trim();
+  return cleaned || fallback;
+}
+
+function normalizeEditorPick(pick: EditorPick): EditorPick | null {
+  const postSlug = normalizeAnalyticsSelector(pick.post_slug);
+  const year = normalizeAnalyticsYear(pick.year);
+  if (!postSlug || !year) return null;
+
+  const category = normalizeAnalyticsSelector(pick.category);
+  const reason = normalizeDisplayText(pick.reason, "");
+
+  return {
+    ...pick,
+    post_slug: postSlug,
+    year,
+    title: normalizeDisplayText(pick.title, postSlug),
+    category,
+    reason: reason || null,
+  };
+}
+
+function normalizeTrendingPost(post: TrendingPost): TrendingPost | null {
+  const postSlug = normalizeAnalyticsSelector(post.post_slug);
+  const year = normalizeAnalyticsYear(post.year);
+  if (!postSlug || !year) return null;
+  return { ...post, post_slug: postSlug, year };
+}
+
+function normalizePostStat(stat: PostStat): PostStat | null {
+  const postSlug = normalizeAnalyticsSelector(stat.post_slug);
+  const year = normalizeAnalyticsYear(stat.year);
+  if (!postSlug || !year) return null;
+  return { ...stat, post_slug: postSlug, year };
+}
+
 function getAnalyticsErrorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object") return fallback;
   const record = payload as { error?: unknown; message?: unknown };
@@ -91,7 +184,11 @@ async function getEditorPicksResult(): Promise<EditorPicksResult> {
         ),
       };
     }
-    return { picks: data.data?.picks ?? [] };
+    return {
+      picks: (Array.isArray(data.data?.picks) ? data.data.picks : [])
+        .map(normalizeEditorPick)
+        .filter((pick): pick is EditorPick => pick !== null),
+    };
   } catch (err) {
     return {
       picks: [],
@@ -106,9 +203,12 @@ async function getTrendingPosts(
   offset: number = 0,
 ): Promise<{ trending: TrendingPost[]; total: number; degraded?: boolean; errorMessage?: string }> {
   const base = getApiBaseUrl();
+  const safeDays = [7, 14, 30].includes(days) ? days : 7;
+  const safeOffset =
+    Number.isFinite(offset) && offset >= 0 ? Math.floor(offset) : 0;
   try {
     const res = await fetch(
-      `${base}/api/v1/analytics/trending?days=${days}&limit=10&offset=${offset}`,
+      `${base}/api/v1/analytics/trending?days=${safeDays}&limit=10&offset=${safeOffset}`,
     );
     const data = await res.json();
     if (!res.ok) {
@@ -120,7 +220,9 @@ async function getTrendingPosts(
       };
     }
     return {
-      trending: data.data?.trending ?? [],
+      trending: (Array.isArray(data.data?.trending) ? data.data.trending : [])
+        .map(normalizeTrendingPost)
+        .filter((post): post is TrendingPost => post !== null),
       total: data.data?.total ?? 0,
       degraded: Boolean(data?.degraded),
     };
@@ -314,6 +416,8 @@ export function EditorPicksSection() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removingPick, setRemovingPick] = useState<string | null>(null);
+  const removingPickRef = useRef<string | null>(null);
 
   const fetchPicks = useCallback(async () => {
     setLoading(true);
@@ -329,11 +433,22 @@ export function EditorPicksSection() {
   }, [fetchPicks]);
 
   const handleRemove = async (year: string, slug: string) => {
+    const safeYear = normalizeAnalyticsYear(year);
+    const safeSlug = normalizeAnalyticsSelector(slug);
+    if (!safeYear || !safeSlug) {
+      setRemoveError("Invalid editor pick selector.");
+      return;
+    }
+
+    const pickKey = `${safeYear}/${safeSlug}`;
+    if (removingPickRef.current === pickKey) return;
+    removingPickRef.current = pickKey;
+    setRemovingPick(pickKey);
     setRemoveError(null);
     const base = getApiBaseUrl();
     try {
       const res = await adminFetchRaw(
-        `${base}/api/v1/analytics/admin/editor-picks/${year}/${slug}`,
+        `${base}/api/v1/analytics/admin/editor-picks/${safeYear}/${safeSlug}`,
         { method: "DELETE" },
       );
       if (!res.ok) {
@@ -344,6 +459,11 @@ export function EditorPicksSection() {
       await fetchPicks();
     } catch {
       setRemoveError("Failed to remove pick.");
+    } finally {
+      if (removingPickRef.current === pickKey) {
+        removingPickRef.current = null;
+        setRemovingPick(null);
+      }
     }
   };
 
@@ -353,14 +473,28 @@ export function EditorPicksSection() {
     setFormSubmitting(true);
     const base = getApiBaseUrl();
     try {
+      const safeSlug = normalizeAnalyticsSelector(formSlug);
+      const safeYear = normalizeAnalyticsYear(formYear);
+      if (!safeSlug || !safeYear) {
+        setFormError("Invalid editor pick selector.");
+        setFormSubmitting(false);
+        return;
+      }
+
       const body: {
         post_slug: string;
         year: string;
         rank?: number;
         reason?: string;
-      } = { post_slug: formSlug.trim(), year: formYear.trim() };
-      if (formRank) body.rank = parseInt(formRank, 10);
-      if (formReason.trim()) body.reason = formReason.trim();
+      } = { post_slug: safeSlug, year: safeYear };
+      if (formRank) {
+        const rank = parseInt(formRank, 10);
+        if (Number.isFinite(rank)) body.rank = Math.min(Math.max(rank, 1), 99);
+      }
+      if (formReason.trim()) {
+        const reason = normalizeDisplayText(formReason, "");
+        if (reason) body.reason = reason;
+      }
       const res = await adminFetchRaw(
         `${base}/api/v1/analytics/admin/editor-picks`,
         {
@@ -530,9 +664,15 @@ export function EditorPicksSection() {
             </span>
             <span className="col-span-1" />
           </div>
-          {picks.map((pick) => (
+          {picks.map((pick) => {
+            const safeYear = normalizeAnalyticsYear(pick.year);
+            const safeSlug = normalizeAnalyticsSelector(pick.post_slug);
+            if (!safeYear || !safeSlug) return null;
+            const pickKey = `${safeYear}/${safeSlug}`;
+            const isRemoving = removingPick === pickKey;
+            return (
             <div
-              key={`${pick.year}/${pick.post_slug}`}
+              key={pickKey}
               className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-zinc-50"
             >
               <span className="col-span-1 font-mono text-xs text-zinc-400">
@@ -540,21 +680,21 @@ export function EditorPicksSection() {
               </span>
               <div className="col-span-6">
                 <a
-                  href={`/#/blog/${pick.year}/${pick.post_slug}`}
+                  href={buildAnalyticsBlogHref(safeYear, safeSlug) ?? "/#/blog"}
                   className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {pick.title || pick.post_slug}
+                  {normalizeDisplayText(pick.title, safeSlug)}
                 </a>
                 {pick.reason && (
                   <p className="text-xs text-zinc-400 mt-0.5 truncate">
-                    {pick.reason}
+                    {normalizeDisplayText(pick.reason, "")}
                   </p>
                 )}
               </div>
               <span className="col-span-2 font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded w-fit">
-                {pick.category || "-"}
+                {normalizeAnalyticsSelector(pick.category) || "-"}
               </span>
               <span className="col-span-2 text-xs font-medium text-zinc-700 text-right">
                 {pick.score}
@@ -562,14 +702,16 @@ export function EditorPicksSection() {
               <div className="col-span-1 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => handleRemove(pick.year, pick.post_slug)}
-                  className="text-xs text-red-400 hover:text-red-600 hover:underline"
+                  onClick={() => handleRemove(safeYear, safeSlug)}
+                  disabled={isRemoving}
+                  className="text-xs text-red-400 hover:text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Remove
+                  {isRemoving ? "Removing..." : "Remove"}
                 </button>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
@@ -662,9 +804,14 @@ export function TrendingPostsSection() {
       ) : (
         <>
           <div className="divide-y divide-zinc-100">
-            {trending.map((post, idx) => (
+            {trending.map((post, idx) => {
+              const safeYear = normalizeAnalyticsYear(post.year);
+              const safeSlug = normalizeAnalyticsSelector(post.post_slug);
+              if (!safeYear || !safeSlug) return null;
+
+              return (
               <div
-                key={`${post.year}/${post.post_slug}`}
+                key={`${safeYear}/${safeSlug}`}
                 className="flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50"
               >
                 <div className="flex items-center gap-3">
@@ -673,14 +820,14 @@ export function TrendingPostsSection() {
                   </span>
                   <div>
                     <a
-                      href={`/#/blog/${post.year}/${post.post_slug}`}
+                      href={buildAnalyticsBlogHref(safeYear, safeSlug) ?? "/#/blog"}
                       className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {post.post_slug}
+                      {safeSlug}
                     </a>
-                    <p className="text-xs text-zinc-400">{post.year}</p>
+                    <p className="text-xs text-zinc-400">{safeYear}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -693,7 +840,8 @@ export function TrendingPostsSection() {
                   </p>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           {total > PAGE_SIZE && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100">
@@ -790,8 +938,9 @@ export function StatsRefreshSection() {
 export async function getAllPostStatsResult(
   orderBy: string,
 ): Promise<PostStatsResult> {
+  const safeOrderBy = normalizeSortField(orderBy);
   const result = await adminApiFetch<{ stats?: PostStat[] }>(
-    `/posts?orderBy=${encodeURIComponent(orderBy)}`,
+    `/posts?orderBy=${encodeURIComponent(safeOrderBy)}`,
     { pathPrefix: "/api/v1/admin/analytics" },
   );
   if (!result.ok) {
@@ -800,15 +949,17 @@ export async function getAllPostStatsResult(
       errorMessage: result.error || "Failed to load post stats",
     };
   }
-  return { stats: result.data?.stats ?? [] };
+  return {
+    stats: (Array.isArray(result.data?.stats) ? result.data.stats : [])
+      .map(normalizePostStat)
+      .filter((stat): stat is PostStat => stat !== null),
+  };
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export async function getAllPostStats(orderBy: string): Promise<PostStat[]> {
   return (await getAllPostStatsResult(orderBy)).stats;
 }
-
-type SortField = "total_views" | "views_7d" | "views_30d" | "last_viewed_at";
 
 export function AllPostsSection() {
   const [stats, setStats] = useState<PostStat[]>([]);
@@ -845,8 +996,13 @@ export function AllPostsSection() {
     );
   }
 
-  const paginated = stats.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const totalPages = Math.ceil(stats.length / PAGE_SIZE);
+  const safeStats = stats.filter(
+    (stat) =>
+      normalizeAnalyticsYear(stat.year) &&
+      normalizeAnalyticsSelector(stat.post_slug),
+  );
+  const paginated = safeStats.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const totalPages = Math.ceil(safeStats.length / PAGE_SIZE);
 
   const SortButton = ({
     field,
@@ -879,7 +1035,7 @@ export function AllPostsSection() {
           <Table className="h-3.5 w-3.5 text-zinc-500" />
           <span className="text-xs font-semibold text-zinc-700">All Posts</span>
           <span className="font-mono text-xs text-zinc-400">
-            ({stats.length})
+            ({safeStats.length})
           </span>
         </div>
         <button
@@ -922,7 +1078,7 @@ export function AllPostsSection() {
             </div>
           </div>
         </div>
-      ) : stats.length === 0 ? (
+      ) : safeStats.length === 0 ? (
         <p className="px-4 py-3 text-xs text-zinc-400">
           No post stats recorded yet.
         </p>
@@ -942,21 +1098,26 @@ export function AllPostsSection() {
             <span className="col-span-1" />
           </div>
           <div className="divide-y divide-zinc-100">
-            {paginated.map((s) => (
+            {paginated.map((s) => {
+              const safeYear = normalizeAnalyticsYear(s.year);
+              const safeSlug = normalizeAnalyticsSelector(s.post_slug);
+              if (!safeYear || !safeSlug) return null;
+
+              return (
               <div
-                key={`${s.year}/${s.post_slug}`}
+                key={`${safeYear}/${safeSlug}`}
                 className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-zinc-50 text-xs"
               >
                 <div className="col-span-5">
                   <a
-                    href={`/#/blog/${s.year}/${s.post_slug}`}
+                    href={buildAnalyticsBlogHref(safeYear, safeSlug) ?? "/#/blog"}
                     className="font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {s.post_slug}
+                    {safeSlug}
                   </a>
-                  <p className="text-zinc-400 font-mono">{s.year}</p>
+                  <p className="text-zinc-400 font-mono">{safeYear}</p>
                 </div>
                 <div className="col-span-2 text-right font-mono text-zinc-700 flex items-center justify-end gap-1">
                   <Eye className="h-3 w-3 text-zinc-400" />
@@ -972,7 +1133,7 @@ export function AllPostsSection() {
                   <button
                     type="button"
                     onClick={() =>
-                      setSelected({ slug: s.post_slug, year: s.year })
+                      setSelected({ slug: safeSlug, year: safeYear })
                     }
                     className="text-xs text-zinc-400 hover:text-zinc-700 hover:underline"
                   >
@@ -980,7 +1141,8 @@ export function AllPostsSection() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100">

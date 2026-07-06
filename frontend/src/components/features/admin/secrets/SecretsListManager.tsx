@@ -72,6 +72,93 @@ interface PendingPlaintextAction {
 }
 
 const BREAK_GLASS_REASON_REQUIRED = 'break-glass reason is required';
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+const REVEALED_VALUE_DISPLAY_FALLBACK = '[non-displayable secret value]';
+
+function normalizeSafeText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeRevealedSecretDisplayValue(value: unknown): string {
+  const normalized = normalizeSafeText(value);
+  return normalized || REVEALED_VALUE_DISPLAY_FALLBACK;
+}
+
+function normalizeSecretId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n/\\]/.test(normalized) || !/^[A-Za-z0-9_-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeCategoryId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || /[\r\n/\\]/.test(normalized) || !/^[a-z0-9_-]+$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeSecretKeyName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  if (!normalized || /[\r\n]/.test(normalized) || !/^[A-Z_][A-Z0-9_]*$/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeSecretCategory(category: SecretCategory): SecretCategory | null {
+  const id = normalizeCategoryId(category.id);
+  if (!id) return null;
+  return {
+    ...category,
+    id,
+    display_name: normalizeSafeText(category.display_name, id),
+    description: normalizeSafeText(category.description),
+  };
+}
+
+function normalizeSecret(secret: SecretPublic): SecretPublic | null {
+  const id = normalizeSecretId(secret.id);
+  const categoryId = normalizeCategoryId(secret.category_id);
+  const keyName = normalizeSecretKeyName(secret.key_name);
+  if (!id || !categoryId || !keyName) return null;
+  return {
+    ...secret,
+    id,
+    category_id: categoryId,
+    key_name: keyName,
+    display_name: normalizeSafeText(secret.display_name, keyName),
+    description: secret.description ? normalizeSafeText(secret.description) : null,
+    category_name: secret.category_name
+      ? normalizeSafeText(secret.category_name, 'Uncategorized')
+      : secret.category_name,
+  };
+}
+
+function normalizeSecrets(secrets: SecretPublic[]): SecretPublic[] {
+  return secrets.flatMap((secret) => {
+    const normalized = normalizeSecret(secret);
+    return normalized ? [normalized] : [];
+  });
+}
+
+function normalizeCategories(categories: SecretCategory[]): SecretCategory[] {
+  return categories.flatMap((category) => {
+    const normalized = normalizeSecretCategory(category);
+    return normalized ? [normalized] : [];
+  });
+}
 
 function needsBreakGlassReason(error?: string): boolean {
   return error?.toLowerCase().includes(BREAK_GLASS_REASON_REQUIRED) ?? false;
@@ -93,12 +180,15 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   const { categories, fetchCategories } = useCategories();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter ?? 'all');
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    normalizeCategoryId(initialCategoryFilter) ?? 'all',
+  );
 
   // Sync category filter when parent passes a new initial value (e.g. category card click)
   useEffect(() => {
-    if (initialCategoryFilter) {
-      setCategoryFilter(initialCategoryFilter);
+    const normalizedInitialCategory = normalizeCategoryId(initialCategoryFilter);
+    if (normalizedInitialCategory) {
+      setCategoryFilter(normalizedInitialCategory);
     }
   }, [initialCategoryFilter]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -135,10 +225,13 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
     }
   }, [fetchSecrets, fetchCategories, initialCategories.length]);
 
-  const effectiveCategories = initialCategories.length > 0 ? initialCategories : categories;
+  const effectiveCategories = normalizeCategories(
+    initialCategories.length > 0 ? initialCategories : categories,
+  );
+  const safeSecrets = normalizeSecrets(secrets);
 
   // Filter secrets
-  const filteredSecrets = secrets.filter((secret) => {
+  const filteredSecrets = safeSecrets.filter((secret) => {
     const matchesSearch =
       searchTerm === '' ||
       secret.key_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,16 +260,20 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   }, []);
 
   const showSecretValue = useCallback((secret: SecretPublic, value: string) => {
+    const normalizedSecret = normalizeSecret(secret);
+    if (!normalizedSecret) return;
     setRevealedValues((prev) => ({
       ...prev,
-      [secret.id]: value,
+      [normalizedSecret.id]: value,
     }));
-    setTimeout(() => hideSecretValue(secret.id), 30000);
+    setTimeout(() => hideSecretValue(normalizedSecret.id), 30000);
   }, [hideSecretValue]);
 
   const copySecretValue = useCallback(async (secret: SecretPublic, value: string) => {
+    const normalizedSecret = normalizeSecret(secret);
+    if (!normalizedSecret) return;
     await navigator.clipboard.writeText(value);
-    setCopiedId(secret.id);
+    setCopiedId(normalizedSecret.id);
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
@@ -186,25 +283,30 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
       kind: PlaintextActionKind,
       reason?: string,
     ): Promise<boolean> => {
-      const result = await revealSecret(secret.id, reason);
+      const normalizedSecret = normalizeSecret(secret);
+      if (!normalizedSecret) {
+        setPlaintextError('Invalid secret identifier');
+        return false;
+      }
+      const result = await revealSecret(normalizedSecret.id, reason);
 
       if (result.ok && result.data) {
         if (kind === 'copy') {
-          await copySecretValue(secret, result.data.value);
+          await copySecretValue(normalizedSecret, result.data.value);
         } else {
-          showSecretValue(secret, result.data.value);
+          showSecretValue(normalizedSecret, result.data.value);
         }
         return true;
       }
 
       if (!reason && needsBreakGlassReason(result.error)) {
-        setPendingPlaintextAction({ kind, secret });
+        setPendingPlaintextAction({ kind, secret: normalizedSecret });
         setPlaintextReason('');
         setPlaintextError('');
         return false;
       }
 
-      setPlaintextError(result.error || 'Failed to retrieve secret value');
+      setPlaintextError(normalizeSafeText(result.error, 'Failed to retrieve secret value'));
       return false;
     },
     [copySecretValue, revealSecret, showSecretValue],
@@ -245,32 +347,50 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
 
   const handleReveal = useCallback(
     async (secret: SecretPublic) => {
-      if (revealedValues[secret.id]) {
-        hideSecretValue(secret.id);
+      const normalizedSecret = normalizeSecret(secret);
+      if (!normalizedSecret) return;
+      if (revealedValues[normalizedSecret.id]) {
+        hideSecretValue(normalizedSecret.id);
         return;
       }
 
-      await requestPlaintextValue(secret, 'reveal');
+      await requestPlaintextValue(normalizedSecret, 'reveal');
     },
     [hideSecretValue, requestPlaintextValue, revealedValues],
   );
 
   const handleCopy = useCallback(async (secret: SecretPublic) => {
-    const value = revealedValues[secret.id];
+    const normalizedSecret = normalizeSecret(secret);
+    if (!normalizedSecret) return;
+    const value = revealedValues[normalizedSecret.id];
 
     if (value) {
-      await copySecretValue(secret, value);
+      await copySecretValue(normalizedSecret, value);
       return;
     }
 
-    await requestPlaintextValue(secret, 'copy');
+    await requestPlaintextValue(normalizedSecret, 'copy');
   }, [copySecretValue, requestPlaintextValue, revealedValues]);
 
   const handleCreate = async () => {
     setFormError('');
+    const categoryId = normalizeCategoryId(formData.categoryId);
+    const keyName = normalizeSecretKeyName(formData.keyName);
+    if (!categoryId || !keyName) {
+      setFormError('Invalid secret key or category');
+      return;
+    }
+
     setFormLoading(true);
 
-    const result = await createSecret(formData);
+    const result = await createSecret({
+      ...formData,
+      categoryId,
+      keyName,
+      displayName: normalizeSafeText(formData.displayName, keyName),
+      description: normalizeSafeText(formData.description),
+      envFallback: normalizeSafeText(formData.envFallback),
+    });
     if (result.ok) {
       setIsCreateOpen(false);
       resetForm();
@@ -282,18 +402,19 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   };
 
   const handleUpdate = async () => {
-    if (!selectedSecret) return;
+    const normalizedSecret = selectedSecret ? normalizeSecret(selectedSecret) : null;
+    if (!normalizedSecret) return;
     setFormError('');
     setFormLoading(true);
 
-    const result = await updateSecret(selectedSecret.id, {
-      displayName: formData.displayName,
-      description: formData.description,
+    const result = await updateSecret(normalizedSecret.id, {
+      displayName: normalizeSafeText(formData.displayName, normalizedSecret.key_name),
+      description: normalizeSafeText(formData.description),
       value: formData.value || undefined,
       isRequired: formData.isRequired,
       isSensitive: formData.isSensitive,
       valueType: formData.valueType,
-      envFallback: formData.envFallback,
+      envFallback: normalizeSafeText(formData.envFallback),
     });
 
     if (result.ok) {
@@ -307,13 +428,18 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   };
 
   const handleDelete = async () => {
-    if (!selectedSecret) return;
+    const normalizedSecret = selectedSecret ? normalizeSecret(selectedSecret) : null;
+    if (!normalizedSecret) return;
+    if (formLoading) return;
+    setFormError('');
     setFormLoading(true);
 
-    const result = await deleteSecret(selectedSecret.id);
+    const result = await deleteSecret(normalizedSecret.id);
     if (result.ok) {
       setIsDeleteOpen(false);
       setSelectedSecret(null);
+    } else {
+      setFormError(result.error || 'Failed to delete secret');
     }
 
     setFormLoading(false);
@@ -343,17 +469,19 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   };
 
   const openEdit = (secret: SecretPublic) => {
-    setSelectedSecret(secret);
+    const normalizedSecret = normalizeSecret(secret);
+    if (!normalizedSecret) return;
+    setSelectedSecret(normalizedSecret);
     setFormData({
-      categoryId: secret.category_id,
-      keyName: secret.key_name,
-      displayName: secret.display_name,
-      description: secret.description || '',
+      categoryId: normalizedSecret.category_id,
+      keyName: normalizedSecret.key_name,
+      displayName: normalizedSecret.display_name,
+      description: normalizedSecret.description || '',
       value: '', // Don't pre-fill value
-      isRequired: !!secret.is_required,
-      isSensitive: !!secret.is_sensitive,
-      valueType: secret.value_type,
-      envFallback: secret.env_fallback || '',
+      isRequired: !!normalizedSecret.is_required,
+      isSensitive: !!normalizedSecret.is_sensitive,
+      valueType: normalizedSecret.value_type,
+      envFallback: normalizedSecret.env_fallback || '',
     });
     setIsEditOpen(true);
   };
@@ -371,7 +499,14 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             className="pl-9"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select
+          value={categoryFilter}
+          onValueChange={(value) => {
+            const normalizedCategory =
+              value === 'all' ? 'all' : normalizeCategoryId(value);
+            if (normalizedCategory) setCategoryFilter(normalizedCategory);
+          }}
+        >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
@@ -393,7 +528,10 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
         </Button>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => {
+          resetForm();
+          setIsCreateOpen(true);
+        }}>
           <Plus className="h-4 w-4 mr-2" />
           Add Secret
         </Button>
@@ -444,7 +582,9 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                       {secret.has_value && (
                         <div className="flex-shrink-0 font-mono text-sm text-muted-foreground">
                           {revealedValues[secret.id] ? (
-                            <span className="text-foreground">{revealedValues[secret.id]}</span>
+                            <span className="text-foreground">
+                              {normalizeRevealedSecretDisplayValue(revealedValues[secret.id])}
+                            </span>
                           ) : (
                             '••••••••••••••••'
                           )}
@@ -495,7 +635,10 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          setSelectedSecret(secret);
+                          const normalizedSecret = normalizeSecret(secret);
+                          if (!normalizedSecret) return;
+                          setSelectedSecret(normalizedSecret);
+                          setFormError('');
                           setIsDeleteOpen(true);
                         }}
                         title={`Delete ${secret.key_name}`}
@@ -516,7 +659,10 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             <CardContent className="py-12 text-center">
               <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No secrets found</p>
-              <Button className="mt-4" onClick={() => setIsCreateOpen(true)}>
+              <Button className="mt-4" onClick={() => {
+                resetForm();
+                setIsCreateOpen(true);
+              }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Secret
               </Button>
@@ -540,7 +686,15 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                 <Label>Category</Label>
                 <Select
                   value={formData.categoryId}
-                  onValueChange={(v) => setFormData((prev) => ({ ...prev, categoryId: v }))}
+                  onValueChange={(v) => {
+                    const normalizedCategory = normalizeCategoryId(v);
+                    if (normalizedCategory) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        categoryId: normalizedCategory,
+                      }));
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
@@ -785,7 +939,13 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+      <AlertDialog
+        open={isDeleteOpen}
+        onOpenChange={(open) => {
+          setIsDeleteOpen(open);
+          if (!open) setFormError('');
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Secret</AlertDialogTitle>
@@ -795,10 +955,19 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
               undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {formError && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {formError}
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+              disabled={formLoading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {formLoading ? 'Deleting...' : 'Delete'}

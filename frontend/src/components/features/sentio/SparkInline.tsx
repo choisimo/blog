@@ -22,6 +22,37 @@ import {
 import PrismDeck from "./PrismDeck";
 import ThoughtFeed from "./ThoughtFeed";
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+export function normalizeDisplayText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, " ")
+    .replace(CONTROL_TEXT_PATTERN, " ")
+    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeTextList(value: unknown, limit: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeDisplayText(item))
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizeSketchResult(result: SketchResult): SketchResult {
+  return {
+    ...result,
+    mood: normalizeDisplayText(result.mood, "정보적"),
+    bullets: normalizeTextList(result.bullets, 8),
+  };
+}
+
 // Minimal telemetry to localStorage for future learning
 function logEvent(event: Record<string, unknown>) {
   try {
@@ -64,7 +95,7 @@ function extractText(children: React.ReactNode): string {
     }
   };
   walk(children);
-  return parts.join(" ").replace(/\s+/g, " ").trim();
+  return normalizeDisplayText(parts.join(" "));
 }
 
 const INLINE_ONLY_TAGS = new Set([
@@ -191,8 +222,9 @@ function getMoodEmoji(mood: string): string {
 }
 
 function formatSketchResult(res: SketchResult): string {
-  const bullets = res.bullets.map((b) => `- ${b}`).join("\n");
-  return [`**Mood:** ${res.mood}`, "", bullets].join("\n");
+  const safeResult = normalizeSketchResult(res);
+  const bullets = safeResult.bullets.map((b) => `- ${b}`).join("\n");
+  return [`**Mood:** ${safeResult.mood}`, "", bullets].join("\n");
 }
 
 function formatLensFeedResult(cards: LensFeedCard[]): string {
@@ -200,8 +232,7 @@ function formatLensFeedResult(cards: LensFeedCard[]): string {
     .slice(0, 4)
     .map(
       (card, index) =>
-        `### ${index + 1}. ${card.title}\n- ${card.summary}\n${card.bullets
-          .slice(0, 3)
+        `### ${index + 1}. ${normalizeDisplayText(card.title, `Lens ${index + 1}`)}\n- ${normalizeDisplayText(card.summary)}\n${normalizeTextList(card.bullets, 3)
           .map((bullet) => `- ${bullet}`)
           .join("\n")}`,
     )
@@ -213,7 +244,7 @@ function formatThoughtFeedResult(cards: ThoughtFeedCard[]): string {
     .slice(0, 6)
     .map(
       (card) =>
-        `- **${card.title}**${card.subtitle ? ` — ${card.subtitle}` : ""}`,
+        `- **${normalizeDisplayText(card.title)}**${normalizeDisplayText(card.subtitle) ? ` — ${normalizeDisplayText(card.subtitle)}` : ""}`,
     )
     .join("\n");
 }
@@ -222,10 +253,18 @@ export default function SparkInline({
   children,
   postTitle,
   wrapperTag,
+  label,
+  title,
+  triggerLabel,
+  triggerTitle,
 }: {
   children: React.ReactNode;
   postTitle?: string;
   wrapperTag?: "p" | "div";
+  label?: string;
+  title?: string;
+  triggerLabel?: string;
+  triggerTitle?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<Mode>("idle");
@@ -239,10 +278,16 @@ export default function SparkInline({
   const { language } = useLanguage();
 
   const text = useMemo(() => extractText(children), [children]);
+  const safePostTitle = useMemo(
+    () => normalizeDisplayText(postTitle),
+    [postTitle],
+  );
+  const safeWrapperLabel = useMemo(() => normalizeDisplayText(label), [label]);
+  const safeWrapperTitle = useMemo(() => normalizeDisplayText(title), [title]);
   const hasText = text && text.length > 0;
   const contentKey = useMemo(
-    () => `${postTitle ?? ""}::${text}`,
-    [postTitle, text],
+    () => `${safePostTitle ?? ""}::${text}`,
+    [safePostTitle, text],
   );
   const contentKeyRef = useRef(contentKey);
   const ContentTag: "p" | "div" =
@@ -275,10 +320,11 @@ export default function SparkInline({
         const requestContentKey = contentKey;
 
         try {
-          const res = await sketch({ paragraph: text, postTitle });
+          const res = await sketch({ paragraph: text, postTitle: safePostTitle });
           if (contentKeyRef.current !== requestContentKey) return;
 
-          setSketchRes(res);
+          const safeResult = normalizeSketchResult(res);
+          setSketchRes(safeResult);
           setLoadedModes((prev) =>
             prev.sketch ? prev : { ...prev, sketch: true },
           );
@@ -287,13 +333,13 @@ export default function SparkInline({
             type: "ai_qna",
             mode: "sketch",
             question: text,
-            answer: formatSketchResult(res),
-            postTitle,
+            answer: formatSketchResult(safeResult),
+            postTitle: safePostTitle,
           });
         } catch (e: unknown) {
           if (contentKeyRef.current !== requestContentKey) return;
           const msg = e instanceof Error ? e.message : "AI 호출 실패";
-          setError(msg);
+          setError(normalizeDisplayText(msg, "AI 호출 실패"));
         } finally {
           if (contentKeyRef.current === requestContentKey) {
             setLoading("idle");
@@ -313,16 +359,20 @@ export default function SparkInline({
         );
       }
     },
-    [contentKey, hasText, loadedModes, loading, postTitle, sketchRes, text],
+    [contentKey, hasText, loadedModes, loading, safePostTitle, sketchRes, text],
   );
 
   const hasResult =
     sketchRes !== null || loadedModes.prism || loadedModes.chain;
   const activeModeConfig = ModeConfig[activeMode];
-  const tooltipLabel =
-    language === "ko" ? "AI 설명 보기" : "View AI explanation";
-  const actionLabel =
-    language === "ko" ? "AI로 문단 분석하기" : "Analyze paragraph with AI";
+  const tooltipLabel = normalizeDisplayText(
+    triggerTitle,
+    language === "ko" ? "AI 설명 보기" : "View AI explanation",
+  );
+  const actionLabel = normalizeDisplayText(
+    triggerLabel,
+    language === "ko" ? "AI로 문단 분석하기" : "Analyze paragraph with AI",
+  );
   const handleLensReady = useCallback(
     (cards: LensFeedCard[], source: FeedSource) => {
       emitAiMemoLog({
@@ -330,11 +380,11 @@ export default function SparkInline({
         mode: "lens_feed",
         question: text,
         answer: formatLensFeedResult(cards),
-        postTitle,
+        postTitle: safePostTitle,
         source,
       });
     },
-    [postTitle, text],
+    [safePostTitle, text],
   );
   const handleThoughtReady = useCallback(
     (cards: ThoughtFeedCard[], source: FeedSource) => {
@@ -343,11 +393,11 @@ export default function SparkInline({
         mode: "thought_feed",
         question: text,
         answer: formatThoughtFeedResult(cards),
-        postTitle,
+        postTitle: safePostTitle,
         source,
       });
     },
-    [postTitle, text],
+    [safePostTitle, text],
   );
 
   return (
@@ -355,6 +405,8 @@ export default function SparkInline({
       <ContentTag
         className="mb-4 leading-relaxed inline-block w-full group/spark relative"
         data-spark-inline-wrapper={ContentTag}
+        aria-label={safeWrapperLabel || undefined}
+        title={safeWrapperTitle || undefined}
       >
         {children}
         {hasText && (
@@ -363,7 +415,7 @@ export default function SparkInline({
               <button
                 type="button"
                 title={tooltipLabel}
-                aria-label={tooltipLabel}
+                aria-label={actionLabel}
                 aria-expanded={open}
                 onClick={() => setOpen((v) => !v)}
                 className={cn(
@@ -589,7 +641,7 @@ export default function SparkInline({
                 {loadedModes.prism && (
                   <PrismDeck
                     paragraph={text}
-                    postTitle={postTitle}
+                    postTitle={safePostTitle}
                     cacheKey={`${contentKey}:prism`}
                     enabled={activeMode === "prism"}
                     onReady={handleLensReady}
@@ -605,7 +657,7 @@ export default function SparkInline({
                 {loadedModes.chain && (
                   <ThoughtFeed
                     paragraph={text}
-                    postTitle={postTitle}
+                    postTitle={safePostTitle}
                     cacheKey={`${contentKey}:chain`}
                     enabled={activeMode === "chain"}
                     onReady={handleThoughtReady}

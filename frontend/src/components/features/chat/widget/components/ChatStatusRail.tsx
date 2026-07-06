@@ -7,6 +7,23 @@ import {
 import { cn } from "@/lib/utils";
 import type { ChatStatusBanner } from "../types";
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const STATUS_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function stripUnsafeStatusControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(STATUS_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizeStatusText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeStatusControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
 function getBannerToneClass(
   tone: ChatStatusBanner["tone"],
   isTerminal: boolean,
@@ -36,18 +53,18 @@ function BannerIcon({
   text: string;
 }) {
   if (tone === "error") {
-    return <WifiOff className="h-4 w-4 shrink-0" />;
+    return <WifiOff aria-hidden="true" className="h-4 w-4 shrink-0" focusable="false" />;
   }
 
   if (tone === "warn") {
-    return <Loader2 className="h-4 w-4 shrink-0 animate-spin" />;
+    return <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" focusable="false" />;
   }
 
   if (text.includes("복구")) {
-    return <CheckCircle2 className="h-4 w-4 shrink-0" />;
+    return <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" focusable="false" />;
   }
 
-  return <AlertCircle className="h-4 w-4 shrink-0" />;
+  return <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0" focusable="false" />;
 }
 
 export function ChatStatusRail({
@@ -58,6 +75,8 @@ export function ChatStatusRail({
   isTerminal: boolean;
 }) {
   if (!banner) return null;
+  const bannerText = normalizeStatusText(banner.text, "상태 업데이트");
+  const liveMode = banner.tone === "error" ? "assertive" : "polite";
 
   return (
     <div
@@ -69,13 +88,17 @@ export function ChatStatusRail({
       )}
     >
       <div
+        aria-atomic="true"
+        aria-label={bannerText}
+        aria-live={liveMode}
         className={cn(
           "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs leading-relaxed",
           getBannerToneClass(banner.tone, isTerminal),
         )}
+        role={banner.tone === "error" ? "alert" : "status"}
       >
-        <BannerIcon tone={banner.tone} text={banner.text} />
-        <span>{banner.text}</span>
+        <BannerIcon tone={banner.tone} text={bannerText} />
+        <span>{bannerText}</span>
       </div>
     </div>
   );

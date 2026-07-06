@@ -61,6 +61,96 @@ import { useRoutes, useModels } from './hooks';
 import type { AIRoute, RouteFormData, AIModel } from './types';
 import { toast } from '@/hooks/ui/use-toast';
 
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const ROUTING_STRATEGIES: Array<RouteFormData['routingStrategy']> = [
+  'simple',
+  'latency-based-routing',
+  'cost-based-routing',
+];
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeSelectorList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(new Set(values.map(normalizeAdminSelector).filter(isPresent)));
+}
+
+function normalizeRoutingStrategy(
+  value: unknown,
+): RouteFormData['routingStrategy'] {
+  return ROUTING_STRATEGIES.includes(value as RouteFormData['routingStrategy'])
+    ? (value as RouteFormData['routingStrategy'])
+    : 'latency-based-routing';
+}
+
+export function normalizeRouteRetries(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 3;
+  return Math.min(10, Math.max(0, Math.floor(value)));
+}
+
+export function normalizeRouteTimeoutSeconds(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 120;
+  return Math.min(600, Math.max(10, Math.floor(value)));
+}
+
+export function normalizeRouteFormData(data: RouteFormData): RouteFormData | null {
+  const name = normalizeAdminSelector(data.name);
+  const primaryModelId = normalizeAdminSelector(data.primaryModelId);
+  if (!name || !primaryModelId) return null;
+
+  return {
+    ...data,
+    name,
+    routingStrategy: normalizeRoutingStrategy(data.routingStrategy),
+    primaryModelId,
+    fallbackModelIds: normalizeSelectorList(data.fallbackModelIds).filter(
+      (id) => id !== primaryModelId,
+    ),
+    contextWindowFallbackIds: normalizeSelectorList(
+      data.contextWindowFallbackIds,
+    ),
+    numRetries: normalizeRouteRetries(data.numRetries),
+    timeoutSeconds: normalizeRouteTimeoutSeconds(data.timeoutSeconds),
+  };
+}
+
+function isSafeModel(model: AIModel): boolean {
+  return Boolean(normalizeAdminSelector(model.id));
+}
+
+function isSafeRoute(route: AIRoute): boolean {
+  return Boolean(
+    normalizeAdminSelector(route.id) &&
+      normalizeAdminSelector(route.name) &&
+      (!route.primaryModel || normalizeAdminSelector(route.primaryModel.id)),
+  );
+}
+
 interface RouteFormProps {
   route?: AIRoute;
   models: AIModel[];
@@ -70,56 +160,64 @@ interface RouteFormProps {
 
 function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
   const [formData, setFormData] = useState<RouteFormData>({
-    name: route?.name || '',
+    name: normalizeAdminSelector(route?.name) || '',
     description: route?.description || '',
-    routingStrategy: route?.routingStrategy || 'latency-based-routing',
-    primaryModelId: route?.primaryModel?.id || '',
-    fallbackModelIds: route?.fallbackModelIds || [],
-    contextWindowFallbackIds: route?.contextWindowFallbackIds || [],
+    routingStrategy: normalizeRoutingStrategy(route?.routingStrategy),
+    primaryModelId: normalizeAdminSelector(route?.primaryModel?.id) || '',
+    fallbackModelIds: normalizeSelectorList(route?.fallbackModelIds),
+    contextWindowFallbackIds: normalizeSelectorList(
+      route?.contextWindowFallbackIds,
+    ),
     numRetries: route?.numRetries || 3,
     timeoutSeconds: route?.timeoutSeconds || 120,
     isDefault: route?.isDefault || false,
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const enabledModels = models.filter((m) => m.isEnabled);
+  const enabledModels = models.filter((m) => m.isEnabled && isSafeModel(m));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const safeData = normalizeRouteFormData(formData);
+    if (!safeData) return;
     setSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit(safeData);
     } finally {
       setSubmitting(false);
     }
   };
 
   const toggleFallback = (modelId: string) => {
+    const safeModelId = normalizeAdminSelector(modelId);
+    if (!safeModelId) return;
     const current = formData.fallbackModelIds || [];
-    if (current.includes(modelId)) {
+    if (current.includes(safeModelId)) {
       setFormData({
         ...formData,
-        fallbackModelIds: current.filter((id) => id !== modelId),
+        fallbackModelIds: current.filter((id) => id !== safeModelId),
       });
     } else {
       setFormData({
         ...formData,
-        fallbackModelIds: [...current, modelId],
+        fallbackModelIds: [...current, safeModelId],
       });
     }
   };
 
   const toggleContextFallback = (modelId: string) => {
+    const safeModelId = normalizeAdminSelector(modelId);
+    if (!safeModelId) return;
     const current = formData.contextWindowFallbackIds || [];
-    if (current.includes(modelId)) {
+    if (current.includes(safeModelId)) {
       setFormData({
         ...formData,
-        contextWindowFallbackIds: current.filter((id) => id !== modelId),
+        contextWindowFallbackIds: current.filter((id) => id !== safeModelId),
       });
     } else {
       setFormData({
         ...formData,
-        contextWindowFallbackIds: [...current, modelId],
+        contextWindowFallbackIds: [...current, safeModelId],
       });
     }
   };
@@ -145,7 +243,7 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
             onValueChange={(v) =>
               setFormData({
                 ...formData,
-                routingStrategy: v as RouteFormData['routingStrategy'],
+                routingStrategy: normalizeRoutingStrategy(v),
               })
             }
           >
@@ -175,7 +273,18 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
         <Label htmlFor="primaryModel">Primary Model</Label>
         <Select
           value={formData.primaryModelId || ''}
-          onValueChange={(v) => setFormData({ ...formData, primaryModelId: v })}
+          onValueChange={(v) => {
+            const primaryModelId = normalizeAdminSelector(v);
+            if (primaryModelId) {
+              setFormData({
+                ...formData,
+                primaryModelId,
+                fallbackModelIds: (formData.fallbackModelIds || []).filter(
+                  (id) => id !== primaryModelId,
+                ),
+              });
+            }
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select primary model" />
@@ -294,6 +403,10 @@ export function RoutesManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingRoute, setEditingRoute] = useState<AIRoute | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AIRoute | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingRoute, setDeletingRoute] = useState(false);
+  const visibleModels = models.filter(isSafeModel);
+  const visibleRoutes = routes.filter(isSafeRoute);
 
   useEffect(() => {
     fetchRoutes();
@@ -301,7 +414,9 @@ export function RoutesManager() {
   }, [fetchRoutes, fetchModels]);
 
   const handleCreate = async (data: RouteFormData) => {
-    const result = await createRoute(data);
+    const safeData = normalizeRouteFormData(data);
+    if (!safeData) return;
+    const result = await createRoute(safeData);
     if (result.ok) {
       setShowForm(false);
     }
@@ -309,21 +424,29 @@ export function RoutesManager() {
 
   const handleUpdate = async (data: RouteFormData) => {
     if (!editingRoute) return;
-    const result = await updateRoute(editingRoute.id, data);
+    const routeId = normalizeAdminSelector(editingRoute.id);
+    const safeData = normalizeRouteFormData(data);
+    if (!routeId || !safeData) return;
+    const result = await updateRoute(routeId, safeData);
     if (result.ok) {
       setEditingRoute(null);
     }
   };
 
   const handleSetDefault = async (route: AIRoute) => {
-    await updateRoute(route.id, { isDefault: true });
+    const routeId = normalizeAdminSelector(route.id);
+    if (!routeId) return;
+    await updateRoute(routeId, { isDefault: true });
   };
 
   const handleToggleEnabled = async (route: AIRoute) => {
-    await updateRoute(route.id, { isEnabled: !route.isEnabled });
+    const routeId = normalizeAdminSelector(route.id);
+    if (!routeId) return;
+    await updateRoute(routeId, { isEnabled: !route.isEnabled });
   };
 
   const handleDeleteClick = (route: AIRoute) => {
+    if (!normalizeAdminSelector(route.id)) return;
     if (route.isDefault) {
       toast({
         variant: 'destructive',
@@ -333,27 +456,46 @@ export function RoutesManager() {
       return;
     }
     setDeleteTarget(route);
+    setDeleteError(null);
   };
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    await deleteRoute(deleteTarget.id);
-    setDeleteTarget(null);
+    if (deletingRoute) return;
+    const routeId = normalizeAdminSelector(deleteTarget.id);
+    if (!routeId) return;
+    setDeletingRoute(true);
+    setDeleteError(null);
+    const result = await deleteRoute(routeId);
+    if (result.ok) {
+      setDeleteTarget(null);
+    } else {
+      setDeleteError(result.error || 'Failed to delete route');
+    }
+    setDeletingRoute(false);
   };
 
   const handleClone = (route: AIRoute) => {
+    const name = normalizeAdminSelector(route.name);
+    if (!name) return;
     setEditingRoute({
       ...route,
       id: '',
-      name: `${route.name}-copy`,
+      name: `${name}-copy`,
       isDefault: false,
+      fallbackModelIds: normalizeSelectorList(route.fallbackModelIds),
+      contextWindowFallbackIds: normalizeSelectorList(
+        route.contextWindowFallbackIds,
+      ),
     } as AIRoute);
     setShowForm(true);
   };
 
   const getModelName = (modelId: string) => {
-    const model = models.find((m) => m.id === modelId);
-    return model?.displayName || modelId;
+    const safeModelId = normalizeAdminSelector(modelId);
+    if (!safeModelId) return '';
+    const model = visibleModels.find((m) => m.id === safeModelId);
+    return model?.displayName || safeModelId;
   };
 
   return (
@@ -384,7 +526,7 @@ export function RoutesManager() {
           </div>
         ) : (
           <div className="space-y-3">
-            {routes.map((route) => (
+            {visibleRoutes.map((route) => (
               <div
                 key={route.id}
                 className={`p-4 border rounded-lg ${
@@ -413,13 +555,13 @@ export function RoutesManager() {
                       {route.primaryModel && (
                         <Badge variant="secondary">{route.primaryModel.displayName}</Badge>
                       )}
-                      {route.fallbackModelIds.length > 0 && (
+                      {normalizeSelectorList(route.fallbackModelIds).length > 0 && (
                         <>
                           <ArrowDown className="h-4 w-4 text-muted-foreground" />
-                          {route.fallbackModelIds.map((id, idx) => (
+                          {normalizeSelectorList(route.fallbackModelIds).map((id, idx) => (
                             <span key={id} className="flex items-center gap-1">
                               <Badge variant="outline">{getModelName(id)}</Badge>
-                              {idx < route.fallbackModelIds.length - 1 && (
+                              {idx < normalizeSelectorList(route.fallbackModelIds).length - 1 && (
                                 <ArrowDown className="h-3 w-3 text-muted-foreground" />
                               )}
                             </span>
@@ -431,9 +573,9 @@ export function RoutesManager() {
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>Retries: {route.numRetries}</span>
                       <span>Timeout: {route.timeoutSeconds}s</span>
-                      {route.contextWindowFallbackIds.length > 0 && (
+                      {normalizeSelectorList(route.contextWindowFallbackIds).length > 0 && (
                         <span>
-                          Long context: {route.contextWindowFallbackIds.map(getModelName).join(', ')}
+                          Long context: {normalizeSelectorList(route.contextWindowFallbackIds).map(getModelName).join(', ')}
                         </span>
                       )}
                     </div>
@@ -481,7 +623,7 @@ export function RoutesManager() {
                 </div>
               </div>
             ))}
-            {!error && routes.length === 0 && (
+            {!error && visibleRoutes.length === 0 && (
               <p className="text-center text-muted-foreground py-8">
                 No routes configured. Add your first routing rule to get started.
               </p>
@@ -498,7 +640,7 @@ export function RoutesManager() {
             <DialogDescription>Configure a new routing rule</DialogDescription>
           </DialogHeader>
           <RouteForm
-            models={models}
+            models={visibleModels}
             onSubmit={handleCreate}
             onCancel={() => setShowForm(false)}
           />
@@ -515,7 +657,7 @@ export function RoutesManager() {
           {editingRoute && (
             <RouteForm
               route={editingRoute}
-              models={models}
+              models={visibleModels}
               onSubmit={handleUpdate}
               onCancel={() => setEditingRoute(null)}
             />
@@ -523,7 +665,15 @@ export function RoutesManager() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Route</AlertDialogTitle>
@@ -531,10 +681,22 @@ export function RoutesManager() {
               Are you sure you want to delete route "{deleteTarget?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteConfirm();
+              }}
+              disabled={deletingRoute}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingRoute ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

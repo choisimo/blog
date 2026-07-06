@@ -46,6 +46,43 @@ export const truncateText = (text: string, maxLength: number): string => {
   return `${text.slice(0, maxLength).trim()}...`;
 };
 
+const BLOG_SLUG_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const ENCODED_BLOG_SLUG_CONTROL_PATTERN = /%(?:0[0-9a-f]|1[0-9a-f]|7f)/i;
+
+function hasUnsafeSlugSegment(slug: string): boolean {
+  return slug.split(/[\\/]+/).some((segment) => {
+    if (!segment || segment === "." || segment === "..") return true;
+    try {
+      const decoded = decodeURIComponent(segment);
+      return (
+        !decoded ||
+        decoded === "." ||
+        decoded === ".." ||
+        BLOG_SLUG_CONTROL_PATTERN.test(decoded)
+      );
+    } catch {
+      return true;
+    }
+  });
+}
+
+function normalizePostSlugPath(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const slug = value.trim();
+  if (
+    !slug ||
+    slug.startsWith("/") ||
+    slug.startsWith("//") ||
+    BLOG_SLUG_CONTROL_PATTERN.test(slug) ||
+    ENCODED_BLOG_SLUG_CONTROL_PATTERN.test(slug) ||
+    /^[a-z][a-z\d+\-.]*:/i.test(slug) ||
+    hasUnsafeSlugSegment(slug)
+  ) {
+    return null;
+  }
+  return slug;
+}
+
 export const formatReadingTimeLabel = (
   readingTime: string | number | undefined,
   language: SupportedLanguage = "ko",
@@ -170,8 +207,11 @@ export const loadPostBySlug = async (
   slug: string,
 ): Promise<BlogPost | null> => {
   try {
+    const safeSlug = normalizePostSlugPath(slug);
+    if (!safeSlug) return null;
+
     const baseUrl = import.meta.env.BASE_URL || "/";
-    const response = await fetch(`${baseUrl}posts/${slug}.md`);
+    const response = await fetch(`${baseUrl}posts/${safeSlug}.md`);
 
     if (!response.ok) {
       return null;
@@ -196,14 +236,14 @@ export const loadPostBySlug = async (
       : new Date().getFullYear().toString();
 
     return {
-      id: slug.replace("/", "-"),
+      id: safeSlug.replace("/", "-"),
       title: frontmatter.title,
       description: frontmatter.excerpt || truncateText(bodyContent, 200),
       date: frontmatter.date || "",
       year,
       category: frontmatter.category || "기술",
       tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
-      slug,
+      slug: safeSlug,
       content: bodyContent,
       language: "ko",
       readTime,

@@ -2,6 +2,45 @@ import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { BlogPost } from "../types";
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const VIRTUAL_FS_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const VIRTUAL_FS_PATH_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+
+export function normalizeVirtualFsText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string" && typeof value !== "number") return fallback;
+  const normalized = String(value)
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(VIRTUAL_FS_CONTROL_TEXT_PATTERN, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+export function normalizeVirtualFsPathSegment(value: unknown, fallback = ""): string {
+  const normalized = normalizeVirtualFsText(value, fallback);
+  if (!normalized) return fallback;
+  return normalized.replace(/[\\/]/g, "").trim() || fallback;
+}
+
+export function normalizeVirtualFsPath(value: unknown, fallback = "/"): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(VIRTUAL_FS_PATH_CONTROL_PATTERN, "")
+    .replace(/\\/g, "")
+    .trim();
+  if (!normalized) return fallback;
+  return normalized.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
+}
+
+function getPostUrl(value: unknown): string {
+  return normalizeVirtualFsPath(value, "");
+}
+
+function getPostSlugFromUrl(value: unknown): string {
+  return normalizeVirtualFsPathSegment(getPostUrl(value).split("/").pop());
+}
+
 // Virtual filesystem hook
 export function useVirtualFS(posts: BlogPost[]) {
   const location = useLocation();
@@ -9,7 +48,7 @@ export function useVirtualFS(posts: BlogPost[]) {
 
   // Derive current path from URL
   const currentPath = useMemo(() => {
-    const path = location.pathname;
+    const path = normalizeVirtualFsPath(location.pathname);
     if (path === "/" || path === "") return "/";
     if (path.startsWith("/blog/")) {
       // /blog/2025/post-slug -> /blog/2025
@@ -23,7 +62,7 @@ export function useVirtualFS(posts: BlogPost[]) {
 
   // Get current post info if viewing a post
   const currentPost = useMemo(() => {
-    const path = location.pathname;
+    const path = normalizeVirtualFsPath(location.pathname);
     if (!path.startsWith("/blog/")) return null;
     const parts = path.split("/").filter(Boolean);
     // /blog/2025/post-slug has 3 parts
@@ -31,7 +70,7 @@ export function useVirtualFS(posts: BlogPost[]) {
       const slug = parts[parts.length - 1];
       return (
         posts.find((p) => {
-          const postSlug = p.url.split("/").pop();
+          const postSlug = getPostSlugFromUrl(p.url);
           return postSlug === slug;
         }) || null
       );
@@ -41,7 +80,7 @@ export function useVirtualFS(posts: BlogPost[]) {
 
   // Get shell-style display path (shorter, more readable)
   const displayPath = useMemo(() => {
-    const path = location.pathname;
+    const path = normalizeVirtualFsPath(location.pathname);
     if (path === "/" || path === "") return "~";
 
     // Check different page types
@@ -54,10 +93,11 @@ export function useVirtualFS(posts: BlogPost[]) {
       if (parts.length >= 3 && currentPost) {
         // Viewing a specific post - show year and truncated title
         const year = parts[1];
+        const postTitle = normalizeVirtualFsText(currentPost.title, "post");
         const title =
-          currentPost.title.length > 20
-            ? `${currentPost.title.slice(0, 18)}..`
-            : currentPost.title;
+          postTitle.length > 20
+            ? `${postTitle.slice(0, 18)}..`
+            : postTitle;
         return `~/${year}/${title}`;
       } else if (parts.length >= 2) {
         // Viewing year directory
@@ -71,13 +111,18 @@ export function useVirtualFS(posts: BlogPost[]) {
 
   // Get available years
   const years = useMemo(() => {
-    const yearSet = new Set(posts.map((p) => p.url.split("/")[2]));
+    const yearSet = new Set(
+      posts.flatMap((p) => {
+        const year = normalizeVirtualFsPathSegment(getPostUrl(p.url).split("/")[2]);
+        return year ? [year] : [];
+      }),
+    );
     return Array.from(yearSet).sort().reverse();
   }, [posts]);
 
   // Get categories
   const categories = useMemo(() => {
-    const catSet = new Set(posts.map((p) => p.category));
+    const catSet = new Set(posts.map((p) => normalizeVirtualFsText(p.category, "uncategorized")));
     return Array.from(catSet).sort();
   }, [posts]);
 
@@ -89,8 +134,8 @@ export function useVirtualFS(posts: BlogPost[]) {
       }
       const parts = path.split("/").filter(Boolean);
       if (parts[0] === "blog" && parts.length >= 2) {
-        const year = parts[1];
-        return posts.filter((p) => p.url.includes(`/blog/${year}/`));
+        const year = normalizeVirtualFsPathSegment(parts[1]);
+        return posts.filter((p) => getPostUrl(p.url).includes(`/blog/${year}/`));
       }
       return [];
     },
@@ -100,7 +145,7 @@ export function useVirtualFS(posts: BlogPost[]) {
   // List directory contents
   const ls = useCallback(
     (path?: string): string => {
-      const targetPath = path || currentPath;
+      const targetPath = normalizeVirtualFsPath(path || currentPath);
 
       if (targetPath === "/" || targetPath === "") {
         return "blog/\n";
@@ -112,14 +157,14 @@ export function useVirtualFS(posts: BlogPost[]) {
 
       const parts = targetPath.split("/").filter(Boolean);
       if (parts[0] === "blog" && parts.length >= 2) {
-        const year = parts[1];
-        const yearPosts = posts.filter((p) => p.url.includes(`/blog/${year}/`));
+        const year = normalizeVirtualFsPathSegment(parts[1]);
+        const yearPosts = posts.filter((p) => getPostUrl(p.url).includes(`/blog/${year}/`));
         if (yearPosts.length === 0) {
           return `ls: ${targetPath}: No such directory`;
         }
         return yearPosts
           .map((p) => {
-            const slug = p.url.split("/").pop();
+            const slug = getPostSlugFromUrl(p.url);
             return `${slug}.md`;
           })
           .join("\n");
@@ -133,12 +178,13 @@ export function useVirtualFS(posts: BlogPost[]) {
   // Change directory
   const cd = useCallback(
     (path: string): string => {
-      if (!path || path === "~" || path === "/") {
+      const safePath = normalizeVirtualFsPath(path, "");
+      if (!safePath || safePath === "~" || safePath === "/") {
         navigate("/");
         return "";
       }
 
-      if (path === "..") {
+      if (safePath === "..") {
         const parts = currentPath.split("/").filter(Boolean);
         if (parts.length <= 1) {
           navigate("/");
@@ -154,13 +200,13 @@ export function useVirtualFS(posts: BlogPost[]) {
       }
 
       // Handle absolute paths
-      let targetPath = path;
-      if (!path.startsWith("/")) {
+      let targetPath = safePath;
+      if (!safePath.startsWith("/")) {
         // Relative path
         if (currentPath === "/") {
-          targetPath = `/${path}`;
+          targetPath = `/${safePath}`;
         } else {
-          targetPath = `${currentPath}/${path}`;
+          targetPath = `${currentPath}/${safePath}`;
         }
       }
 
@@ -175,7 +221,7 @@ export function useVirtualFS(posts: BlogPost[]) {
 
       const parts = targetPath.split("/").filter(Boolean);
       if (parts[0] === "blog" && parts.length >= 2) {
-        const year = parts[1];
+        const year = normalizeVirtualFsPathSegment(parts[1]);
         if (years.includes(year)) {
           // Navigate to year page (which shows filtered posts)
           navigate(`/blog?year=${year}`);
@@ -202,27 +248,28 @@ export function useVirtualFS(posts: BlogPost[]) {
   // Cat file (navigate to post)
   const cat = useCallback(
     (filename: string): string => {
-      if (!filename) {
+      const safeFilename = normalizeVirtualFsText(filename);
+      if (!safeFilename) {
         return "cat: missing file operand";
       }
 
       // Remove .md extension if present
-      const slug = filename.replace(/\.md$/, "");
+      const slug = normalizeVirtualFsPathSegment(safeFilename.replace(/\.md$/, ""));
 
       // Find matching post
       const post = posts.find((p) => {
-        const postSlug = p.url.split("/").pop();
+        const postSlug = getPostSlugFromUrl(p.url);
         return (
           postSlug === slug || postSlug?.toLowerCase() === slug.toLowerCase()
         );
       });
 
       if (post) {
-        navigate(post.url);
-        return `Opening: ${post.title}`;
+        navigate(getPostUrl(post.url));
+        return `Opening: ${normalizeVirtualFsText(post.title, "Untitled")}`;
       }
 
-      return `cat: ${filename}: No such file`;
+      return `cat: ${safeFilename}: No such file`;
     },
     [posts, navigate],
   );
@@ -230,29 +277,31 @@ export function useVirtualFS(posts: BlogPost[]) {
   // Find posts by keyword
   const find = useCallback(
     (keyword: string): string => {
-      if (!keyword) {
+      const safeKeyword = normalizeVirtualFsText(keyword);
+      if (!safeKeyword) {
         return "find: missing search term";
       }
 
-      const kw = keyword.toLowerCase();
+      const kw = safeKeyword.toLowerCase();
       const matches = posts.filter(
         (p) =>
-          p.title.toLowerCase().includes(kw) ||
-          p.slug?.toLowerCase().includes(kw) ||
-          p.tags?.some((t) => t.toLowerCase().includes(kw)) ||
-          p.category?.toLowerCase().includes(kw),
+          normalizeVirtualFsText(p.title).toLowerCase().includes(kw) ||
+          normalizeVirtualFsText(p.slug).toLowerCase().includes(kw) ||
+          p.tags?.some((t) => normalizeVirtualFsText(t).toLowerCase().includes(kw)) ||
+          normalizeVirtualFsText(p.category).toLowerCase().includes(kw),
       );
 
       if (matches.length === 0) {
-        return `No posts found matching: ${keyword}`;
+        return `No posts found matching: ${safeKeyword}`;
       }
 
       return (
         matches
           .slice(0, 10)
           .map((p) => {
-            const path = p.url;
-            return `${path}  ${p.title.slice(0, 30)}${p.title.length > 30 ? "..." : ""}`;
+            const path = getPostUrl(p.url);
+            const title = normalizeVirtualFsText(p.title, "Untitled");
+            return `${path}  ${title.slice(0, 30)}${title.length > 30 ? "..." : ""}`;
           })
           .join("\n") +
         (matches.length > 10 ? `\n... and ${matches.length - 10} more` : "")
@@ -268,8 +317,9 @@ export function useVirtualFS(posts: BlogPost[]) {
     years.forEach((year, yi) => {
       const isLast = yi === years.length - 1;
       const prefix = isLast ? "    └── " : "    ├── ";
-      const yearPosts = posts.filter((p) => p.url.includes(`/blog/${year}/`));
-      output += `${prefix}${year}/ (${yearPosts.length} posts)\n`;
+      const safeYear = normalizeVirtualFsPathSegment(year);
+      const yearPosts = posts.filter((p) => getPostUrl(p.url).includes(`/blog/${safeYear}/`));
+      output += `${prefix}${safeYear}/ (${yearPosts.length} posts)\n`;
     });
 
     return output;

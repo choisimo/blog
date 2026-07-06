@@ -14,50 +14,119 @@ interface AdminApiFetchOptions extends Omit<RequestInit, 'body'> {
   pathPrefix?: string;
 }
 
+const MAX_ADMIN_TOKEN_LENGTH = 4096;
+const MAX_ADMIN_URL_LENGTH = 4096;
+const MAX_ADMIN_ERROR_LENGTH = 500;
+const ADMIN_CLIENT_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const ENCODED_ADMIN_CLIENT_CONTROL_PATTERN = /%(?:0[0-9a-f]|1[0-9a-f]|7f)/i;
+
+function normalizeAdminClientString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (
+    !normalized ||
+    ADMIN_CLIENT_CONTROL_PATTERN.test(normalized) ||
+    ENCODED_ADMIN_CLIENT_CONTROL_PATTERN.test(normalized)
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeAdminToken(token: string | null | undefined): string | null {
+  const normalized = normalizeAdminClientString(token);
+  if (!normalized || normalized.length > MAX_ADMIN_TOKEN_LENGTH || /\s/.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizeAdminUrl(value: string, expectedBaseUrl?: string): string {
+  const normalized = normalizeAdminClientString(value);
+  if (!normalized || normalized.length > MAX_ADMIN_URL_LENGTH) {
+    throw new Error('Invalid admin API URL');
+  }
+
+  if (expectedBaseUrl) {
+    try {
+      const base = new URL(expectedBaseUrl);
+      const parsed = new URL(normalized, base.origin);
+      if (parsed.origin !== base.origin) {
+        throw new Error('Invalid admin API URL');
+      }
+    } catch {
+      throw new Error('Invalid admin API URL');
+    }
+  }
+
+  return normalized;
+}
+
 function buildAdminHeaders(
   token: string | null,
   headers?: HeadersInit,
   requestBody?: unknown,
 ): Headers {
   const nextHeaders = new Headers(headers);
+  nextHeaders.delete('Authorization');
   const isFormDataBody =
     typeof FormData !== 'undefined' && requestBody instanceof FormData;
   const hasRequestBody = requestBody !== undefined && requestBody !== null;
   if (hasRequestBody && !nextHeaders.has('Content-Type') && !isFormDataBody) {
     nextHeaders.set('Content-Type', 'application/json');
   }
-  if (token) {
-    nextHeaders.set('Authorization', bearerAuth(token).Authorization);
+  const normalizedToken = normalizeAdminToken(token);
+  if (normalizedToken) {
+    nextHeaders.set('Authorization', bearerAuth(normalizedToken).Authorization);
   }
   return nextHeaders;
+}
+
+function normalizeAdminErrorMessage(value: unknown): string | null {
+  const normalized = normalizeAdminClientString(value);
+  if (!normalized || normalized.length > MAX_ADMIN_ERROR_LENGTH) {
+    return null;
+  }
+  return normalized;
 }
 
 function getAdminApiErrorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== 'object') return fallback;
   const record = payload as { error?: unknown; message?: unknown };
-  if (typeof record.error === 'string' && record.error) return record.error;
+  const error = normalizeAdminErrorMessage(record.error);
+  if (error) return error;
   if (record.error && typeof record.error === 'object') {
     const nested = record.error as { message?: unknown; code?: unknown };
-    if (typeof nested.message === 'string' && nested.message) return nested.message;
-    if (typeof nested.code === 'string' && nested.code) return nested.code;
+    const message = normalizeAdminErrorMessage(nested.message);
+    const code = normalizeAdminErrorMessage(nested.code);
+    if (message) return message;
+    if (code) return code;
   }
-  if (typeof record.message === 'string' && record.message) return record.message;
+  const message = normalizeAdminErrorMessage(record.message);
+  if (message) return message;
   return fallback;
 }
 
 async function forceRefreshAdminAccessToken(): Promise<string | null> {
   const { refreshToken, clearAuth } = useAuthStore.getState();
-  if (!refreshToken) {
+  const normalizedRefreshToken = normalizeAdminToken(refreshToken);
+  if (!normalizedRefreshToken) {
     clearAuth();
     return null;
   }
 
   try {
-    const result = await refreshAccessToken(refreshToken);
+    const result = await refreshAccessToken(normalizedRefreshToken);
+    const normalizedAccessToken = normalizeAdminToken(result.accessToken);
+    const nextRefreshToken = normalizeAdminToken(result.refreshToken);
+    if (!normalizedAccessToken || !nextRefreshToken) {
+      clearAuth();
+      return null;
+    }
     useAuthStore
       .getState()
-      .setTokens(result.accessToken, result.refreshToken);
-    return result.accessToken;
+      .setTokens(normalizedAccessToken, nextRefreshToken);
+    return normalizedAccessToken;
   } catch {
     clearAuth();
     return null;
@@ -91,15 +160,19 @@ export async function adminApiFetch<T>(
   const { body, pathPrefix = '', ...fetchOptions } = options;
 
   try {
-    const token = await getValidAccessToken();
+    const rawToken = await getValidAccessToken();
+    const token = normalizeAdminToken(rawToken);
     if (!token) {
+      if (rawToken) useAuthStore.getState().clearAuth();
       return { ok: false, error: 'Not authenticated. Please log in again.' };
     }
 
-    const url = `${API_BASE}${pathPrefix}${endpoint}`;
+    const normalizedPrefix = pathPrefix ? normalizeAdminUrl(pathPrefix) : '';
+    const normalizedEndpoint = normalizeAdminUrl(endpoint);
+    const url = normalizeAdminUrl(`${API_BASE}${normalizedPrefix}${normalizedEndpoint}`);
     let res = await fetch(url, buildAdminRequestInit(fetchOptions, token, body));
 
-    if (res.status === 401) {
+    if (res.status === 401 && token) {
       const newToken = await forceRefreshAdminAccessToken();
       if (!newToken) {
         return { ok: false, error: 'Session expired. Please log in again.' };
@@ -130,15 +203,21 @@ export async function adminFetchRaw(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
+  const API_BASE = getApiBaseUrl();
   const { getValidAccessToken } = useAuthStore.getState();
-  const token = await getValidAccessToken();
+  const rawToken = await getValidAccessToken();
+  const token = normalizeAdminToken(rawToken);
+  if (rawToken && !token) {
+    useAuthStore.getState().clearAuth();
+  }
+  const normalizedUrl = normalizeAdminUrl(url, API_BASE);
 
-  let res = await fetch(url, buildAdminRequestInit(options, token));
+  let res = await fetch(normalizedUrl, buildAdminRequestInit(options, token));
 
-  if (res.status === 401) {
+  if (res.status === 401 && token) {
     const newToken = await forceRefreshAdminAccessToken();
     if (newToken) {
-      res = await fetch(url, buildAdminRequestInit(options, newToken));
+      res = await fetch(normalizedUrl, buildAdminRequestInit(options, newToken));
     }
   }
 

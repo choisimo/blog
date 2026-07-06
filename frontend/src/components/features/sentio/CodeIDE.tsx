@@ -40,7 +40,7 @@ function getLanguageExtension(lang: LanguageValue) {
 }
 
 function detectLanguage(question: string): LanguageValue {
-  const q = question.toLowerCase();
+  const q = normalizeCodeIDEErrorText(question, '').toLowerCase();
   if (q.includes('python') || q.includes('.py') || q.includes('def ') || q.includes('print(')) return 'python';
   if (q.includes('typescript') || q.includes('.ts') || q.includes(': number') || q.includes(': string')) return 'typescript';
   if (q.includes('java') && !q.includes('javascript')) return 'java';
@@ -52,6 +52,36 @@ interface RunResult {
   stdout: string;
   stderr: string;
   exitCode: number;
+}
+
+const ANSI_ESCAPE_PATTERN =
+  /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\))/g;
+const OUTPUT_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]+/g;
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+export function normalizeCodeIDEOutputText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(OUTPUT_CONTROL_PATTERN, ' ');
+}
+
+export function normalizeCodeIDEErrorText(value: unknown, fallback = 'Unknown error'): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(SINGLE_LINE_CONTROL_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeCodeIDEExitCode(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.trunc(value)
+    : 1;
 }
 
 async function runCode(code: string, lang: LanguageValue): Promise<RunResult> {
@@ -68,7 +98,9 @@ async function runCode(code: string, lang: LanguageValue): Promise<RunResult> {
   });
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({})) as { error?: string };
-    throw new Error(errBody.error ?? `Execution API error: ${res.status}`);
+    throw new Error(
+      normalizeCodeIDEErrorText(errBody.error, `Execution API error: ${res.status}`),
+    );
   }
   const body = (await res.json()) as {
     ok: boolean;
@@ -76,9 +108,9 @@ async function runCode(code: string, lang: LanguageValue): Promise<RunResult> {
   };
   const run = body.data.run;
   return {
-    stdout: run.stdout,
-    stderr: run.stderr,
-    exitCode: run.code,
+    stdout: normalizeCodeIDEOutputText(run.stdout),
+    stderr: normalizeCodeIDEOutputText(run.stderr),
+    exitCode: normalizeCodeIDEExitCode(run.code),
   };
 }
 
@@ -177,7 +209,7 @@ export default function CodeIDE({ value, onChange, question, className }: CodeID
       const res = await runCode(code, lang);
       setResult(res);
     } catch (err) {
-      setRunError(err instanceof Error ? err.message : 'Unknown error');
+      setRunError(normalizeCodeIDEErrorText(err instanceof Error ? err.message : null));
     } finally {
       setRunning(false);
     }

@@ -2,9 +2,25 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { throttle, cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 
-export const ReadingProgress = () => {
+type ReadingProgressProps = {
+  label?: string;
+};
+
+const DEFAULT_READING_PROGRESS_LABEL = 'Reading progress';
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeReadingProgressLabel = (value: string): string =>
+  value.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
+
+export const ReadingProgress = ({
+  label = DEFAULT_READING_PROGRESS_LABEL,
+}: ReadingProgressProps = {}) => {
   const [progress, setProgress] = useState(0);
   const { isTerminal } = useTheme();
+  const sanitizedLabel =
+    sanitizeReadingProgressLabel(label) || DEFAULT_READING_PROGRESS_LABEL;
 
   const updateProgress = useCallback(() => {
     const scrollTop = window.scrollY;
@@ -39,6 +55,11 @@ export const ReadingProgress = () => {
           'h-1 sm:h-0.5 w-full bg-muted/30',
           isTerminal && 'bg-[hsl(var(--terminal-code-bg))]'
         )}
+        role='progressbar'
+        aria-label={sanitizedLabel}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress)}
       >
         <div
           className={cn(

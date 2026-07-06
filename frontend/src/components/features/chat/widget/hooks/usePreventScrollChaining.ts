@@ -2,7 +2,12 @@ import { useEffect } from "react";
 import type { RefObject } from "react";
 
 function isScrollable(node: HTMLElement): boolean {
-  const style = window.getComputedStyle(node);
+  let style: CSSStyleDeclaration;
+  try {
+    style = window.getComputedStyle(node);
+  } catch {
+    return false;
+  }
   const overflowY = style.overflowY;
   const overflowX = style.overflowX;
   const canScrollY =
@@ -31,16 +36,23 @@ function findScrollableAncestor(
   return isScrollable(root) ? root : null;
 }
 
+function safeScrollDelta(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function canScrollInDirection(element: HTMLElement, deltaX: number, deltaY: number): boolean {
-  if (deltaY !== 0) {
-    if (deltaY < 0) {
+  const safeDeltaX = safeScrollDelta(deltaX);
+  const safeDeltaY = safeScrollDelta(deltaY);
+
+  if (safeDeltaY !== 0) {
+    if (safeDeltaY < 0) {
       return element.scrollTop > 0;
     }
     return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
   }
 
-  if (deltaX !== 0) {
-    if (deltaX < 0) {
+  if (safeDeltaX !== 0) {
+    if (safeDeltaX < 0) {
       return element.scrollLeft > 0;
     }
     return element.scrollLeft + element.clientWidth < element.scrollWidth - 1;

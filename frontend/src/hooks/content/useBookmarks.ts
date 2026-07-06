@@ -7,11 +7,47 @@ import {
   removeBookmark as remove,
 } from '@/services/session/bookmarks';
 
+const BOOKMARK_HOOK_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const BOOKMARK_HOOK_UNSAFE_DECODED_PATTERN = /[\u0000-\u001F\u007F\\]/;
+
+function normalizeBookmarkHookPostId(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || BOOKMARK_HOOK_CONTROL_PATTERN.test(trimmed) || trimmed.includes('\\')) {
+    return null;
+  }
+
+  try {
+    const decoded = decodeURIComponent(trimmed).trim();
+    if (!decoded || BOOKMARK_HOOK_UNSAFE_DECODED_PATTERN.test(decoded)) {
+      return null;
+    }
+
+    const segments = decoded.split('/');
+    if (segments.some(segment => !segment || segment === '.' || segment === '..')) {
+      return null;
+    }
+
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function getSafeBookmarkIds(): string[] {
+  return Array.from(
+    new Set(
+      getBookmarkIds()
+        .map(normalizeBookmarkHookPostId)
+        .filter((postId): postId is string => Boolean(postId))
+    )
+  );
+}
+
 export function useBookmarks() {
-  const [bookmarkIds, setBookmarkIds] = useState<string[]>(() => getBookmarkIds());
+  const [bookmarkIds, setBookmarkIds] = useState<string[]>(() => getSafeBookmarkIds());
 
   useEffect(() => {
-    const handleUpdate = () => setBookmarkIds(getBookmarkIds());
+    const handleUpdate = () => setBookmarkIds(getSafeBookmarkIds());
     window.addEventListener('bookmarks:update', handleUpdate);
     window.addEventListener('storage', handleUpdate);
     return () => {
@@ -20,22 +56,31 @@ export function useBookmarks() {
     };
   }, []);
 
-  const isBookmarked = useCallback((postId: string) => bookmarkIds.includes(postId), [bookmarkIds]);
+  const isBookmarked = useCallback((postId: string) => {
+    const normalizedPostId = normalizeBookmarkHookPostId(postId);
+    return normalizedPostId ? bookmarkIds.includes(normalizedPostId) : false;
+  }, [bookmarkIds]);
 
   const toggleBookmark = useCallback((postId: string) => {
-    const result = toggle(postId);
-    setBookmarkIds(getBookmarkIds());
+    const normalizedPostId = normalizeBookmarkHookPostId(postId);
+    if (!normalizedPostId) return false;
+    const result = toggle(normalizedPostId);
+    setBookmarkIds(getSafeBookmarkIds());
     return result;
   }, []);
 
   const addBookmark = useCallback((postId: string) => {
-    add(postId);
-    setBookmarkIds(getBookmarkIds());
+    const normalizedPostId = normalizeBookmarkHookPostId(postId);
+    if (!normalizedPostId) return;
+    add(normalizedPostId);
+    setBookmarkIds(getSafeBookmarkIds());
   }, []);
 
   const removeBookmark = useCallback((postId: string) => {
-    remove(postId);
-    setBookmarkIds(getBookmarkIds());
+    const normalizedPostId = normalizeBookmarkHookPostId(postId);
+    if (!normalizedPostId) return;
+    remove(normalizedPostId);
+    setBookmarkIds(getSafeBookmarkIds());
   }, []);
 
   return {
@@ -49,24 +94,34 @@ export function useBookmarks() {
 }
 
 export function useIsBookmarked(postId: string) {
-  const [bookmarked, setBookmarked] = useState(() => checkBookmarked(postId));
+  const normalizedPostId = normalizeBookmarkHookPostId(postId);
+  const [bookmarked, setBookmarked] = useState(() =>
+    normalizedPostId ? checkBookmarked(normalizedPostId) : false
+  );
 
   useEffect(() => {
     const handleUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.postId === postId || detail?.cleared) {
-        setBookmarked(checkBookmarked(postId));
+      const eventPostId =
+        typeof detail?.postId === 'string'
+          ? normalizeBookmarkHookPostId(detail.postId)
+          : null;
+      if (detail?.cleared) {
+        setBookmarked(false);
+      } else if (normalizedPostId && eventPostId === normalizedPostId) {
+        setBookmarked(checkBookmarked(normalizedPostId));
       }
     };
     window.addEventListener('bookmarks:update', handleUpdate);
     return () => window.removeEventListener('bookmarks:update', handleUpdate);
-  }, [postId]);
+  }, [normalizedPostId]);
 
   const toggleBookmark = useCallback(() => {
-    const result = toggle(postId);
+    if (!normalizedPostId) return false;
+    const result = toggle(normalizedPostId);
     setBookmarked(result);
     return result;
-  }, [postId]);
+  }, [normalizedPostId]);
 
   return { bookmarked, toggleBookmark };
 }

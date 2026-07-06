@@ -62,17 +62,39 @@ const CACHE_DURATION_MS = 5 * 60 * 1000;
 let featureFlagsInitialized = false;
 let visibilityChangeHandler: (() => void) | null = null;
 
-function mergeFeatureFlags(features?: Partial<FeatureFlags> | null): FeatureFlags {
+function normalizeFeatureFlagValue(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+export function mergeFeatureFlags(features?: Partial<FeatureFlags> | null): FeatureFlags {
   return {
-    aiEnabled: features?.aiEnabled ?? DEFAULT_FLAGS.aiEnabled,
-    ragEnabled: features?.ragEnabled ?? DEFAULT_FLAGS.ragEnabled,
+    aiEnabled: normalizeFeatureFlagValue(
+      features?.aiEnabled,
+      DEFAULT_FLAGS.aiEnabled,
+    ),
+    ragEnabled: normalizeFeatureFlagValue(
+      features?.ragEnabled,
+      DEFAULT_FLAGS.ragEnabled,
+    ),
     terminalEnabled:
-      features?.terminalEnabled ?? DEFAULT_FLAGS.terminalEnabled,
-    aiInline: features?.aiInline ?? DEFAULT_FLAGS.aiInline,
+      normalizeFeatureFlagValue(
+        features?.terminalEnabled,
+        DEFAULT_FLAGS.terminalEnabled,
+      ),
+    aiInline: normalizeFeatureFlagValue(
+      features?.aiInline,
+      DEFAULT_FLAGS.aiInline,
+    ),
     codeExecutionEnabled:
-      features?.codeExecutionEnabled ?? DEFAULT_FLAGS.codeExecutionEnabled,
+      normalizeFeatureFlagValue(
+        features?.codeExecutionEnabled,
+        DEFAULT_FLAGS.codeExecutionEnabled,
+      ),
     commentsEnabled:
-      features?.commentsEnabled ?? DEFAULT_FLAGS.commentsEnabled,
+      normalizeFeatureFlagValue(
+        features?.commentsEnabled,
+        DEFAULT_FLAGS.commentsEnabled,
+      ),
   };
 }
 
@@ -160,10 +182,10 @@ function applyRuntimeConfigToWindow(runtimeConfig: RuntimeAppConfig): void {
     };
   }
   if (runtimeConfig.features && typeof runtimeConfig.features === "object") {
-    w.APP_CONFIG.features = {
+    w.APP_CONFIG.features = mergeFeatureFlags({
       ...(w.APP_CONFIG.features ?? DEFAULT_FLAGS),
       ...runtimeConfig.features,
-    } as FeatureFlags;
+    });
   }
 }
 
@@ -252,7 +274,7 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set, get) => ({
    */
   setFlags: (partial) => {
     set((state) => ({
-      flags: { ...state.flags, ...partial },
+      flags: mergeFeatureFlags({ ...state.flags, ...partial }),
     }));
   },
 

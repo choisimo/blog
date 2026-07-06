@@ -54,10 +54,35 @@ import type {
   InsightWorkspaceItem,
   InsightWorkspaceItemKind,
 } from './types';
+import {
+  normalizeInsightWorkspaceItem,
+  normalizePinnedStackIds,
+} from './storageGuards';
 
 const STACK_STORAGE_KEY = 'insight.workspace.stack.v1';
 const PINNED_STACK_STORAGE_KEY = 'insight.workspace.stack.pinned.v1';
 const MAX_STACK_ITEMS = 8;
+const INSIGHT_ANSI_ESCAPE_PATTERN =
+  /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\))/g;
+const INSIGHT_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const INSIGHT_WHITESPACE_PATTERN = /\s+/g;
+const MAX_INSIGHT_LINE_CHARS = 500;
+
+export function normalizeInsightWorkspaceLine(
+  value: unknown,
+  fallback = '',
+  maxLength = MAX_INSIGHT_LINE_CHARS
+): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return fallback;
+  const normalized = String(value)
+    .replace(INSIGHT_ANSI_ESCAPE_PATTERN, '')
+    .replace(INSIGHT_LINE_CONTROL_PATTERN, ' ')
+    .replace(INSIGHT_WHITESPACE_PATTERN, ' ')
+    .trim()
+    .slice(0, maxLength)
+    .trim();
+  return normalized || fallback;
+}
 
 const TOKENS = {
   shell:
@@ -273,15 +298,10 @@ function readStackItems(): InsightWorkspaceItem[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is InsightWorkspaceItem =>
-      Boolean(
-        item &&
-          typeof item === 'object' &&
-          typeof (item as InsightWorkspaceItem).id === 'string' &&
-          typeof (item as InsightWorkspaceItem).title === 'string' &&
-          typeof (item as InsightWorkspaceItem).createdAt === 'number'
-      )
-    );
+    return parsed.flatMap(item => {
+      const normalized = normalizeInsightWorkspaceItem(item);
+      return normalized ? [normalized] : [];
+    });
   } catch {
     return [];
   }
@@ -299,8 +319,7 @@ function readPinnedStackIds(): Set<string> {
   try {
     const raw = localStorage.getItem(PINNED_STACK_STORAGE_KEY);
     const parsed = raw ? (JSON.parse(raw) as unknown) : null;
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((id): id is string => typeof id === 'string'));
+    return new Set(normalizePinnedStackIds(parsed));
   } catch {
     return new Set();
   }
@@ -317,16 +336,23 @@ function writePinnedStackIds(ids: Set<string>) {
 function formatPostDate(post?: BlogPost): string | null {
   if (!post?.date) return null;
   const parsed = new Date(post.date);
-  if (Number.isNaN(parsed.getTime())) return post.date;
+  if (Number.isNaN(parsed.getTime())) {
+    return normalizeInsightWorkspaceLine(post.date) || null;
+  }
   return parsed.toLocaleDateString();
 }
 
 function getNodeSubtitle(node: InsightGraphNode): string {
   if (node.type === 'post') {
     const date = formatPostDate(node.post);
-    return [node.post?.category, date].filter(Boolean).join(' · ');
+    return [
+      normalizeInsightWorkspaceLine(node.post?.category),
+      date,
+    ]
+      .filter(Boolean)
+      .join(' · ');
   }
-  if (node.postKey) return node.postKey;
+  if (node.postKey) return normalizeInsightWorkspaceLine(node.postKey);
   return NODE_STYLE[node.type].label;
 }
 
@@ -432,22 +458,26 @@ function getStackKind(node: InsightGraphNode): InsightWorkspaceItemKind {
 }
 
 function createStackItem(node: InsightGraphNode): InsightWorkspaceItem {
-  return {
+  const item = {
     id: `${node.type}:${node.id}`,
     nodeId: node.id,
     kind: getStackKind(node),
-    title: node.label,
+    title: normalizeInsightWorkspaceLine(node.label, NODE_STYLE[node.type].label),
     subtitle: getNodeSubtitle(node),
     postKey: node.postKey,
     createdAt: Date.now(),
   };
+  return normalizeInsightWorkspaceItem(item) ?? item;
 }
 
-function buildChatInitialMessage(post: BlogPost): string {
+export function buildChatInitialMessage(post: BlogPost): string {
+  const title = normalizeInsightWorkspaceLine(post.title, 'Untitled post');
+  const year = normalizeInsightWorkspaceLine(post.year, 'unknown');
+  const slug = normalizeInsightWorkspaceLine(post.slug, 'unknown');
   return [
-    `${post.title} 글을 기준으로 핵심 인사이트를 3가지로 요약해줘.`,
+    `${title} 글을 기준으로 핵심 인사이트를 3가지로 요약해줘.`,
     '',
-    `게시물: ${post.year}/${post.slug}`,
+    `게시물: ${year}/${slug}`,
   ].join('\n');
 }
 
@@ -464,8 +494,8 @@ function statusClasses(status: InsightActionStatus) {
   }
 }
 
-function normalizeSearch(value: string) {
-  return value.trim().toLowerCase();
+export function normalizeSearch(value: string) {
+  return normalizeInsightWorkspaceLine(value, '', 200).toLowerCase();
 }
 
 function nodeMatchesQuery(node: InsightGraphNode, query: string) {
@@ -479,7 +509,11 @@ function nodeMatchesQuery(node: InsightGraphNode, query: string) {
     node.post?.excerpt,
     ...(node.post?.tags ?? []),
   ];
-  return fields.some(field => field?.toLowerCase().includes(query));
+  return fields.some(field =>
+    normalizeInsightWorkspaceLine(field, '', 1000)
+      .toLowerCase()
+      .includes(query)
+  );
 }
 
 function buildEdgePath(source: InsightGraphNode, target: InsightGraphNode) {
@@ -494,18 +528,22 @@ function buildEdgePath(source: InsightGraphNode, target: InsightGraphNode) {
   return `M ${source.x} ${source.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${target.x} ${target.y}`;
 }
 
-function summarizeText(value: string | undefined, maxLength = 128) {
-  if (!value) return '';
-  const compact = value.replace(/\s+/g, ' ').trim();
+export function summarizeText(value: string | undefined, maxLength = 128) {
+  const compact = normalizeInsightWorkspaceLine(value, '', 5000);
   if (compact.length <= maxLength) return compact;
-  return `${compact.slice(0, maxLength - 1).trim()}...`;
+  return `${compact.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
 function buildInspectorBullets(node: InsightGraphNode) {
+  const category = normalizeInsightWorkspaceLine(node.post?.category);
+  const tags = (node.post?.tags ?? [])
+    .map(tag => normalizeInsightWorkspaceLine(tag))
+    .filter(Boolean)
+    .slice(0, 3);
   const bullets = [
-    node.post?.category ? `${node.post.category} 카테고리의 핵심 노드` : null,
-    node.post?.tags?.length
-      ? `${node.post.tags.slice(0, 3).join(', ')} 태그와 연결`
+    category ? `${category} 카테고리의 핵심 노드` : null,
+    tags.length
+      ? `${tags.join(', ')} 태그와 연결`
       : null,
     node.detail ? summarizeText(node.detail, 86) : null,
     node.post?.excerpt ? summarizeText(node.post.excerpt, 96) : null,
@@ -516,15 +554,18 @@ function buildInspectorBullets(node: InsightGraphNode) {
     : [`${NODE_STYLE[node.type].label} 노드의 연결 정보를 표시합니다.`];
 }
 
-function buildInspectorYaml(node: InsightGraphNode) {
+export function buildInspectorYaml(node: InsightGraphNode) {
   const kind = NODE_STYLE[node.type].label.replace(/\s+/g, '');
+  const id = normalizeInsightWorkspaceLine(node.id, 'unknown');
+  const postKey = normalizeInsightWorkspaceLine(node.postKey, 'none');
+  const weight = Number.isFinite(node.weight) ? node.weight : 0;
   return [
     'apiVersion: insight/v1',
     `kind: ${kind}`,
     'metadata:',
-    `  name: ${node.id}`,
-    `  postKey: ${node.postKey ?? 'none'}`,
-    `  weight: ${node.weight}`,
+    `  name: ${id}`,
+    `  postKey: ${postKey}`,
+    `  weight: ${weight}`,
   ].join('\n');
 }
 
@@ -556,7 +597,12 @@ function useInsightGraphData() {
         if (!cancelled) {
           setGraph(null);
           setError(
-            err instanceof Error ? err.message : 'Failed to load insight graph'
+            err instanceof Error
+              ? normalizeInsightWorkspaceLine(
+                  err.message,
+                  'Failed to load insight graph'
+                )
+              : 'Failed to load insight graph'
           );
         }
       } finally {
@@ -688,7 +734,7 @@ export default function InsightWorkspacePage() {
     );
     setStatus({
       tone: 'success',
-      message: `${node.label} added to the insight stack.`,
+      message: `${normalizeInsightWorkspaceLine(node.label, 'Node')} added to the insight stack.`,
     });
   }, []);
 
@@ -756,7 +802,7 @@ export default function InsightWorkspacePage() {
       launcher.click();
       setStatus({
         tone: 'success',
-        message: `Memo opened for ${postKey}.`,
+        message: `Memo opened for ${normalizeInsightWorkspaceLine(postKey)}.`,
       });
     } catch {
       setStatus({
@@ -770,7 +816,7 @@ export default function InsightWorkspacePage() {
     setChatPost(post);
     setStatus({
       tone: 'success',
-      message: `AI chat opened with ${post.year}/${post.slug} context.`,
+      message: `AI chat opened with ${normalizeInsightWorkspaceLine(post.year, 'unknown')}/${normalizeInsightWorkspaceLine(post.slug, 'unknown')} context.`,
     });
   }, []);
 
@@ -806,7 +852,7 @@ export default function InsightWorkspacePage() {
                     setSelectedNodeId(node.id);
                     setStatus({
                       tone: 'idle',
-                      message: `${node.label} selected.`,
+                      message: `${normalizeInsightWorkspaceLine(node.label, 'Node')} selected.`,
                     });
                   }}
                 />
@@ -823,7 +869,7 @@ export default function InsightWorkspacePage() {
                 setSelectedNodeId(node.id);
                 setStatus({
                   tone: 'idle',
-                  message: `${node.label} selected from related context.`,
+                  message: `${normalizeInsightWorkspaceLine(node.label, 'Node')} selected from related context.`,
                 });
               }}
               onOpenPost={openPost}
@@ -1082,7 +1128,9 @@ const InsightGraphStage = memo(function InsightGraphStage({
             id='insight-node-search'
             ref={searchInputRef}
             value={searchQuery}
-            onChange={event => setSearchQuery(event.target.value)}
+            onChange={event =>
+              setSearchQuery(normalizeInsightWorkspaceLine(event.target.value, '', 200))
+            }
             placeholder='Search nodes, content, tags...'
             className={cn(
               'h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm dark:border-border dark:bg-background dark:text-foreground',

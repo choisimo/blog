@@ -13,27 +13,68 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-function buildTopicFromSearchParams(
-  searchParams: URLSearchParams,
-): DebateTopic | null {
-  const title = searchParams.get("topic")?.trim() || "";
-  const context =
-    searchParams.get("context")?.trim() ||
-    searchParams.get("excerpt")?.trim() ||
-    "";
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const PLAIN_CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const MESSAGE_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g;
+const MAX_TOPIC_TITLE_LENGTH = 160;
+const MAX_TOPIC_CONTEXT_LENGTH = 4000;
+const MAX_ENTRY_INTENT_ID_LENGTH = 80;
+
+function sanitizePlainText(value: unknown, maxLength: number): string {
+  return String(value ?? "")
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(PLAIN_CONTROL_TEXT_PATTERN, "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function sanitizeContextText(value: unknown): string {
+  return String(value ?? "")
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(MESSAGE_CONTROL_TEXT_PATTERN, "")
+    .trim()
+    .slice(0, MAX_TOPIC_CONTEXT_LENGTH);
+}
+
+function buildDebateTopic(input: {
+  title: unknown;
+  context: unknown;
+  entryMode?: DebateTopic["entryMode"];
+  entryIntentId?: unknown;
+}): DebateTopic | null {
+  const title = sanitizePlainText(input.title, MAX_TOPIC_TITLE_LENGTH);
+  const context = sanitizeContextText(input.context);
 
   if (!title && !context) return null;
 
-  const entryMode = searchParams.get("mode");
-  const entryIntentId = searchParams.get("intent")?.trim() || undefined;
+  const entryIntentId = sanitizePlainText(
+    input.entryIntentId,
+    MAX_ENTRY_INTENT_ID_LENGTH,
+  );
 
   return {
     title: title || context.slice(0, 80) || "대화 주제",
     context: context || title,
     entryMode:
-      entryMode === "prism" || entryMode === "chain" ? entryMode : "default",
-    entryIntentId,
+      input.entryMode === "prism" || input.entryMode === "chain"
+        ? input.entryMode
+        : "default",
+    entryIntentId: entryIntentId || undefined,
   };
+}
+
+function buildTopicFromSearchParams(
+  searchParams: URLSearchParams,
+): DebateTopic | null {
+  const entryMode = searchParams.get("mode");
+  return buildDebateTopic({
+    title: searchParams.get("topic"),
+    context: searchParams.get("context") || searchParams.get("excerpt"),
+    entryMode:
+      entryMode === "prism" || entryMode === "chain" ? entryMode : "default",
+    entryIntentId: searchParams.get("intent"),
+  });
 }
 
 export default function Debate() {
@@ -48,7 +89,8 @@ export default function Debate() {
     initialTopic,
   );
 
-  const canStart = title.trim().length > 0 || context.trim().length > 0;
+  const draftTopic = buildDebateTopic({ title, context });
+  const canStart = draftTopic !== null;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -109,7 +151,14 @@ export default function Debate() {
                 <Input
                   id="debate-topic"
                   value={title}
-                  onChange={(event) => setTitle(event.target.value)}
+                  onChange={(event) =>
+                    setTitle(
+                      sanitizePlainText(
+                        event.target.value,
+                        MAX_TOPIC_TITLE_LENGTH,
+                      ),
+                    )
+                  }
                   placeholder="예: 지금 이 선택을 어떻게 해석해야 할까?"
                 />
               </div>
@@ -121,7 +170,9 @@ export default function Debate() {
                 <Textarea
                   id="debate-context"
                   value={context}
-                  onChange={(event) => setContext(event.target.value)}
+                  onChange={(event) =>
+                    setContext(sanitizeContextText(event.target.value))
+                  }
                   placeholder="상담실이 참고할 배경, 문단, 고민의 맥락을 입력하세요."
                   className="min-h-[220px]"
                 />
@@ -130,13 +181,10 @@ export default function Debate() {
               <div className="flex items-center gap-3">
                 <Button
                   disabled={!canStart}
-                  onClick={() =>
-                    setActiveTopic({
-                      title: title.trim() || context.trim().slice(0, 80),
-                      context: context.trim() || title.trim(),
-                      entryMode: "default",
-                    })
-                  }
+                  onClick={() => {
+                    const nextTopic = buildDebateTopic({ title, context });
+                    if (nextTopic) setActiveTopic(nextTopic);
+                  }}
                 >
                   상담실 열기
                 </Button>

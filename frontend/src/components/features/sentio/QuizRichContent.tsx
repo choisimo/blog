@@ -31,6 +31,10 @@ const VIZ_FENCE_LANGS = new Set([
   "html+js",
   "htmljs",
 ]);
+const DISPLAY_CONTROL_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const DISPLAY_ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const DISPLAY_WHITESPACE_PATTERN = /\s+/g;
 
 function toText(value: unknown): string {
   if (typeof value === "string") return value.trim();
@@ -38,6 +42,23 @@ function toText(value: unknown): string {
     return String(value);
   }
   return "";
+}
+
+function toDisplayText(value: unknown, fallback = ""): string {
+  const normalized = toText(value)
+    .replace(DISPLAY_ANSI_ESCAPE_PATTERN, "")
+    .replace(DISPLAY_CONTROL_PATTERN, " ")
+    .replace(DISPLAY_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function normalizeQuizRichDisplayText(
+  value: unknown,
+  fallback = "",
+): string {
+  return toDisplayText(value, fallback);
 }
 
 function clampNumber(
@@ -87,7 +108,7 @@ function normalizeChartData(
   for (const row of rows) {
     if (!row || typeof row !== "object") continue;
     const rec = row as Record<string, unknown>;
-    const label = toText(rec.label ?? rec.name ?? rec.x ?? rec.category);
+    const label = toDisplayText(rec.label ?? rec.name ?? rec.x ?? rec.category);
     const num = Number(rec.value ?? rec.y ?? rec.count ?? rec.score);
     if (!label || !Number.isFinite(num)) continue;
     labels.push(label);
@@ -108,7 +129,7 @@ function buildCanvasChartSpec(
   if (!chart) return null;
 
   const payload = JSON.stringify(chart);
-  const title = toText(input.title) || "Generated Graph";
+  const title = toDisplayText(input.title, "Generated Graph");
   const minHeight = clampNumber(input.height, 180, 560, 260);
 
   const html = `
@@ -259,7 +280,7 @@ function parseVisualizationFence(
   const html = toText(parsed.html ?? parsed.markup ?? parsed.template);
   const js = toText(parsed.js ?? parsed.javascript ?? parsed.script);
   const css = toText(parsed.css ?? parsed.style ?? parsed.styles);
-  const title = toText(parsed.title);
+  const title = toDisplayText(parsed.title);
   const minHeight = clampNumber(
     parsed.height ?? parsed.minHeight,
     160,
@@ -335,7 +356,7 @@ export function parseQuizRichContent(content: string): QuizRichSegment[] {
         type: "viz_error",
         message:
           err instanceof Error
-            ? err.message
+            ? toDisplayText(err.message, "Unexpected visualization parsing error.")
             : "Unexpected visualization parsing error.",
         raw: full,
       });
@@ -474,7 +495,7 @@ function VisualizationFrame({
       }
       if (type === "error") {
         const msg =
-          toText(data.message as string) || "Visualization runtime error.";
+          toDisplayText(data.message as string, "Visualization runtime error.");
         setError(msg);
       }
     };

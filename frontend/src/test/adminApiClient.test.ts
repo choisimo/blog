@@ -107,6 +107,92 @@ describe('admin API client auth retry', () => {
     expect(init?.body).toBeUndefined();
   });
 
+  it('fails adminApiFetch closed when the access token is polluted', async () => {
+    mockState.getValidAccessToken.mockResolvedValue(
+      'old-access-token\r\nX-Injected: yes',
+    );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { saved: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ saved: boolean }>('/secrets', {
+      pathPrefix: '/api/v1/admin',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Not authenticated. Please log in again.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockState.clearAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails adminApiFetch closed when the access token contains internal whitespace', async () => {
+    mockState.getValidAccessToken.mockResolvedValue('old access token');
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { saved: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ saved: boolean }>('/secrets', {
+      pathPrefix: '/api/v1/admin',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Not authenticated. Please log in again.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockState.clearAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects adminApiFetch endpoints containing encoded line endings before fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { saved: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ saved: boolean }>(
+      '/secrets?next=%0D%0AX-Injected%3Ayes',
+      {
+        pathPrefix: '/api/v1/admin',
+      },
+    );
+
+    expect(result).toEqual({ ok: false, error: 'Invalid admin API URL' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects adminApiFetch endpoints containing encoded controls before fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { saved: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ saved: boolean }>(
+      '/secrets?next=%09tab',
+      {
+        pathPrefix: '/api/v1/admin',
+      },
+    );
+
+    expect(result).toEqual({ ok: false, error: 'Invalid admin API URL' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('normalizes object-shaped adminApiFetch error responses', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -128,6 +214,105 @@ describe('admin API client auth retry', () => {
     expect(result).toEqual({ ok: false, error: 'RATE_LIMITED' });
   });
 
+  it('falls back instead of returning unsafe adminApiFetch error messages', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { message: 'Rate limited\r\nX-Injected: yes' },
+        }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await adminApiFetch<{ saved: boolean }>('/secrets', {
+      pathPrefix: '/api/v1/admin',
+    });
+
+    expect(result).toEqual({ ok: false, error: 'Request failed (429)' });
+  });
+
+  it('does not force refresh after a 401 when no access token was available', async () => {
+    mockState.getValidAccessToken.mockResolvedValue(null);
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: 'Unauthorized' } }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+    );
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(authorizationHeader(fetchMock, 0)).toBeNull();
+    expect(mockRefreshAccessToken).not.toHaveBeenCalled();
+    expect(mockState.setTokens).not.toHaveBeenCalled();
+  });
+
+  it('clears polluted raw admin tokens before making raw requests', async () => {
+    mockState.getValidAccessToken.mockResolvedValue(
+      'old-access-token\r\nX-Injected: yes',
+    );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { message: 'Unauthorized' } }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+    );
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(authorizationHeader(fetchMock, 0)).toBeNull();
+    expect(mockState.clearAuth).toHaveBeenCalledTimes(1);
+    expect(mockRefreshAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('rejects raw admin URLs containing encoded line endings before fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      adminFetchRaw(
+        'https://api.example.com/api/v1/admin/config/current?next=%0AInjected',
+      ),
+    ).rejects.toThrow('Invalid admin API URL');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects raw admin URLs containing encoded controls before fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      adminFetchRaw(
+        'https://api.example.com/api/v1/admin/config/current?next=%09tab',
+      ),
+    ).rejects.toThrow('Invalid admin API URL');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects raw admin URLs outside the configured API origin before fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      adminFetchRaw('https://evil.example.com/api/v1/admin/config/current'),
+    ).rejects.toThrow('Invalid admin API URL');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('retries adminFetchRaw with a refreshed token after a 401', async () => {
     const fetchMock = vi
       .fn()
@@ -144,6 +329,28 @@ describe('admin API client auth retry', () => {
     expect(authorizationHeader(fetchMock, 0)).toBe('Bearer old-access-token');
     expect(authorizationHeader(fetchMock, 1)).toBe('Bearer new-access-token');
     expect(mockRefreshAccessToken).toHaveBeenCalledWith('refresh-token');
+  });
+
+  it('clears auth instead of retrying with polluted refreshed tokens', async () => {
+    mockRefreshAccessToken.mockResolvedValueOnce({
+      accessToken: 'new-access-token\r\nX-Injected: yes',
+      refreshToken: 'new-refresh-token',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+    );
+
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockState.setTokens).not.toHaveBeenCalled();
+    expect(mockState.clearAuth).toHaveBeenCalledTimes(1);
   });
 
   it('does not force a JSON content type for FormData adminFetchRaw requests', async () => {
@@ -169,5 +376,20 @@ describe('admin API client auth retry', () => {
     expect(headers.get('Authorization')).toBe('Bearer old-access-token');
     expect(headers.get('Content-Type')).toBeNull();
     expect(init?.body).toBe(formData);
+  });
+
+  it('does not allow caller-supplied Authorization headers to override admin tokens', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+      {
+        headers: { Authorization: 'Bearer caller-token' },
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(authorizationHeader(fetchMock, 0)).toBe('Bearer old-access-token');
   });
 });

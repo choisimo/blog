@@ -19,6 +19,74 @@ interface CommentReactionsProps {
   compact?: boolean;
   labelledTrigger?: boolean;
   className?: string;
+  label?: string;
+  title?: string;
+  addReactionLabel?: string;
+  removeReactionLabel?: string;
+  closePickerLabel?: string;
+  reactLabel?: string;
+  pickerLabel?: string;
+}
+
+const allowedEmojiSet = new Set<ReactionEmoji>(ALLOWED_EMOJIS);
+const unsafeCommentIdPattern = /[\u0000-\u001F\u007F/\\]/;
+const REACTION_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const REACTION_ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const REACTION_WHITESPACE_PATTERN = /\s+/g;
+const DEFAULT_REACTIONS_LABEL = 'Comment reactions';
+const DEFAULT_ADD_REACTION_LABEL = 'Add reaction';
+const DEFAULT_REMOVE_REACTION_LABEL = 'Remove reaction';
+const DEFAULT_CLOSE_PICKER_LABEL = 'Close reactions';
+const DEFAULT_REACT_LABEL = 'React';
+const DEFAULT_PICKER_LABEL = 'Choose reaction';
+
+function normalizeReactionText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return fallback;
+
+  const normalized = String(value)
+    .replace(REACTION_ANSI_ESCAPE_PATTERN, ' ')
+    .replace(REACTION_CONTROL_PATTERN, ' ')
+    .replace(REACTION_WHITESPACE_PATTERN, ' ')
+    .trim();
+
+  return normalized || fallback;
+}
+
+function normalizeOptionalReactionText(value: unknown): string | undefined {
+  return normalizeReactionText(value) || undefined;
+}
+
+function normalizeCommentReactionId(commentId: string): string | null {
+  const trimmed = commentId.trim();
+
+  if (!trimmed || unsafeCommentIdPattern.test(trimmed)) return null;
+
+  try {
+    const decoded = decodeURIComponent(trimmed);
+    return unsafeCommentIdPattern.test(decoded) ? null : trimmed;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeReactionCounts(
+  reactionCounts: ReactionCount[]
+): ReactionCount[] {
+  const normalized = new Map<ReactionEmoji, number>();
+
+  for (const reaction of reactionCounts) {
+    if (!allowedEmojiSet.has(reaction.emoji)) continue;
+
+    const count = Number.isFinite(reaction.count)
+      ? Math.floor(reaction.count)
+      : 0;
+
+    if (count <= 0) continue;
+
+    normalized.set(reaction.emoji, (normalized.get(reaction.emoji) ?? 0) + count);
+  }
+
+  return Array.from(normalized, ([emoji, count]) => ({ emoji, count }));
 }
 
 export default function CommentReactions({
@@ -28,10 +96,23 @@ export default function CommentReactions({
   compact = false,
   labelledTrigger = false,
   className,
+  label = DEFAULT_REACTIONS_LABEL,
+  title,
+  addReactionLabel = DEFAULT_ADD_REACTION_LABEL,
+  removeReactionLabel = DEFAULT_REMOVE_REACTION_LABEL,
+  closePickerLabel = DEFAULT_CLOSE_PICKER_LABEL,
+  reactLabel = DEFAULT_REACT_LABEL,
+  pickerLabel = DEFAULT_PICKER_LABEL,
 }: CommentReactionsProps) {
-  const [reactions, setReactions] = useState<ReactionCount[]>(initialReactions);
+  const safeCommentId = normalizeCommentReactionId(commentId);
+  const [reactions, setReactions] = useState<ReactionCount[]>(() =>
+    normalizeReactionCounts(initialReactions)
+  );
   const [userReactions, setUserReactionsState] = useState<Set<ReactionEmoji>>(
-    () => getUserReactions(commentId)
+    () =>
+      safeCommentId
+        ? getUserReactions(safeCommentId)
+        : new Set<ReactionEmoji>()
   );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,10 +120,27 @@ export default function CommentReactions({
   const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingRef = useRef(false);
+  const safeLabel = normalizeReactionText(label, DEFAULT_REACTIONS_LABEL);
+  const safeTitle = normalizeOptionalReactionText(title);
+  const safeAddReactionLabel = normalizeReactionText(
+    addReactionLabel,
+    DEFAULT_ADD_REACTION_LABEL
+  );
+  const safeRemoveReactionLabel = normalizeReactionText(
+    removeReactionLabel,
+    DEFAULT_REMOVE_REACTION_LABEL
+  );
+  const safeClosePickerLabel = normalizeReactionText(
+    closePickerLabel,
+    DEFAULT_CLOSE_PICKER_LABEL
+  );
+  const safeReactLabel = normalizeReactionText(reactLabel, DEFAULT_REACT_LABEL);
+  const safePickerLabel = normalizeReactionText(pickerLabel, DEFAULT_PICKER_LABEL);
 
   // Update reactions when initialReactions changes
   useEffect(() => {
-    setReactions(initialReactions);
+    setReactions(normalizeReactionCounts(initialReactions));
   }, [initialReactions]);
 
   // Handle click outside to close picker
@@ -91,15 +189,17 @@ export default function CommentReactions({
 
   const handleReaction = useCallback(
     async (emoji: ReactionEmoji) => {
-      if (isLoading) return;
+      if (loadingRef.current || !safeCommentId || !allowedEmojiSet.has(emoji))
+        return;
 
       const hasReacted = userReactions.has(emoji);
+      loadingRef.current = true;
       setIsLoading(true);
 
       try {
         if (hasReacted) {
           // Remove reaction
-          await removeReaction(commentId, emoji);
+          await removeReaction(safeCommentId, emoji);
 
           // Update local state
           setReactions(prev => {
@@ -116,10 +216,10 @@ export default function CommentReactions({
           const newUserReactions = new Set(userReactions);
           newUserReactions.delete(emoji);
           setUserReactionsState(newUserReactions);
-          setUserReactions(commentId, newUserReactions);
+          setUserReactions(safeCommentId, newUserReactions);
         } else {
           // Add reaction
-          await addReaction(commentId, emoji);
+          await addReaction(safeCommentId, emoji);
 
           // Update local state
           setReactions(prev => {
@@ -135,15 +235,16 @@ export default function CommentReactions({
           const newUserReactions = new Set(userReactions);
           newUserReactions.add(emoji);
           setUserReactionsState(newUserReactions);
-          setUserReactions(commentId, newUserReactions);
+          setUserReactions(safeCommentId, newUserReactions);
         }
       } catch (err) {
         console.error('Failed to toggle reaction:', err);
       } finally {
+        loadingRef.current = false;
         setIsLoading(false);
       }
     },
-    [commentId, userReactions, isLoading]
+    [safeCommentId, userReactions]
   );
 
   // Sort reactions by count
@@ -153,6 +254,8 @@ export default function CommentReactions({
   // Shared: Emoji picker content
   const renderEmojiPicker = (variant: 'terminal' | 'default') => (
     <div
+      role='group'
+      aria-label={safePickerLabel}
       className={cn(
         'flex items-center gap-1',
         variant === 'terminal' ? 'px-1' : 'gap-0.5'
@@ -163,7 +266,9 @@ export default function CommentReactions({
           key={emoji}
           type='button'
           onClick={() => handleReaction(emoji)}
-          disabled={isLoading}
+          disabled={isLoading || !safeCommentId}
+          aria-label={`${userReactions.has(emoji) ? safeRemoveReactionLabel : safeAddReactionLabel}: ${emoji}`}
+          aria-pressed={userReactions.has(emoji)}
           className={cn(
             'flex-shrink-0 rounded flex items-center justify-center transition-all',
             variant === 'terminal'
@@ -183,7 +288,7 @@ export default function CommentReactions({
                 ],
             isLoading && 'opacity-50 cursor-not-allowed'
           )}
-          title={userReactions.has(emoji) ? 'Remove reaction' : 'Add reaction'}
+          title={userReactions.has(emoji) ? safeRemoveReactionLabel : safeAddReactionLabel}
         >
           {emoji}
         </button>
@@ -196,6 +301,9 @@ export default function CommentReactions({
     return (
       <div
         ref={containerRef}
+        role='group'
+        aria-label={safeLabel}
+        title={safeTitle}
         className={cn(
           'relative inline-flex items-center gap-1.5',
           compact ? 'mt-1.5' : 'mt-2',
@@ -210,7 +318,9 @@ export default function CommentReactions({
             key={emoji}
             type='button'
             onClick={() => handleReaction(emoji as ReactionEmoji)}
-            disabled={isLoading}
+            disabled={isLoading || !safeCommentId}
+            aria-label={`${userReactions.has(emoji as ReactionEmoji) ? safeRemoveReactionLabel : safeAddReactionLabel}: ${emoji}`}
+            aria-pressed={userReactions.has(emoji as ReactionEmoji)}
             className={cn(
               'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono transition-all border',
               userReactions.has(emoji as ReactionEmoji)
@@ -228,7 +338,9 @@ export default function CommentReactions({
         <button
           type='button'
           onClick={() => setIsPickerOpen(!isPickerOpen)}
-          disabled={isLoading}
+          disabled={isLoading || !safeCommentId}
+          aria-label={isPickerOpen ? safeClosePickerLabel : safeAddReactionLabel}
+          aria-expanded={isPickerOpen}
           className={cn(
             'inline-flex items-center justify-center rounded transition-all text-xs font-mono',
             labelledTrigger
@@ -248,15 +360,15 @@ export default function CommentReactions({
                   : 'bg-transparent border border-dashed border-primary/20 text-muted-foreground/40 hover:text-primary hover:border-primary/40 opacity-60 hover:opacity-100',
             isLoading && 'opacity-50 cursor-not-allowed'
           )}
-          title={isPickerOpen ? 'Close' : 'Add reaction'}
+          title={isPickerOpen ? safeClosePickerLabel : safeAddReactionLabel}
         >
-          {labelledTrigger && <SmilePlus className='h-3.5 w-3.5' />}
+          {labelledTrigger && <SmilePlus aria-hidden='true' className='h-3.5 w-3.5' />}
           {isPickerOpen
             ? labelledTrigger
-              ? 'Close'
+              ? safeClosePickerLabel
               : '×'
             : labelledTrigger
-              ? 'React'
+              ? safeReactLabel
               : '+'}
         </button>
 
@@ -284,6 +396,9 @@ export default function CommentReactions({
   return (
     <div
       ref={containerRef}
+      role='group'
+      aria-label={safeLabel}
+      title={safeTitle}
       className={cn(
         'relative inline-flex flex-wrap items-center gap-1.5',
         compact ? 'mt-1.5' : 'mt-2',
@@ -298,7 +413,9 @@ export default function CommentReactions({
           key={emoji}
           type='button'
           onClick={() => handleReaction(emoji as ReactionEmoji)}
-          disabled={isLoading}
+          disabled={isLoading || !safeCommentId}
+          aria-label={`${userReactions.has(emoji as ReactionEmoji) ? safeRemoveReactionLabel : safeAddReactionLabel}: ${emoji}`}
+          aria-pressed={userReactions.has(emoji as ReactionEmoji)}
           className={cn(
             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border',
             userReactions.has(emoji as ReactionEmoji)
@@ -316,7 +433,9 @@ export default function CommentReactions({
       <button
         type='button'
         onClick={() => setIsPickerOpen(!isPickerOpen)}
-        disabled={isLoading}
+        disabled={isLoading || !safeCommentId}
+        aria-label={isPickerOpen ? safeClosePickerLabel : safeAddReactionLabel}
+        aria-expanded={isPickerOpen}
         className={cn(
           'inline-flex items-center justify-center transition-all text-xs',
           labelledTrigger
@@ -334,10 +453,10 @@ export default function CommentReactions({
                 : 'bg-background/30 border border-dashed border-border/40 text-muted-foreground/30 hover:text-primary hover:border-primary/30 opacity-50 hover:opacity-100',
           isLoading && 'opacity-50 cursor-not-allowed'
         )}
-        title='Add reaction'
+        title={isPickerOpen ? safeClosePickerLabel : safeAddReactionLabel}
       >
-        {labelledTrigger && <SmilePlus className='h-3.5 w-3.5' />}
-        {labelledTrigger ? 'React' : '+'}
+        {labelledTrigger && <SmilePlus aria-hidden='true' className='h-3.5 w-3.5' />}
+        {labelledTrigger ? safeReactLabel : '+'}
       </button>
 
       {/* Floating emoji picker - pill style */}

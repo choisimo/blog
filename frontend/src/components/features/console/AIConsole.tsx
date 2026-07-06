@@ -25,14 +25,134 @@ interface AIConsoleProps {
   onClose?: () => void;
   isMinimized?: boolean;
   onToggleMinimize?: () => void;
+  label?: string;
+  title?: string;
+  clearLabel?: string;
+  minimizeLabel?: string;
+  maximizeLabel?: string;
+  closeLabel?: string;
 }
 
 function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function ragResultToCitation(result: HybridSearchResult, index: number): Citation {
+const ANSI_ESCAPE_PATTERN =
+  /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\))/g;
+const HAS_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const MALFORMED_PERCENT_PATTERN = /%(?![0-9A-Fa-f]{2})/;
+const ENCODED_CONTROL_PATTERN = /%(?:0[0-9A-Fa-f]|1[0-9A-Fa-f]|7[Ff])/;
+const ENCODED_SEPARATOR_PATTERN = /%(?:2[Ff]|5[Cc])/;
+const DEFAULT_CONSOLE_LABEL = 'AI Console';
+const DEFAULT_CLEAR_LABEL = 'Clear conversation';
+const DEFAULT_MINIMIZE_LABEL = 'Minimize console';
+const DEFAULT_MAXIMIZE_LABEL = 'Maximize console';
+const DEFAULT_CLOSE_LABEL = 'Close console';
+
+function normalizeConsoleLine(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeConsoleUrl(value: unknown): string | undefined {
+  const url = normalizeConsoleLine(value);
+  if (!url || /\s/.test(url)) return undefined;
+  if (
+    url.includes('\\') ||
+    MALFORMED_PERCENT_PATTERN.test(url) ||
+    ENCODED_CONTROL_PATTERN.test(url) ||
+    ENCODED_SEPARATOR_PATTERN.test(url)
+  ) {
+    return undefined;
+  }
+  if (url.startsWith('/') && !url.startsWith('//')) return url;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.username || parsed.password) return undefined;
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+      ? parsed.toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeConsoleSnippet(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, 200);
+}
+
+function normalizeConsolePathSegment(value: unknown): string | undefined {
+  const normalized = normalizeConsoleLine(value);
+  if (
+    !normalized ||
+    normalized.includes('/') ||
+    normalized.includes('\\') ||
+    MALFORMED_PERCENT_PATTERN.test(normalized)
+  ) {
+    return undefined;
+  }
+
+  let decoded = normalized;
+  try {
+    decoded = decodeURIComponent(normalized);
+  } catch {
+    return undefined;
+  }
+
+  if (
+    !decoded.trim() ||
+    decoded === '.' ||
+    decoded === '..' ||
+    HAS_CONTROL_PATTERN.test(decoded) ||
+    decoded.includes('/') ||
+    decoded.includes('\\')
+  ) {
+    return undefined;
+  }
+
+  return decoded.trim();
+}
+
+export function normalizeConsoleCitation(
+  citation: Citation,
+  fallbackId = 'cite',
+): Citation {
+  const id = normalizeConsoleLine(citation.id, fallbackId);
+  const title = normalizeConsoleLine(citation.title, 'Untitled');
+  const url = normalizeConsoleUrl(citation.url);
+  const slug = normalizeConsolePathSegment(citation.slug);
+  const year = normalizeConsolePathSegment(citation.year);
+  const category = normalizeConsoleLine(citation.category) || undefined;
+  const score =
+    typeof citation.score === 'number' && Number.isFinite(citation.score)
+      ? citation.score
+      : 0;
+
   return {
+    id,
+    title,
+    ...(url ? { url } : {}),
+    ...(slug ? { slug } : {}),
+    ...(year ? { year } : {}),
+    snippet: normalizeConsoleSnippet(citation.snippet),
+    score,
+    ...(category ? { category } : {}),
+  };
+}
+
+function ragResultToCitation(result: HybridSearchResult, index: number): Citation {
+  return normalizeConsoleCitation({
     id: result.id || `cite-${index}`,
     title: result.metadata?.title || 'Untitled',
     url: result.metadata?.slug && result.metadata?.year
@@ -43,7 +163,7 @@ function ragResultToCitation(result: HybridSearchResult, index: number): Citatio
     snippet: result.content?.slice(0, 200) || result.snippet || '',
     score: result.rrfScore ?? result.score ?? 0,
     category: result.metadata?.category,
-  };
+  }, `cite-${index}`);
 }
 
 function buildRAGContextString(citations: Citation[]): string {
@@ -62,12 +182,26 @@ export const AIConsole = memo(function AIConsole({
   onClose,
   isMinimized,
   onToggleMinimize,
+  label = DEFAULT_CONSOLE_LABEL,
+  title,
+  clearLabel = DEFAULT_CLEAR_LABEL,
+  minimizeLabel = DEFAULT_MINIMIZE_LABEL,
+  maximizeLabel = DEFAULT_MAXIMIZE_LABEL,
+  closeLabel = DEFAULT_CLOSE_LABEL,
 }: AIConsoleProps) {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
   const { state, actions } = useConsoleState();
 
   const modeLabel = state.mode === 'rag' ? 'RAG' : state.mode === 'web' ? 'Web' : 'Agent';
+  const safeLabel = normalizeConsoleLine(label, DEFAULT_CONSOLE_LABEL);
+  const safeTitle = normalizeConsoleLine(title);
+  const safeClearLabel = normalizeConsoleLine(clearLabel, DEFAULT_CLEAR_LABEL);
+  const safeMinimizeLabel = normalizeConsoleLine(minimizeLabel, DEFAULT_MINIMIZE_LABEL);
+  const safeMaximizeLabel = normalizeConsoleLine(maximizeLabel, DEFAULT_MAXIMIZE_LABEL);
+  const safeCloseLabel = normalizeConsoleLine(closeLabel, DEFAULT_CLOSE_LABEL);
+  const toggleMinimizeLabel = isMinimized ? safeMaximizeLabel : safeMinimizeLabel;
+  const safeError = normalizeConsoleLine(state.error);
 
   const handleSubmit = useCallback(async () => {
     const query = state.input.trim();
@@ -131,13 +265,15 @@ export const AIConsole = memo(function AIConsole({
         const searchDuration = Date.now() - searchStart;
         webAnswer = webResponse.answer;
 
-        citations = (webResponse.results || []).map((r, idx) => ({
-          id: r.url || `web-${idx}`,
-          title: r.title || 'Untitled',
-          url: r.url,
-          snippet: r.snippet || '',
-          score: r.score ?? 0,
-        }));
+        citations = (webResponse.results || []).map((r, idx) =>
+          normalizeConsoleCitation({
+            id: r.url || `web-${idx}`,
+            title: r.title || 'Untitled',
+            url: r.url,
+            snippet: r.snippet || '',
+            score: r.score ?? 0,
+          }, `web-${idx}`),
+        );
 
         actions.setCitations(citations);
         actions.updateTrace(searchTraceId, {
@@ -234,6 +370,9 @@ export const AIConsole = memo(function AIConsole({
         isMobile && 'h-full',
         className
       )}
+      role="region"
+      aria-label={safeLabel}
+      title={safeTitle || undefined}
     >
       {/* Header */}
       <div className={cn(
@@ -259,7 +398,7 @@ export const AIConsole = memo(function AIConsole({
           <Terminal className={cn(
             isMobile ? 'w-5 h-5' : 'w-4 h-4',
             isTerminal ? 'text-primary' : 'text-muted-foreground'
-          )} />
+          )} aria-hidden="true" />
           <span className={cn(
             'font-mono',
             isMobile ? 'text-sm' : 'text-xs',
@@ -288,13 +427,16 @@ export const AIConsole = memo(function AIConsole({
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted',
               isMobile ? 'p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center' : 'p-1.5'
             )}
-            title="Clear conversation"
+            title={safeClearLabel}
+            aria-label={safeClearLabel}
           >
-            <Trash2 className={cn(isMobile ? 'w-5 h-5' : 'w-3.5 h-3.5')} />
+            <Trash2 className={cn(isMobile ? 'w-5 h-5' : 'w-3.5 h-3.5')} aria-hidden="true" />
           </button>
           {onToggleMinimize && !isMobile && (
             <button
               onClick={onToggleMinimize}
+              aria-label={toggleMinimizeLabel}
+              title={toggleMinimizeLabel}
               className={cn(
                 'p-1.5 rounded transition-colors',
                 isTerminal 
@@ -302,12 +444,14 @@ export const AIConsole = memo(function AIConsole({
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               )}
             >
-              {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+              {isMinimized ? <Maximize2 className="w-3.5 h-3.5" aria-hidden="true" /> : <Minimize2 className="w-3.5 h-3.5" aria-hidden="true" />}
             </button>
           )}
           {onClose && (
             <button
               onClick={onClose}
+              aria-label={safeCloseLabel}
+              title={safeCloseLabel}
               className={cn(
                 'rounded transition-colors',
                 isTerminal 
@@ -316,7 +460,7 @@ export const AIConsole = memo(function AIConsole({
                 isMobile ? 'p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center' : 'p-1.5'
               )}
             >
-              <X className={cn(isMobile ? 'w-5 h-5' : 'w-3.5 h-3.5')} />
+              <X className={cn(isMobile ? 'w-5 h-5' : 'w-3.5 h-3.5')} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -331,9 +475,9 @@ export const AIConsole = memo(function AIConsole({
           <ConsoleTrace traces={state.traces} />
 
           {/* Error Banner */}
-          {state.error && (
+          {safeError && (
             <div className="px-4 py-2 bg-red-500/10 border-t border-red-500/20 text-xs text-red-400">
-              {state.error}
+              {safeError}
             </div>
           )}
 

@@ -23,6 +23,34 @@ type UseShellCommanderOptions = {
   send: (type: string, detail?: Record<string, unknown>) => void;
 };
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const SHELL_COMMANDER_TEXT_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const SHELL_COMMANDER_COMMAND_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+
+export function normalizeShellCommanderText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(SHELL_COMMANDER_TEXT_CONTROL_PATTERN, "")
+    .trim();
+  return normalized || fallback;
+}
+
+export function normalizeShellCommandInput(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(SHELL_COMMANDER_COMMAND_CONTROL_PATTERN, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeShellSuggestion(value: unknown): string | null {
+  const normalized = normalizeShellCommandInput(value);
+  return normalized ? normalized : null;
+}
+
 export function useShellCommander({
   vfs,
   posts,
@@ -96,7 +124,7 @@ export function useShellCommander({
         description: "현재 디렉토리 목록",
         action: (args?: string) => {
           const result = vfs.ls(args);
-          setShellOutput(result);
+          setShellOutput(normalizeShellCommanderText(result));
         },
       },
       {
@@ -106,7 +134,7 @@ export function useShellCommander({
         action: (args?: string) => {
           const result = vfs.cd(args || "/");
           if (result) {
-            setShellOutput(result);
+            setShellOutput(normalizeShellCommanderText(result));
           } else {
             onShellClose();
             setShellOutput(null);
@@ -118,7 +146,7 @@ export function useShellCommander({
         aliases: [],
         description: "현재 경로 표시",
         action: () => {
-          setShellOutput(vfs.pwd());
+          setShellOutput(normalizeShellCommanderText(vfs.pwd()));
         },
       },
       {
@@ -135,7 +163,7 @@ export function useShellCommander({
             onShellClose();
             setShellOutput(null);
           } else {
-            setShellOutput(result);
+            setShellOutput(normalizeShellCommanderText(result));
           }
         },
       },
@@ -148,7 +176,7 @@ export function useShellCommander({
             setShellOutput("find: missing search term");
             return;
           }
-          setShellOutput(vfs.find(args));
+          setShellOutput(normalizeShellCommanderText(vfs.find(args)));
         },
       },
       {
@@ -156,7 +184,7 @@ export function useShellCommander({
         aliases: [],
         description: "블로그 디렉토리 구조 표시",
         action: () => {
-          setShellOutput(vfs.tree());
+          setShellOutput(normalizeShellCommanderText(vfs.tree()));
         },
       },
       {
@@ -184,7 +212,7 @@ export function useShellCommander({
 
   const executeShellCommand = useCallback(
     (input: string) => {
-      const trimmed = input.trim();
+      const trimmed = normalizeShellCommandInput(input);
       if (!trimmed) return;
 
       // Add to command history
@@ -242,7 +270,7 @@ export function useShellCommander({
   // Extended execute with logging
   const executeShellCommandWithLog = useCallback(
     (input: string) => {
-      const trimmed = input.trim();
+      const trimmed = normalizeShellCommandInput(input);
       if (!trimmed) return;
 
       // Clear suggestions when executing
@@ -258,7 +286,7 @@ export function useShellCommander({
       }
 
       // Add input log
-      const inputLog = `${vfs.displayPath} $ ${trimmed}`;
+      const inputLog = `${normalizeShellCommanderText(vfs.displayPath, "~/")} $ ${trimmed}`;
       setShellLogs((prev) => [
         ...prev.slice(-50),
         { type: "input", text: inputLog },
@@ -273,7 +301,7 @@ export function useShellCommander({
   // Generate dynamic suggestions based on input
   const generateSuggestions = useCallback(
     (input: string): string[] => {
-      const trimmed = input.trim().toLowerCase();
+      const trimmed = normalizeShellCommandInput(input).toLowerCase();
       if (!trimmed) return [];
 
       const parts = trimmed.split(/\s+/);
@@ -289,7 +317,10 @@ export function useShellCommander({
               c.aliases.some((a) => a.startsWith(cmd)),
           )
           .map((c) => c.name);
-        return cmdMatches.slice(0, 6);
+        return cmdMatches.slice(0, 6).flatMap((value) => {
+          const normalized = normalizeShellSuggestion(value);
+          return normalized ? [normalized] : [];
+        });
       }
 
       // ls command - show directory contents
@@ -297,10 +328,12 @@ export function useShellCommander({
         const lsOutput = vfs.ls(args || undefined);
         if (!lsOutput.startsWith("ls:")) {
           const items = lsOutput.split("\n").filter(Boolean).slice(0, 8);
-          return items.map(
-            (item) =>
+          return items.flatMap((item) => {
+            const normalized = normalizeShellSuggestion(
               `ls ${args ? `${args}/` : ""}${item.replace("/", "")}`,
-          );
+            );
+            return normalized ? [normalized] : [];
+          });
         }
       }
 
@@ -330,7 +363,11 @@ export function useShellCommander({
 
         return cdSuggestions
           .filter((s) => s.toLowerCase().includes(args))
-          .slice(0, 6);
+          .slice(0, 6)
+          .flatMap((value) => {
+            const normalized = normalizeShellSuggestion(value);
+            return normalized ? [normalized] : [];
+          });
       }
 
       // cat/open command - file autocomplete
@@ -352,9 +389,10 @@ export function useShellCommander({
           })
           .slice(0, 6);
 
-        return matches.map((p) => {
+        return matches.flatMap((p) => {
           const slug = p.url.split("/").pop();
-          return `cat ${slug}.md`;
+          const normalized = normalizeShellSuggestion(`cat ${slug}.md`);
+          return normalized ? [normalized] : [];
         });
       }
 
@@ -375,7 +413,10 @@ export function useShellCommander({
           });
           return Array.from(keywords)
             .slice(0, 8)
-            .map((k) => `find ${k}`);
+            .flatMap((k) => {
+              const normalized = normalizeShellSuggestion(`find ${k}`);
+              return normalized ? [normalized] : [];
+            });
         } else {
           // Filter keywords based on input
           const allKeywords: string[] = [];
@@ -391,7 +432,10 @@ export function useShellCommander({
             });
           });
           const unique = [...new Set(allKeywords)];
-          return unique.slice(0, 6).map((k) => `find ${k}`);
+          return unique.slice(0, 6).flatMap((k) => {
+            const normalized = normalizeShellSuggestion(`find ${k}`);
+            return normalized ? [normalized] : [];
+          });
         }
       }
 
@@ -446,7 +490,7 @@ export function useShellCommander({
           if (matches.length === 1) {
             setShellInput(`${matches[0].name} `);
           } else if (matches.length > 1) {
-            setShellOutput(matches.map((m) => m.name).join("  "));
+            setShellOutput(normalizeShellCommanderText(matches.map((m) => m.name).join("  ")));
           }
         }
       }
@@ -463,7 +507,9 @@ export function useShellCommander({
 
   // Handle suggestion selection
   const selectSuggestion = useCallback((suggestion: string) => {
-    setShellInput(suggestion);
+    const normalizedSuggestion = normalizeShellCommandInput(suggestion);
+    if (!normalizedSuggestion) return;
+    setShellInput(normalizedSuggestion);
     setSuggestions([]);
     setSelectedSuggestionIndex(-1);
     shellInputRef.current?.focus();
@@ -545,9 +591,11 @@ export function useShellCommander({
   // Add output to logs when shellOutput changes
   useEffect(() => {
     if (shellOutput) {
+      const normalizedOutput = normalizeShellCommanderText(shellOutput);
+      if (!normalizedOutput) return;
       setShellLogs((prev) => [
         ...prev.slice(-50),
-        { type: "output", text: shellOutput },
+        { type: "output", text: normalizedOutput },
       ]);
     }
   }, [shellOutput]);

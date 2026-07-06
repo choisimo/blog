@@ -46,6 +46,33 @@ type MemoPadElement = HTMLElement & {
   shadowRoot: ShadowRoot | null;
 };
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const FAB_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function stripUnsafeFabControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(FAB_CONTROL_TEXT_PATTERN, "");
+}
+
+export function normalizeFabActionLabel(value: unknown, fallback = "Action"): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeFabControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function sanitizeDockAction(action: DockAction): DockAction {
+  const label = normalizeFabActionLabel(action.label, action.key);
+  return {
+    ...action,
+    label,
+    desktopLabel: normalizeFabActionLabel(action.desktopLabel, label),
+    title: action.title ? normalizeFabActionLabel(action.title, label) : undefined,
+  };
+}
+
 export default function FloatingActionBar() {
   const enabled = isFabEnabled();
   const aiMemoEl = useAIMemoElement();
@@ -439,7 +466,9 @@ export default function FloatingActionBar() {
     },
   ], [str, language, chatOpen, featureFlags.aiEnabled, send, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs, openChat, closeChat]);
 
-  const dockActions = allDockActions.filter(action => !action.hidden);
+  const dockActions = allDockActions
+    .filter(action => !action.hidden)
+    .map(sanitizeDockAction);
 
   if (!enabled) {
     return null;
@@ -506,7 +535,8 @@ export default function FloatingActionBar() {
       {!toolbarDisabled && (
         <div
           role="toolbar"
-          aria-label="Floating actions"
+          aria-label={normalizeFabActionLabel(language === "ko" ? "빠른 작업" : "Floating actions")}
+          aria-orientation={isLeftFab ? "vertical" : "horizontal"}
           className={containerClasses}
         >
           <nav

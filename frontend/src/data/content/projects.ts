@@ -7,8 +7,27 @@ export const getProjects = async (): Promise<ProjectItem[]> => {
   return ProjectService.getAllProjects();
 };
 
+export const normalizeProjectTags = (projects: ProjectItem[]): string[] => {
+  const tags = new Set<string>();
+
+  for (const project of projects) {
+    const rawTags = Array.isArray((project as { tags?: unknown }).tags)
+      ? (project as { tags: unknown[] }).tags
+      : [];
+
+    for (const tag of rawTags) {
+      if (typeof tag !== 'string') continue;
+      const normalized = tag.trim();
+      if (!normalized || normalized.toLowerCase() === 'all') continue;
+      tags.add(normalized);
+    }
+  }
+
+  return Array.from(tags).sort();
+};
+
 export const getProjectTags = (projects: ProjectItem[]): string[] => {
-  return ProjectService.getTags(projects);
+  return normalizeProjectTags(projects);
 };
 
 export const clearProjectsCache = (): void => {

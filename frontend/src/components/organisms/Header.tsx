@@ -53,6 +53,43 @@ const exploreNavigation = [
   { name: "Docs", href: "https://docs.nodove.com/", icon: Library },
 ];
 
+const HEADER_LINK_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const ENCODED_HEADER_LINK_CONTROL_PATTERN = /%(?:0[0-9a-f]|1[0-9a-f]|7f)/i;
+
+export function normalizeHeaderExploreHref(value: unknown): {
+  href: string;
+  external: boolean;
+} | null {
+  if (typeof value !== "string") return null;
+  const href = value.trim();
+  if (
+    !href ||
+    HEADER_LINK_CONTROL_PATTERN.test(href) ||
+    /\s/.test(href) ||
+    ENCODED_HEADER_LINK_CONTROL_PATTERN.test(href)
+  ) {
+    return null;
+  }
+
+  if (href.startsWith("/")) {
+    return href.startsWith("//") ? null : { href, external: false };
+  }
+
+  try {
+    const parsed = new URL(href);
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return null;
+    }
+    return { href: parsed.toString(), external: true };
+  } catch {
+    return null;
+  }
+}
+
 // Terminal window buttons component
 function TerminalWindowButtons() {
   return (
@@ -170,12 +207,13 @@ export function Header() {
                     </DropdownMenuLabel>
                     {exploreNavigation.map((item) => {
                       const Icon = item.icon;
-                      const external = item.href.startsWith("http");
+                      const safeHref = normalizeHeaderExploreHref(item.href);
+                      if (!safeHref) return null;
                       return (
                         <DropdownMenuItem key={item.name} asChild>
-                          {external ? (
+                          {safeHref.external ? (
                             <a
-                              href={item.href}
+                              href={safeHref.href}
                               target="_blank"
                               rel="noopener noreferrer"
                               className={cn(
@@ -189,7 +227,7 @@ export function Header() {
                             </a>
                           ) : (
                             <Link
-                              to={item.href}
+                              to={safeHref.href}
                               className={cn(
                                 "flex items-center gap-2",
                                 isTerminal &&

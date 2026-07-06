@@ -93,6 +93,68 @@ function normalizeSlug(value: string): string {
     .slice(0, 96);
 }
 
+function normalizeRequiredText(value: string, fallback: string): string {
+  const normalized = value.trim().replace(/[\r\n]+/g, ' ');
+  return normalized || fallback;
+}
+
+function normalizeOptionalField(value: string): string | undefined {
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized) || /%(?:0a|0d)/i.test(normalized)) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function normalizeCoverImageUrl(value: string): string | undefined {
+  const normalized = normalizeOptionalField(value);
+  if (!normalized || /[\u0000-\u001F\u007F\\]/.test(normalized)) {
+    return undefined;
+  }
+  if (/%(?:0[0-9a-f]|1[0-9a-f]|7f|2f|5c)/i.test(normalized)) {
+    return undefined;
+  }
+
+  try {
+    decodeURI(normalized);
+  } catch {
+    return undefined;
+  }
+
+  if (normalized.startsWith('/') && !normalized.startsWith('//')) {
+    return normalized;
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      !parsed.username &&
+      !parsed.password
+    ) {
+      return parsed.href;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function normalizePostYear(value: string): string | null {
+  const normalized = value.trim();
+  return /^[0-9]{4}$/.test(normalized) ? normalized : null;
+}
+
+function normalizeTagList(value: string): string[] {
+  return value
+    .split(',')
+    .flatMap(tag => {
+      const normalized = normalizeOptionalField(tag);
+      return normalized ? [normalized] : [];
+    });
+}
+
 function formatDraftTime(value: string | null): string {
   if (!value) return 'not saved';
   try {
@@ -203,14 +265,15 @@ export function PostEditorWorkspace() {
 
     try {
       const draft = JSON.parse(raw) as Partial<DraftState>;
+      const restoredSlug = draft.slug ? normalizeSlug(draft.slug) : '';
       setTitle(draft.title || '');
-      setSlug(draft.slug || '');
-      setSlugTouched(Boolean(draft.slug));
-      setYear(draft.year || new Date().getFullYear().toString());
-      setCategory(draft.category || 'General');
-      setTags(draft.tags || '');
+      setSlug(restoredSlug);
+      setSlugTouched(Boolean(restoredSlug));
+      setYear(normalizePostYear(draft.year || '') || new Date().getFullYear().toString());
+      setCategory(normalizeRequiredText(draft.category || '', 'General'));
+      setTags(normalizeTagList(draft.tags || '').join(', '));
       setPublished(draft.published ?? true);
-      setCoverImage(draft.coverImage || '');
+      setCoverImage(normalizeCoverImageUrl(draft.coverImage || '') || '');
       setContent(draft.content || '## 개요\n\n');
       setDraftSavedAt(draft.updatedAt || null);
       if (draft.updatedAt) {
@@ -295,17 +358,19 @@ export function PostEditorWorkspace() {
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
+    let prefixLength = 0;
     setContent(previous => {
       const before = previous.slice(0, start);
       const after = previous.slice(end);
       const prefix = before && !before.endsWith('\n') ? '\n' : '';
       const suffix = after && !markdown.endsWith('\n') ? '\n' : '';
+      prefixLength = prefix.length;
       return `${before}${prefix}${markdown}${suffix}${after}`;
     });
 
     window.requestAnimationFrame(() => {
       textarea.focus();
-      const nextPosition = start + markdown.length + (start > 0 ? 1 : 0);
+      const nextPosition = start + prefixLength + markdown.length;
       textarea.setSelectionRange(nextPosition, nextPosition);
     });
   }, []);
@@ -332,8 +397,9 @@ export function PostEditorWorkspace() {
 
   const previewContent = useMemo(() => {
     const lines: string[] = [];
+    const safeCoverImage = normalizeCoverImageUrl(coverImage);
     if (title.trim()) lines.push(`# ${title.trim()}`);
-    if (coverImage.trim()) lines.push(`![cover](${coverImage.trim()})`);
+    if (safeCoverImage) lines.push(`![cover](${safeCoverImage})`);
     if (tags.trim()) lines.push(`> tags: ${tags}`);
     if (category.trim()) lines.push(`> category: ${category}`);
     if (!published) lines.push('> status: draft');
@@ -355,19 +421,22 @@ export function PostEditorWorkspace() {
   const createPr = useMutation({
     mutationFn: async (mode: SubmitMode) => {
       const publishNow = mode === 'publish' && published;
+      const normalizedSlug = normalizeSlug(slug);
+      const normalizedYear = normalizePostYear(year);
+      if (!normalizedYear) {
+        throw new Error('연도(YYYY)를 입력하세요');
+      }
+
       const payload: CreatePostPayload = {
-        title: title.trim() || slug.trim() || 'New Post',
-        slug: slug.trim() || undefined,
-        year,
+        title: normalizeRequiredText(title, normalizedSlug || 'New Post'),
+        slug: normalizedSlug || undefined,
+        year: normalizedYear,
         content,
         draft: !publishNow,
         frontmatter: {
-          category: category || 'General',
-          tags: tags
-            .split(',')
-            .map(tag => tag.trim())
-            .filter(Boolean),
-          coverImage: coverImage || undefined,
+          category: normalizeRequiredText(category, 'General'),
+          tags: normalizeTagList(tags),
+          coverImage: normalizeCoverImageUrl(coverImage),
           published: publishNow,
         },
       };
@@ -436,15 +505,17 @@ export function PostEditorWorkspace() {
       }
 
       try {
-        if (!/^[0-9]{4}$/.test(year)) throw new Error('연도(YYYY)를 입력하세요');
-        if (!slug.trim()) {
+        const normalizedYear = normalizePostYear(year);
+        if (!normalizedYear) throw new Error('연도(YYYY)를 입력하세요');
+        const normalizedSlug = normalizeSlug(slug);
+        if (!normalizedSlug) {
           throw new Error('슬러그를 먼저 입력하세요. 이미지 저장 경로에 필요합니다.');
         }
 
         setIsUploading(true);
         setFailedUploadAttempt(null);
         const result = await uploadPostImages(
-          { year, slug: slug.trim() },
+          { year: normalizedYear, slug: normalizedSlug },
           imageFiles,
         );
 
@@ -976,7 +1047,7 @@ export function PostEditorWorkspace() {
                   setContent={setContent}
                   setTags={setTags}
                   setCategory={setCategory}
-                  setCoverImage={setCoverImage}
+                  setCoverImage={value => setCoverImage(normalizeCoverImageUrl(value) || '')}
                   onInsertMarkdown={insertAtCursor}
                 />
               </TabsContent>

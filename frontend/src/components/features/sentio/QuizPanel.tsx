@@ -43,11 +43,25 @@ const STUDY_MODE_TAG_TRIGGERS = [
   "data-structure",
   "자료구조",
 ];
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+export function normalizeQuizPanelText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(CONTROL_TEXT_PATTERN, " ")
+    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || undefined;
+}
 
 function normalizePostTags(tags?: string[]): string[] {
   if (!Array.isArray(tags)) return [];
   return tags
-    .map((tag) => (typeof tag === "string" ? tag.trim().toLowerCase() : ""))
+    .map((tag) => normalizeQuizPanelText(tag)?.toLowerCase() ?? "")
     .filter(Boolean)
     .slice(0, 24);
 }
@@ -59,14 +73,14 @@ function hasStudyModeTag(tags: string[]): boolean {
 }
 
 function normalizeComparableText(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return normalizeQuizPanelText(value)?.toLowerCase() ?? "";
 }
 
 function resolveIndexedAnswer(
   value: string,
   optionCount: number,
 ): number | null {
-  const trimmed = value.trim();
+  const trimmed = normalizeQuizPanelText(value) ?? "";
   if (!trimmed) return null;
 
   const letterMatch = trimmed.match(/^([a-z])(?:[).:\s-]|$)/i);
@@ -139,9 +153,9 @@ function formatMultipleChoiceAnswer(question: QuizQuestion): string {
     question.options &&
     question.options[correctIndex] !== undefined
   ) {
-    return `${String.fromCharCode(65 + correctIndex)}. ${question.options[correctIndex]}`;
+    return `${String.fromCharCode(65 + correctIndex)}. ${normalizeQuizPanelText(question.options[correctIndex]) ?? ""}`;
   }
-  return question.answer;
+  return normalizeQuizPanelText(question.answer) ?? "";
 }
 
 function isCorrectAnswer(question: QuizQuestion, userAnswer: string): boolean {
@@ -198,6 +212,10 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     () => normalizePostTags(postTags),
     [postTags],
   );
+  const normalizedPostTitle = useMemo(
+    () => normalizeQuizPanelText(postTitle),
+    [postTitle],
+  );
   const normalizedPostTagsKey = normalizedPostTags.join("|");
 
   // Trigger conditions: fenced code blocks OR learning-oriented tags
@@ -232,7 +250,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     content,
     hasStudyTagTrigger,
     normalizedPostTagsKey,
-    postTitle,
+    normalizedPostTitle,
     resetQuizState,
   ]);
 
@@ -249,7 +267,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
       try {
         const result = await quiz({
           paragraph: content,
-          postTitle,
+          postTitle: normalizedPostTitle,
           batchIndex: 0,
           previousQuestions: [],
           quizCount: questionsPerBatch,
@@ -275,7 +293,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
   }, [
     shouldEnableQuiz,
     content,
-    postTitle,
+    normalizedPostTitle,
     questionsPerBatch,
     studyMode,
     normalizedPostTags,
@@ -293,7 +311,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
         const previousQs = allQuestions.map((q) => q.question);
         const result = await quiz({
           paragraph: content,
-          postTitle,
+          postTitle: normalizedPostTitle,
           batchIndex,
           previousQuestions: previousQs,
           quizCount: questionsPerBatch,
@@ -322,7 +340,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     },
     [
       content,
-      postTitle,
+      normalizedPostTitle,
       maxBatches,
       questionsPerBatch,
       studyMode,
@@ -360,7 +378,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
       // Fetch first batch (Q1-Q2)
       const result = await quiz({
         paragraph: content,
-        postTitle,
+        postTitle: normalizedPostTitle,
         batchIndex: 0,
         previousQuestions: [],
         quizCount: questionsPerBatch,
@@ -382,7 +400,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     }
   }, [
     content,
-    postTitle,
+    normalizedPostTitle,
     fetchBatch,
     questionsPerBatch,
     studyMode,
@@ -742,6 +760,11 @@ function QuestionView({
     refactoring_problem: "리팩토링 문제",
     concept_connection: "개념 연결",
   };
+  const safeOptions = question.options?.map(
+    (option) => normalizeQuizPanelText(option) ?? "",
+  );
+  const safeAnswerValue = normalizeQuizPanelText(answerState?.value) ?? "";
+  const safeCorrectAnswer = normalizeQuizPanelText(question.answer) ?? "";
 
   return (
     <div
@@ -805,9 +828,9 @@ function QuestionView({
       {/* Answer area */}
       {!answerState?.submitted && (
         <>
-          {question.type === "multiple_choice" && question.options ? (
+          {question.type === "multiple_choice" && safeOptions ? (
             <div className="space-y-2">
-              {question.options.map((option, i) => (
+              {safeOptions.map((option, i) => (
                 <button
                   key={i}
                   type="button"
@@ -815,7 +838,8 @@ function QuestionView({
                   className={cn(
                     "w-full text-left px-4 py-3 rounded-xl border text-sm transition-all",
                     "hover:scale-[1.005] active:scale-[0.998]",
-                    currentAnswer === option
+                    normalizeComparableText(currentAnswer) ===
+                      normalizeComparableText(option)
                       ? isTerminal
                         ? "bg-primary/20 border-primary text-primary"
                         : "bg-primary/10 border-primary text-primary font-medium"
@@ -1019,7 +1043,7 @@ function QuestionView({
                     : "bg-background text-foreground",
                 )}
               >
-                {answerState.value}
+                {safeAnswerValue}
               </pre>
               <span className="font-medium text-xs text-muted-foreground uppercase tracking-wide">
                 정답
@@ -1034,7 +1058,7 @@ function QuestionView({
               >
                 {question.type === "multiple_choice"
                   ? formatMultipleChoiceAnswer(question)
-                  : question.answer}
+                  : safeCorrectAnswer}
               </pre>
             </div>
           )}

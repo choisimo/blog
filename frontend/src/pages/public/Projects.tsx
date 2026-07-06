@@ -25,6 +25,26 @@ function getStatusClassName(status: ProjectItem['status']): string {
   return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
 }
 
+export function normalizeProjectsPageUrl(
+  value?: string | null
+): string | undefined {
+  const raw = value?.trim();
+  if (!raw) return undefined;
+
+  if (raw.startsWith('/') && !raw.startsWith('//')) {
+    return raw;
+  }
+
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const Projects = () => {
   useSEO(
     generateSEOData(undefined, 'projects'),
@@ -84,7 +104,9 @@ const Projects = () => {
 
   const openProjectInNewTab = (project: ProjectItem) => {
     if (typeof window === 'undefined') return;
-    window.open(project.url, '_blank', 'noopener,noreferrer');
+    const projectUrl = normalizeProjectsPageUrl(project.url);
+    if (!projectUrl) return;
+    window.open(projectUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handlePreview = (project: ProjectItem) => {
@@ -185,6 +207,11 @@ const Projects = () => {
 
       {!loading && !error && projects.length > 0 && featuredProject && (
         <>
+          {(() => {
+            const featuredProjectUrl = normalizeProjectsPageUrl(featuredProject.url);
+            const featuredCodeUrl = normalizeProjectsPageUrl(featuredProject.codeUrl);
+
+            return (
           <section className='mt-8'>
             <Card className='overflow-hidden border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card'>
               <CardHeader className='pb-3'>
@@ -197,7 +224,10 @@ const Projects = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className='flex flex-wrap gap-2 pb-6'>
-                <Button onClick={() => openProjectInNewTab(featuredProject)}>
+                <Button
+                  disabled={!featuredProjectUrl}
+                  onClick={() => openProjectInNewTab(featuredProject)}
+                >
                   <ExternalLink className='h-4 w-4' />
                   Visit
                 </Button>
@@ -205,9 +235,9 @@ const Projects = () => {
                   <Eye className='h-4 w-4' />
                   Preview
                 </Button>
-                {featuredProject.codeUrl && (
+                {featuredCodeUrl && (
                   <Button variant='ghost' asChild>
-                    <a href={featuredProject.codeUrl} target='_blank' rel='noopener noreferrer'>
+                    <a href={featuredCodeUrl} target='_blank' rel='noopener noreferrer'>
                       <Code2 className='h-4 w-4' />
                       Code
                     </a>
@@ -216,6 +246,8 @@ const Projects = () => {
               </CardContent>
             </Card>
           </section>
+            );
+          })()}
 
           <section className='mt-10 space-y-5'>
             <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
@@ -264,46 +296,57 @@ const Projects = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProjects.map(project => (
-                      <TableRow key={project.id}>
-                        <TableCell className='whitespace-nowrap text-xs text-muted-foreground'>
-                          {project.date}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant='secondary'>{project.category}</Badge>
-                        </TableCell>
-                        <TableCell className='font-medium'>{project.title}</TableCell>
-                        <TableCell className='text-xs text-muted-foreground'>
-                          {project.stack.length ? project.stack.join(' / ') : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant='outline'
-                            className={cn('border', getStatusClassName(project.status))}
-                          >
-                            {project.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className='text-right'>
-                          <div className='inline-flex items-center gap-2'>
-                            <Button variant='ghost' size='sm' asChild>
-                              <a href={project.url} target='_blank' rel='noopener noreferrer'>
-                                <ExternalLink className='h-4 w-4' />
-                                Visit
-                              </a>
-                            </Button>
-                            <Button
+                    {filteredProjects.map(project => {
+                      const projectUrl = normalizeProjectsPageUrl(project.url);
+
+                      return (
+                        <TableRow key={project.id}>
+                          <TableCell className='whitespace-nowrap text-xs text-muted-foreground'>
+                            {project.date}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant='secondary'>{project.category}</Badge>
+                          </TableCell>
+                          <TableCell className='font-medium'>{project.title}</TableCell>
+                          <TableCell className='text-xs text-muted-foreground'>
+                            {project.stack.length ? project.stack.join(' / ') : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
                               variant='outline'
-                              size='sm'
-                              onClick={() => handlePreview(project)}
+                              className={cn('border', getStatusClassName(project.status))}
                             >
-                              <Eye className='h-4 w-4' />
-                              Preview
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {project.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className='text-right'>
+                            <div className='inline-flex items-center gap-2'>
+                              {projectUrl ? (
+                                <Button variant='ghost' size='sm' asChild>
+                                  <a href={projectUrl} target='_blank' rel='noopener noreferrer'>
+                                    <ExternalLink className='h-4 w-4' />
+                                    Visit
+                                  </a>
+                                </Button>
+                              ) : (
+                                <Button variant='ghost' size='sm' disabled>
+                                  <ExternalLink className='h-4 w-4' />
+                                  Visit
+                                </Button>
+                              )}
+                              <Button
+                                variant='outline'
+                                size='sm'
+                                onClick={() => handlePreview(project)}
+                              >
+                                <Eye className='h-4 w-4' />
+                                Preview
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </Card>

@@ -29,6 +29,52 @@ export type DebateIntentOption = {
   starterText: string;
 };
 
+const DEBATE_ENTRY_ANSI_ESCAPE_PATTERN =
+  /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\))/g;
+const DEBATE_ENTRY_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const DEBATE_ENTRY_WHITESPACE_PATTERN = /\s+/g;
+const MAX_DEBATE_ENTRY_LINE_CHARS = 500;
+
+export function normalizeDebateEntryLine(
+  value: unknown,
+  fallback = "",
+): string {
+  if (typeof value !== "string" && typeof value !== "number") return fallback;
+  const normalized = String(value)
+    .replace(DEBATE_ENTRY_ANSI_ESCAPE_PATTERN, "")
+    .replace(DEBATE_ENTRY_CONTROL_PATTERN, " ")
+    .replace(DEBATE_ENTRY_WHITESPACE_PATTERN, " ")
+    .trim()
+    .slice(0, MAX_DEBATE_ENTRY_LINE_CHARS)
+    .trim();
+  return normalized || fallback;
+}
+
+export function normalizeDebateEntryTopic(
+  topic: DebateEntryTopic,
+): DebateEntryTopic {
+  const facets = Array.isArray(topic.facets)
+    ? topic.facets.flatMap((facet) => {
+        if (!facet || typeof facet !== "object") return [];
+        const title = normalizeDebateEntryLine(facet.title);
+        const points = Array.isArray(facet.points)
+          ? facet.points.flatMap((point) => {
+              const normalized = normalizeDebateEntryLine(point);
+              return normalized ? [normalized] : [];
+            })
+          : [];
+        if (!title && points.length === 0) return [];
+        return [{ title, points }];
+      })
+    : undefined;
+
+  return {
+    title: normalizeDebateEntryLine(topic.title, "대화 주제"),
+    ...(facets ? { facets } : {}),
+    entryMode: getDebateEntryMode(topic),
+  };
+}
+
 export const DEFAULT_INTENT_OPTIONS: DebateIntentOption[] = [
   {
     id: "understand",
@@ -85,7 +131,8 @@ export function getDebateEntryMode(topic: DebateEntryTopic): DebateEntryMode {
 export function getModeIntentOptions(
   topic: DebateEntryTopic,
 ): DebateIntentOption[] {
-  const entryMode = getDebateEntryMode(topic);
+  const safeTopic = normalizeDebateEntryTopic(topic);
+  const entryMode = getDebateEntryMode(safeTopic);
 
   if (entryMode === "prism") {
     return [
@@ -145,7 +192,7 @@ export function getModeIntentOptions(
         color: "from-emerald-500 to-lime-500",
         personaId: "mentor",
         stance: "neutral",
-        starterText: `이 질문을 출발점으로 한 단계씩 생각을 이어가고 싶어요: ${topic.title}`,
+        starterText: `이 질문을 출발점으로 한 단계씩 생각을 이어가고 싶어요: ${safeTopic.title}`,
       },
       {
         id: "chain-assumption",
@@ -186,7 +233,8 @@ export function getModeIntentOptions(
 }
 
 export function getModeIntro(topic: DebateEntryTopic) {
-  const entryMode = getDebateEntryMode(topic);
+  const safeTopic = normalizeDebateEntryTopic(topic);
+  const entryMode = getDebateEntryMode(safeTopic);
 
   if (entryMode === "prism") {
     return {
@@ -194,8 +242,8 @@ export function getModeIntro(topic: DebateEntryTopic) {
       eyebrow: "다각도 분석에서 이어집니다",
       title: "어떤 방향으로 관점을 더 밀어볼까요?",
       description:
-        topic.facets && topic.facets.length > 0
-          ? `${topic.facets.length}개의 관점을 바탕으로 비교, 반론, 적용 중 한 방향을 고를 수 있어요.`
+        safeTopic.facets && safeTopic.facets.length > 0
+          ? `${safeTopic.facets.length}개의 관점을 바탕으로 비교, 반론, 적용 중 한 방향을 고를 수 있어요.`
           : "방금 펼친 관점들을 비교하거나 반박하거나 내 상황에 맞게 좁혀볼 수 있어요.",
     };
   }

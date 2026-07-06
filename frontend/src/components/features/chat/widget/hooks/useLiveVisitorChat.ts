@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   ChatStatusBanner,
   ChatTransportStatus,
+  SourceLink,
   SystemMessageLevel,
 } from "../types";
 
@@ -24,6 +25,81 @@ function normalizeRoomKey(rawRoom: string): string {
 
   if (!normalized) return fallback;
   return normalized.startsWith("room:") ? normalized : `room:${normalized}`;
+}
+
+function stripUnsafeTextControls(value: string): string {
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+}
+
+function normalizeLiveLine(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeTextControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeLiveBody(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return stripUnsafeTextControls(value).replace(/\r\n?/g, "\n").trim();
+}
+
+function normalizeLiveLineList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const normalized = normalizeLiveLine(item);
+    return normalized ? [normalized] : [];
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeLiveSourceUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const candidate = value.trim();
+  if (!candidate || /[\u0000-\u001F\u007F\s]/.test(candidate)) return undefined;
+  if (candidate.startsWith("//")) return undefined;
+  if (candidate.startsWith("/") || candidate.startsWith("#")) return candidate;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeLiveSources(value: unknown): SourceLink[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const sources = value.flatMap((item): SourceLink[] => {
+    if (!isRecord(item)) return [];
+
+    const title = normalizeLiveLine(item.title);
+    const url = normalizeLiveSourceUrl(item.url);
+    const snippet = normalizeLiveLine(item.snippet);
+    const score =
+      typeof item.score === "number" && Number.isFinite(item.score)
+        ? item.score
+        : undefined;
+
+    if (!title && !url && !snippet && score === undefined) return [];
+
+    return [
+      {
+        ...(title ? { title } : {}),
+        ...(url ? { url } : {}),
+        ...(snippet ? { snippet } : {}),
+        ...(score !== undefined ? { score } : {}),
+      },
+    ];
+  });
+
+  return sources.length ? sources : undefined;
 }
 
 function toRoomKey(pathname: string): string {
@@ -55,7 +131,13 @@ function formatRoomName(room: string): string {
 function getVisitorName(): string {
   try {
     const existing = sessionStorage.getItem(VISITOR_NAME_KEY);
-    if (existing && existing.trim()) return existing;
+    const normalizedExisting = normalizeLiveLine(existing);
+    if (normalizedExisting) {
+      if (normalizedExisting !== existing) {
+        sessionStorage.setItem(VISITOR_NAME_KEY, normalizedExisting);
+      }
+      return normalizedExisting;
+    }
     const generated = `visitor-${Math.random().toString(36).slice(2, 6)}`;
     sessionStorage.setItem(VISITOR_NAME_KEY, generated);
     return generated;
@@ -72,7 +154,7 @@ function normalizeSystemLevel(
 }
 
 function formatSessionMessage(message: string): string {
-  const raw = String(message || "").trim();
+  const raw = normalizeLiveBody(message);
   const normalized = raw.toLowerCase();
 
   if (normalized === "ai response completed") {
@@ -109,14 +191,18 @@ function formatSessionMessage(message: string): string {
 function buildLiveAuthorMeta(
   event: Extract<LiveChatEvent, { type: "live_message" | "typing" }>,
 ): string {
+  const personaStyle = normalizeLiveLine(event.personaStyle);
+  const contextKinds = normalizeLiveLineList(event.contextKinds);
+  const replyToName = normalizeLiveLine(event.replyToName);
+
   if (event.senderType === "agent") {
     const metaParts = [
-      event.personaStyle ? `${event.personaStyle} persona` : "live agent",
-      event.contextKinds?.length
-        ? `${event.contextKinds.join("+")} backed`
+      personaStyle ? `${personaStyle} persona` : "live agent",
+      contextKinds.length
+        ? `${contextKinds.join("+")} backed`
         : null,
       event.triggeredByMention ? "called in" : null,
-      event.replyToName ? `replying to ${event.replyToName}` : null,
+      replyToName ? `replying to ${replyToName}` : null,
       event.turnIndex && event.roundSize
         ? `turn ${event.turnIndex}/${event.roundSize}`
         : null,
@@ -126,7 +212,7 @@ function buildLiveAuthorMeta(
 
   return [
     "live visitor",
-    event.replyToName ? `replying to ${event.replyToName}` : null,
+    replyToName ? `replying to ${replyToName}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -324,7 +410,7 @@ export function useLiveVisitorChat(input: {
 
   const upsertTypingBubble = useCallback(
     (event: Extract<LiveChatEvent, { type: "typing" }>) => {
-      const sender = event.name || "anonymous";
+      const sender = normalizeLiveLine(event.name, "anonymous");
       const typingId = createLiveTypingMessageId(
         event.room,
         event.senderType,
@@ -366,7 +452,9 @@ export function useLiveVisitorChat(input: {
 
   const commitLiveMessage = useCallback(
     (event: Extract<LiveChatEvent, { type: "live_message" }>) => {
-      const sender = event.name || "anonymous";
+      const sender = normalizeLiveLine(event.name, "anonymous");
+      const text = normalizeLiveBody(event.text);
+      if (!text) return;
       const typingId = createLiveTypingMessageId(
         event.room,
         event.senderType,
@@ -380,13 +468,13 @@ export function useLiveVisitorChat(input: {
         authorName: sender,
         authorMeta: buildLiveAuthorMeta(event),
         liveSenderType: event.senderType === "agent" ? "agent" : "client",
-        text: event.text,
+        text,
         pending: false,
         typingLabel: undefined,
         typingKey: typingId,
         transient: false,
         expiresAt: undefined,
-        sources: event.sources,
+        sources: normalizeLiveSources(event.sources),
       };
 
       setMessages((prev) => [
@@ -456,7 +544,7 @@ export function useLiveVisitorChat(input: {
             liveSessionIdRef.current = event.sessionId;
           }
 
-          const connectedRoom = event.room || room;
+          const connectedRoom = normalizeRoomKey(event.room || room);
           const recovered = reconnectAttemptsRef.current > 0;
           connectedRef.current = true;
           setTransportStatus(
@@ -491,7 +579,7 @@ export function useLiveVisitorChat(input: {
         }
 
         if (event.type === "typing") {
-          const sender = event.name || "anonymous";
+          const sender = normalizeLiveLine(event.name, "anonymous");
           const activeLiveSessionId = liveSessionIdRef.current || sessionId;
           const isSelfEcho =
             event.sessionId === activeLiveSessionId &&
@@ -503,7 +591,7 @@ export function useLiveVisitorChat(input: {
         }
 
         if (event.type === "live_message") {
-          const sender = event.name || "anonymous";
+          const sender = normalizeLiveLine(event.name, "anonymous");
           const activeLiveSessionId = liveSessionIdRef.current || sessionId;
           const isSelfEcho =
             event.sessionId === activeLiveSessionId &&
@@ -583,12 +671,12 @@ export function useLiveVisitorChat(input: {
     }) => {
       await sendLiveChatMessage({
         sessionId: liveSessionIdRef.current || sessionId,
-        text: input.text,
+        text: normalizeLiveBody(input.text),
         room,
         name: visitorName,
         senderType: "client",
-        replyToName: input.replyToName,
-        mentionedAgents: input.mentionedAgents,
+        replyToName: normalizeLiveLine(input.replyToName) || undefined,
+        mentionedAgents: normalizeLiveLineList(input.mentionedAgents),
       });
     },
     [sessionId, visitorName, room],

@@ -38,6 +38,143 @@ type UnifiedManifest = {
   format?: number;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(item => optionalString(item))
+    .filter((item): item is string => Boolean(item));
+}
+
+function isSafePostPath(value: string): boolean {
+  const normalized = value.startsWith('/') ? value : `/${value}`;
+  return (
+    normalized.startsWith('/posts/') &&
+    !normalized.startsWith('//') &&
+    !normalized.includes('/../') &&
+    !normalized.endsWith('/..')
+  );
+}
+
+function supportedLanguage(value: unknown): SupportedLanguage | undefined {
+  return value === 'ko' || value === 'en' ? value : undefined;
+}
+
+function parseTranslations(
+  value: unknown
+): Partial<Record<SupportedLanguage, LocalizedPostFields>> | undefined {
+  if (!isRecord(value)) return undefined;
+  const translations: Partial<Record<SupportedLanguage, LocalizedPostFields>> = {};
+
+  (['ko', 'en'] as const).forEach(lang => {
+    const candidate = value[lang];
+    if (!isRecord(candidate)) return;
+    const fields: Partial<LocalizedPostFields> = {};
+    const title = optionalString(candidate.title);
+    const description = optionalString(candidate.description);
+    if (title) fields.title = title;
+    if (description) fields.description = description;
+    if (typeof candidate.excerpt === 'string') fields.excerpt = candidate.excerpt;
+    if (typeof candidate.content === 'string') fields.content = candidate.content;
+    if (Object.keys(fields).length > 0) {
+      translations[lang] = fields as LocalizedPostFields;
+    }
+  });
+
+  return Object.keys(translations).length > 0 ? translations : undefined;
+}
+
+function parseManifestItem(value: unknown): ManifestItem | null {
+  if (!isRecord(value)) return null;
+
+  const path = optionalString(value.path);
+  const year = optionalString(value.year);
+  const slug = optionalString(value.slug);
+  if (!path || !isSafePostPath(path) || !year || !slug) return null;
+
+  const title = optionalString(value.title) || slug.replace(/-/g, ' ');
+  const description = optionalString(value.description) || '';
+  const date = optionalString(value.date) || `${year}-01-01`;
+  const category = optionalString(value.category) || 'General';
+  const language = supportedLanguage(value.language);
+  const defaultLanguage = supportedLanguage(value.defaultLanguage);
+  const availableLanguages = stringArray(value.availableLanguages).filter(
+    (lang): lang is SupportedLanguage => lang === 'ko' || lang === 'en'
+  );
+  const translations = parseTranslations(value.translations);
+
+  return {
+    path,
+    year,
+    slug,
+    title,
+    description,
+    date,
+    tags: stringArray(value.tags),
+    category,
+    ...(typeof value.snippet === 'string' ? { snippet: value.snippet } : {}),
+    ...(typeof value.author === 'string' ? { author: value.author } : {}),
+    ...(typeof value.readingTime === 'string' ? { readingTime: value.readingTime } : {}),
+    ...(typeof value.published === 'boolean' ? { published: value.published } : {}),
+    ...(typeof value.coverImage === 'string' ? { coverImage: value.coverImage } : {}),
+    ...(typeof value.url === 'string' ? { url: value.url } : {}),
+    ...(language ? { language } : {}),
+    ...(defaultLanguage ? { defaultLanguage } : {}),
+    ...(availableLanguages.length > 0 ? { availableLanguages } : {}),
+    ...(translations ? { translations } : {}),
+  };
+}
+
+function parseCategoryCounts(value: unknown): Record<string, number> | undefined {
+  if (!isRecord(value)) return undefined;
+  const entries = Object.entries(value).filter(
+    (entry): entry is [string, number] =>
+      typeof entry[1] === 'number' && Number.isFinite(entry[1])
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function parsePostsManifest(value: unknown): UnifiedManifest | { posts: string[] } | null {
+  if (!isRecord(value)) return null;
+
+  if (Array.isArray(value.items)) {
+    const items = value.items
+      .map(parseManifestItem)
+      .filter((item): item is ManifestItem => item !== null);
+
+    return {
+      total:
+        typeof value.total === 'number' && Number.isFinite(value.total)
+          ? value.total
+          : items.length,
+      items,
+      generatedAt: optionalString(value.generatedAt) || new Date().toISOString(),
+      years: stringArray(value.years),
+      ...(parseCategoryCounts(value.categoryCounts)
+        ? { categoryCounts: parseCategoryCounts(value.categoryCounts) }
+        : {}),
+      ...(typeof value.format === 'number' && Number.isFinite(value.format)
+        ? { format: value.format }
+        : {}),
+    };
+  }
+
+  if (Array.isArray(value.posts)) {
+    return { posts: stringArray(value.posts).filter(isSafePostPath) };
+  }
+
+  return null;
+}
+
 export class PostService {
   private static postsCache: BlogPost[] | null = null; // metadata-only cache
   private static manifestCache: UnifiedManifest | null = null;
@@ -260,7 +397,7 @@ export class PostService {
       if (!response.ok) {
         throw new Error('Failed to load posts manifest');
       }
-      return await response.json();
+      return parsePostsManifest(await response.json());
     } catch (error) {
       console.error('Error loading posts manifest:', error);
       return null;

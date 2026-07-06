@@ -29,6 +29,28 @@ interface Message {
     content: string;
 }
 
+const BOT_ACTION_SLUG_UNSAFE_PATTERN = /[\u0000-\u001F\u007F/\\]+/g;
+
+function normalizeBotActionSlug(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    try {
+        const decoded = decodeURIComponent(trimmed);
+        const normalized = decoded
+            .replace(BOT_ACTION_SLUG_UNSAFE_PATTERN, " ")
+            .toLowerCase()
+            .replace(/[^0-9a-z\uac00-\ud7a3]+/g, "-")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+        return normalized || null;
+    } catch {
+        return null;
+    }
+}
+
 export default function BotChatPanel({
     title,
     slug,
@@ -100,7 +122,7 @@ export default function BotChatPanel({
                     break;
                 }
                 case "set_slug": {
-                    const value = action.value || action.slug;
+                    const value = normalizeBotActionSlug(action.value || action.slug);
                     if (value) {
                         setSlug(value);
                         applied += 1;
@@ -167,6 +189,7 @@ export default function BotChatPanel({
     };
 
     const handleSend = async () => {
+        if (isTyping) return;
         if (!input.trim()) return;
 
         const userMessage = input.trim();
@@ -251,7 +274,7 @@ export default function BotChatPanel({
                         onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                                 e.preventDefault();
-                                handleSend();
+                                void handleSend();
                             }
                         }}
                     />

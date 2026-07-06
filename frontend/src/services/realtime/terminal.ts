@@ -61,6 +61,43 @@ function isTerminalFeatureEnabled(): boolean {
   return enabled === true;
 }
 
+function normalizeTerminalGatewayUrl(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const candidate = value.trim();
+  if (!candidate) {
+    return null;
+  }
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== 'ws:' && url.protocol !== 'wss:') {
+      return null;
+    }
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeStoredTerminalGatewayUrl(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    const normalized = normalizeTerminalGatewayUrl(parsed);
+    if (normalized) return normalized;
+  } catch {
+    // Fall through to support plain string development overrides.
+  }
+
+  return normalizeTerminalGatewayUrl(value);
+}
+
 export function getTerminalGatewayUrl(): string | null {
   if (!isTerminalFeatureEnabled()) {
     return null;
@@ -69,10 +106,8 @@ export function getTerminalGatewayUrl(): string | null {
   // Check localStorage override first (for development)
   try {
     const override = localStorage.getItem('aiMemo.terminalGatewayUrl');
-    if (override) {
-      const parsed = JSON.parse(override);
-      if (typeof parsed === 'string' && parsed) return parsed;
-    }
+    const normalized = normalizeStoredTerminalGatewayUrl(override);
+    if (normalized) return normalized;
   } catch {
     // ignore
   }
@@ -82,15 +117,17 @@ export function getTerminalGatewayUrl(): string | null {
     const runtimeUrl =
       runtimeWindow.APP_CONFIG?.terminalGatewayUrl ??
       runtimeWindow.__APP_CONFIG?.terminalGatewayUrl;
-    if (typeof runtimeUrl === 'string' && runtimeUrl) {
-      return runtimeUrl;
+    const normalized = normalizeTerminalGatewayUrl(runtimeUrl);
+    if (normalized) {
+      return normalized;
     }
   }
 
   // Environment variable (REQUIRED - no hardcoded fallback)
   const envUrl = import.meta.env.VITE_TERMINAL_GATEWAY_URL;
-  if (typeof envUrl === 'string' && envUrl) {
-    return envUrl;
+  const normalizedEnvUrl = normalizeTerminalGatewayUrl(envUrl);
+  if (normalizedEnvUrl) {
+    return normalizedEnvUrl;
   }
 
   return null;

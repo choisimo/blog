@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   AdminSubtabs,
@@ -63,5 +63,93 @@ describe('AdminSubtabs', () => {
       'aria-selected',
       'true',
     );
+  });
+
+  it('does not emit tab changes when reselecting the active tab', () => {
+    const onTabChange = vi.fn();
+
+    render(
+      <AdminSubtabs
+        tabs={tabs}
+        activeTab="overview"
+        onTabChange={onTabChange}
+        ariaLabel="Admin test tabs"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }));
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Overview' }), {
+      key: 'Home',
+    });
+
+    expect(onTabChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Secrets' }));
+
+    expect(onTabChange).toHaveBeenCalledTimes(1);
+    expect(onTabChange).toHaveBeenCalledWith('secrets');
+  });
+
+  it('normalizes tab ids before emitting changes', () => {
+    const onTabChange = vi.fn();
+
+    render(
+      <AdminSubtabs
+        tabs={[
+          { id: ' overview ', label: 'Overview' },
+          { id: 'secrets', label: 'Secrets' },
+        ]}
+        activeTab="overview"
+        onTabChange={onTabChange}
+        ariaLabel="Admin test tabs"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Secrets' }));
+
+    expect(onTabChange).toHaveBeenCalledWith('secrets');
+    expect(screen.getByRole('tab', { name: 'Overview' })).toHaveAttribute(
+      'id',
+      expect.stringMatching(/-overview$/),
+    );
+  });
+
+  it('does not render tabs with polluted ids', () => {
+    const onTabChange = vi.fn();
+
+    render(
+      <AdminSubtabs
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'secrets\r\nX-Injected: yes', label: 'Polluted' },
+        ]}
+        activeTab="overview"
+        onTabChange={onTabChange}
+        ariaLabel="Admin test tabs"
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Polluted' })).not.toBeInTheDocument();
+  });
+
+  it('rejects encoded control tab ids and normalizes tab labels before rendering', () => {
+    render(
+      <AdminSubtabs
+        tabs={[
+          { id: 'overview', label: ' Overview\u0000Tab\r\nNow ' },
+          { id: 'secrets%00', label: 'Polluted' },
+        ]}
+        activeTab="overview"
+        onTabChange={vi.fn()}
+        ariaLabel="Admin test tabs"
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Overview Tab Now' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByRole('tab', { name: 'Polluted' })).not.toBeInTheDocument();
   });
 });

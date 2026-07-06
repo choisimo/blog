@@ -40,8 +40,25 @@ import {
 import { streamChatEvents } from "@/services/chat";
 import type { SelectedBlockAttachment } from "@/services/chat";
 
-function formatLiveRoomName(room: string): string {
-  return String(room || "room:lobby")
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const WIDGET_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function stripUnsafeWidgetControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(WIDGET_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizeWidgetLine(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeWidgetControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+export function formatLiveRoomName(room: unknown): string {
+  return normalizeWidgetLine(room, "room:lobby")
     .replace(/^room:/, "")
     .replace(/:/g, "/");
 }
@@ -209,6 +226,7 @@ export default function ChatWidget(props: {
 
   const isKeyboardFocusMode = isMobile && keyboardViewport.keyboardVisible;
   const currentLiveRoomLabel = formatLiveRoomName(liveVisitorChat.room);
+  const safeSummary = normalizeWidgetLine(state.summary);
   const toggleLivePinned = useCallback(() => {
     setLivePinned((prev) => !prev);
   }, [setLivePinned]);
@@ -368,6 +386,7 @@ export default function ChatWidget(props: {
     <>
       <div
         ref={widgetRef}
+        aria-label="AI Chat"
         className={cn(
           "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background overscroll-contain",
           isMobile ? "shadow-none" : "shadow-2xl transition-all",
@@ -397,6 +416,7 @@ export default function ChatWidget(props: {
               ? { height: pcMaxHeight, maxHeight: pcMaxHeight, bottom: "auto" }
               : { height: pcMaxHeight, maxHeight: pcMaxHeight }
         }
+        role="dialog"
       >
         {/* Header */}
         <ChatHeader
@@ -496,7 +516,9 @@ export default function ChatWidget(props: {
               ref={state.scrollRef}
               data-testid="chat-messages"
               role="log"
+              aria-label="대화 메시지"
               aria-live="polite"
+              aria-relevant="additions text"
               className={cn(
                 "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4 [content-visibility:auto]",
                 isKeyboardFocusMode && "py-2",
@@ -520,8 +542,10 @@ export default function ChatWidget(props: {
             </div>
 
             {/* Summary bar */}
-            {state.persistOptIn && state.summary && !isKeyboardFocusMode && (
+            {state.persistOptIn && safeSummary && !isKeyboardFocusMode && (
               <div
+                aria-label={`대화 요약: ${safeSummary}`}
+                aria-live="polite"
                 className={cn(
                   "px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0",
                   isTerminal &&
@@ -531,10 +555,10 @@ export default function ChatWidget(props: {
                 {isTerminal ? (
                   <span>
                     <span className="text-primary/60"># Last:</span>{" "}
-                    {state.summary}
+                    {safeSummary}
                   </span>
                 ) : (
-                  <>요약: {state.summary}</>
+                  <>요약: {safeSummary}</>
                 )}
               </div>
             )}

@@ -15,15 +15,79 @@ function getChatWindow(): ChatWindow | null {
   return typeof window !== 'undefined' ? (window as ChatWindow) : null;
 }
 
+function normalizeConfigString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized) || /%(?:0a|0d)/i.test(normalized)) return null;
+  return normalized;
+}
+
+function hasExplicitOrigin(value: string): boolean {
+  return /^[a-z][a-z\d+\-.]*:/i.test(value) || value.startsWith('//');
+}
+
+export function normalizeChatBaseUrl(value: unknown): string | null {
+  const normalized = normalizeConfigString(value);
+  if (!normalized) return null;
+
+  if (normalized.startsWith('/') && !normalized.startsWith('//')) {
+    return normalized.replace(/\/+$/, '');
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return null;
+    }
+    if (parsed.username || parsed.password) {
+      return null;
+    }
+    if (parsed.search || parsed.hash) {
+      return null;
+    }
+    return parsed.toString().replace(/\/+$/, '');
+  } catch {
+    return null;
+  }
+}
+
+function normalizeChatPath(path: string): string {
+  const normalized = normalizeConfigString(path);
+  if (
+    !normalized ||
+    hasExplicitOrigin(normalized) ||
+    normalized.startsWith('//') ||
+    normalized.includes('/../') ||
+    normalized.endsWith('/..')
+  ) {
+    throw new Error('Invalid chat path');
+  }
+
+  return normalized.startsWith('/') ? normalized : `/${normalized}`;
+}
+
+function normalizeChatSessionId(sessionId: string | undefined): string | null {
+  if (sessionId === undefined) return null;
+
+  const normalized = normalizeConfigString(sessionId);
+  if (!normalized || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(normalized)) {
+    throw new Error('Invalid chat session id');
+  }
+
+  return normalized;
+}
+
 export function getChatBaseUrl(): string {
   const w = getChatWindow();
   const runtime = w?.APP_CONFIG?.chatBaseUrl ?? w?.__APP_CONFIG?.chatBaseUrl;
-  if (typeof runtime === 'string' && runtime) return runtime;
+  const runtimeBaseUrl = normalizeChatBaseUrl(runtime);
+  if (runtimeBaseUrl) return runtimeBaseUrl;
 
   const env = import.meta.env.VITE_CHAT_BASE_URL as string | undefined;
-  if (typeof env === 'string' && env) return env;
+  const envBaseUrl = normalizeChatBaseUrl(env);
+  if (envBaseUrl) return envBaseUrl;
 
-  return getApiBaseUrl();
+  return normalizeChatBaseUrl(getApiBaseUrl()) ?? getApiBaseUrl();
 }
 
 export function getChatWebSocketBaseUrl(): string | null {
@@ -54,10 +118,12 @@ export function isUnifiedTasksEnabled(): boolean {
 }
 
 export function buildChatUrl(path: string, sessionId?: string): string {
-  const apiBase = getChatBaseUrl().replace(/\/$/, '');
-  return sessionId
-    ? `${apiBase}/api/v1/chat/session/${encodeURIComponent(sessionId)}${path}`
-    : `${apiBase}/api/v1/chat${path}`;
+  const apiBase = getChatBaseUrl().replace(/\/+$/, '');
+  const chatPath = normalizeChatPath(path);
+  const chatSessionId = normalizeChatSessionId(sessionId);
+  return chatSessionId
+    ? `${apiBase}/api/v1/chat/session/${encodeURIComponent(chatSessionId)}${chatPath}`
+    : `${apiBase}/api/v1/chat${chatPath}`;
 }
 
 export function buildChatWebSocketUrl(sessionId?: string): string {

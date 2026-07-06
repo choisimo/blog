@@ -32,6 +32,44 @@ import { cn } from '@/lib/utils';
 
 const POSTS_PER_PAGE = 12;
 const TAGS_PER_PAGE = 20;
+const BLOG_LIST_PATH_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+
+function decodeBlogListPathSegment(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeBlogListPathSegment(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+
+  const raw = String(value).trim();
+  const decoded = decodeBlogListPathSegment(raw);
+  if (
+    !raw ||
+    !decoded ||
+    raw.includes('/') ||
+    raw.includes('\\') ||
+    decoded.includes('/') ||
+    decoded.includes('\\') ||
+    BLOG_LIST_PATH_CONTROL_PATTERN.test(raw) ||
+    BLOG_LIST_PATH_CONTROL_PATTERN.test(decoded)
+  ) {
+    return null;
+  }
+
+  return encodeURIComponent(raw);
+}
+
+export function buildBlogListPostPath(
+  post: Pick<BlogPost, 'year' | 'slug'>
+): string {
+  const year = normalizeBlogListPathSegment(post.year);
+  const slug = normalizeBlogListPathSegment(post.slug);
+  return year && slug ? `/blog/${year}/${slug}` : '/blog';
+}
 
 const Blog = () => {
   const location = useLocation();
@@ -455,7 +493,7 @@ const Blog = () => {
           <section className='mb-10'>
             <div className='rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] p-5 shadow-none'>
               <Link
-                to={`/blog/${featuredPost.year}/${featuredPost.slug}`}
+                to={buildBlogListPostPath(featuredPost)}
                 className='group grid gap-7 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:grid-cols-[1.08fr_minmax(0,1fr)]'
                 state={{
                   from: {
@@ -497,7 +535,7 @@ const Blog = () => {
                   {spotlightPosts.map(post => (
                     <Link
                       key={`${post.year}/${post.slug}`}
-                      to={`/blog/${post.year}/${post.slug}`}
+                      to={buildBlogListPostPath(post)}
                       className='group grid grid-cols-[112px_minmax(0,1fr)] gap-4 rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] p-4 transition-[border-color,box-shadow,transform] duration-200 ease-spring hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--blog-shadow-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99] sm:grid-cols-[140px_minmax(0,1fr)]'
                       state={{
                         from: {
@@ -569,7 +607,7 @@ const Blog = () => {
               {(listPosts.length > 0 ? listPosts : pageData.items).map(post => (
                 <Link
                   key={`${post.year}/${post.slug}`}
-                  to={`/blog/${post.year}/${post.slug}`}
+                  to={buildBlogListPostPath(post)}
                   className='group grid grid-cols-[84px_minmax(0,1fr)] gap-4 rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] p-3 transition-[border-color,box-shadow,transform] duration-200 ease-spring hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--blog-shadow-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99] sm:grid-cols-[120px_minmax(0,1fr)] sm:p-4'
                   state={{
                     from: {

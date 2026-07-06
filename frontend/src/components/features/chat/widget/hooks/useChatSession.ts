@@ -8,6 +8,19 @@ import {
 
 const SESSION_META_DEBOUNCE_MS = 450;
 
+function normalizeHookSessionId(sessionId: unknown): string | null {
+  if (typeof sessionId !== "string") return null;
+  const value = sessionId.trim();
+  if (!value || /[\r\n]/.test(value)) return null;
+  return value;
+}
+
+function normalizeHookPromptLine(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().replace(/\s+/g, " ");
+  return normalized || null;
+}
+
 type UseChatSessionProps = {
   sessionKey: string;
   setSessionKey: (key: string) => void;
@@ -67,36 +80,59 @@ export function useChatSession({
 
   const loadSession = useCallback(
     (id: string) => {
-      const loaded = loadSessionMessages<ChatMessage>(id);
+      const normalizedId = normalizeHookSessionId(id);
+      if (!normalizedId) return;
+
+      const loaded = loadSessionMessages<ChatMessage>(normalizedId);
       setMessages(loaded);
       setFirstTokenMs(null);
       setAttachedImage(null);
-      setSessionKey(id);
-      switchToSession(id);
+      setSessionKey(normalizedId);
+      switchToSession(normalizedId);
     },
     [setMessages, setFirstTokenMs, setAttachedImage, setSessionKey],
   );
 
   const toggleSessionSelected = useCallback(
     (id: string) => {
-      setSelectedSessionIds((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-      );
+      const normalizedId = normalizeHookSessionId(id);
+      if (!normalizedId) return;
+
+      setSelectedSessionIds((prev) => {
+        const normalizedPrev = prev.flatMap((value) => {
+          const normalized = normalizeHookSessionId(value);
+          return normalized ? [normalized] : [];
+        });
+        return normalizedPrev.includes(normalizedId)
+          ? normalizedPrev.filter((x) => x !== normalizedId)
+          : [...normalizedPrev, normalizedId];
+      });
     },
     [setSelectedSessionIds],
   );
 
   const aggregateFromSessionIds = useCallback(
     (ids: string[]) => {
-      const uniqueIds = Array.from(new Set(ids));
+      const uniqueIds = Array.from(
+        new Set(
+          ids.flatMap((id) => {
+            const normalized = normalizeHookSessionId(id);
+            return normalized ? [normalized] : [];
+          }),
+        ),
+      );
       if (!uniqueIds.length) return;
       const lines: string[] = ["[참조 세션 요약]"];
 
       uniqueIds.forEach((id, idx) => {
-        const s = sessions.find((x) => x.id === id);
+        const s = sessions.find((x) => normalizeHookSessionId(x.id) === id);
         if (!s) return;
-        const title = s.title || s.articleTitle || `세션 ${idx + 1}`;
-        const summaryText = s.summary || "(요약 없음)";
+        const title =
+          normalizeHookPromptLine(s.title) ||
+          normalizeHookPromptLine(s.articleTitle) ||
+          `세션 ${idx + 1}`;
+        const summaryText =
+          normalizeHookPromptLine(s.summary) || "(요약 없음)";
         lines.push(`${idx + 1}) ${title}`, summaryText, "");
       });
 
@@ -132,7 +168,10 @@ export function useChatSession({
       const detail = (ev as CustomEvent<{ sessionIds?: string[] }>).detail;
       const ids = detail?.sessionIds;
       if (!Array.isArray(ids) || !ids.length) return;
-      const filtered = ids.filter((id) => typeof id === "string");
+      const filtered = ids.flatMap((id) => {
+        const normalized = normalizeHookSessionId(id);
+        return normalized ? [normalized] : [];
+      });
       if (!filtered.length) return;
       aggregateFromSessionIds(filtered);
     };
@@ -150,9 +189,9 @@ export function useChatSession({
 
   // Update session index when messages change
   useEffect(() => {
-    if (!persistOptIn || !sessionKey) return;
+    const normalizedSessionKey = normalizeHookSessionId(sessionKey);
+    if (!persistOptIn || !normalizedSessionKey) return;
     if (messages.length === 0) return;
-    if (messages[messages.length - 1]?.pending) return;
     if (messages[messages.length - 1]?.pending) return;
     if (sessionMetaTimerRef.current !== null) {
       window.clearTimeout(sessionMetaTimerRef.current);
@@ -174,10 +213,12 @@ export function useChatSession({
 
       let nextSessions: ChatSessionMeta[] | null = null;
       setSessions((prev) => {
-        const existing = prev.find((s) => s.id === sessionKey);
+        const existing = prev.find(
+          (s) => normalizeHookSessionId(s.id) === normalizedSessionKey,
+        );
         const createdAt = existing?.createdAt || nowIso;
         const next: ChatSessionMeta = {
-          id: sessionKey,
+          id: normalizedSessionKey,
           title: existing?.title || title,
           summary,
           createdAt,
@@ -187,7 +228,9 @@ export function useChatSession({
           articleUrl: articleUrl || existing?.articleUrl,
           articleTitle: pageTitle || existing?.articleTitle,
         };
-        const others = prev.filter((s) => s.id !== sessionKey);
+        const others = prev.filter(
+          (s) => normalizeHookSessionId(s.id) !== normalizedSessionKey,
+        );
         const updated = [next, ...others];
         nextSessions = updated;
 

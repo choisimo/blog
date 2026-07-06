@@ -77,6 +77,122 @@ export interface MemorySearchResult {
   similarity: number;
 }
 
+const MAX_MEMORY_PATH_SEGMENT_LENGTH = 256;
+const MAX_MEMORY_TEXT_LENGTH = 50000;
+const MAX_MEMORY_SINGLE_LINE_LENGTH = 256;
+const MAX_MEMORY_LIMIT = 100;
+const MAX_MEMORY_BATCH_SIZE = 50;
+const MEMORY_TYPES = new Set(["fact", "preference", "context", "summary"]);
+const MEMORY_SOURCE_TYPES = new Set(["chat", "memo", "manual"]);
+
+function normalizeSafeSingleLine(value: unknown, maxLength = MAX_MEMORY_SINGLE_LINE_LENGTH): string | null {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength || /[\r\n]/.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeMultilineText(value: unknown, maxLength = MAX_MEMORY_TEXT_LENGTH): string | null {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.replace(/\r\n?/g, "\n").trim();
+  if (!normalized || normalized.length > maxLength) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function requirePathSegment(value: unknown, label: string): string {
+  const normalized = normalizeSafeSingleLine(value, MAX_MEMORY_PATH_SEGMENT_LENGTH);
+  if (!normalized || /%(?:0a|0d)/i.test(normalized)) {
+    throw new Error(`Invalid memory ${label}`);
+  }
+
+  return normalized;
+}
+
+function encodePathSegment(value: unknown, label: string): string {
+  return encodeURIComponent(requirePathSegment(value, label));
+}
+
+function normalizePositiveInteger(value: unknown, fallback: number, max: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.min(max, Math.max(1, Math.floor(value)))
+    : fallback;
+}
+
+function normalizeNonNegativeInteger(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : fallback;
+}
+
+function normalizeMemoryType(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const normalized = normalizeSafeSingleLine(value, 32);
+  if (!normalized || !MEMORY_TYPES.has(normalized)) {
+    throw new Error("Invalid memory type");
+  }
+  return normalized;
+}
+
+function normalizeSourceType(value: unknown): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const normalized = normalizeSafeSingleLine(value, 32);
+  if (!normalized || !MEMORY_SOURCE_TYPES.has(normalized)) {
+    throw new Error("Invalid memory source type");
+  }
+  return normalized;
+}
+
+function normalizeOptionalSingleLine(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  const normalized = normalizeSafeSingleLine(value);
+  if (!normalized) {
+    throw new Error(`Invalid memory ${label}`);
+  }
+  return normalized;
+}
+
+function normalizeImportanceScore(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error("Invalid memory importance score");
+  }
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizeMemoryPayload(memory: {
+  content: string;
+  memoryType?: string;
+  category?: string;
+  sourceType?: string;
+  sourceId?: string;
+  importanceScore?: number;
+}) {
+  const content = normalizeMultilineText(memory.content);
+  const memoryType = normalizeMemoryType(memory.memoryType);
+  const category = normalizeOptionalSingleLine(memory.category, "category");
+  const sourceType = normalizeSourceType(memory.sourceType);
+  const sourceId = normalizeOptionalSingleLine(memory.sourceId, "source id");
+  const importanceScore = normalizeImportanceScore(memory.importanceScore);
+  if (!content) throw new Error("Invalid memory content");
+
+  return {
+    content,
+    ...(memoryType ? { memoryType } : {}),
+    ...(category ? { category } : {}),
+    ...(sourceType ? { sourceType } : {}),
+    ...(sourceId ? { sourceId } : {}),
+    ...(importanceScore !== undefined ? { importanceScore } : {}),
+  };
+}
+
 // ============================================================================
 // Principal Identity
 // ============================================================================
@@ -84,9 +200,7 @@ export interface MemorySearchResult {
 function getCachedPrincipalUserId(): string | null {
   const token = getSessionAuthToken() || getStoredAnonymousToken();
   const payload = token ? parseJwtPayload(token) : null;
-  return typeof payload?.sub === "string" && payload.sub.trim()
-    ? payload.sub.trim()
-    : null;
+  return normalizeSafeSingleLine(payload?.sub);
 }
 
 /**
@@ -114,7 +228,19 @@ async function getPrincipalContext(
     getPrincipalUserId(),
     getPrincipalHeaders(headersInit),
   ]);
-  return { userId, headers };
+  return { userId: requirePathSegment(userId, "user id"), headers };
+}
+
+function requireIdResponse(value: unknown, fallback: string): { id: string } {
+  if (!value || typeof value !== "object") {
+    throw new Error(fallback);
+  }
+
+  try {
+    return { id: requirePathSegment((value as { id?: unknown }).id, "response id") };
+  } catch {
+    throw new Error(fallback);
+  }
 }
 
 // ============================================================================
@@ -136,12 +262,18 @@ export async function getMemories(
   const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (options.type) params.set("type", options.type);
-  if (options.category) params.set("category", options.category);
-  if (options.limit) params.set("limit", String(options.limit));
-  if (options.offset) params.set("offset", String(options.offset));
+  const type = normalizeMemoryType(options.type);
+  const category = normalizeOptionalSingleLine(options.category, "category");
+  if (type) params.set("type", type);
+  if (category) params.set("category", category);
+  if (options.limit !== undefined) {
+    params.set("limit", String(normalizePositiveInteger(options.limit, 20, MAX_MEMORY_LIMIT)));
+  }
+  if (options.offset !== undefined) {
+    params.set("offset", String(normalizeNonNegativeInteger(options.offset, 0)));
+  }
 
-  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}?${params}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${encodePathSegment(userId, "user id")}?${params}`;
 
   const res = await fetch(url, {
     method: "GET",
@@ -168,16 +300,17 @@ export async function createMemory(memory: {
   sourceId?: string;
   importanceScore?: number;
 }): Promise<{ id: string }> {
+  const normalizedMemory = normalizeMemoryPayload(memory);
   const { userId, headers } = await getPrincipalContext({
     "Content-Type": "application/json",
   });
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${encodePathSegment(userId, "user id")}`;
 
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify(memory),
+    body: JSON.stringify(normalizedMemory),
   });
 
   if (!res.ok) {
@@ -185,8 +318,7 @@ export async function createMemory(memory: {
   }
 
   const data = await res.json();
-
-  return data.data || { id: "" };
+  return requireIdResponse(data.data, "Memory response missing id");
 }
 
 /**
@@ -198,20 +330,27 @@ export async function createMemoriesBatch(
     memoryType?: string;
     category?: string;
     sourceType?: string;
-    sourceId?: string;
-    importanceScore?: number;
+  sourceId?: string;
+  importanceScore?: number;
   }>,
 ): Promise<{ ids: string[]; created: number }> {
+  const normalizedMemories = memories
+    .slice(0, MAX_MEMORY_BATCH_SIZE)
+    .map(normalizeMemoryPayload);
+  if (normalizedMemories.length === 0) {
+    throw new Error("Invalid memory content");
+  }
+
   const { userId, headers } = await getPrincipalContext({
     "Content-Type": "application/json",
   });
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/batch`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${encodePathSegment(userId, "user id")}/batch`;
 
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ memories }),
+    body: JSON.stringify({ memories: normalizedMemories }),
   });
 
   if (!res.ok) {
@@ -228,7 +367,7 @@ export async function createMemoriesBatch(
 export async function deleteMemory(memoryId: string): Promise<void> {
   const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/${memoryId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${encodePathSegment(userId, "user id")}/${encodePathSegment(memoryId, "id")}`;
 
   const res = await fetch(url, { method: "DELETE", headers });
 
@@ -252,6 +391,26 @@ export async function upsertMemoryEmbedding(
     category?: string;
   }>,
 ): Promise<void> {
+  const normalizedMemories = memories
+    .slice(0, MAX_MEMORY_BATCH_SIZE)
+    .map(memory => {
+      const content = normalizeMultilineText(memory.content);
+      const memoryType = normalizeMemoryType(memory.memoryType);
+      const category = normalizeOptionalSingleLine(memory.category, "category");
+      return {
+        id: requirePathSegment(memory.id, "id"),
+        content: content ?? "",
+        memoryType: memoryType ?? "",
+        ...(category ? { category } : {}),
+      };
+    });
+  if (
+    normalizedMemories.length === 0 ||
+    normalizedMemories.some(memory => !memory.content || !memory.memoryType)
+  ) {
+    throw new Error("Invalid memory content");
+  }
+
   const { userId, headers } = await getPrincipalContext({
     "Content-Type": "application/json",
   });
@@ -261,7 +420,7 @@ export async function upsertMemoryEmbedding(
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ userId, memories }),
+    body: JSON.stringify({ userId, memories: normalizedMemories }),
   });
 
   if (!res.ok) {
@@ -276,7 +435,7 @@ export async function upsertMemoryEmbedding(
 export async function deleteMemoryEmbedding(memoryId: string): Promise<void> {
   const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/${userId}/${memoryId}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/rag/memories/${encodePathSegment(userId, "user id")}/${encodePathSegment(memoryId, "id")}`;
 
   const res = await fetch(url, { method: "DELETE", headers });
 
@@ -298,6 +457,14 @@ export async function searchMemories(
     signal?: AbortSignal;
   } = {},
 ): Promise<MemorySearchResult[]> {
+  const normalizedQuery = normalizeMultilineText(query, 5000);
+  if (!normalizedQuery) {
+    throw new Error("Invalid memory search query");
+  }
+  const memoryType = normalizeMemoryType(options.memoryType);
+  const category = normalizeOptionalSingleLine(options.category, "category");
+  const nResults = normalizePositiveInteger(options.n_results, 10, MAX_MEMORY_LIMIT);
+
   const { userId, headers } = await getPrincipalContext({
     "Content-Type": "application/json",
   });
@@ -310,10 +477,10 @@ export async function searchMemories(
       headers,
       body: JSON.stringify({
         userId,
-        query,
-        n_results: options.n_results || 10,
-        memoryType: options.memoryType,
-        category: options.category,
+        query: normalizedQuery,
+        n_results: nResults,
+        memoryType,
+        category,
       }),
       signal: options.signal,
     });
@@ -351,11 +518,15 @@ export async function getChatSessions(
   const { userId, headers } = await getPrincipalContext();
   const base = getApiBaseUrl();
   const params = new URLSearchParams();
-  if (options.limit) params.set("limit", String(options.limit));
-  if (options.offset) params.set("offset", String(options.offset));
+  if (options.limit !== undefined) {
+    params.set("limit", String(normalizePositiveInteger(options.limit, 20, MAX_MEMORY_LIMIT)));
+  }
+  if (options.offset !== undefined) {
+    params.set("offset", String(normalizeNonNegativeInteger(options.offset, 0)));
+  }
   if (options.includeArchived) params.set("includeArchived", "true");
 
-  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions?${params}`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${encodePathSegment(userId, "user id")}/sessions?${params}`;
 
   const res = await fetch(url, {
     method: "GET",
@@ -379,16 +550,23 @@ export async function createChatSession(options: {
   questionMode?: "general" | "article";
   articleSlug?: string;
 }): Promise<{ id: string }> {
+  const title = normalizeOptionalSingleLine(options.title, "session title");
+  const questionMode = options.questionMode === "article" ? "article" : "general";
+  const articleSlug = normalizeOptionalSingleLine(options.articleSlug, "article slug");
   const { userId, headers } = await getPrincipalContext({
     "Content-Type": "application/json",
   });
   const base = getApiBaseUrl();
-  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${userId}/sessions`;
+  const url = `${base.replace(/\/$/, "")}/api/v1/memories/${encodePathSegment(userId, "user id")}/sessions`;
 
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify(options),
+    body: JSON.stringify({
+      ...(title ? { title } : {}),
+      questionMode,
+      ...(articleSlug ? { articleSlug } : {}),
+    }),
   });
 
   if (!res.ok) {
@@ -396,7 +574,7 @@ export async function createChatSession(options: {
   }
 
   const data = await res.json();
-  return data.data || { id: "" };
+  return requireIdResponse(data.data, "Chat session response missing id");
 }
 
 /**
@@ -459,7 +637,7 @@ export async function addChatMessage(
   }
 
   const data = await res.json();
-  return data.data || { id: "" };
+  return requireIdResponse(data.data, "Chat message response missing id");
 }
 
 /**

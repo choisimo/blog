@@ -12,7 +12,10 @@ vi.mock('@/components/ui/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 
-import { PromptsManager } from '@/components/features/admin/ai/PromptsManager';
+import {
+  PromptsManager,
+  normalizePromptText,
+} from '@/components/features/admin/ai/PromptsManager';
 
 type Prompt = {
   mode: string;
@@ -96,6 +99,12 @@ describe('PromptsManager', () => {
         description: 'Default prompt updated',
       }),
     );
+  });
+
+  it('normalizes prompt text before save payloads', () => {
+    expect(normalizePromptText('hello\r\nworld\u0000')).toBe('hello\nworld');
+    expect(normalizePromptText(null)).toBe('');
+    expect(normalizePromptText('x'.repeat(120_001))).toHaveLength(120_000);
   });
 
   it('surfaces backend validation errors when saving fails', async () => {

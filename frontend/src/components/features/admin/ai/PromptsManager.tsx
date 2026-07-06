@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { adminApiFetch } from '@/services/admin/apiClient';
 import { AlertCircle, RefreshCw, RotateCcw, Save } from 'lucide-react';
@@ -11,6 +11,60 @@ interface AgentPrompt {
 }
 
 const MODE_ORDER = ['default', 'research', 'coding', 'blog', 'article', 'terminal', 'performance'];
+const PROMPT_MODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const MAX_PROMPT_TEXT_LENGTH = 120_000;
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+function decodePromptMode(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizePromptMode(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodePromptMode(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return PROMPT_MODE_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizePromptLabel(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const cleaned = value.replace(/[\r\n]+/g, ' ').trim();
+  return cleaned || fallback;
+}
+
+export function normalizePromptText(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/\r\n?/g, '\n')
+    .slice(0, MAX_PROMPT_TEXT_LENGTH);
+}
+
+function normalizePrompt(prompt: AgentPrompt): AgentPrompt | null {
+  const mode = normalizePromptMode(prompt.mode);
+  if (!mode) return null;
+
+  return {
+    ...prompt,
+    mode,
+    label: normalizePromptLabel(prompt.label, mode),
+  };
+}
 
 function getPromptErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
@@ -38,7 +92,13 @@ export function PromptsManager() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [hasLocalEdit, setHasLocalEdit] = useState(false);
+  const selectedModeRef = useRef(selectedMode);
+  const hasLocalEditRef = useRef(hasLocalEdit);
   const isBusy = saving || resetting;
+
+  selectedModeRef.current = selectedMode;
+  hasLocalEditRef.current = hasLocalEdit;
 
   const loadPrompts = useCallback(async () => {
     setLoading(true);
@@ -52,12 +112,20 @@ export function PromptsManager() {
         throw new Error(result.error || 'Failed to fetch prompts');
       }
 
-      const sorted = sortPrompts(result.data.prompts);
+      const sorted = sortPrompts(
+        (Array.isArray(result.data.prompts) ? result.data.prompts : [])
+          .map(normalizePrompt)
+          .filter(isPresent),
+      );
       setPrompts(sorted);
-      const active = sorted[0];
+      const currentMode = selectedModeRef.current;
+      const active = sorted.find((prompt) => prompt.mode === currentMode) ?? sorted[0];
       if (active) {
         setSelectedMode(active.mode);
-        setEditedText(active.text);
+        if (!(hasLocalEditRef.current && active.mode === currentMode)) {
+          setEditedText(active.text);
+          setHasLocalEdit(false);
+        }
       }
     } catch (error) {
       const message = getPromptErrorMessage(error, 'Failed to fetch prompts');
@@ -78,19 +146,23 @@ export function PromptsManager() {
 
   const selectMode = (mode: string) => {
     if (isBusy) return;
-    const prompt = prompts.find((p) => p.mode === mode);
+    const safeMode = normalizePromptMode(mode);
+    if (!safeMode) return;
+    const prompt = prompts.find((p) => p.mode === safeMode);
     if (prompt) {
-      setSelectedMode(mode);
+      setSelectedMode(safeMode);
       setEditedText(prompt.text);
+      setHasLocalEdit(false);
     }
   };
 
   const handleSave = async () => {
-    const mode = selectedMode;
-    const submittedText = editedText;
+    const mode = normalizePromptMode(selectedMode);
+    if (!mode) return;
+    const submittedText = normalizePromptText(editedText);
     setSaving(true);
     try {
-      const result = await adminApiFetch<AgentPrompt>(`/prompts/${mode}`, {
+      const result = await adminApiFetch<AgentPrompt>(`/prompts/${encodeURIComponent(mode)}`, {
         pathPrefix: '/api/v1/agent',
         method: 'PUT',
         body: { text: submittedText },
@@ -100,9 +172,13 @@ export function PromptsManager() {
         throw new Error(result.error || 'Save failed');
       }
 
-      const updated = result.data;
+      const updated = normalizePrompt(result.data);
+      if (!updated) {
+        throw new Error('Invalid prompt response');
+      }
       setPrompts((prev) => sortPrompts(prev.map((p) => (p.mode === updated.mode ? updated : p))));
       setEditedText((current) => (current === submittedText ? updated.text : current));
+      setHasLocalEdit(false);
       toast({ title: 'Prompt saved', description: `${updated.label} prompt updated` });
     } catch (error) {
       toast({
@@ -116,10 +192,11 @@ export function PromptsManager() {
   };
 
   const handleReset = async () => {
-    const mode = selectedMode;
+    const mode = normalizePromptMode(selectedMode);
+    if (!mode) return;
     setResetting(true);
     try {
-      const result = await adminApiFetch<AgentPrompt>(`/prompts/${mode}`, {
+      const result = await adminApiFetch<AgentPrompt>(`/prompts/${encodeURIComponent(mode)}`, {
         pathPrefix: '/api/v1/agent',
         method: 'DELETE',
       });
@@ -128,9 +205,13 @@ export function PromptsManager() {
         throw new Error(result.error || 'Reset failed');
       }
 
-      const updated = result.data;
+      const updated = normalizePrompt(result.data);
+      if (!updated) {
+        throw new Error('Invalid prompt response');
+      }
       setPrompts((prev) => sortPrompts(prev.map((p) => (p.mode === updated.mode ? updated : p))));
       setEditedText(updated.text);
+      setHasLocalEdit(false);
       toast({ title: 'Prompt reset', description: `${updated.label} restored to default` });
     } catch (error) {
       toast({
@@ -270,7 +351,10 @@ export function PromptsManager() {
             <div className="flex-1 p-3 bg-white dark:bg-zinc-900">
               <textarea
                 value={editedText}
-                onChange={(e) => setEditedText(e.target.value)}
+                onChange={(e) => {
+                  setEditedText(e.target.value);
+                  setHasLocalEdit(true);
+                }}
                 disabled={isBusy}
                 rows={24}
                 spellCheck={false}

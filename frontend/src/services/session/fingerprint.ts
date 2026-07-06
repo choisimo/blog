@@ -17,6 +17,11 @@ import {
 const SESSION_TOKEN_KEY = "nodove_session_token";
 const FINGERPRINT_ID_KEY = "nodove_fingerprint_id";
 const ADV_FINGERPRINT_KEY = "nodove_adv_fingerprint";
+const UNKNOWN_USER_AGENT = "unknown";
+const MAX_SESSION_TOKEN_LENGTH = 4096;
+const MAX_STORED_ID_LENGTH = 512;
+const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/;
+const WHITESPACE_PATTERN = /\s/;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +57,109 @@ let sessionPromise: Promise<SessionData | null> | null = null;
 function parseSessionResponse(payload: unknown): SessionData | null {
   const parsed = sessionResponseSchema.safeParse(payload);
   return parsed.success ? (parsed.data.data as SessionData) : null;
+}
+
+function persistSessionData(data: SessionData): void {
+  const sessionToken = normalizeSessionToken(data.sessionToken);
+  const fingerprintId = normalizeStoredId(data.fingerprintId);
+
+  if (sessionToken) {
+    writeLocalStorage(SESSION_TOKEN_KEY, sessionToken);
+  }
+
+  if (fingerprintId) {
+    writeLocalStorage(FINGERPRINT_ID_KEY, fingerprintId);
+  }
+}
+
+function getNavigatorUserAgent(): string {
+  try {
+    if (typeof navigator === "undefined") return UNKNOWN_USER_AGENT;
+    const userAgent = navigator.userAgent;
+    return typeof userAgent === "string" && userAgent.trim()
+      ? userAgent
+      : UNKNOWN_USER_AGENT;
+  } catch {
+    return UNKNOWN_USER_AGENT;
+  }
+}
+
+function normalizeSessionToken(token: unknown): string | null {
+  if (typeof token !== "string") return null;
+
+  const value = token.trim();
+  if (
+    !value ||
+    value.length > MAX_SESSION_TOKEN_LENGTH ||
+    WHITESPACE_PATTERN.test(value) ||
+    CONTROL_CHAR_PATTERN.test(value)
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
+function normalizeStoredId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  if (
+    !normalized ||
+    normalized.length > MAX_STORED_ID_LENGTH ||
+    WHITESPACE_PATTERN.test(normalized) ||
+    CONTROL_CHAR_PATTERN.test(normalized)
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function readLocalStorage(key: string): string | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage may be unavailable or quota-limited. The server session is still valid.
+  }
+}
+
+function removeLocalStorage(key: string): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Storage may be unavailable; clearing cached session data remains best-effort.
+  }
+}
+
+function readNormalizedLocalStorage(
+  key: string,
+  normalize: (value: unknown) => string | null,
+): string | null {
+  const stored = readLocalStorage(key);
+  if (stored === null) return null;
+
+  const normalized = normalize(stored);
+  if (!normalized) {
+    removeLocalStorage(key);
+    return null;
+  }
+
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,7 +203,7 @@ export async function getAdvancedFingerprint(): Promise<FingerprintComponents> {
       ? `${screen.width}x${screen.height}x${screen.colorDepth}`
       : "";
 
-  const osVersion = extractOsVersion(navigator.userAgent);
+  const osVersion = extractOsVersion(getNavigatorUserAgent());
 
   // 4. Combine all signals into a single advanced hash
   const rawMaterial = [
@@ -121,11 +229,7 @@ export async function getAdvancedFingerprint(): Promise<FingerprintComponents> {
   };
 
   // Persist for quick reactions / comment fingerprinting
-  try {
-    localStorage.setItem(ADV_FINGERPRINT_KEY, advancedVisitorId);
-  } catch {
-    // localStorage blocked — non-critical
-  }
+  writeLocalStorage(ADV_FINGERPRINT_KEY, advancedVisitorId);
 
   return cachedFingerprint;
 }
@@ -136,11 +240,7 @@ export async function getAdvancedFingerprint(): Promise<FingerprintComponents> {
  */
 export function getCachedAdvancedVisitorId(): string | null {
   if (cachedFingerprint) return cachedFingerprint.advancedVisitorId;
-  try {
-    return localStorage.getItem(ADV_FINGERPRINT_KEY);
-  } catch {
-    return null;
-  }
+  return readNormalizedLocalStorage(ADV_FINGERPRINT_KEY, normalizeStoredId);
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +289,7 @@ export async function createSession(): Promise<SessionData | null> {
           audioHash: fp.audioHash,
         },
       },
-      userAgent: navigator.userAgent,
+      userAgent: getNavigatorUserAgent(),
     });
 
     const response = await fetch(`${baseUrl}/api/v1/user/session`, {
@@ -202,8 +302,7 @@ export async function createSession(): Promise<SessionData | null> {
 
     const data = parseSessionResponse(await response.json().catch(() => null));
     if (data) {
-      localStorage.setItem(SESSION_TOKEN_KEY, data.sessionToken);
-      localStorage.setItem(FINGERPRINT_ID_KEY, data.fingerprintId);
+      persistSessionData(data);
       return data;
     }
 
@@ -218,9 +317,12 @@ export async function validateSession(
   token: string,
 ): Promise<SessionData | null> {
   try {
+    const sessionToken = normalizeSessionToken(token);
+    if (!sessionToken) return null;
+
     const baseUrl = getApiBaseUrl();
     const response = await fetch(`${baseUrl}/api/v1/user/session/verify`, {
-      headers: bearerAuth(token),
+      headers: bearerAuth(sessionToken),
     });
     if (!response.ok) return null;
 
@@ -234,13 +336,16 @@ export async function recoverSession(
   oldToken: string,
 ): Promise<SessionData | null> {
   try {
+    const sessionToken = normalizeSessionToken(oldToken);
+    if (!sessionToken) return null;
+
     const fp = await getAdvancedFingerprint();
     const baseUrl = getApiBaseUrl();
 
     const response = await fetch(`${baseUrl}/api/v1/user/session/recover`, {
       method: "POST",
       headers: {
-        ...bearerAuth(oldToken),
+        ...bearerAuth(sessionToken),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -259,8 +364,7 @@ export async function recoverSession(
 
     const data = parseSessionResponse(await response.json().catch(() => null));
     if (data) {
-      localStorage.setItem(SESSION_TOKEN_KEY, data.sessionToken);
-      localStorage.setItem(FINGERPRINT_ID_KEY, data.fingerprintId);
+      persistSessionData(data);
       return data;
     }
 
@@ -300,7 +404,7 @@ export async function initSession(): Promise<SessionData | null> {
   }
 
   sessionPromise = (async () => {
-    const storedToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    const storedToken = getStoredSessionToken();
 
     if (storedToken) {
       const session = await validateSession(storedToken);
@@ -333,11 +437,11 @@ export async function initSession(): Promise<SessionData | null> {
 // ---------------------------------------------------------------------------
 
 export function getStoredSessionToken(): string | null {
-  return localStorage.getItem(SESSION_TOKEN_KEY);
+  return readNormalizedLocalStorage(SESSION_TOKEN_KEY, normalizeSessionToken);
 }
 
 export function getStoredFingerprintId(): string | null {
-  return localStorage.getItem(FINGERPRINT_ID_KEY);
+  return readNormalizedLocalStorage(FINGERPRINT_ID_KEY, normalizeStoredId);
 }
 
 export async function savePreference(
@@ -389,9 +493,9 @@ export async function getPreferences(): Promise<Record<
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(SESSION_TOKEN_KEY);
-  localStorage.removeItem(FINGERPRINT_ID_KEY);
-  localStorage.removeItem(ADV_FINGERPRINT_KEY);
+  removeLocalStorage(SESSION_TOKEN_KEY);
+  removeLocalStorage(FINGERPRINT_ID_KEY);
+  removeLocalStorage(ADV_FINGERPRINT_KEY);
   cachedFingerprint = null;
   sessionPromise = null;
 }

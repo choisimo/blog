@@ -52,6 +52,45 @@ const PERSONA_STYLES: Record<
     badge: "bg-emerald-500 text-white",
   },
 };
+const DEFAULT_PERSONA_ID: LensCardData["personaId"] = "mentor";
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+export function normalizeDisplayText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(CONTROL_TEXT_PATTERN, " ")
+    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeKey(value: unknown, fallback: string): string {
+  const normalized = normalizeDisplayText(value)
+    .replace(/[|/\\\s]+/g, "-")
+    .replace(/[^A-Za-z0-9:_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 96);
+  return normalized || fallback;
+}
+
+function normalizeTextList(value: unknown, limit: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeDisplayText(item))
+    .filter(Boolean)
+    .slice(0, limit);
+}
+
+function normalizePersonaId(value: unknown): LensCardData["personaId"] {
+  return typeof value === "string" && value in PERSONA_STYLES
+    ? (value as LensCardData["personaId"])
+    : DEFAULT_PERSONA_ID;
+}
 
 export default function LensCard({
   card,
@@ -64,11 +103,19 @@ export default function LensCard({
   onPointerDown,
   onPointerUp,
 }: LensCardProps) {
-  const persona = PERSONA_STYLES[card.personaId];
+  const safePersonaId = normalizePersonaId(card.personaId);
+  const persona = PERSONA_STYLES[safePersonaId];
   const PersonaIcon = persona.icon;
   const interactionHint = showEvidence
     ? "클릭해 요점 보기"
     : "클릭해 근거 보기";
+  const cardId = normalizeKey(card.id, "lens-card");
+  const angleKey = normalizeDisplayText(card.angleKey, cardId);
+  const title = normalizeDisplayText(card.title, "Lens card");
+  const summary = normalizeDisplayText(card.summary, title);
+  const detail = normalizeDisplayText(card.detail);
+  const bullets = normalizeTextList(card.bullets, 8);
+  const tags = normalizeTextList(card.tags, 8);
 
   return (
     <div
@@ -124,7 +171,7 @@ export default function LensCard({
                   {persona.label}
                 </span>
                 <span className="rounded-full border border-slate-300/80 bg-white/88 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-600">
-                  {card.angleKey}
+                  {angleKey}
                 </span>
                 {active && onToggleEvidence && (
                   <span className="rounded-full border border-slate-300/70 bg-white/75 px-2.5 py-1 text-[10px] font-medium text-slate-500">
@@ -133,7 +180,7 @@ export default function LensCard({
                 )}
               </div>
               <h3 className="line-clamp-2 max-w-full break-words text-[1.25rem] font-semibold leading-tight text-slate-900">
-                {card.title}
+                {title}
               </h3>
             </div>
           </div>
@@ -141,15 +188,15 @@ export default function LensCard({
           <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             <div className="rounded-[1.35rem] border border-white/90 bg-white/92 px-3.5 py-3.5 shadow-sm">
               <p className="break-words text-sm leading-6 text-slate-700">
-                {card.summary}
+                {summary}
               </p>
             </div>
 
-            {card.bullets.length > 0 && (
+            {bullets.length > 0 && (
               <ul className="space-y-2.5">
-                {card.bullets.slice(0, 4).map((bullet, index) => (
+                {bullets.slice(0, 4).map((bullet, index) => (
                   <li
-                    key={`${card.id}-${index}`}
+                    key={`${cardId}-${index}`}
                     className="flex items-start gap-2.5"
                   >
                     <span className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-700/70" />
@@ -161,11 +208,11 @@ export default function LensCard({
               </ul>
             )}
 
-            {card.tags.length > 0 && (
+            {tags.length > 0 && (
               <div className="flex flex-wrap gap-2 pb-1">
-                {card.tags.slice(0, 4).map((tag) => (
+                {tags.slice(0, 4).map((tag, tagIndex) => (
                   <span
-                    key={tag}
+                    key={`${tag}-${tagIndex}`}
                     className="rounded-full border border-slate-300/80 bg-white/90 px-3 py-1 text-[11px] font-medium text-slate-600"
                   >
                     {tag}
@@ -206,32 +253,32 @@ export default function LensCard({
                 )}
               </div>
               <h3 className="line-clamp-2 break-words text-[1.2rem] font-semibold leading-tight text-slate-900">
-                {card.title}
+                {title}
               </h3>
             </div>
           </div>
 
           <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-            {card.detail && (
+            {detail && (
               <section className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Detail
                 </p>
                 <div className="rounded-[1.35rem] border border-white/90 bg-white/94 px-3.5 py-3.5 text-sm leading-6 text-slate-700 shadow-sm whitespace-pre-wrap">
-                  {card.detail}
+                  {detail}
                 </div>
               </section>
             )}
 
-            {card.bullets.length > 0 && (
+            {bullets.length > 0 && (
               <section className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Evidence Notes
                 </p>
                 <div className="space-y-2">
-                  {card.bullets.map((bullet, index) => (
+                  {bullets.map((bullet, index) => (
                     <div
-                      key={`${card.id}-evidence-${index}`}
+                      key={`${cardId}-evidence-${index}`}
                       className="rounded-[1.15rem] border border-white/80 bg-white/90 px-3.5 py-3 text-sm leading-6 text-slate-800 shadow-sm"
                     >
                       {bullet}
@@ -241,11 +288,11 @@ export default function LensCard({
               </section>
             )}
 
-            {card.tags.length > 0 && (
+            {tags.length > 0 && (
               <div className="flex flex-wrap gap-2 pb-1">
-                {card.tags.slice(0, 4).map((tag) => (
+                {tags.slice(0, 4).map((tag, tagIndex) => (
                   <span
-                    key={tag}
+                    key={`${tag}-evidence-${tagIndex}`}
                     className="rounded-full border border-slate-300/80 bg-white/92 px-3 py-1 text-[11px] font-medium text-slate-600"
                   >
                     {tag}

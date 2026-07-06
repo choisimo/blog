@@ -38,7 +38,92 @@ type ChatInputProps = {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
   fileInputRef: React.RefObject<HTMLInputElement>;
   hasMessages: boolean;
+  label?: string;
+  title?: string;
 };
+
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const ANSI_ESCAPE_DETECTOR = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/;
+const INPUT_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const INPUT_ID_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const INPUT_URL_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const SAFE_PREVIEW_PROTOCOLS = new Set(["blob:", "http:", "https:"]);
+
+function stripUnsafeLabelControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(INPUT_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizeInputLabel(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeLabelControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeAttachmentPreview(value: unknown, fallback: unknown): string {
+  const source = typeof value === "string" && value ? value : fallback;
+  if (typeof source !== "string") return "";
+  return source
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
+    .trim()
+    .slice(0, 360);
+}
+
+function normalizeInputId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || ANSI_ESCAPE_DETECTOR.test(normalized) || INPUT_ID_CONTROL_PATTERN.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizePreviewUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const url = value.trim();
+  if (
+    !url ||
+    ANSI_ESCAPE_DETECTOR.test(url) ||
+    INPUT_URL_CONTROL_PATTERN.test(url) ||
+    url.includes("\\") ||
+    url.startsWith("//")
+  ) {
+    return null;
+  }
+
+  let decodedUrl: string;
+  try {
+    decodedUrl = decodeURIComponent(url);
+  } catch {
+    return null;
+  }
+
+  if (INPUT_URL_CONTROL_PATTERN.test(decodedUrl) || decodedUrl.includes("\\")) {
+    return null;
+  }
+
+  if (url.startsWith("/")) return url;
+
+  try {
+    const base =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost";
+    const parsed = new URL(url, base);
+    if (!SAFE_PREVIEW_PROTOCOLS.has(parsed.protocol)) return null;
+    if ((parsed.protocol === "http:" || parsed.protocol === "https:") && (parsed.username || parsed.password)) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
 
 export function ChatInput({
   input,
@@ -63,9 +148,14 @@ export function ChatInput({
   textareaRef,
   fileInputRef,
   hasMessages,
+  label,
+  title,
 }: ChatInputProps) {
+  const liveReplyName = normalizeInputLabel(liveReplyTarget?.name);
+  const safeLabel = normalizeInputLabel(label);
+  const safeTitle = normalizeInputLabel(title);
   const placeholder = liveReplyTarget
-    ? `${liveReplyTarget.name}에게 라이브로 답장하기...`
+    ? `${liveReplyName || "상대방"}에게 라이브로 답장하기...`
     : questionMode === "article"
       ? "현재 글 내용에 대해 물어보고 싶은 것을 입력하세요..."
       : "자유롭게 궁금한 내용을 입력하세요...";
@@ -80,6 +170,8 @@ export function ChatInput({
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
           : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
       )}
+      aria-label={safeLabel || undefined}
+      title={safeTitle || undefined}
     >
       {/* New conversation button */}
       {!hasMessages && (
@@ -103,13 +195,16 @@ export function ChatInput({
             onClick={onClearAll}
             variant="ghost"
             size="sm"
+            aria-label="새 대화 시작"
             className="h-8 px-3 text-xs font-mono text-primary/80 hover:text-primary hover:bg-primary/10 border border-primary/30"
           >
             $ clear
           </Button>
         ) : (
           <button
+            type="button"
             onClick={onClearAll}
+            aria-label="새 대화 시작"
             className="text-[11px] text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] px-2 py-1 rounded-sm hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] transition-colors"
           >
             새 대화
@@ -152,7 +247,9 @@ export function ChatInput({
                 ? "AI 1:1 답장"
                 : "Live 답장"}
             </div>
-            <div className="truncate opacity-80">{liveReplyTarget.name}</div>
+            <div className="truncate opacity-80">
+              {liveReplyName || "상대방"}
+            </div>
           </div>
           <button
             type="button"
@@ -163,7 +260,7 @@ export function ChatInput({
             )}
             aria-label="답장 대상 해제"
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden="true" className="h-4 w-4" focusable="false" />
           </button>
         </div>
       )}
@@ -228,7 +325,17 @@ function SelectedBlockAttachmentList({
   return (
     <div className="mb-3 space-y-2">
       {attachments.map((attachment) => {
-        const expanded = expandedId === attachment.id;
+        const attachmentId = normalizeInputId(attachment.id);
+        if (!attachmentId) return null;
+        const expanded = expandedId === attachmentId;
+        const attachmentName = normalizeInputLabel(
+          attachment.name,
+          "선택한 블록",
+        );
+        const attachmentPreview = normalizeAttachmentPreview(
+          attachment.textPreview,
+          attachment.markdown,
+        );
         return (
           <div
             key={attachment.id}
@@ -248,11 +355,11 @@ function SelectedBlockAttachmentList({
                     : "bg-white text-primary shadow-sm dark:bg-[#101010]",
                 )}
               >
-                <FileText className="h-4 w-4" />
+                <FileText className="h-4 w-4" aria-hidden="true" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">
-                  {attachment.name}
+                  {attachmentName}
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
                   Markdown · {formatBytes(attachment.sizeBytes)}
@@ -263,27 +370,28 @@ function SelectedBlockAttachmentList({
                 type="button"
                 onClick={() =>
                   setExpandedId((current) =>
-                    current === attachment.id ? null : attachment.id,
+                    current === attachmentId ? null : attachmentId,
                   )
                 }
+                aria-expanded={expanded}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
                 aria-label={
-                  expanded ? "첨부 미리보기 접기" : "첨부 미리보기 펼치기"
+                  expanded ? `${attachmentName} 미리보기 접기` : `${attachmentName} 미리보기 펼치기`
                 }
               >
                 {expanded ? (
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
                 )}
               </button>
               <button
                 type="button"
-                onClick={() => onRemove(attachment.id)}
+                onClick={() => onRemove(attachmentId)}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                aria-label="선택 블록 첨부 제거"
+                aria-label={`선택 블록 첨부 제거: ${attachmentName}`}
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
             {expanded && (
@@ -296,7 +404,7 @@ function SelectedBlockAttachmentList({
                 )}
               >
                 <p className="line-clamp-6 whitespace-pre-wrap break-words">
-                  {attachment.textPreview || attachment.markdown.slice(0, 360)}
+                  {attachmentPreview}
                 </p>
               </div>
             )}
@@ -319,6 +427,8 @@ function AttachedImagePreview({
   onRemove: () => void;
   isTerminal: boolean;
 }) {
+  const imageName = normalizeInputLabel(image.name, "첨부 이미지");
+  const safePreviewUrl = normalizePreviewUrl(previewUrl);
   return (
     <div
       className={cn(
@@ -335,23 +445,23 @@ function AttachedImagePreview({
             isTerminal && "rounded border border-primary/20",
           )}
         >
-          {previewUrl ? (
+          {safePreviewUrl ? (
             <img
-              src={previewUrl}
-              alt={image.name}
+              src={safePreviewUrl}
+              alt={imageName}
               className="h-full w-full object-cover"
             />
           ) : (
-            <ImageIcon className="h-5 w-5 mx-auto my-auto text-muted-foreground" />
+            <ImageIcon className="h-5 w-5 mx-auto my-auto text-muted-foreground" aria-hidden="true" focusable="false" />
           )}
         </div>
         <span className="inline-flex min-w-0 flex-col">
           <span className="inline-flex items-center gap-1 truncate text-sm">
             {isTerminal && <span className="text-primary/60">[img]</span>}
-            <span className="truncate">{image.name}</span>
+            <span className="truncate">{imageName}</span>
           </span>
           <span className="text-xs text-muted-foreground">
-            {Math.max(1, Math.round(image.size / 1024))}KB
+            {formatBytes(image.size)}
           </span>
         </span>
       </span>
@@ -364,6 +474,7 @@ function AttachedImagePreview({
           isTerminal && "text-destructive hover:bg-destructive/10",
         )}
         onClick={onRemove}
+        aria-label="첨부 이미지 제거"
       >
         {isTerminal ? "[x]" : "제거"}
       </Button>
@@ -417,7 +528,7 @@ function TerminalInput({
     >
       <div className="flex items-end gap-2">
         {!isMobile && (
-          <span className="font-mono select-none shrink-0 py-2 text-sm flex items-center gap-0.5">
+          <span aria-hidden="true" className="font-mono select-none shrink-0 py-2 text-sm flex items-center gap-0.5">
             <span className="text-muted-foreground/60">user</span>
             <span className="text-muted-foreground/40">@</span>
             <span className="text-primary/70">ai-chat</span>
@@ -427,6 +538,7 @@ function TerminalInput({
         )}
         <Textarea
           data-testid="chat-input"
+          aria-label="채팅 메시지 입력"
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
@@ -469,38 +581,42 @@ function TerminalInput({
             onClick={onFileClick}
             aria-label="이미지 첨부"
           >
-            <ImageIcon className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+            <ImageIcon aria-hidden="true" className={isMobile ? "h-5 w-5" : "h-4 w-4"} focusable="false" />
           </Button>
           {busy ? (
             <Button
+              type="button"
               onClick={onStop}
               size="icon"
               variant="ghost"
+              aria-label="응답 생성 중지"
               className={cn(
                 "rounded-lg border border-destructive/50 text-destructive hover:bg-destructive/10",
                 isMobile ? "h-11 w-11" : "h-10 w-10",
               )}
             >
-              <Square className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+              <Square aria-hidden="true" className={isMobile ? "h-5 w-5" : "h-4 w-4"} focusable="false" />
             </Button>
           ) : (
             <Button
+              type="button"
               onClick={onSend}
               disabled={!canSend}
               size="icon"
+              aria-label="메시지 보내기"
               className={cn(
                 "rounded-lg border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-30",
                 isMobile ? "h-11 w-11" : "h-10 w-10",
               )}
             >
-              <Send className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+              <Send aria-hidden="true" className={isMobile ? "h-5 w-5" : "h-4 w-4"} focusable="false" />
             </Button>
           )}
         </div>
       </div>
       {busy && firstTokenMs != null && (
-        <div className="flex items-center gap-2 mt-2 text-xs font-mono text-primary/70">
-          <Loader2 className="h-3 w-3 animate-spin" />
+        <div aria-live="polite" className="flex items-center gap-2 mt-2 text-xs font-mono text-primary/70" role="status">
+          <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" focusable="false" />
           <span>응답 중... (첫 토큰: {firstTokenMs}ms)</span>
         </div>
       )}
@@ -549,6 +665,7 @@ function DefaultInput({
       <div className="flex items-end gap-2">
         <Textarea
           data-testid="chat-input"
+          aria-label="채팅 메시지 입력"
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
@@ -581,20 +698,23 @@ function DefaultInput({
             aria-label="이미지 첨부"
             className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-[#AAAAAA] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
           >
-            <ImageIcon className="h-3.5 w-3.5" />
+            <ImageIcon aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
           </button>
           {busy ? (
             <button
+              type="button"
               onClick={onStop}
+              aria-label="응답 생성 중지"
               className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
             >
-              <Square className="h-3.5 w-3.5" />
+              <Square aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             </button>
           ) : (
             <button
               onClick={onSend}
               disabled={!canSend}
               type="button"
+              aria-label="메시지 보내기"
               className={cn(
                 "h-8 w-8 flex items-center justify-center rounded-md transition-colors",
                 canSend
@@ -602,7 +722,7 @@ function DefaultInput({
                   : "text-[#CCCCCC] dark:text-[#444444] cursor-not-allowed",
               )}
             >
-              <Send className="h-3.5 w-3.5" />
+              <Send aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             </button>
           )}
         </div>

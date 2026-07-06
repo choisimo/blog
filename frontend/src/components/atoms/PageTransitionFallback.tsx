@@ -1,12 +1,26 @@
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+const DEFAULT_PAGE_TRANSITION_LABEL = 'Loading page';
+
+const sanitizePageTransitionLabel = (value: string): string =>
+  value.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
+
 interface PageTransitionFallbackProps {
   className?: string;
+  label?: string;
 }
 
-export function PageTransitionFallback({ className }: PageTransitionFallbackProps) {
+export function PageTransitionFallback({
+  className,
+  label = DEFAULT_PAGE_TRANSITION_LABEL,
+}: PageTransitionFallbackProps) {
   const { isTerminal } = useTheme();
+  const sanitizedLabel =
+    sanitizePageTransitionLabel(label) || DEFAULT_PAGE_TRANSITION_LABEL;
 
   return (
     <div
@@ -14,6 +28,8 @@ export function PageTransitionFallback({ className }: PageTransitionFallbackProp
         'min-h-screen flex flex-col items-center justify-center gap-4 bg-background animate-route-fade-in',
         className
       )}
+      role="status"
+      aria-label={sanitizedLabel}
       aria-live="polite"
       aria-busy="true"
     >

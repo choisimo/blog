@@ -58,6 +58,57 @@ import { useProviders } from './hooks';
 import type { AIProvider, ProviderFormData } from './types';
 import { PROVIDER_CATALOG } from './providerCatalog';
 
+const PROVIDER_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeProviderId(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return PROVIDER_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+export function normalizeProviderApiBaseUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (
+    trimmed.startsWith('//') ||
+    /[\u0000-\u001F\u007F\s\\]/.test(trimmed)
+  ) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return undefined;
+    }
+    if (url.search || url.hash) {
+      return undefined;
+    }
+    return trimmed.replace(/\/+$/, '');
+  } catch {
+    return undefined;
+  }
+}
+
 interface ProviderFormProps {
   provider?: AIProvider;
   initialData?: Partial<ProviderFormData>;
@@ -78,7 +129,10 @@ function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFor
     e.preventDefault();
     setSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit({
+        ...formData,
+        apiBaseUrl: normalizeProviderApiBaseUrl(formData.apiBaseUrl),
+      });
     } finally {
       setSubmitting(false);
     }
@@ -199,8 +253,13 @@ export function ProvidersManager() {
   const [catalogFormData, setCatalogFormData] = useState<Partial<ProviderFormData> | undefined>(undefined);
   const [checkingHealth, setCheckingHealth] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AIProvider | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingProvider, setDeletingProvider] = useState(false);
   const [killSwitchTarget, setKillSwitchTarget] = useState<AIProvider | null>(null);
   const [killingProvider, setKillingProvider] = useState<string | null>(null);
+  const visibleProviders = providers.filter((provider) =>
+    normalizeProviderId(provider.id),
+  );
 
   useEffect(() => {
     fetchProviders();
@@ -226,43 +285,65 @@ export function ProvidersManager() {
 
   const handleUpdate = async (data: ProviderFormData) => {
     if (!editingProvider) return;
-    const result = await updateProvider(editingProvider.id, data);
+    const providerId = normalizeProviderId(editingProvider.id);
+    if (!providerId) return;
+    const result = await updateProvider(providerId, data);
     if (result.ok) {
       setEditingProvider(null);
     }
   };
 
   const handleToggleEnabled = async (provider: AIProvider) => {
-    await updateProvider(provider.id, { isEnabled: !provider.isEnabled });
+    const providerId = normalizeProviderId(provider.id);
+    if (!providerId) return;
+    await updateProvider(providerId, { isEnabled: !provider.isEnabled });
   };
 
   const handleDeleteClick = (provider: AIProvider) => {
+    if (!normalizeProviderId(provider.id)) return;
     setDeleteTarget(provider);
+    setDeleteError(null);
   };
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    await deleteProvider(deleteTarget.id);
-    setDeleteTarget(null);
+    if (deletingProvider) return;
+    const providerId = normalizeProviderId(deleteTarget.id);
+    if (!providerId) return;
+    setDeletingProvider(true);
+    setDeleteError(null);
+    const result = await deleteProvider(providerId);
+    if (result.ok) {
+      setDeleteTarget(null);
+    } else {
+      setDeleteError(result.error || 'Failed to delete provider');
+    }
+    setDeletingProvider(false);
   };
 
   const handleCheckHealth = async (provider: AIProvider) => {
-    setCheckingHealth(provider.id);
-    await checkHealth(provider.id);
+    const providerId = normalizeProviderId(provider.id);
+    if (!providerId) return;
+    setCheckingHealth(providerId);
+    await checkHealth(providerId);
     setCheckingHealth(null);
   };
 
   const handleKillSwitch = async () => {
     if (!killSwitchTarget) return;
-    setKillingProvider(killSwitchTarget.id);
-    await killSwitchProvider(killSwitchTarget.id);
+    const providerId = normalizeProviderId(killSwitchTarget.id);
+    if (!providerId) return;
+    setKillingProvider(providerId);
+    await killSwitchProvider(providerId);
     setKillingProvider(null);
     setKillSwitchTarget(null);
   };
 
   const handleEnable = async (provider: AIProvider) => {
-    setKillingProvider(provider.id);
-    await enableProvider(provider.id);
+    const providerId = normalizeProviderId(provider.id);
+    if (!providerId) return;
+    setKillingProvider(providerId);
+    await enableProvider(providerId);
     setKillingProvider(null);
   };
 
@@ -325,7 +406,7 @@ export function ProvidersManager() {
           </div>
         ) : (
           <div className="space-y-3">
-            {providers.map((provider) => (
+            {visibleProviders.map((provider) => (
               <div
                 key={provider.id}
                 className={`p-4 border rounded-lg ${
@@ -373,7 +454,11 @@ export function ProvidersManager() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => setKillSwitchTarget(provider)}
+                        onClick={() => {
+                          if (normalizeProviderId(provider.id)) {
+                            setKillSwitchTarget(provider);
+                          }
+                        }}
                         disabled={killingProvider === provider.id}
                       >
                         {killingProvider === provider.id ? (
@@ -433,7 +518,7 @@ export function ProvidersManager() {
                 </div>
               </div>
             ))}
-            {!error && providers.length === 0 && (
+            {!error && visibleProviders.length === 0 && (
               <p className="text-center text-muted-foreground py-8">
                 No providers configured. Add your first provider to get started.
               </p>
@@ -470,7 +555,15 @@ export function ProvidersManager() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Provider</AlertDialogTitle>
@@ -478,10 +571,22 @@ export function ProvidersManager() {
               Are you sure you want to delete provider "{deleteTarget?.displayName}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteConfirm();
+              }}
+              disabled={deletingProvider}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingProvider ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

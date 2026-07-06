@@ -91,6 +91,7 @@ describe('terminal service security hardening', () => {
     sessionStorage.clear();
     global.fetch = originalFetch;
     globalThis.WebSocket = originalWebSocket;
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -208,6 +209,40 @@ describe('terminal service security hardening', () => {
       terminalGatewayUrl: 'wss://terminal.nodove.com',
       features: {
         terminalEnabled: false,
+      },
+    };
+
+    expect(getTerminalGatewayUrl()).toBeNull();
+    expect(connectTerminal()).toBeNull();
+  });
+
+  it('trims configured terminal gateway URLs before use', () => {
+    localStorage.setItem(
+      'aiMemo.terminalGatewayUrl',
+      JSON.stringify('  wss://override.example.com  ')
+    );
+
+    expect(getTerminalGatewayUrl()).toBe('wss://override.example.com');
+  });
+
+  it('accepts plain string terminal gateway storage overrides', () => {
+    localStorage.setItem('aiMemo.terminalGatewayUrl', 'wss://plain.example.com');
+
+    expect(getTerminalGatewayUrl()).toBe('wss://plain.example.com');
+  });
+
+  it('rejects blank or non-websocket terminal gateway URLs', () => {
+    vi.stubEnv('VITE_TERMINAL_GATEWAY_URL', '');
+    localStorage.setItem('aiMemo.terminalGatewayUrl', 'javascript:alert(1)');
+    (window as Window & {
+      APP_CONFIG?: {
+        terminalGatewayUrl?: string | null;
+        features?: { terminalEnabled?: boolean };
+      };
+    }).APP_CONFIG = {
+      terminalGatewayUrl: 'https://terminal.nodove.com',
+      features: {
+        terminalEnabled: true,
       },
     };
 

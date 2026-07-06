@@ -16,6 +16,155 @@ import type {
   RouteFormData,
 } from './types';
 
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const ROUTING_STRATEGIES: Array<NonNullable<RouteFormData['routingStrategy']>> = [
+  'simple',
+  'latency-based-routing',
+  'cost-based-routing',
+];
+const TRACE_STATUSES = ['pending', 'success', 'error', 'timeout'] as const;
+const HISTORY_STATUSES = ['pending', 'success', 'error'] as const;
+
+type AdminHookResult<T> =
+  | { ok: true; data: T; error?: undefined }
+  | { ok: false; error: string; data?: undefined };
+
+function invalidResult<T>(error: string): Promise<AdminHookResult<T>> {
+  return Promise.resolve({ ok: false, error });
+}
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function encodeSelector(value: string): string {
+  return encodeURIComponent(value);
+}
+
+function normalizeSelectorList(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return Array.from(new Set(values.map(normalizeAdminSelector).filter(isPresent)));
+}
+
+function normalizeProviderData<T extends Partial<ProviderFormData & { isEnabled: boolean }>>(
+  data: T,
+  requireName = false
+): T | null {
+  const next = { ...data };
+
+  if (next.name !== undefined || requireName) {
+    const name = normalizeAdminSelector(next.name);
+    if (!name) return null;
+    next.name = name;
+  }
+
+  if (next.apiKeyEnv !== undefined && next.apiKeyEnv !== '') {
+    const apiKeyEnv = normalizeAdminSelector(next.apiKeyEnv);
+    if (!apiKeyEnv) return null;
+    next.apiKeyEnv = apiKeyEnv;
+  }
+
+  return next;
+}
+
+function normalizeModelData<T extends Partial<ModelFormData & { isEnabled: boolean }>>(
+  data: T,
+  requireProvider = false
+): T | null {
+  const next = { ...data };
+
+  if (next.providerId !== undefined || requireProvider) {
+    const providerId = normalizeAdminSelector(next.providerId);
+    if (!providerId) return null;
+    next.providerId = providerId;
+  }
+
+  return next;
+}
+
+function normalizeRouteData<T extends Partial<RouteFormData & { isEnabled: boolean }>>(
+  data: T,
+  requireName = false
+): T | null {
+  const next = { ...data };
+
+  if (next.name !== undefined || requireName) {
+    const name = normalizeAdminSelector(next.name);
+    if (!name) return null;
+    next.name = name;
+  }
+
+  if (next.primaryModelId !== undefined && next.primaryModelId !== '') {
+    const primaryModelId = normalizeAdminSelector(next.primaryModelId);
+    if (!primaryModelId) return null;
+    next.primaryModelId = primaryModelId;
+  }
+
+  if (next.fallbackModelIds !== undefined) {
+    const primaryModelId = normalizeAdminSelector(next.primaryModelId);
+    next.fallbackModelIds = normalizeSelectorList(next.fallbackModelIds).filter(
+      (id) => id !== primaryModelId
+    );
+  }
+
+  if (next.contextWindowFallbackIds !== undefined) {
+    next.contextWindowFallbackIds = normalizeSelectorList(
+      next.contextWindowFallbackIds
+    );
+  }
+
+  if (
+    next.routingStrategy !== undefined &&
+    !ROUTING_STRATEGIES.includes(next.routingStrategy)
+  ) {
+    return null;
+  }
+
+  return next;
+}
+
+function normalizePositiveInteger(value: unknown, fallback: number, max: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return fallback;
+  return Math.min(Math.floor(numeric), max);
+}
+
+function normalizeNonNegativeInteger(value: unknown, fallback: number, max: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) return fallback;
+  return Math.min(Math.floor(numeric), max);
+}
+
+function normalizeDateQueryValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || /[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+  return trimmed;
+}
+
 // ============================================================================
 // Providers
 // ============================================================================
@@ -39,9 +188,11 @@ export function useProviders() {
 
   const createProvider = useCallback(
     async (data: ProviderFormData) => {
+      const safeData = normalizeProviderData(data, true);
+      if (!safeData) return invalidResult<AIProvider>('Invalid provider payload');
       const result = await adminApiFetch<AIProvider>('/providers', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: data,
+        body: safeData,
       });
       if (result.ok) {
         await fetchProviders();
@@ -53,9 +204,14 @@ export function useProviders() {
 
   const updateProvider = useCallback(
     async (id: string, data: Partial<ProviderFormData & { isEnabled: boolean }>) => {
-      const result = await adminApiFetch<AIProvider>(`/providers/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const providerId = normalizeAdminSelector(id);
+      const safeData = normalizeProviderData(data);
+      if (!providerId || !safeData) {
+        return invalidResult<AIProvider>('Invalid provider selector');
+      }
+      const result = await adminApiFetch<AIProvider>(`/providers/${encodeSelector(providerId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: data,
+        body: safeData,
       });
       if (result.ok) {
         await fetchProviders();
@@ -67,7 +223,9 @@ export function useProviders() {
 
   const deleteProvider = useCallback(
     async (id: string) => {
-      const result = await adminApiFetch<{ deleted: string }>(`/providers/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const providerId = normalizeAdminSelector(id);
+      if (!providerId) return invalidResult<{ deleted: string }>('Invalid provider selector');
+      const result = await adminApiFetch<{ deleted: string }>(`/providers/${encodeSelector(providerId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'DELETE',
       });
       if (result.ok) {
@@ -80,12 +238,21 @@ export function useProviders() {
 
   const checkHealth = useCallback(
     async (id: string) => {
+      const providerId = normalizeAdminSelector(id);
+      if (!providerId) {
+        return invalidResult<{
+          providerId: string;
+          status: string;
+          latencyMs: number | null;
+          error: string | null;
+        }>('Invalid provider selector');
+      }
       const result = await adminApiFetch<{
         providerId: string;
         status: string;
         latencyMs: number | null;
         error: string | null;
-      }>(`/providers/${id}/health`, { pathPrefix: '/api/v1/admin/ai', method: 'PUT' });
+      }>(`/providers/${encodeSelector(providerId)}/health`, { pathPrefix: '/api/v1/admin/ai', method: 'PUT' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -96,11 +263,19 @@ export function useProviders() {
 
   const killSwitchProvider = useCallback(
     async (id: string) => {
+      const providerId = normalizeAdminSelector(id);
+      if (!providerId) {
+        return invalidResult<{
+          killed: boolean;
+          id: string;
+          provider_name: string;
+        }>('Invalid provider selector');
+      }
       const result = await adminApiFetch<{
         killed: boolean;
         id: string;
         provider_name: string;
-      }>(`/providers/${id}/kill-switch`, { pathPrefix: '/api/v1/admin/ai', method: 'POST' });
+      }>(`/providers/${encodeSelector(providerId)}/kill-switch`, { pathPrefix: '/api/v1/admin/ai', method: 'POST' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -111,11 +286,19 @@ export function useProviders() {
 
   const enableProvider = useCallback(
     async (id: string) => {
+      const providerId = normalizeAdminSelector(id);
+      if (!providerId) {
+        return invalidResult<{
+          enabled: boolean;
+          id: string;
+          provider_name: string;
+        }>('Invalid provider selector');
+      }
       const result = await adminApiFetch<{
         enabled: boolean;
         id: string;
         provider_name: string;
-      }>(`/providers/${id}/enable`, { pathPrefix: '/api/v1/admin/ai', method: 'POST' });
+      }>(`/providers/${encodeSelector(providerId)}/enable`, { pathPrefix: '/api/v1/admin/ai', method: 'POST' });
       if (result.ok) {
         await fetchProviders();
       }
@@ -151,7 +334,15 @@ export function useModels() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
-    if (providerId) params.set('provider_id', providerId);
+    if (providerId) {
+      const safeProviderId = normalizeAdminSelector(providerId);
+      if (!safeProviderId) {
+        setError('Invalid provider selector');
+        setLoading(false);
+        return;
+      }
+      params.set('provider_id', safeProviderId);
+    }
     if (enabled !== undefined) params.set('enabled', String(enabled));
     const query = params.toString() ? `?${params}` : '';
 
@@ -166,9 +357,11 @@ export function useModels() {
 
   const createModel = useCallback(
     async (data: ModelFormData) => {
+      const safeData = normalizeModelData(data, true);
+      if (!safeData) return invalidResult<AIModel>('Invalid model payload');
       const result = await adminApiFetch<AIModel>('/models', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: data,
+        body: safeData,
       });
       if (result.ok) {
         await fetchModels();
@@ -180,9 +373,12 @@ export function useModels() {
 
   const updateModel = useCallback(
     async (id: string, data: Partial<ModelFormData & { isEnabled: boolean }>) => {
-      const result = await adminApiFetch<AIModel>(`/models/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const modelId = normalizeAdminSelector(id);
+      const safeData = normalizeModelData(data);
+      if (!modelId || !safeData) return invalidResult<AIModel>('Invalid model selector');
+      const result = await adminApiFetch<AIModel>(`/models/${encodeSelector(modelId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: data,
+        body: safeData,
       });
       if (result.ok) {
         await fetchModels();
@@ -194,7 +390,9 @@ export function useModels() {
 
   const deleteModel = useCallback(
     async (id: string) => {
-      const result = await adminApiFetch<{ deleted: string }>(`/models/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const modelId = normalizeAdminSelector(id);
+      if (!modelId) return invalidResult<{ deleted: string }>('Invalid model selector');
+      const result = await adminApiFetch<{ deleted: string }>(`/models/${encodeSelector(modelId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'DELETE',
       });
       if (result.ok) {
@@ -206,6 +404,13 @@ export function useModels() {
   );
 
   const testModel = useCallback(async (id: string, prompt?: string) => {
+    const modelId = normalizeAdminSelector(id);
+    if (!modelId) {
+      return {
+        ok: false,
+        error: 'Invalid model selector',
+      };
+    }
     const result = await adminApiFetch<{
       results: Array<{
         model_id: string;
@@ -218,7 +423,7 @@ export function useModels() {
     }>('/playground/run', { pathPrefix: '/api/v1/admin/ai',
       method: 'POST',
       body: {
-        model_ids: [id],
+        model_ids: [modelId],
         user_prompt: prompt || 'Return a short health-check response for this model.',
       },
     });
@@ -279,9 +484,11 @@ export function useRoutes() {
 
   const createRoute = useCallback(
     async (data: RouteFormData) => {
+      const safeData = normalizeRouteData(data, true);
+      if (!safeData) return invalidResult<AIRoute>('Invalid route payload');
       const result = await adminApiFetch<AIRoute>('/routes', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: data,
+        body: safeData,
       });
       if (result.ok) {
         await fetchRoutes();
@@ -293,9 +500,12 @@ export function useRoutes() {
 
   const updateRoute = useCallback(
     async (id: string, data: Partial<RouteFormData & { isEnabled: boolean }>) => {
-      const result = await adminApiFetch<AIRoute>(`/routes/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const routeId = normalizeAdminSelector(id);
+      const safeData = normalizeRouteData(data);
+      if (!routeId || !safeData) return invalidResult<AIRoute>('Invalid route selector');
+      const result = await adminApiFetch<AIRoute>(`/routes/${encodeSelector(routeId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: data,
+        body: safeData,
       });
       if (result.ok) {
         await fetchRoutes();
@@ -307,7 +517,9 @@ export function useRoutes() {
 
   const deleteRoute = useCallback(
     async (id: string) => {
-      const result = await adminApiFetch<{ deleted: string }>(`/routes/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const routeId = normalizeAdminSelector(id);
+      if (!routeId) return invalidResult<{ deleted: string }>('Invalid route selector');
+      const result = await adminApiFetch<{ deleted: string }>(`/routes/${encodeSelector(routeId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'DELETE',
       });
       if (result.ok) {
@@ -348,10 +560,37 @@ export function useUsage() {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
-      if (options?.startDate) params.set('start_date', options.startDate);
-      if (options?.endDate) params.set('end_date', options.endDate);
-      if (options?.modelId) params.set('model_id', options.modelId);
-      if (options?.groupBy) params.set('group_by', options.groupBy);
+      const startDate = normalizeDateQueryValue(options?.startDate);
+      const endDate = normalizeDateQueryValue(options?.endDate);
+      if (options?.startDate && !startDate) {
+        setError('Invalid usage start date');
+        setLoading(false);
+        return;
+      }
+      if (options?.endDate && !endDate) {
+        setError('Invalid usage end date');
+        setLoading(false);
+        return;
+      }
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
+      if (options?.modelId) {
+        const modelId = normalizeAdminSelector(options.modelId);
+        if (!modelId) {
+          setError('Invalid model selector');
+          setLoading(false);
+          return;
+        }
+        params.set('model_id', modelId);
+      }
+      if (options?.groupBy) {
+        if (options.groupBy !== 'day' && options.groupBy !== 'model') {
+          setError('Invalid usage grouping');
+          setLoading(false);
+          return;
+        }
+        params.set('group_by', options.groupBy);
+      }
       const query = params.toString() ? `?${params}` : '';
 
       const result = await adminApiFetch<AIUsageData>(`/usage${query}`, { pathPrefix: '/api/v1/admin/ai' });
@@ -458,12 +697,39 @@ export function useTraces() {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
-      if (options?.limit) params.set('limit', String(options.limit));
-      if (options?.offset) params.set('offset', String(options.offset));
-      if (options?.status) params.set('status', options.status);
-      if (options?.traceId) params.set('trace_id', options.traceId);
-      if (options?.startDate) params.set('start_date', options.startDate);
-      if (options?.endDate) params.set('end_date', options.endDate);
+      if (options?.limit) params.set('limit', String(normalizePositiveInteger(options.limit, 50, 500)));
+      if (options?.offset) params.set('offset', String(normalizeNonNegativeInteger(options.offset, 0, 100000)));
+      if (options?.status) {
+        if (!TRACE_STATUSES.includes(options.status as typeof TRACE_STATUSES[number])) {
+          setError('Invalid trace status');
+          setLoading(false);
+          return;
+        }
+        params.set('status', options.status);
+      }
+      if (options?.traceId) {
+        const traceId = normalizeAdminSelector(options.traceId);
+        if (!traceId) {
+          setError('Invalid trace selector');
+          setLoading(false);
+          return;
+        }
+        params.set('trace_id', traceId);
+      }
+      const startDate = normalizeDateQueryValue(options?.startDate);
+      const endDate = normalizeDateQueryValue(options?.endDate);
+      if (options?.startDate && !startDate) {
+        setError('Invalid trace start date');
+        setLoading(false);
+        return;
+      }
+      if (options?.endDate && !endDate) {
+        setError('Invalid trace end date');
+        setLoading(false);
+        return;
+      }
+      if (startDate) params.set('start_date', startDate);
+      if (endDate) params.set('end_date', endDate);
       const query = params.toString() ? `?${params}` : '';
 
       const result = await adminApiFetch<{
@@ -484,20 +750,28 @@ export function useTraces() {
   );
 
   const fetchTraceDetail = useCallback(async (traceId: string) => {
+    const safeTraceId = normalizeAdminSelector(traceId);
+    if (!safeTraceId) {
+      return invalidResult<{
+        summary: AITraceSummary;
+        spans: AITraceSpan[];
+      }>('Invalid trace selector');
+    }
     const result = await adminApiFetch<{
       summary: AITraceSummary;
       spans: AITraceSpan[];
-    }>(`/traces/${traceId}`, { pathPrefix: '/api/v1/admin/ai' });
+    }>(`/traces/${encodeSelector(safeTraceId)}`, { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
   const fetchTraceStats = useCallback(async (hours = 24) => {
+    const safeHours = normalizePositiveInteger(hours, 24, 24 * 31);
     const result = await adminApiFetch<{
       period_hours: number;
       since: string;
       stats: TraceStats;
       by_span_type: Array<{ span_type: string; count: number; avg_latency: number }>;
-    }>(`/traces/stats/summary?hours=${hours}`, { pathPrefix: '/api/v1/admin/ai' });
+    }>(`/traces/stats/summary?hours=${safeHours}`, { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
@@ -589,6 +863,20 @@ export function usePlayground() {
     }) => {
       setRunning(true);
       setError(null);
+      const modelIds = normalizeSelectorList(params.model_ids);
+      if (modelIds.length === 0) {
+        setRunning(false);
+        setError('Invalid model selector');
+        return invalidResult<{
+          results: PlaygroundRunResult[];
+          input: {
+            system_prompt?: string;
+            user_prompt: string;
+            temperature: number;
+            max_tokens?: number;
+          };
+        }>('Invalid model selector');
+      }
       const result = await adminApiFetch<{
         results: PlaygroundRunResult[];
         input: {
@@ -599,7 +887,7 @@ export function usePlayground() {
         };
       }>('/playground/run', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: params,
+        body: { ...params, model_ids: modelIds },
       });
       setRunning(false);
       if (!result.ok) {
@@ -615,10 +903,25 @@ export function usePlayground() {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
-      if (options?.limit) params.set('limit', String(options.limit));
-      if (options?.offset) params.set('offset', String(options.offset));
-      if (options?.modelId) params.set('model_id', options.modelId);
-      if (options?.status) params.set('status', options.status);
+      if (options?.limit) params.set('limit', String(normalizePositiveInteger(options.limit, 50, 500)));
+      if (options?.offset) params.set('offset', String(normalizeNonNegativeInteger(options.offset, 0, 100000)));
+      if (options?.modelId) {
+        const modelId = normalizeAdminSelector(options.modelId);
+        if (!modelId) {
+          setError('Invalid model selector');
+          setLoading(false);
+          return;
+        }
+        params.set('model_id', modelId);
+      }
+      if (options?.status) {
+        if (!HISTORY_STATUSES.includes(options.status as typeof HISTORY_STATUSES[number])) {
+          setError('Invalid history status');
+          setLoading(false);
+          return;
+        }
+        params.set('status', options.status);
+      }
       const query = params.toString() ? `?${params}` : '';
 
       const result = await adminApiFetch<{
@@ -639,14 +942,20 @@ export function usePlayground() {
   );
 
   const fetchHistoryDetail = useCallback(async (id: string) => {
-    const result = await adminApiFetch<{ history: PlaygroundHistory }>(`/playground/history/${id}`, { pathPrefix: '/api/v1/admin/ai' });
+    const historyId = normalizeAdminSelector(id);
+    if (!historyId) return invalidResult<{ history: PlaygroundHistory }>('Invalid history selector');
+    const result = await adminApiFetch<{ history: PlaygroundHistory }>(`/playground/history/${encodeSelector(historyId)}`, { pathPrefix: '/api/v1/admin/ai' });
     return result;
   }, []);
 
   const deleteHistory = useCallback(
     async (id: string) => {
+      const historyId = normalizeAdminSelector(id);
+      if (!historyId) {
+        return invalidResult<{ deleted: boolean; id: string }>('Invalid history selector');
+      }
       const result = await adminApiFetch<{ deleted: boolean; id: string }>(
-        `/playground/history/${id}`,
+        `/playground/history/${encodeSelector(historyId)}`,
         { pathPrefix: '/api/v1/admin/ai', method: 'DELETE' }
       );
       if (result.ok) {
@@ -659,7 +968,11 @@ export function usePlayground() {
 
   const clearHistory = useCallback(
     async (olderThanDays?: number) => {
-      const query = olderThanDays ? `?older_than_days=${olderThanDays}` : '';
+      const safeOlderThanDays =
+        olderThanDays === undefined
+          ? null
+          : normalizePositiveInteger(olderThanDays, 30, 3650);
+      const query = safeOlderThanDays ? `?older_than_days=${safeOlderThanDays}` : '';
       const result = await adminApiFetch<{ deleted: boolean; rows_affected: number }>(
         `/playground/history${query}`,
         { pathPrefix: '/api/v1/admin/ai', method: 'DELETE' }
@@ -674,7 +987,13 @@ export function usePlayground() {
 
   const fetchTemplates = useCallback(async (category?: string) => {
     setTemplatesError(null);
-    const query = category ? `?category=${category}` : '';
+    if (category && !normalizeAdminSelector(category)) {
+      setTemplatesError('Invalid template category');
+      return invalidResult<{ templates: PromptTemplate[]; total: number }>(
+        'Invalid template category'
+      );
+    }
+    const query = category ? `?category=${normalizeAdminSelector(category)}` : '';
     const result = await adminApiFetch<{ templates: PromptTemplate[]; total: number }>(
       `/prompt-templates${query}`
     , { pathPrefix: '/api/v1/admin/ai' });
@@ -699,9 +1018,22 @@ export function usePlayground() {
       default_max_tokens?: number;
       is_public?: boolean;
     }) => {
+      const category = data.category
+        ? normalizeAdminSelector(data.category)
+        : undefined;
+      const defaultModelId = data.default_model_id
+        ? normalizeAdminSelector(data.default_model_id)
+        : undefined;
+      if ((data.category && !category) || (data.default_model_id && !defaultModelId)) {
+        return invalidResult<{ template: PromptTemplate }>('Invalid template selector');
+      }
       const result = await adminApiFetch<{ template: PromptTemplate }>('/prompt-templates', { pathPrefix: '/api/v1/admin/ai',
         method: 'POST',
-        body: data,
+        body: {
+          ...data,
+          ...(category ? { category } : {}),
+          ...(defaultModelId ? { default_model_id: defaultModelId } : {}),
+        },
       });
       if (result.ok) {
         await fetchTemplates();
@@ -727,9 +1059,27 @@ export function usePlayground() {
         is_public: boolean;
       }>
     ) => {
-      const result = await adminApiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}`, { pathPrefix: '/api/v1/admin/ai',
+      const templateId = normalizeAdminSelector(id);
+      const category = data.category
+        ? normalizeAdminSelector(data.category)
+        : undefined;
+      const defaultModelId = data.default_model_id
+        ? normalizeAdminSelector(data.default_model_id)
+        : undefined;
+      if (
+        !templateId ||
+        (data.category && !category) ||
+        (data.default_model_id && !defaultModelId)
+      ) {
+        return invalidResult<{ template: PromptTemplate }>('Invalid template selector');
+      }
+      const result = await adminApiFetch<{ template: PromptTemplate }>(`/prompt-templates/${encodeSelector(templateId)}`, { pathPrefix: '/api/v1/admin/ai',
         method: 'PUT',
-        body: data,
+        body: {
+          ...data,
+          ...(category ? { category } : {}),
+          ...(defaultModelId ? { default_model_id: defaultModelId } : {}),
+        },
       });
       if (result.ok) {
         await fetchTemplates();
@@ -741,8 +1091,12 @@ export function usePlayground() {
 
   const deleteTemplate = useCallback(
     async (id: string) => {
+      const templateId = normalizeAdminSelector(id);
+      if (!templateId) {
+        return invalidResult<{ deleted: boolean; id: string }>('Invalid template selector');
+      }
       const result = await adminApiFetch<{ deleted: boolean; id: string }>(
-        `/prompt-templates/${id}`,
+        `/prompt-templates/${encodeSelector(templateId)}`,
         { pathPrefix: '/api/v1/admin/ai', method: 'DELETE' }
       );
       if (result.ok) {
@@ -754,7 +1108,9 @@ export function usePlayground() {
   );
 
   const applyTemplate = useCallback(async (id: string) => {
-    const result = await adminApiFetch<{ template: PromptTemplate }>(`/prompt-templates/${id}/use`, { pathPrefix: '/api/v1/admin/ai',
+    const templateId = normalizeAdminSelector(id);
+    if (!templateId) return invalidResult<{ template: PromptTemplate }>('Invalid template selector');
+    const result = await adminApiFetch<{ template: PromptTemplate }>(`/prompt-templates/${encodeSelector(templateId)}/use`, { pathPrefix: '/api/v1/admin/ai',
       method: 'POST',
     });
     return result;

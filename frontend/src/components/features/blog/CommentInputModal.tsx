@@ -17,12 +17,106 @@ interface CommentInputModalProps {
   intent?: 'comment' | 'reply' | 'quote';
   contextLabel?: string;
   contextPreview?: string;
+  label?: string;
+  title?: string;
+  cancelLabel?: string;
+  submitLabel?: string;
+  submittingLabel?: string;
+  authorLabel?: string;
+  authorPlaceholder?: string;
+  websiteShowLabel?: string;
+  websiteHideLabel?: string;
+  websitePlaceholder?: string;
+  contentLabel?: string;
+  contentPlaceholder?: string;
+  replyPlaceholder?: string;
+  quotePlaceholder?: string;
+  footerHint?: string;
+}
+
+const COMMENT_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const COMMENT_SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COMMENT_MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]+/g;
+const COMMENT_ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const DEFAULT_COMMENT_MODAL_LABEL = 'Comment editor';
+const DEFAULT_CANCEL_LABEL = 'Cancel';
+const DEFAULT_TERMINAL_CANCEL_LABEL = ':q!';
+const DEFAULT_SUBMIT_LABEL = 'Post';
+const DEFAULT_TERMINAL_SUBMIT_LABEL = ':wq';
+const DEFAULT_SUBMITTING_LABEL = 'Submitting';
+const DEFAULT_AUTHOR_LABEL = 'Name';
+const DEFAULT_TERMINAL_AUTHOR_LABEL = '$ name:';
+const DEFAULT_AUTHOR_PLACEHOLDER = 'Your name';
+const DEFAULT_TERMINAL_AUTHOR_PLACEHOLDER = 'your_username';
+const DEFAULT_WEBSITE_SHOW_LABEL = 'Add website (optional)';
+const DEFAULT_TERMINAL_WEBSITE_SHOW_LABEL = '// add website (optional)';
+const DEFAULT_WEBSITE_HIDE_LABEL = 'Hide website';
+const DEFAULT_TERMINAL_WEBSITE_HIDE_LABEL = '// hide website';
+const DEFAULT_WEBSITE_PLACEHOLDER = 'https://example.com';
+const DEFAULT_CONTENT_LABEL = 'Comment';
+const DEFAULT_TERMINAL_CONTENT_LABEL = '$ comment:';
+const DEFAULT_COMMENT_PLACEHOLDER = 'Share your thoughts...';
+const DEFAULT_REPLY_PLACEHOLDER = 'Write a reply...';
+const DEFAULT_QUOTE_PLACEHOLDER = 'Add your response below the quote...';
+const DEFAULT_TERMINAL_CONTENT_PLACEHOLDER =
+  '// write your thoughts here...\n// markdown supported';
+const DEFAULT_FOOTER_HINT = 'Styling with Markdown is supported.';
+const DEFAULT_TERMINAL_FOOTER_HINT = '[ESC to cancel, Ctrl+Enter to submit]';
+
+function normalizeCommentSingleLine(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(COMMENT_ANSI_ESCAPE_PATTERN, ' ')
+    .replace(COMMENT_SINGLE_LINE_CONTROL_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCommentContent(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(COMMENT_ANSI_ESCAPE_PATTERN, ' ')
+    .replace(/\r\n?/g, '\n')
+    .replace(COMMENT_MULTILINE_CONTROL_PATTERN, ' ')
+    .trim();
+}
+
+function normalizeCommentLabel(value: unknown, fallback: string): string {
+  return normalizeCommentSingleLine(value) || fallback;
+}
+
+function normalizeOptionalCommentLabel(value: unknown): string | undefined {
+  return normalizeCommentSingleLine(value) || undefined;
+}
+
+function normalizeCommentPlaceholder(value: unknown, fallback: string): string {
+  return normalizeCommentContent(value) || fallback;
+}
+
+function normalizeCommentWebsite(value: unknown): string {
+  const website = normalizeCommentSingleLine(value);
+  if (!website) return '';
+
+  try {
+    const decoded = decodeURIComponent(website);
+    const parsed = new URL(website);
+    if (
+      COMMENT_CONTROL_PATTERN.test(decoded) ||
+      parsed.username ||
+      parsed.password ||
+      (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+    ) {
+      return '';
+    }
+    return parsed.toString();
+  } catch {
+    return '';
+  }
 }
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error && error.message
-    ? error.message
-    : 'Failed to submit comment';
+  return normalizeCommentSingleLine(error instanceof Error ? error.message : '')
+    || 'Failed to submit comment';
 }
 
 export default function CommentInputModal({
@@ -35,8 +129,23 @@ export default function CommentInputModal({
   intent = 'comment',
   contextLabel,
   contextPreview,
+  label = DEFAULT_COMMENT_MODAL_LABEL,
+  title,
+  cancelLabel,
+  submitLabel,
+  submittingLabel = DEFAULT_SUBMITTING_LABEL,
+  authorLabel,
+  authorPlaceholder,
+  websiteShowLabel,
+  websiteHideLabel,
+  websitePlaceholder = DEFAULT_WEBSITE_PLACEHOLDER,
+  contentLabel,
+  contentPlaceholder,
+  replyPlaceholder,
+  quotePlaceholder,
+  footerHint,
 }: CommentInputModalProps) {
-  const [author, setAuthor] = useState(initialAuthor);
+  const [author, setAuthor] = useState(() => normalizeCommentSingleLine(initialAuthor));
   const [content, setContent] = useState('');
   const [website, setWebsite] = useState('');
   const [showWebsiteField, setShowWebsiteField] = useState(false);
@@ -47,13 +156,15 @@ export default function CommentInputModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
-      setContent(initialContent);
+      setAuthor(normalizeCommentSingleLine(initialAuthor));
+      setContent(normalizeCommentContent(initialContent));
       setError(null);
     }
-  }, [isOpen, initialContent]);
+  }, [isOpen, initialAuthor, initialContent]);
 
   // Focus management - only run when modal opens, not on every author change
   useEffect(() => {
@@ -130,15 +241,20 @@ export default function CommentInputModal({
   }, [isOpen, isMobile]);
 
   const submitComment = useCallback(async () => {
-    if (!author.trim() || !content.trim()) return;
+    const trimmedAuthor = normalizeCommentSingleLine(author);
+    const trimmedContent = normalizeCommentContent(content);
+    const safeWebsite = normalizeCommentWebsite(website);
+
+    if (submittingRef.current || !trimmedAuthor || !trimmedContent) return;
 
     try {
+      submittingRef.current = true;
       setSubmitting(true);
       setError(null);
       await onSubmit({
-        author: author.trim(),
-        content: content.trim(),
-        website: website.trim(),
+        author: trimmedAuthor,
+        content: trimmedContent,
+        website: safeWebsite,
       });
       // Clear form on success
       setContent('');
@@ -148,6 +264,7 @@ export default function CommentInputModal({
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }, [author, content, website, onSubmit, onClose]);
@@ -165,7 +282,11 @@ export default function CommentInputModal({
     (e: React.KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (author.trim() && content.trim() && !submitting) {
+        if (
+          normalizeCommentSingleLine(author) &&
+          normalizeCommentContent(content) &&
+          !submitting
+        ) {
           void submitComment();
         }
       }
@@ -182,8 +303,60 @@ export default function CommentInputModal({
       : intent === 'quote'
         ? 'Quote'
         : 'Add to discussion';
-  const submitLabel = isTerminal ? ':wq' : 'Post';
+  const safeDialogLabel = normalizeCommentLabel(label, DEFAULT_COMMENT_MODAL_LABEL);
+  const safeDialogTitle = normalizeOptionalCommentLabel(title);
+  const safeModalTitle = normalizeCommentLabel(modalTitle, 'Add to discussion');
+  const safeCancelLabel = normalizeCommentLabel(
+    cancelLabel,
+    isTerminal ? DEFAULT_TERMINAL_CANCEL_LABEL : DEFAULT_CANCEL_LABEL
+  );
+  const safeSubmitLabel = normalizeCommentLabel(
+    submitLabel,
+    isTerminal ? DEFAULT_TERMINAL_SUBMIT_LABEL : DEFAULT_SUBMIT_LABEL
+  );
+  const safeSubmittingLabel = normalizeCommentLabel(submittingLabel, DEFAULT_SUBMITTING_LABEL);
+  const safeAuthorLabel = normalizeCommentLabel(
+    authorLabel,
+    isTerminal ? DEFAULT_TERMINAL_AUTHOR_LABEL : DEFAULT_AUTHOR_LABEL
+  );
+  const safeAuthorPlaceholder = normalizeCommentLabel(
+    authorPlaceholder,
+    isTerminal ? DEFAULT_TERMINAL_AUTHOR_PLACEHOLDER : DEFAULT_AUTHOR_PLACEHOLDER
+  );
+  const safeWebsiteShowLabel = normalizeCommentLabel(
+    websiteShowLabel,
+    isTerminal ? DEFAULT_TERMINAL_WEBSITE_SHOW_LABEL : DEFAULT_WEBSITE_SHOW_LABEL
+  );
+  const safeWebsiteHideLabel = normalizeCommentLabel(
+    websiteHideLabel,
+    isTerminal ? DEFAULT_TERMINAL_WEBSITE_HIDE_LABEL : DEFAULT_WEBSITE_HIDE_LABEL
+  );
+  const safeWebsitePlaceholder = normalizeCommentLabel(
+    websitePlaceholder,
+    DEFAULT_WEBSITE_PLACEHOLDER
+  );
+  const safeContentLabel = normalizeCommentLabel(
+    contentLabel,
+    isTerminal ? DEFAULT_TERMINAL_CONTENT_LABEL : DEFAULT_CONTENT_LABEL
+  );
+  const safeContentPlaceholder = isTerminal
+    ? normalizeCommentPlaceholder(contentPlaceholder, DEFAULT_TERMINAL_CONTENT_PLACEHOLDER)
+    : intent === 'reply'
+      ? normalizeCommentLabel(replyPlaceholder, DEFAULT_REPLY_PLACEHOLDER)
+      : intent === 'quote'
+        ? normalizeCommentLabel(quotePlaceholder, DEFAULT_QUOTE_PLACEHOLDER)
+        : normalizeCommentLabel(contentPlaceholder, DEFAULT_COMMENT_PLACEHOLDER);
+  const safeFooterHint = normalizeCommentLabel(
+    footerHint,
+    isTerminal ? DEFAULT_TERMINAL_FOOTER_HINT : DEFAULT_FOOTER_HINT
+  );
+  const safeContextLabel = normalizeOptionalCommentLabel(contextLabel);
+  const safeContextPreview = normalizeCommentContent(contextPreview);
   const ContextIcon = intent === 'quote' ? Quote : Reply;
+  const canSubmit =
+    !submitting &&
+    !!normalizeCommentSingleLine(author) &&
+    !!normalizeCommentContent(content);
 
   // PC: Center popup with dimmed background
   // Mobile: Full screen modal
@@ -199,6 +372,8 @@ export default function CommentInputModal({
       role='dialog'
       aria-modal='true'
       aria-labelledby='comment-modal-title'
+      aria-label={safeDialogLabel}
+      title={safeDialogTitle}
       onClick={
         !isMobile
           ? e => {
@@ -246,7 +421,7 @@ export default function CommentInputModal({
                 : 'text-foreground'
             )}
           >
-            {modalTitle}
+            {safeModalTitle}
           </span>
 
           {/* Action Buttons */}
@@ -261,13 +436,15 @@ export default function CommentInputModal({
                   ? 'font-mono border border-border text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50'
                   : 'border border-border text-muted-foreground hover:bg-muted disabled:opacity-50'
               )}
+              aria-label={safeCancelLabel}
             >
-              {isTerminal ? ':q!' : 'Cancel'}
+              {safeCancelLabel}
             </button>
             <button
               type='submit'
               form='comment-form'
-              disabled={submitting || !author.trim() || !content.trim()}
+              disabled={!canSubmit}
+              aria-label={submitting ? safeSubmittingLabel : safeSubmitLabel}
               className={cn(
                 'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all disabled:opacity-50',
                 isTerminal
@@ -276,11 +453,11 @@ export default function CommentInputModal({
               )}
             >
               {submitting ? (
-                <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                <Loader2 aria-hidden='true' className='h-3.5 w-3.5 animate-spin' />
               ) : (
-                <Send className='h-3.5 w-3.5' />
+                <Send aria-hidden='true' className='h-3.5 w-3.5' />
               )}
-              {submitLabel}
+              {submitting ? safeSubmittingLabel : safeSubmitLabel}
             </button>
           </div>
         </header>
@@ -307,7 +484,7 @@ export default function CommentInputModal({
               </div>
             )}
 
-            {contextLabel && (
+            {safeContextLabel && (
               <div
                 className={cn(
                   'rounded-lg border px-3 py-2 text-sm',
@@ -317,10 +494,10 @@ export default function CommentInputModal({
                 )}
               >
                 <div className='flex items-center gap-2 font-medium'>
-                  <ContextIcon className='h-4 w-4 shrink-0' />
-                  <span>{contextLabel}</span>
+                  <ContextIcon aria-hidden='true' className='h-4 w-4 shrink-0' />
+                  <span>{safeContextLabel}</span>
                 </div>
-                {contextPreview && (
+                {safeContextPreview && (
                   <p
                     className={cn(
                       'mt-1 break-words text-xs leading-relaxed',
@@ -329,7 +506,7 @@ export default function CommentInputModal({
                         : 'text-muted-foreground'
                     )}
                   >
-                    {contextPreview}
+                    {safeContextPreview}
                   </p>
                 )}
               </div>
@@ -344,7 +521,7 @@ export default function CommentInputModal({
                   isTerminal ? 'font-mono text-primary' : 'text-foreground'
                 )}
               >
-                {isTerminal ? '$ name:' : 'Name'}
+                {safeAuthorLabel}
               </label>
               <input
                 ref={authorRef}
@@ -352,7 +529,7 @@ export default function CommentInputModal({
                 type='text'
                 value={author}
                 onChange={e => setAuthor(e.target.value)}
-                placeholder={isTerminal ? 'your_username' : 'Your name'}
+                placeholder={safeAuthorPlaceholder}
                 required
                 className={cn(
                   'w-full px-4 py-3 text-base outline-none transition-all',
@@ -360,6 +537,7 @@ export default function CommentInputModal({
                     ? 'rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50'
                     : 'rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20'
                 )}
+                aria-label={safeAuthorLabel}
               />
             </div>
 
@@ -374,15 +552,13 @@ export default function CommentInputModal({
                     ? 'font-mono text-muted-foreground hover:text-primary'
                     : 'text-muted-foreground hover:text-primary'
                 )}
+                aria-label={showWebsiteField ? safeWebsiteHideLabel : safeWebsiteShowLabel}
+                aria-expanded={showWebsiteField}
               >
-                <Globe2 className='h-4 w-4' />
+                <Globe2 aria-hidden='true' className='h-4 w-4' />
                 {showWebsiteField
-                  ? isTerminal
-                    ? '// hide website'
-                    : 'Hide website'
-                  : isTerminal
-                    ? '// add website (optional)'
-                    : 'Add website (optional)'}
+                  ? safeWebsiteHideLabel
+                  : safeWebsiteShowLabel}
               </button>
 
               {showWebsiteField && (
@@ -391,7 +567,8 @@ export default function CommentInputModal({
                   type='url'
                   value={website}
                   onChange={e => setWebsite(e.target.value)}
-                  placeholder='https://example.com'
+                  placeholder={safeWebsitePlaceholder}
+                  aria-label={safeWebsiteShowLabel}
                   className={cn(
                     'w-full px-4 py-3 text-base outline-none transition-all animate-in slide-in-from-top-2 duration-200',
                     isTerminal
@@ -411,7 +588,7 @@ export default function CommentInputModal({
                   isTerminal ? 'font-mono text-primary' : 'text-foreground'
                 )}
               >
-                {isTerminal ? '$ comment:' : 'Comment'}
+                {safeContentLabel}
               </label>
               <div className='relative'>
                 <textarea
@@ -419,15 +596,8 @@ export default function CommentInputModal({
                   id='modal-content'
                   value={content}
                   onChange={e => setContent(e.target.value)}
-                  placeholder={
-                    isTerminal
-                      ? '// write your thoughts here...\n// markdown supported'
-                      : intent === 'reply'
-                        ? 'Write a reply...'
-                        : intent === 'quote'
-                          ? 'Add your response below the quote...'
-                          : 'Share your thoughts...'
-                  }
+                  placeholder={safeContentPlaceholder}
+                  aria-label={safeContentLabel}
                   required
                   rows={6}
                   className={cn(
@@ -468,9 +638,7 @@ export default function CommentInputModal({
                   : 'text-muted-foreground'
               )}
             >
-              {isTerminal
-                ? '[ESC to cancel, Ctrl+Enter to submit]'
-                : 'Styling with Markdown is supported.'}
+              {safeFooterHint}
             </span>
           </footer>
         </form>

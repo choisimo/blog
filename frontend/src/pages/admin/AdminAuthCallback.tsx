@@ -4,6 +4,22 @@ import { useAuthStore } from '@/stores/session/useAuthStore';
 import { consumeAdminReturnPath } from '@/services/session/adminReturnTo';
 import { consumeOAuthHandoff } from '@/services/session/auth';
 
+function normalizeCallbackCredential(value: string | null): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\u0000-\u001F\u007F]/.test(normalized)) return null;
+  return normalized;
+}
+
+function normalizeCallbackError(value: string | null): string {
+  return (
+    value
+      ?.replace(/[\u0000-\u001F\u007F]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || 'unknown error'
+  );
+}
+
 export default function AdminAuthCallback() {
   const navigate = useNavigate();
   const { setTokens, setTokensFromOAuth } = useAuthStore();
@@ -19,13 +35,26 @@ export default function AdminAuthCallback() {
       );
     }
     const params = new URLSearchParams(hash);
-    const handoff = params.get('handoff');
-    const token = params.get('token');
-    const refreshToken = params.get('refreshToken');
+    const rawHandoff = params.get('handoff');
+    const rawToken = params.get('token');
+    const rawRefreshToken = params.get('refreshToken');
+    const handoff = normalizeCallbackCredential(rawHandoff);
+    const token = normalizeCallbackCredential(rawToken);
+    const refreshToken = normalizeCallbackCredential(rawRefreshToken);
     const err = params.get('error');
     let cancelled = false;
 
     const complete = async () => {
+      if (err) {
+        setError(`Authentication failed: ${normalizeCallbackError(err)}`);
+        return;
+      }
+
+      if (rawHandoff && !handoff) {
+        setError('Authentication failed: invalid handoff');
+        return;
+      }
+
       if (handoff) {
         try {
           const response = await consumeOAuthHandoff(handoff);
@@ -44,8 +73,8 @@ export default function AdminAuthCallback() {
         return;
       }
 
-      if (err) {
-        setError(`Authentication failed: ${err}`);
+      if ((rawToken && !token) || (rawRefreshToken && !refreshToken)) {
+        setError('Authentication failed: invalid tokens');
         return;
       }
 

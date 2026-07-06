@@ -3,6 +3,35 @@ import { Drawer as DrawerPrimitive } from 'vaul';
 
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+function sanitizeDrawerText(value: unknown): string {
+  return String(value ?? '')
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+}
+
+function sanitizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return value as string | undefined;
+  const sanitized = sanitizeDrawerText(value);
+  return sanitized || undefined;
+}
+
+function sanitizeDrawerNode(node: React.ReactNode): React.ReactNode {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return sanitizeDrawerText(node);
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(sanitizeDrawerNode);
+  }
+
+  return node;
+}
+
 const Drawer = ({
   shouldScaleBackground = true,
   ...props
@@ -38,7 +67,11 @@ DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(
+  (
+    { className, children, 'aria-label': ariaLabel, title, ...props },
+    ref
+  ) => (
   <DrawerPortal>
     <DrawerOverlay />
     <DrawerPrimitive.Content
@@ -47,6 +80,8 @@ const DrawerContent = React.forwardRef<
         'fixed inset-x-0 bottom-0 z-[var(--z-dialog)] mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background',
         className
       )}
+      aria-label={sanitizeOptionalText(ariaLabel)}
+      title={sanitizeOptionalText(title)}
       {...props}
     >
       <div className='mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted' />
@@ -81,7 +116,7 @@ DrawerFooter.displayName = 'DrawerFooter';
 const DrawerTitle = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Title>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <DrawerPrimitive.Title
     ref={ref}
     className={cn(
@@ -89,19 +124,23 @@ const DrawerTitle = React.forwardRef<
       className
     )}
     {...props}
-  />
+  >
+    {sanitizeDrawerNode(children)}
+  </DrawerPrimitive.Title>
 ));
 DrawerTitle.displayName = DrawerPrimitive.Title.displayName;
 
 const DrawerDescription = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Description>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <DrawerPrimitive.Description
     ref={ref}
     className={cn('text-sm text-muted-foreground', className)}
     {...props}
-  />
+  >
+    {sanitizeDrawerNode(children)}
+  </DrawerPrimitive.Description>
 ));
 DrawerDescription.displayName = DrawerPrimitive.Description.displayName;
 

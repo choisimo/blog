@@ -254,7 +254,7 @@ describe("WorkersManager read-only production mode", () => {
         return new Response(
           JSON.stringify({
             ok: false,
-            error: { message: "Workers inventory unavailable" },
+            error: { message: "Workers\u0000 inventory\nunavailable" },
           }),
           {
             status: 503,
@@ -312,6 +312,7 @@ describe("WorkersManager read-only production mode", () => {
     });
 
     expect(screen.getByText(/Workers inventory unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Workers\u0000 inventory/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
     expect(screen.queryByText(/No workers found/i)).not.toBeInTheDocument();
   });
@@ -461,6 +462,142 @@ describe("WorkersManager read-only production mode", () => {
 
     expect(await screen.findByRole("button", { name: "Show JWT_SECRET secret" }))
       .toHaveAttribute("title", "Show JWT_SECRET secret");
+  });
+
+  it("filters polluted worker and secret selectors before secret writes", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+
+    global.fetch = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        requests.push({ url, init });
+
+        if (url.endsWith("/api/v1/admin/workers/list")) {
+          const response = createWorkerListResponse(true);
+          response.data.workers.push({
+            ...response.data.workers[0],
+            id: "bad%0Aworker",
+            name: "Polluted Worker",
+          });
+          return new Response(JSON.stringify(response), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url.endsWith("/api/v1/admin/workers/secrets")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              data: {
+                secrets: [
+                  {
+                    key: "JWT_SECRET%0Aevil",
+                    description: "Polluted key",
+                    workers: ["api-gateway"],
+                  },
+                  {
+                    key: "JWT_SECRET",
+                    description: "JWT signing key",
+                    workers: ["api-gateway%0Aevil", "api-gateway"],
+                  },
+                ],
+              },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (
+          url.endsWith("/api/v1/admin/workers/d1/databases") ||
+          url.endsWith("/api/v1/admin/workers/kv/namespaces") ||
+          url.endsWith("/api/v1/admin/workers/r2/buckets")
+        ) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              data: { databases: [], namespaces: [], buckets: [] },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (url.endsWith("/api/v1/admin/workers/api-gateway/secret")) {
+          return new Response(
+            JSON.stringify({
+              ok: true,
+              data: { message: "Secret set" },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        return new Response("Not Found", { status: 404 });
+      },
+    ) as typeof fetch;
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkersManager subtab="secrets" />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("JWT_SECRET")).toBeInTheDocument();
+    expect(screen.queryByText("JWT_SECRET%0Aevil")).not.toBeInTheDocument();
+    expect(screen.queryByText("Polluted key")).not.toBeInTheDocument();
+    expect(screen.queryByText("api-gateway%0Aevil")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Enter new secret value/i), {
+      target: { value: "rotated-secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Set$/i }));
+
+    await waitFor(() => {
+      expect(
+        requests.some((request) =>
+          request.url.endsWith("/api/v1/admin/workers/api-gateway/secret"),
+        ),
+      ).toBe(true);
+    });
+
+    expect(
+      requests.some(
+        (request) =>
+          request.url.includes("api-gateway%0Aevil") ||
+          request.url.includes("bad%0Aworker"),
+      ),
+    ).toBe(false);
+
+    const secretRequest = requests.find((request) =>
+      request.url.endsWith("/api/v1/admin/workers/api-gateway/secret"),
+    );
+    expect(JSON.parse(secretRequest?.init?.body as string)).toEqual({
+      key: "JWT_SECRET",
+      value: "rotated-secret",
+      env: "production",
+    });
   });
 
   it("shows a load error instead of an empty resource section when worker resources fail", async () => {

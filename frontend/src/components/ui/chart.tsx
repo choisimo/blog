@@ -5,6 +5,54 @@ import { cn } from '../../lib/utils';
 
 // Chart styling without inline styles to comply with CSP
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007\u001b]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeChartText = (value: string | number): string =>
+  String(value)
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(CONTROL_TEXT_PATTERN, '')
+    .trim();
+
+const sanitizeChartOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeChartText(value);
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeChartNode = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeChartText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeChartNode);
+  }
+
+  return children;
+};
+
+const sanitizeChartValue = (value: unknown): React.ReactNode => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return sanitizeChartText(value);
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toLocaleString' in value &&
+    typeof value.toLocaleString === 'function'
+  ) {
+    return sanitizeChartText(value.toLocaleString());
+  }
+
+  return undefined;
+};
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -41,7 +89,7 @@ const ChartContainer = React.forwardRef<
       typeof RechartsPrimitive.ResponsiveContainer
     >['children'];
   }
->(({ id, className, children, config, ...props }, ref) => {
+>(({ id, className, children, config, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const uniqueId = React.useId();
   const chartId = `chart-${id || uniqueId.replace(/:/g, '')}`;
 
@@ -54,11 +102,13 @@ const ChartContainer = React.forwardRef<
           "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
           className
         )}
+        aria-label={sanitizeChartOptionalText(ariaLabel)}
+        title={sanitizeChartOptionalText(title)}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer>
-          {children}
+          {sanitizeChartNode(children)}
         </RechartsPrimitive.ResponsiveContainer>
       </div>
     </ChartContext.Provider>
@@ -118,6 +168,8 @@ const ChartTooltipContent = React.forwardRef<
       color,
       nameKey,
       labelKey,
+      'aria-label': ariaLabel,
+      title,
     },
     ref
   ) => {
@@ -139,7 +191,7 @@ const ChartTooltipContent = React.forwardRef<
       if (labelFormatter) {
         return (
           <div className={cn('font-medium', labelClassName)}>
-            {labelFormatter(value, payload)}
+            {sanitizeChartNode(labelFormatter(value, payload))}
           </div>
         );
       }
@@ -148,7 +200,11 @@ const ChartTooltipContent = React.forwardRef<
         return null;
       }
 
-      return <div className={cn('font-medium', labelClassName)}>{value}</div>;
+      return (
+        <div className={cn('font-medium', labelClassName)}>
+          {sanitizeChartNode(value)}
+        </div>
+      );
     }, [
       label,
       labelFormatter,
@@ -172,6 +228,8 @@ const ChartTooltipContent = React.forwardRef<
           'grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl',
           className
         )}
+        aria-label={sanitizeChartOptionalText(ariaLabel)}
+        title={sanitizeChartOptionalText(title)}
       >
         {!nestLabel ? tooltipLabel : null}
         <div className='grid gap-1.5'>
@@ -225,12 +283,12 @@ const ChartTooltipContent = React.forwardRef<
                       <div className='grid gap-1.5'>
                         {nestLabel ? tooltipLabel : null}
                         <span className='text-muted-foreground'>
-                          {itemConfig?.label || item.name}
+                          {sanitizeChartNode(itemConfig?.label || item.name)}
                         </span>
                       </div>
-                      {item.value && (
+                      {item.value && sanitizeChartValue(item.value) && (
                         <span className='font-mono font-medium tabular-nums text-foreground'>
-                          {item.value.toLocaleString()}
+                          {sanitizeChartValue(item.value)}
                         </span>
                       )}
                     </div>
@@ -257,7 +315,15 @@ const ChartLegendContent = React.forwardRef<
     }
 >(
   (
-    { className, hideIcon = false, payload, verticalAlign = 'bottom', nameKey },
+    {
+      className,
+      hideIcon = false,
+      payload,
+      verticalAlign = 'bottom',
+      nameKey,
+      'aria-label': ariaLabel,
+      title,
+    },
     ref
   ) => {
     const { config } = useChart();
@@ -274,6 +340,8 @@ const ChartLegendContent = React.forwardRef<
           verticalAlign === 'top' ? 'pb-3' : 'pt-3',
           className
         )}
+        aria-label={sanitizeChartOptionalText(ariaLabel)}
+        title={sanitizeChartOptionalText(title)}
       >
         {payload.map(item => {
           const key = `${nameKey || item.dataKey || 'value'}`;
@@ -296,7 +364,7 @@ const ChartLegendContent = React.forwardRef<
                   }}
                 />
               )}
-              {itemConfig?.label}
+              {sanitizeChartNode(itemConfig?.label)}
             </div>
           );
         })}

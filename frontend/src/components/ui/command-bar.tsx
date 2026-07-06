@@ -1,6 +1,35 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
+const ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
+
+const sanitizeCommandBarText = (value: string | number): string =>
+  String(value).replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
+
+const sanitizeCommandBarOptionalText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return undefined;
+  }
+
+  const sanitized = sanitizeCommandBarText(value);
+
+  return sanitized.length > 0 ? sanitized : undefined;
+};
+
+const sanitizeCommandBarNode = (children: React.ReactNode): React.ReactNode => {
+  if (typeof children === 'string' || typeof children === 'number') {
+    return sanitizeCommandBarText(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(sanitizeCommandBarNode);
+  }
+
+  return children;
+};
+
 /**
  * CommandBar - 터미널 스타일의 탭/버튼 그룹 컴포넌트
  * 
@@ -15,7 +44,7 @@ interface CommandBarProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 const CommandBar = React.forwardRef<HTMLElement, CommandBarProps>(
-  ({ className, children, ...props }, ref) => (
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <nav
       ref={ref}
       className={cn(
@@ -23,9 +52,11 @@ const CommandBar = React.forwardRef<HTMLElement, CommandBarProps>(
         'border-b border-border/30 pb-3 mb-5',
         className
       )}
+      aria-label={sanitizeCommandBarOptionalText(ariaLabel)}
+      title={sanitizeCommandBarOptionalText(title)}
       {...props}
     >
-      {children}
+      {sanitizeCommandBarNode(children)}
     </nav>
   )
 );
@@ -36,13 +67,15 @@ interface CommandGroupProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const CommandGroup = React.forwardRef<HTMLDivElement, CommandGroupProps>(
-  ({ className, children, ...props }, ref) => (
+  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
     <div
       ref={ref}
       className={cn('flex items-center gap-3', className)}
+      aria-label={sanitizeCommandBarOptionalText(ariaLabel)}
+      title={sanitizeCommandBarOptionalText(title)}
       {...props}
     >
-      {children}
+      {sanitizeCommandBarNode(children)}
     </div>
   )
 );
@@ -54,7 +87,18 @@ interface CommandButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonProps>(
-  ({ className, active = false, variant = 'default', children, ...props }, ref) => {
+  (
+    {
+      className,
+      active = false,
+      variant = 'default',
+      children,
+      'aria-label': ariaLabel,
+      title,
+      ...props
+    },
+    ref
+  ) => {
     const baseStyles = cn(
       // Base styles
       'bg-transparent',
@@ -104,9 +148,11 @@ const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonProps>(
       <button
         ref={ref}
         className={cn(baseStyles, variantStyles[variant], className)}
+        aria-label={sanitizeCommandBarOptionalText(ariaLabel)}
+        title={sanitizeCommandBarOptionalText(title)}
         {...props}
       >
-        {children}
+        {sanitizeCommandBarNode(children)}
       </button>
     );
   }

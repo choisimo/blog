@@ -6,6 +6,46 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/utils/content/blog';
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const HAS_CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeHomeText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return fallback;
+  const normalized = String(value)
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeHomePathSegment(value: unknown): string | null {
+  const normalized = normalizeHomeText(value);
+  if (!normalized || normalized.includes('/') || normalized.includes('\\')) return null;
+  try {
+    const decoded = decodeURIComponent(normalized);
+    if (
+      !decoded.trim() ||
+      decoded === '.' ||
+      decoded === '..' ||
+      HAS_CONTROL_TEXT_PATTERN.test(decoded) ||
+      decoded.includes('/') ||
+      decoded.includes('\\')
+    ) {
+      return null;
+    }
+    return encodeURIComponent(decoded.trim());
+  } catch {
+    return null;
+  }
+}
+
+function normalizeHomeCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.trunc(value))
+    : 0;
+}
+
 export function HomeLatestPostsSection({
   posts,
   tags,
@@ -13,6 +53,27 @@ export function HomeLatestPostsSection({
   error,
   isTerminal,
 }: HomeLatestPostsSectionProps) {
+  const safePosts = posts.flatMap((post) => {
+    const year = normalizeHomePathSegment(post.year);
+    const slug = normalizeHomePathSegment(post.slug);
+    if (!year || !slug || !/^\d{4}$/.test(year)) return [];
+    return [{
+      ...post,
+      year,
+      slug,
+      title: normalizeHomeText(post.title, 'Untitled post'),
+      category: normalizeHomeText(post.category, 'Post'),
+      description: normalizeHomeText(post.description),
+      readingTime: normalizeHomeText(post.readingTime),
+    }];
+  });
+  const safeTags = tags.flatMap((tag) => {
+    const name = normalizeHomeText(tag.name);
+    if (!name || name.includes('/') || name.includes('\\')) return [];
+    return [{ ...tag, name, count: normalizeHomeCount(tag.count) }];
+  });
+  const safeError = normalizeHomeText(error, '최신 글을 불러오지 못했습니다.');
+
   return (
     <section className='mb-14'>
       <div className='mb-5 flex items-center justify-between gap-4'>
@@ -41,7 +102,7 @@ export function HomeLatestPostsSection({
         <div className='min-w-0'>
           {state === 'error' ? (
             <div className='rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-5 text-sm text-destructive'>
-              {error || '최신 글을 불러오지 못했습니다.'}
+              {safeError}
             </div>
           ) : state === 'loading' ? (
             <div className='space-y-3'>
@@ -54,7 +115,7 @@ export function HomeLatestPostsSection({
             </div>
           ) : (
             <div className='space-y-3'>
-              {posts.map(post => (
+              {safePosts.map(post => (
                 <Link
                   key={`${post.year}/${post.slug}`}
                   to={`/blog/${post.year}/${post.slug}`}
@@ -110,13 +171,13 @@ export function HomeLatestPostsSection({
               Popular Tags
             </h3>
           </div>
-          {tags.length === 0 ? (
+          {safeTags.length === 0 ? (
             <p className='text-sm text-muted-foreground'>
               태그를 준비 중입니다.
             </p>
           ) : (
             <div className='space-y-2'>
-              {tags.slice(0, 6).map(tag => (
+              {safeTags.slice(0, 6).map(tag => (
                 <Link
                   key={tag.name}
                   to={`/blog?tag=${encodeURIComponent(tag.name)}`}

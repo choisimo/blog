@@ -64,6 +64,10 @@ type TaskPayload = {
 };
 
 const DIRECT_TASK_MODES = new Set<ChatTaskMode>(["sketch", "prism", "chain"]);
+const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const WHITESPACE_PATTERN = /\s+/g;
+const MAX_AI_ERROR_MESSAGE_LENGTH = 1000;
 
 // ============================================================================
 // Utilities
@@ -73,7 +77,7 @@ const DIRECT_TASK_MODES = new Set<ChatTaskMode>(["sketch", "prism", "chain"]);
  * 객체인지 확인
  */
 function isRecord(v: unknown): v is Record<string, unknown> {
-  return v !== null && typeof v === "object";
+  return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 
 /**
@@ -115,7 +119,31 @@ function tryParseJson<T = unknown>(text: string): T | null {
 
 function safeTruncate(s: string, maxLength: number): string {
   if (!s) return "";
-  return s.length > maxLength ? `${s.slice(0, maxLength - 1)}...` : s;
+  const normalized = normalizeMultilineText(s);
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}...` : normalized;
+}
+
+function normalizeSingleLineText(value: unknown, maxLength = Number.POSITIVE_INFINITY): string {
+  if (typeof value === "string") {
+    const normalized = value
+      .replace(SINGLE_LINE_CONTROL_PATTERN, " ")
+      .replace(WHITESPACE_PATTERN, " ")
+      .trim();
+    return normalized.length > maxLength ? "" : normalized;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "";
+}
+
+function normalizeMultilineText(value: unknown, maxLength = Number.POSITIVE_INFINITY): string {
+  if (typeof value !== "string") return "";
+  const normalized = value
+    .replace(/\r\n?/g, "\n")
+    .replace(MULTILINE_CONTROL_PATTERN, " ")
+    .trim();
+  return normalized.length > maxLength ? "" : normalized;
 }
 
 // ============================================================================
@@ -245,11 +273,16 @@ function getEnvelopeData(parsed: unknown): unknown {
 function getTaskErrorMessage(parsed: unknown, fallback: string): string {
   if (isRecord(parsed)) {
     const error = parsed.error;
-    if (typeof error === "string" && error.trim()) return error;
+    const errorText = normalizeSingleLineText(error, MAX_AI_ERROR_MESSAGE_LENGTH);
+    if (errorText) return errorText;
     if (isRecord(error) && typeof error.message === "string" && error.message.trim()) {
-      return error.message;
+      return normalizeSingleLineText(error.message, MAX_AI_ERROR_MESSAGE_LENGTH) || fallback;
     }
-    if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+    if (isRecord(error) && typeof error.code === "string" && error.code.trim()) {
+      return normalizeSingleLineText(error.code, MAX_AI_ERROR_MESSAGE_LENGTH) || fallback;
+    }
+    const message = normalizeSingleLineText(parsed.message, MAX_AI_ERROR_MESSAGE_LENGTH);
+    if (message) return message;
   }
   return fallback;
 }
@@ -336,24 +369,48 @@ function normalizeResponse<T>(
 // Validators
 // ============================================================================
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
 function isSketchResult(data: unknown): data is SketchResult {
   return (
     isRecord(data) &&
     typeof data.mood === "string" &&
-    Array.isArray(data.bullets)
+    isStringArray(data.bullets)
+  );
+}
+
+function isPrismFacet(data: unknown): data is PrismResult["facets"][number] {
+  return (
+    isRecord(data) &&
+    typeof data.title === "string" &&
+    isStringArray(data.points)
   );
 }
 
 function isPrismResult(data: unknown): data is PrismResult {
-  return isRecord(data) && Array.isArray(data.facets);
+  return isRecord(data) && Array.isArray(data.facets) && data.facets.every(isPrismFacet);
+}
+
+function isChainQuestion(data: unknown): data is ChainResult["questions"][number] {
+  return (
+    isRecord(data) &&
+    typeof data.q === "string" &&
+    typeof data.why === "string"
+  );
 }
 
 function isChainResult(data: unknown): data is ChainResult {
-  return isRecord(data) && Array.isArray(data.questions);
+  return isRecord(data) && Array.isArray(data.questions) && data.questions.every(isChainQuestion);
 }
 
 function isSummaryResult(data: unknown): data is SummaryResult {
-  return isRecord(data) && typeof data.summary === "string";
+  return (
+    isRecord(data) &&
+    typeof data.summary === "string" &&
+    (data.keyPoints === undefined || isStringArray(data.keyPoints))
+  );
 }
 
 // ============================================================================
@@ -503,11 +560,7 @@ function normalizeQuizType(value: unknown): QuizQuestion["type"] {
 }
 
 function toNormalizedText(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  return "";
+  return normalizeSingleLineText(value);
 }
 
 function pickObjectRecord(
@@ -572,7 +625,7 @@ function buildVisualizationFence(raw: Record<string, unknown>): string | null {
     raw.chart,
   );
 
-  const html = toNormalizedText(
+  const html = normalizeMultilineText(
     raw.html ??
       raw.markup ??
       raw.template ??
@@ -581,7 +634,7 @@ function buildVisualizationFence(raw: Record<string, unknown>): string | null {
       visualizationRecord?.markup ??
       visualizationRecord?.template,
   );
-  const js = toNormalizedText(
+  const js = normalizeMultilineText(
     raw.js ??
       raw.javascript ??
       raw.script ??
@@ -590,7 +643,7 @@ function buildVisualizationFence(raw: Record<string, unknown>): string | null {
       visualizationRecord?.javascript ??
       visualizationRecord?.script,
   );
-  const css = toNormalizedText(
+  const css = normalizeMultilineText(
     raw.css ??
       raw.style ??
       raw.styles ??
@@ -699,7 +752,7 @@ function clampQuizCount(value: unknown, fallback = 2): number {
 function normalizeQuizTags(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((tag) => (typeof tag === "string" ? tag.trim().toLowerCase() : ""))
+    .map((tag) => normalizeSingleLineText(tag).toLowerCase())
     .filter(Boolean)
     .slice(0, 12);
 }

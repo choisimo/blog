@@ -41,6 +41,19 @@ type RealTerminalModalProps = {
   onSwitchToVirtual?: () => void;
 };
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const REAL_TERMINAL_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+function normalizeRealTerminalText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(REAL_TERMINAL_CONTROL_TEXT_PATTERN, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
 const StatusIndicator = ({ status }: { status: TerminalStatus }) => {
   const statusConfig = {
     disconnected: {
@@ -67,10 +80,20 @@ const StatusIndicator = ({ status }: { status: TerminalStatus }) => {
 
   const config = statusConfig[status];
   const Icon = config.icon;
+  const liveMode = status === "error" ? "assertive" : "polite";
 
   return (
-    <div className={cn("flex items-center gap-1.5", config.className)}>
-      <Icon className={cn("h-3.5 w-3.5", status === "connecting" && "animate-spin")} />
+    <div
+      aria-label={`Terminal status: ${config.text}`}
+      aria-live={liveMode}
+      className={cn("flex items-center gap-1.5", config.className)}
+      role={status === "error" ? "alert" : "status"}
+    >
+      <Icon
+        aria-hidden="true"
+        className={cn("h-3.5 w-3.5", status === "connecting" && "animate-spin")}
+        focusable="false"
+      />
       <span className="text-xs font-mono">{config.text}</span>
     </div>
   );
@@ -106,6 +129,7 @@ export function RealTerminalModal({
     rows: 24,
     onData: handleData,
   });
+  const safeError = normalizeRealTerminalText(error);
 
   // Initialize xterm when modal opens
   useEffect(() => {
@@ -249,14 +273,17 @@ export function RealTerminalModal({
 
   return createPortal(
     <div
+      aria-label="Real Linux terminal"
+      aria-modal="true"
       className="fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      role="dialog"
       style={{ height: viewportHeight }}
     >
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border/50 bg-[hsl(var(--terminal-code-bg))]">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-primary" />
+            <Terminal aria-hidden="true" className="h-4 w-4 text-primary" focusable="false" />
             <span className="font-mono text-xs text-primary font-medium">
               LINUX SHELL
             </span>
@@ -270,10 +297,11 @@ export function RealTerminalModal({
             <button
               type="button"
               onClick={handleReconnect}
+              aria-label="Reconnect terminal"
               className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded"
               title="Reconnect"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             </button>
           )}
 
@@ -282,6 +310,7 @@ export function RealTerminalModal({
             <button
               type="button"
               onClick={onSwitchToVirtual}
+              aria-label="Switch to virtual shell"
               className={cn(
                 "px-2 py-1 font-mono text-[10px] uppercase tracking-wider",
                 "bg-primary/10 border border-primary/30 rounded",
@@ -298,24 +327,31 @@ export function RealTerminalModal({
             type="button"
             onClick={onClose}
             className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
-            aria-label="Close"
+            aria-label="Close real terminal"
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden="true" className="h-4 w-4" focusable="false" />
           </button>
         </div>
       </div>
 
       {/* Error banner */}
-      {error && (
-        <div className="flex-shrink-0 px-3 py-2 bg-destructive/10 border-b border-destructive/30 text-destructive text-xs font-mono">
-          {error}
+      {safeError && (
+        <div
+          aria-label="Terminal error"
+          aria-live="assertive"
+          className="flex-shrink-0 px-3 py-2 bg-destructive/10 border-b border-destructive/30 text-destructive text-xs font-mono"
+          role="alert"
+        >
+          {safeError}
         </div>
       )}
 
       {/* Terminal container */}
       <div
         ref={terminalContainerRef}
+        aria-label="터미널 세션"
         className="flex-1 min-h-0 p-2 bg-[hsl(224_71.4%_4.1%)]"
+        role="application"
       />
 
       {/* Footer hints */}

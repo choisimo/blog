@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,13 @@ import {
 } from '@/services/session/adminReturnTo';
 
 type AuthStep = 'initial-gate' | 'totp-login' | 'totp-setup' | 'authenticated';
+
+function normalizeAdminCredential(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || /[\u0000-\u001F\u007F]/.test(normalized)) return null;
+  return normalized;
+}
 
 function ErrorMsg({ message }: { message: string }) {
   if (!message) return null;
@@ -110,8 +117,9 @@ function InitialGateScreen({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!key.trim()) return;
-    await onServerKeySubmit(key.trim());
+    const normalizedKey = normalizeAdminCredential(key);
+    if (!normalizedKey) return;
+    await onServerKeySubmit(normalizedKey);
   };
 
   return (
@@ -190,25 +198,35 @@ function TotpLoginScreen({ onSuccess, error, onError }: TotpLoginScreenProps) {
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const challengeInFlightRef = useRef(false);
 
   const handleGetChallenge = async () => {
+    if (challengeInFlightRef.current) return;
+    challengeInFlightRef.current = true;
     setLoading(true);
     try {
       const result = await initiateTotpChallenge();
-      setChallengeId(result.challengeId);
+      const normalizedChallengeId = normalizeAdminCredential(result.challengeId);
+      if (!normalizedChallengeId) {
+        onError('Invalid challenge response');
+        return;
+      }
+      setChallengeId(normalizedChallengeId);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to get challenge');
     } finally {
+      challengeInFlightRef.current = false;
       setLoading(false);
     }
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!challengeId || code.length !== 6) return;
+    const normalizedChallengeId = normalizeAdminCredential(challengeId);
+    if (!normalizedChallengeId || code.length !== 6) return;
     setLoading(true);
     try {
-      const response = await verifyTotpCode(challengeId, code);
+      const response = await verifyTotpCode(normalizedChallengeId, code);
       onSuccess(response);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Verification failed');
@@ -339,8 +357,16 @@ function TotpSetupScreen({
   const [loadingSetup, setLoadingSetup] = useState(true);
 
   useEffect(() => {
+    const normalizedSetupToken = normalizeAdminCredential(setupToken);
+    if (!normalizedSetupToken) {
+      setSetup(null);
+      setLoadingSetup(false);
+      onError('Invalid setup token');
+      return;
+    }
+
     setLoadingSetup(true);
-    getTotpSetup(setupToken)
+    getTotpSetup(normalizedSetupToken)
       .then(setSetup)
       .catch((err: unknown) =>
         onError(err instanceof Error ? err.message : 'Failed to load setup')
@@ -350,10 +376,11 @@ function TotpSetupScreen({
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6 || !setup) return;
+    const normalizedSetupToken = normalizeAdminCredential(setupToken);
+    if (code.length !== 6 || !setup || !normalizedSetupToken) return;
     setLoading(true);
     try {
-      await verifyTotpSetup(code, setupToken);
+      await verifyTotpSetup(code, normalizedSetupToken);
       onComplete();
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Setup verification failed');
@@ -516,9 +543,10 @@ export default function AdminConfig() {
     const checkAuth = async () => {
       if (isAuthenticated()) {
         const token = await getValidAccessToken();
-        if (token) {
+        const normalizedToken = normalizeAdminCredential(token);
+        if (normalizedToken) {
           try {
-            await getMe(token);
+            await getMe(normalizedToken);
             setStep('authenticated');
             scheduleTokenRefresh();
             setPageLoading(false);
@@ -555,15 +583,21 @@ export default function AdminConfig() {
   }, [isLoginRoute, navigate, requestedPath, step]);
 
   const handleServerKeySubmit = useCallback(async (key: string) => {
+    const normalizedKey = normalizeAdminCredential(key);
+    if (!normalizedKey) {
+      setError('Invalid setup token');
+      return;
+    }
+
     setGateLoading(true);
     setError('');
     try {
-      const setup = await getTotpSetup(key);
+      const setup = await getTotpSetup(normalizedKey);
       if (setup.setupComplete) {
         setSetupToken('');
         setStep('totp-login');
       } else {
-        setSetupToken(key);
+        setSetupToken(normalizedKey);
         setStep('totp-setup');
       }
     } catch (err) {

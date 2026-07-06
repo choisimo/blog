@@ -70,6 +70,95 @@ const PERSONA_BY_INDEX: LensCardData['personaId'][] = [
   'analyst',
   'debater',
 ];
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeDisplayText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeCardKey(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .trim()
+    .replace(CONTROL_TEXT_PATTERN, '-')
+    .replace(/[|/\\\s]+/g, '-')
+    .replace(/[^A-Za-z0-9:_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 96);
+  return normalized || fallback;
+}
+
+function normalizeLensCursor(value: unknown): LensCursor {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Partial<NonNullable<LensCursor>>;
+  const seed = normalizeCardKey(raw.seed, '');
+  const page =
+    typeof raw.page === 'number' && Number.isFinite(raw.page)
+      ? Math.max(0, Math.trunc(raw.page))
+      : 0;
+  const seenKeys = Array.isArray(raw.seenKeys)
+    ? raw.seenKeys
+        .map((key, index) => normalizeCardKey(key, `seen-${index + 1}`))
+        .filter(Boolean)
+        .slice(0, 100)
+    : [];
+  return seed ? { seed, page, seenKeys } : null;
+}
+
+function normalizePersonaId(value: unknown, index: number): LensCardData['personaId'] {
+  return PERSONA_BY_INDEX.includes(value as LensCardData['personaId'])
+    ? (value as LensCardData['personaId'])
+    : PERSONA_BY_INDEX[index % PERSONA_BY_INDEX.length];
+}
+
+function normalizeLensCard(card: unknown, index: number): LensCardData | null {
+  if (!card || typeof card !== 'object') return null;
+  const raw = card as Partial<LensCardData>;
+  const fallbackKey = `lens-${index + 1}`;
+  const angleKey = normalizeCardKey(raw.angleKey ?? raw.id, fallbackKey);
+  const id = normalizeCardKey(raw.id ?? angleKey, angleKey);
+  const title = normalizeDisplayText(raw.title, `Lens ${index + 1}`);
+  const summary = normalizeDisplayText(raw.summary, title);
+  const bullets = Array.isArray(raw.bullets)
+    ? raw.bullets
+        .map((bullet) => normalizeDisplayText(bullet))
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags
+        .map((tag) => normalizeDisplayText(tag).toLowerCase())
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+
+  return {
+    ...raw,
+    id,
+    personaId: normalizePersonaId(raw.personaId, index),
+    angleKey,
+    title,
+    summary,
+    bullets,
+    detail: normalizeDisplayText(raw.detail, summary),
+    tags,
+  } as LensCardData;
+}
+
+function normalizeLensCards(cards: unknown): LensCardData[] {
+  if (!Array.isArray(cards)) return [];
+  return cards.flatMap((card, index) => {
+    const normalized = normalizeLensCard(card, index);
+    return normalized ? [normalized] : [];
+  });
+}
 
 function mapPrismFacetsToCards(
   paragraph: string,
@@ -114,11 +203,10 @@ function normalizePrismFacets(data: PrismTaskData | null): PrismFacet[] {
   if (!data || !Array.isArray(data.facets)) return [];
   return data.facets
     .map(facet => ({
-      title: typeof facet.title === 'string' ? facet.title.trim() : '',
+      title: normalizeDisplayText(facet.title),
       points: Array.isArray(facet.points)
         ? facet.points
-            .filter((point): point is string => typeof point === 'string')
-            .map(point => point.trim())
+            .map(point => normalizeDisplayText(point))
             .filter(Boolean)
         : [],
     }))
@@ -149,7 +237,7 @@ async function loadLensCardsViaTask({
     throw new Error('Prism task returned no facets');
   }
 
-  return mapPrismFacetsToCards(paragraph, postTitle, facets, 'feed');
+  return normalizeLensCards(mapPrismFacetsToCards(paragraph, postTitle, facets, 'feed'));
 }
 
 function isAbortError(error: unknown): boolean {
@@ -300,12 +388,12 @@ export function useLensDeck({
   }, [cards, currentIndex, exhausted, persistCache, source]);
 
   const applyFallbackCards = useCallback(() => {
-    const mapped = mapPrismFacetsToCards(
+    const mapped = normalizeLensCards(mapPrismFacetsToCards(
       paragraph,
       postTitle,
       FALLBACK_DATA.PRISM.FACETS,
       'fallback'
-    );
+    ));
     setCards(mapped);
     setCurrentIndex(0);
     setAppendWarming(false);
@@ -354,14 +442,15 @@ export function useLensDeck({
           return;
         }
 
-        const items = response.items ?? [];
+        const items = normalizeLensCards(response.items);
+        const nextCursor = normalizeLensCursor(response.nextCursor);
         const responseSource = resolveResponseSource(response);
         if (responseSource === 'warming') {
           setCards(items);
           setCurrentIndex(0);
           setExhausted(false);
           setSource('warming');
-          nextCursorRef.current = response.nextCursor;
+          nextCursorRef.current = nextCursor;
           return;
         }
 
@@ -372,9 +461,9 @@ export function useLensDeck({
         setCards(items);
         setCurrentIndex(0);
         setAppendWarming(false);
-        setExhausted(response.exhausted);
+        setExhausted(response.exhausted === true);
         setSource('feed');
-        nextCursorRef.current = response.nextCursor;
+        nextCursorRef.current = nextCursor;
         appendWarmingAttemptsRef.current = 0;
         notifyReady(items, 'feed');
       } catch (error) {
@@ -532,7 +621,8 @@ export function useLensDeck({
         return;
       }
 
-      const incoming = response.items ?? [];
+      const incoming = normalizeLensCards(response.items);
+      const nextCursor = normalizeLensCursor(response.nextCursor);
       let appendedCount = 0;
       setCards(prev => {
         const merged = mergeCards(prev, incoming);
@@ -559,11 +649,11 @@ export function useLensDeck({
         appendWarmingAttemptsRef.current = nextAttempt;
         setAppendWarming(true);
         setExhausted(false);
-        nextCursorRef.current = response.nextCursor ?? cursor;
+        nextCursorRef.current = nextCursor ?? cursor;
         persistCache({
           exhausted: false,
           source: 'feed',
-          nextCursor: response.nextCursor ?? cursor,
+          nextCursor: nextCursor ?? cursor,
         });
         return;
       }
@@ -571,12 +661,12 @@ export function useLensDeck({
       appendWarmingAttemptsRef.current = 0;
       setAppendWarming(false);
       const isExhausted =
-        response.exhausted ||
-        response.nextCursor == null ||
+        response.exhausted === true ||
+        nextCursor == null ||
         incoming.length === 0 ||
         appendedCount === 0;
       setExhausted(isExhausted);
-      nextCursorRef.current = isExhausted ? null : response.nextCursor;
+      nextCursorRef.current = isExhausted ? null : nextCursor;
     } catch (error) {
       if (isAbortError(error) || requestId !== requestIdRef.current) {
         return;

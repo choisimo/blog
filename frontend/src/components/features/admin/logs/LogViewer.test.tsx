@@ -28,6 +28,7 @@ vi.mock("@/services/admin/apiClient", () => ({
 import {
   connectLogStream,
   LogViewer,
+  parseLogStream,
   type LogEntry,
 } from "./LogViewer";
 
@@ -273,5 +274,39 @@ describe("LogViewer stream controller", () => {
     expect(state.getLogs().some((entry) => entry.message === "paused-log")).toBe(
       false,
     );
+  });
+
+  it("normalizes stream log entries before appending them to state", async () => {
+    const state = createLogState();
+
+    await parseLogStream(
+      createReader([
+        sseFrame({
+          timestamp: "2026-03-19T00:00:01.000Z",
+          level: "info",
+          service: " api\u0000worker\r\nInjected ",
+          message: " Started\u0000\r\nnow ",
+        }),
+        sseFrame({
+          timestamp: "2026-03-19T00:00:02.000Z",
+          level: "verbose",
+          service: "api",
+          message: "invalid level",
+        }),
+      ]),
+      {
+        pausedRef: { current: false },
+        setLogs: state.setLogs,
+      },
+    );
+
+    expect(state.getLogs()).toEqual([
+      {
+        timestamp: "2026-03-19T00:00:01.000Z",
+        level: "info",
+        service: "api worker Injected",
+        message: "Started now",
+      },
+    ]);
   });
 });

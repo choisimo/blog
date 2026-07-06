@@ -60,21 +60,29 @@ export const copyToClipboard = async (text: string): Promise<boolean> => {
 
 export const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  if (bytes === 0) return '0 B';
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes <= 0) return '0 B';
 
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   return `${Math.round((bytes / Math.pow(1024, i)) * 100) / 100} ${sizes[i]}`;
 };
 
 export const isValidEmail = (email: string): boolean => {
+  if (typeof email !== 'string') return false;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return emailRegex.test(email.trim());
 };
 
 export const isValidUrl = (url: string): boolean => {
+  if (typeof url !== 'string') return false;
+
+  const candidate = url.trim();
+  if (!candidate || /[\u0000-\u001F\u007F\s]/.test(candidate)) {
+    return false;
+  }
+
   try {
-    new URL(url);
-    return true;
+    const parsed = new URL(candidate);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
     return false;
   }
@@ -89,7 +97,11 @@ export const generateId = (): string => {
  * Removes images, links, code blocks, bold/italic, headers, etc.
  */
 export const stripMarkdown = (text: string, maxLength = 150): string => {
-  if (!text) return '';
+  if (typeof text !== 'string' || !text) return '';
+  const safeMaxLength =
+    typeof maxLength === 'number' && Number.isFinite(maxLength)
+      ? Math.max(0, Math.floor(maxLength))
+      : 150;
 
   let cleaned = text
     // Remove images: ![alt](url) or ![alt][ref]
@@ -129,10 +141,9 @@ export const stripMarkdown = (text: string, maxLength = 150): string => {
     .trim();
 
   // Truncate to maxLength with ellipsis
-  if (cleaned.length > maxLength) {
-    cleaned = `${cleaned.slice(0, maxLength).trim()}...`;
+  if (cleaned.length > safeMaxLength) {
+    cleaned = safeMaxLength > 0 ? `${cleaned.slice(0, safeMaxLength).trim()}...` : '';
   }
 
   return cleaned;
 };
-

@@ -34,6 +34,15 @@ type CommentCursor = {
 
 const COMMENT_STREAM_RETRY_BASE_MS = 1_000;
 const COMMENT_STREAM_RETRY_MAX_MS = 10_000;
+const COMMENT_ANSI_ESCAPE_PATTERN =
+  /\u001B(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001B\\))/g;
+const COMMENT_POST_ID_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+const COMMENT_POST_ID_UNSAFE_DECODED_SEGMENT_PATTERN = /[\u0000-\u001F\u007F/\\]/;
+const COMMENT_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const COMMENT_BODY_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const COMMENT_WHITESPACE_PATTERN = /\s+/g;
+const MAX_COMMENT_LINE_CHARS = 300;
+const MAX_COMMENT_CONTENT_CHARS = 10_000;
 
 type ArchivedModule = ArchivedPayload | { default: ArchivedPayload };
 
@@ -43,6 +52,71 @@ const archivedModules = import.meta.glob<ArchivedModule>(
 
 function getCommentsBaseUrl(): string {
   return getApiBaseUrl().replace(/\/$/, "");
+}
+
+export function normalizeCommentLine(
+  value: unknown,
+  maxLength = MAX_COMMENT_LINE_CHARS,
+): string | undefined {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return undefined;
+  }
+  const normalized = String(value)
+    .replace(COMMENT_ANSI_ESCAPE_PATTERN, "")
+    .replace(COMMENT_LINE_CONTROL_PATTERN, " ")
+    .replace(COMMENT_WHITESPACE_PATTERN, " ")
+    .trim()
+    .slice(0, maxLength)
+    .trim();
+  return normalized || undefined;
+}
+
+export function normalizeCommentBody(value: unknown): string | undefined {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return undefined;
+  }
+  const normalized = String(value)
+    .replace(COMMENT_ANSI_ESCAPE_PATTERN, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(COMMENT_BODY_CONTROL_PATTERN, " ")
+    .trim()
+    .slice(0, MAX_COMMENT_CONTENT_CHARS)
+    .trim();
+  return normalized || undefined;
+}
+
+export function normalizeCommentPostId(value: string): string | null {
+  const trimmed = value.trim();
+  if (
+    !trimmed ||
+    COMMENT_POST_ID_CONTROL_PATTERN.test(trimmed) ||
+    trimmed.includes("\\")
+  ) {
+    return null;
+  }
+
+  const segments = trimmed.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    return null;
+  }
+
+  for (const segment of segments) {
+    try {
+      const decoded = decodeURIComponent(segment);
+      if (
+        !decoded ||
+        decoded === "." ||
+        decoded === ".." ||
+        COMMENT_POST_ID_UNSAFE_DECODED_SEGMENT_PATTERN.test(decoded)
+      ) {
+        return null;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return trimmed;
 }
 
 function getCommentTimestamp(item: CommentItem): number {
@@ -55,10 +129,54 @@ function compareCommentItems(left: CommentItem, right: CommentItem): number {
   return String(left.id || "").localeCompare(String(right.id || ""));
 }
 
+function isCommentItem(item: unknown): item is CommentItem {
+  return (
+    Boolean(item) &&
+    typeof item === "object" &&
+    typeof (item as CommentItem).postId === "string" &&
+    typeof (item as CommentItem).author === "string" &&
+    typeof (item as CommentItem).content === "string"
+  );
+}
+
+export function normalizeCommentItem(item: unknown): CommentItem | null {
+  if (!isCommentItem(item)) return null;
+
+  const postId = normalizeCommentPostId(item.postId);
+  const author = normalizeCommentLine(item.author);
+  const content = normalizeCommentBody(item.content);
+
+  if (!postId || !author || !content) return null;
+
+  return {
+    postId,
+    author,
+    content,
+    ...(normalizeCommentLine(item.id) ? { id: normalizeCommentLine(item.id) } : {}),
+    ...(normalizeCommentLine(item.website, 1000)
+      ? { website: normalizeCommentLine(item.website, 1000) }
+      : {}),
+    ...(normalizeCommentLine(item.parentId)
+      ? { parentId: normalizeCommentLine(item.parentId) }
+      : {}),
+    ...(normalizeCommentLine(item.createdAt)
+      ? { createdAt: normalizeCommentLine(item.createdAt) }
+      : {}),
+  };
+}
+
+function getValidCommentItems(items: unknown): CommentItem[] {
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item) => {
+    const normalized = normalizeCommentItem(item);
+    return normalized ? [normalized] : [];
+  });
+}
+
 export function getCommentKey(item: CommentItem): string {
   return String(
     item.id ||
-      `${item.createdAt || ""}|${item.author || ""}|${(item.content || "").slice(0, 24)}`,
+      `${item.createdAt || ""}|${item.author || ""}|${item.content || ""}`,
   );
 }
 
@@ -70,10 +188,10 @@ export function mergeCommentItems(
   current: CommentItem[] | null | undefined,
   incoming: CommentItem[],
 ): CommentItem[] {
-  const merged = [...(current || [])];
+  const merged = getValidCommentItems(current || []);
   const seen = new Set(merged.map(getCommentKey));
 
-  for (const item of incoming) {
+  for (const item of getValidCommentItems(incoming)) {
     const key = getCommentKey(item);
     if (!seen.has(key)) {
       seen.add(key);
@@ -85,13 +203,9 @@ export function mergeCommentItems(
 }
 
 export function extractCommentList(data: CommentListResponse): CommentItem[] {
-  const items = Array.isArray(data?.comments)
-    ? data.comments
-    : Array.isArray(data?.data?.comments)
-      ? data.data.comments
-      : [];
+  const items = data?.comments ?? data?.data?.comments;
 
-  return sortComments(items);
+  return sortComments(getValidCommentItems(items));
 }
 
 export function parseCommentStreamMessage(
@@ -105,7 +219,8 @@ export function parseCommentStreamMessage(
       (parsed as CommentStreamAppend).type === "append" &&
       Array.isArray((parsed as CommentStreamAppend).items)
     ) {
-      return parsed as CommentStreamAppend;
+      const items = getValidCommentItems((parsed as CommentStreamAppend).items);
+      return items.length > 0 ? { type: "append", items } : null;
     }
   } catch {
     return null;
@@ -129,7 +244,7 @@ async function getArchivedComments(
   }
 
   return {
-    comments: sortComments((data as ArchivedPayload).comments),
+    comments: getValidCommentItems((data as ArchivedPayload).comments),
   };
 }
 
@@ -237,6 +352,7 @@ export function useCommentsFeed(postId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasArchived, setHasArchived] = useState(false);
+  const safePostId = normalizeCommentPostId(postId);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,6 +362,14 @@ export function useCommentsFeed(postId: string) {
     let latestComments: CommentItem[] | null = null;
     let currentCursor: CommentCursor = {};
     let requestedAt = new Date().toISOString();
+
+    if (!safePostId) {
+      setComments([]);
+      setHasArchived(false);
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
     setComments(null);
     setHasArchived(false);
@@ -273,7 +397,7 @@ export function useCommentsFeed(postId: string) {
       currentCursor = cursor;
 
       stream = openCommentStream(
-        postId,
+        safePostId,
         cursor,
         (items) => {
           clearReconnectTimer();
@@ -310,7 +434,7 @@ export function useCommentsFeed(postId: string) {
       requestedAt = new Date().toISOString();
 
       try {
-        const archived = await getArchivedComments(postId);
+        const archived = await getArchivedComments(safePostId);
 
         if (archived) {
           if (!cancelled) {
@@ -323,7 +447,7 @@ export function useCommentsFeed(postId: string) {
           return;
         }
 
-        const response = await fetch(buildCommentsListUrl(postId));
+        const response = await fetch(buildCommentsListUrl(safePostId));
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -339,7 +463,9 @@ export function useCommentsFeed(postId: string) {
         connectStream(currentCursor);
       } catch (cause) {
         const message =
-          cause instanceof Error ? cause.message : "Failed to load comments";
+          cause instanceof Error
+            ? normalizeCommentLine(cause.message, 500) || "Failed to load comments"
+            : "Failed to load comments";
         if (!cancelled) {
           setError(message);
         }
@@ -357,7 +483,7 @@ export function useCommentsFeed(postId: string) {
       clearReconnectTimer();
       closeStream();
     };
-  }, [postId]);
+  }, [safePostId]);
 
   return {
     comments,

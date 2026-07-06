@@ -16,10 +16,51 @@ interface PaginationProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   className?: string;
+  label?: string;
+  title?: string;
+  firstPageLabel?: string;
+  previousPageLabel?: string;
+  nextPageLabel?: string;
+  lastPageLabel?: string;
+  pageLabel?: string;
+  jumpLabel?: string;
+  jumpInputLabel?: string;
+  jumpPlaceholder?: string;
+  jumpSubmitLabel?: string;
   showFirstLast?: boolean;
   showPageInfo?: boolean;
   showQuickJump?: boolean;
   size?: 'sm' | 'md' | 'lg';
+}
+
+const PAGINATION_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
+const PAGINATION_ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+const PAGINATION_WHITESPACE_PATTERN = /\s+/g;
+const DEFAULT_PAGINATION_LABEL = 'Pagination';
+const DEFAULT_FIRST_PAGE_LABEL = 'First page';
+const DEFAULT_PREVIOUS_PAGE_LABEL = 'Previous page';
+const DEFAULT_NEXT_PAGE_LABEL = 'Next page';
+const DEFAULT_LAST_PAGE_LABEL = 'Last page';
+const DEFAULT_PAGE_LABEL = 'Page';
+const DEFAULT_JUMP_LABEL = 'Jump to page';
+const DEFAULT_JUMP_INPUT_LABEL = 'Page number';
+const DEFAULT_JUMP_PLACEHOLDER = 'Go to';
+const DEFAULT_JUMP_SUBMIT_LABEL = 'Go';
+
+function normalizePaginationText(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+
+  const normalized = String(value)
+    .replace(PAGINATION_ANSI_ESCAPE_PATTERN, ' ')
+    .replace(PAGINATION_CONTROL_PATTERN, ' ')
+    .replace(PAGINATION_WHITESPACE_PATTERN, ' ')
+    .trim();
+
+  return normalized || null;
+}
+
+function normalizePaginationLabel(value: unknown, fallback: string): string {
+  return normalizePaginationText(value) ?? fallback;
 }
 
 const Pagination = ({
@@ -27,6 +68,17 @@ const Pagination = ({
   totalPages,
   onPageChange,
   className = '',
+  label = DEFAULT_PAGINATION_LABEL,
+  title,
+  firstPageLabel = DEFAULT_FIRST_PAGE_LABEL,
+  previousPageLabel = DEFAULT_PREVIOUS_PAGE_LABEL,
+  nextPageLabel = DEFAULT_NEXT_PAGE_LABEL,
+  lastPageLabel = DEFAULT_LAST_PAGE_LABEL,
+  pageLabel = DEFAULT_PAGE_LABEL,
+  jumpLabel = DEFAULT_JUMP_LABEL,
+  jumpInputLabel = DEFAULT_JUMP_INPUT_LABEL,
+  jumpPlaceholder = DEFAULT_JUMP_PLACEHOLDER,
+  jumpSubmitLabel = DEFAULT_JUMP_SUBMIT_LABEL,
   showFirstLast = true,
   showPageInfo = true,
   showQuickJump = false,
@@ -35,15 +87,64 @@ const Pagination = ({
   const { isTerminal } = useTheme();
   const [jumpValue, setJumpValue] = useState('');
   const [isJumpOpen, setIsJumpOpen] = useState(false);
+  const safeTotalPages =
+    Number.isFinite(totalPages) && totalPages > 0 ? Math.floor(totalPages) : 0;
+  const safeCurrentPage =
+    safeTotalPages > 0 && Number.isFinite(currentPage)
+      ? Math.min(safeTotalPages, Math.max(1, Math.floor(currentPage)))
+      : 1;
+  const safeSize: NonNullable<PaginationProps['size']> =
+    size === 'sm' || size === 'md' || size === 'lg' ? size : 'md';
+  const safeLabel = normalizePaginationLabel(label, DEFAULT_PAGINATION_LABEL);
+  const safeTitle = normalizePaginationText(title) ?? undefined;
+  const safeFirstPageLabel = normalizePaginationLabel(
+    firstPageLabel,
+    DEFAULT_FIRST_PAGE_LABEL
+  );
+  const safePreviousPageLabel = normalizePaginationLabel(
+    previousPageLabel,
+    DEFAULT_PREVIOUS_PAGE_LABEL
+  );
+  const safeNextPageLabel = normalizePaginationLabel(
+    nextPageLabel,
+    DEFAULT_NEXT_PAGE_LABEL
+  );
+  const safeLastPageLabel = normalizePaginationLabel(
+    lastPageLabel,
+    DEFAULT_LAST_PAGE_LABEL
+  );
+  const safePageLabel = normalizePaginationLabel(pageLabel, DEFAULT_PAGE_LABEL);
+  const safeJumpLabel = normalizePaginationLabel(jumpLabel, DEFAULT_JUMP_LABEL);
+  const safeJumpInputLabel = normalizePaginationLabel(
+    jumpInputLabel,
+    DEFAULT_JUMP_INPUT_LABEL
+  );
+  const safeJumpPlaceholder = normalizePaginationLabel(
+    jumpPlaceholder,
+    DEFAULT_JUMP_PLACEHOLDER
+  );
+  const safeJumpSubmitLabel = normalizePaginationLabel(
+    jumpSubmitLabel,
+    DEFAULT_JUMP_SUBMIT_LABEL
+  );
+
+  const emitPageChange = useCallback(
+    (page: number) => {
+      if (!Number.isFinite(page) || safeTotalPages <= 0) return;
+      const nextPage = Math.min(safeTotalPages, Math.max(1, Math.floor(page)));
+      if (nextPage !== safeCurrentPage) {
+        onPageChange(nextPage);
+      }
+    },
+    [onPageChange, safeCurrentPage, safeTotalPages]
+  );
 
   const handleJump = useCallback(() => {
-    const page = parseInt(jumpValue, 10);
-    if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
-      onPageChange(page);
-    }
+    const page = Number.parseInt(jumpValue.replace(/[^\d]/g, ''), 10);
+    emitPageChange(page);
     setJumpValue('');
     setIsJumpOpen(false);
-  }, [jumpValue, totalPages, currentPage, onPageChange]);
+  }, [emitPageChange, jumpValue]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -57,7 +158,7 @@ const Pagination = ({
     [handleJump]
   );
 
-  if (totalPages <= 1) return null;
+  if (safeTotalPages <= 1) return null;
 
   const sizeClasses = {
     sm: { button: 'h-8 w-8 text-xs', icon: 'h-3.5 w-3.5', gap: 'gap-1' },
@@ -65,7 +166,7 @@ const Pagination = ({
     lg: { button: 'h-12 w-12 text-base', icon: 'h-5 w-5', gap: 'gap-2' },
   };
 
-  const styles = sizeClasses[size];
+  const styles = sizeClasses[safeSize];
 
   const getVisiblePages = () => {
     const delta = size === 'sm' ? 1 : 2;
@@ -73,14 +174,14 @@ const Pagination = ({
     const rangeWithDots: (number | string)[] = [];
 
     for (
-      let i = Math.max(2, currentPage - delta);
-      i <= Math.min(totalPages - 1, currentPage + delta);
+      let i = Math.max(2, safeCurrentPage - delta);
+      i <= Math.min(safeTotalPages - 1, safeCurrentPage + delta);
       i++
     ) {
       range.push(i);
     }
 
-    if (currentPage - delta > 2) {
+    if (safeCurrentPage - delta > 2) {
       rangeWithDots.push(1, 'ellipsis-start');
     } else {
       rangeWithDots.push(1);
@@ -88,10 +189,10 @@ const Pagination = ({
 
     rangeWithDots.push(...range);
 
-    if (currentPage + delta < totalPages - 1) {
-      rangeWithDots.push('ellipsis-end', totalPages);
-    } else if (totalPages > 1) {
-      rangeWithDots.push(totalPages);
+    if (safeCurrentPage + delta < safeTotalPages - 1) {
+      rangeWithDots.push('ellipsis-end', safeTotalPages);
+    } else if (safeTotalPages > 1) {
+      rangeWithDots.push(safeTotalPages);
     }
 
     return rangeWithDots;
@@ -148,8 +249,8 @@ const Pagination = ({
 <Button
   variant={isActive ? 'default' : 'ghost'}
   size='icon'
-  onClick={() => onPageChange(page)}
-  aria-label={`Page ${page}`}
+  onClick={() => emitPageChange(page)}
+  aria-label={`${safePageLabel} ${page}`}
   aria-current={isActive ? 'page' : undefined}
   className={cn(
     styles.button,
@@ -187,14 +288,14 @@ const Pagination = ({
           variant='ghost'
           size='icon'
           onClick={() => setIsJumpOpen(!isJumpOpen)}
-          aria-label='Jump to page'
+          aria-label={safeJumpLabel}
           className={cn(
             styles.button,
             'rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted',
             'transition-all duration-200'
           )}
         >
-          <MoreHorizontal className={styles.icon} />
+          <MoreHorizontal aria-hidden='true' className={styles.icon} />
         </Button>
         {isJumpOpen && (
           <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[var(--z-popover)]'>
@@ -202,11 +303,12 @@ const Pagination = ({
               <Input
                 type='number'
                 min={1}
-                max={totalPages}
+                max={safeTotalPages}
                 value={jumpValue}
                 onChange={(e) => setJumpValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder='Go to'
+                aria-label={safeJumpInputLabel}
+                placeholder={safeJumpPlaceholder}
                 className='w-16 h-8 text-xs rounded-lg text-center'
                 autoFocus
               />
@@ -215,7 +317,7 @@ const Pagination = ({
                 onClick={handleJump}
                 className='h-8 px-2 text-xs rounded-lg'
               >
-                Go
+                {safeJumpSubmitLabel}
               </Button>
             </div>
           </div>
@@ -227,29 +329,30 @@ const Pagination = ({
   return (
     <nav
       role='navigation'
-      aria-label='Pagination'
+      aria-label={safeLabel}
+      title={safeTitle}
       className={cn('flex flex-col items-center gap-3', className)}
     >
       <div className={cn('flex items-center', styles.gap)}>
         {showFirstLast && (
           <span className='hidden sm:inline-flex'>
             <NavButton
-              onClick={() => onPageChange(1)}
-              disabled={currentPage === 1}
-              label='First page'
+              onClick={() => emitPageChange(1)}
+              disabled={safeCurrentPage === 1}
+              label={safeFirstPageLabel}
               variant='ghost'
             >
-              <ChevronsLeft className={styles.icon} />
+              <ChevronsLeft aria-hidden='true' className={styles.icon} />
             </NavButton>
           </span>
         )}
 
         <NavButton
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          label='Previous page'
+          onClick={() => emitPageChange(safeCurrentPage - 1)}
+          disabled={safeCurrentPage === 1}
+          label={safePreviousPageLabel}
         >
-          <ChevronLeft className={styles.icon} />
+          <ChevronLeft aria-hidden='true' className={styles.icon} />
         </NavButton>
 
         <div className={cn('flex items-center', styles.gap, 'mx-1')}>
@@ -260,28 +363,28 @@ const Pagination = ({
                 position={page === 'ellipsis-start' ? 'start' : 'end'}
               />
             ) : (
-              <PageButton key={page} page={page} isActive={currentPage === page} />
+              <PageButton key={page} page={page} isActive={safeCurrentPage === page} />
             )
           )}
         </div>
 
         <NavButton
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          label='Next page'
+          onClick={() => emitPageChange(safeCurrentPage + 1)}
+          disabled={safeCurrentPage === safeTotalPages}
+          label={safeNextPageLabel}
         >
-          <ChevronRight className={styles.icon} />
+          <ChevronRight aria-hidden='true' className={styles.icon} />
         </NavButton>
 
         {showFirstLast && (
           <span className='hidden sm:inline-flex'>
             <NavButton
-              onClick={() => onPageChange(totalPages)}
-              disabled={currentPage === totalPages}
-              label='Last page'
+              onClick={() => emitPageChange(safeTotalPages)}
+              disabled={safeCurrentPage === safeTotalPages}
+              label={safeLastPageLabel}
               variant='ghost'
             >
-              <ChevronsRight className={styles.icon} />
+              <ChevronsRight aria-hidden='true' className={styles.icon} />
             </NavButton>
           </span>
         )}
@@ -289,8 +392,8 @@ const Pagination = ({
 
       {showPageInfo && (
         <p className='text-xs text-muted-foreground'>
-          Page <span className='font-medium text-foreground'>{currentPage}</span> of{' '}
-          <span className='font-medium text-foreground'>{totalPages}</span>
+          Page <span className='font-medium text-foreground'>{safeCurrentPage}</span> of{' '}
+          <span className='font-medium text-foreground'>{safeTotalPages}</span>
         </p>
       )}
     </nav>

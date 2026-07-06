@@ -59,8 +59,59 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function getImageUrl(item: GeneratedPostImageItem): string {
-  return item.variantWebp?.url || item.url;
+const GENERATED_IMAGE_URL_CONTROL_PATTERN = /[\u0000-\u001F\u007F\\]/;
+const GENERATED_IMAGE_URL_ENCODED_UNSAFE_PATTERN = /%(?:0[0-9a-f]|1[0-9a-f]|7f|2f|5c)/i;
+
+function normalizeGeneratedImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (
+    !trimmed ||
+    GENERATED_IMAGE_URL_CONTROL_PATTERN.test(trimmed) ||
+    GENERATED_IMAGE_URL_ENCODED_UNSAFE_PATTERN.test(trimmed)
+  ) {
+    return null;
+  }
+
+  try {
+    decodeURI(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      !parsed.username &&
+      !parsed.password
+    ) {
+      return parsed.href;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function normalizeImageAlt(value: unknown): string {
+  const normalized = typeof value === 'string'
+    ? value.replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+  return normalized || 'generated image';
+}
+
+function getImageUrl(item: GeneratedPostImageItem): string | null {
+  return normalizeGeneratedImageUrl(item.variantWebp?.url || item.url);
+}
+
+function buildGeneratedImageMarkdown(item: GeneratedPostImageItem, imageUrl: string): string {
+  return `![${normalizeImageAlt(item.alt)}](${imageUrl})`;
 }
 
 export default function AiImageGeneratorPanel({
@@ -88,7 +139,16 @@ export default function AiImageGeneratorPanel({
     () => buildSuggestedPrompt({ title, category, tags, content }),
     [title, category, tags, content],
   );
-  const canGenerate = /^[0-9]{4}$/.test(year) && Boolean(slug.trim()) && !isGenerating;
+  const generateBlockReason = useMemo(() => {
+    if (!/^[0-9]{4}$/.test(year)) {
+      return '연도(YYYY)를 입력하면 이미지 생성이 가능합니다.';
+    }
+    if (!slug.trim()) {
+      return '슬러그(slug)를 입력하면 이미지 저장 경로를 만들 수 있습니다.';
+    }
+    return null;
+  }, [slug, year]);
+  const canGenerate = !generateBlockReason && !isGenerating;
 
   const handleGenerate = async () => {
     try {
@@ -243,10 +303,23 @@ export default function AiImageGeneratorPanel({
               {errorMessage}
             </div>
           )}
+          {generateBlockReason && !isGenerating && (
+            <div
+              id="ai-image-generate-disabled-reason"
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300"
+            >
+              {generateBlockReason}
+            </div>
+          )}
           <Button
             type="button"
             onClick={() => void handleGenerate()}
             disabled={!canGenerate}
+            aria-describedby={
+              generateBlockReason && !isGenerating
+                ? 'ai-image-generate-disabled-reason'
+                : undefined
+            }
             className="min-h-11 w-full sm:w-auto"
           >
             {isGenerating ? (
@@ -274,6 +347,9 @@ export default function AiImageGeneratorPanel({
             )}
             {items.map((item) => {
               const imageUrl = getImageUrl(item);
+              if (!imageUrl) return null;
+              const imageAlt = normalizeImageAlt(item.alt);
+              const markdown = buildGeneratedImageMarkdown(item, imageUrl);
               const copied = copiedUrl === imageUrl;
               return (
                 <div key={item.path} className="space-y-2">
@@ -283,13 +359,13 @@ export default function AiImageGeneratorPanel({
                       'group relative block aspect-square w-full overflow-hidden rounded-md border bg-muted text-left',
                       'transition-transform duration-200 ease-spring hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
                     )}
-                    onClick={() => onInsertMarkdown(item.markdown)}
-                    aria-label={`본문에 ${item.alt} 삽입`}
-                    title={`본문에 ${item.alt} 삽입`}
+                    onClick={() => onInsertMarkdown(markdown)}
+                    aria-label={`본문에 ${imageAlt} 삽입`}
+                    title={`본문에 ${imageAlt} 삽입`}
                   >
                     <img
                       src={imageUrl}
-                      alt={item.alt}
+                      alt={imageAlt}
                       loading="lazy"
                       className="h-full w-full object-cover"
                     />
@@ -303,7 +379,7 @@ export default function AiImageGeneratorPanel({
                       size="sm"
                       variant="secondary"
                       className="min-h-9 px-2 text-xs"
-                      onClick={() => onInsertMarkdown(item.markdown)}
+                      onClick={() => onInsertMarkdown(markdown)}
                     >
                       삽입
                     </Button>

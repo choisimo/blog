@@ -12,9 +12,64 @@ import type {
 const GRAPH_CENTER = { x: 50, y: 50 };
 const POST_RING_RADIUS = 39;
 const CHILD_RING_RADIUS = 10;
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const HAS_CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 export function getPostKey(post: Pick<BlogPost, "year" | "slug">): InsightPostKey {
   return `${post.year}/${post.slug}`;
+}
+
+function normalizeDisplayText(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, " ")
+    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function tryDecodeSegment(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizePostYear(value: unknown): string | null {
+  const normalized =
+    typeof value === "number" && Number.isInteger(value)
+      ? String(value)
+      : typeof value === "string"
+        ? value.trim()
+        : "";
+  return /^\d{4}$/.test(normalized) ? normalized : null;
+}
+
+function normalizePostSlug(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const decoded = tryDecodeSegment(trimmed);
+  if (!decoded) return null;
+  const normalized = decoded.trim();
+  if (
+    !normalized ||
+    normalized === "." ||
+    normalized === ".." ||
+    HAS_CONTROL_TEXT_PATTERN.test(normalized) ||
+    /[/\\]/.test(normalized)
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
+function normalizePostKeyParts(yearValue: unknown, slugValue: unknown): InsightPostKey | null {
+  const year = normalizePostYear(yearValue);
+  const slug = normalizePostSlug(slugValue);
+  return year && slug ? `${year}/${slug}` : null;
 }
 
 export function postKeyFromPath(value: unknown): InsightPostKey | null {
@@ -23,8 +78,7 @@ export function postKeyFromPath(value: unknown): InsightPostKey | null {
   if (parts.length < 2) return null;
   const slug = parts[parts.length - 1];
   const year = parts.find((part) => /^\d{4}$/.test(part));
-  if (!year || !slug) return null;
-  return `${year}/${decodeURIComponent(slug)}`;
+  return normalizePostKeyParts(year, slug);
 }
 
 export function postKeyFromArticleUrl(value: unknown): InsightPostKey | null {
@@ -39,6 +93,7 @@ export function postKeyFromArticleUrl(value: unknown): InsightPostKey | null {
 function stableIdPart(value: string): string {
   return value
     .toLowerCase()
+    .replace(CONTROL_TEXT_PATTERN, "-")
     .replace(/[^a-z0-9가-힣_-]+/gi, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 56);
@@ -64,15 +119,13 @@ function coerceTimestamp(value: unknown): number | undefined {
 }
 
 function coerceLabel(value: unknown, fallback: string): string {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  return normalizeDisplayText(value, fallback);
 }
 
 function getEventPostKey(event: AiMemoEventRecord): InsightPostKey | null {
   const year = event.page?.post?.year;
   const slug = event.page?.post?.slug;
-  if (typeof year !== "string" && typeof year !== "number") return null;
-  if (typeof slug !== "string" || !slug.trim()) return null;
-  return `${String(year)}/${slug}`;
+  return normalizePostKeyParts(year, slug);
 }
 
 function positionOnRing(index: number, total: number, radius: number, center = GRAPH_CENTER) {
@@ -152,16 +205,16 @@ export function buildInsightGraph({
     if (!postNode) return;
 
     const node: InsightGraphNode = {
-      id: `chat:${chat.id}`,
+      id: `chat:${stableIdPart(String(chat.id)) || stableIdPart(postKey)}`,
       type: "chat",
-      label: chat.title || chat.articleTitle || "AI Chat",
+      label: coerceLabel(chat.title || chat.articleTitle, "AI Chat"),
       postKey,
       chat,
       ts: chat.updatedAt ? Date.parse(chat.updatedAt) : undefined,
       weight: 2,
       x: postNode.x,
       y: postNode.y,
-      detail: chat.summary,
+      detail: normalizeDisplayText(chat.summary) || undefined,
     };
     nodes.push(node);
     addEdge(edges, postNode.id, node.id, "chat", 1.4);
@@ -195,7 +248,7 @@ export function buildInsightGraph({
       weight: type === "thought" ? 1.6 : 1.4,
       x: postNode.x,
       y: postNode.y,
-      detail: typeof event.content === "string" ? event.content : undefined,
+      detail: normalizeDisplayText(event.content) || undefined,
     };
     nodes.push(node);
     addEdge(edges, postNode.id, node.id, type === "thought" ? "thought" : "memo", 1);
@@ -208,7 +261,8 @@ export function buildInsightGraph({
     if (eventType === "tag_click" && typeof event.context?.tag === "string" && postKey) {
       const postNode = postNodes.get(postKey);
       if (!postNode) return;
-      const tag = event.context.tag;
+      const tag = normalizeDisplayText(event.context.tag);
+      if (!tag) return;
       const nodeId = `tag:${stableIdPart(tag)}`;
       let node = nodes.find((candidate) => candidate.id === nodeId);
       if (!node) {
@@ -230,6 +284,7 @@ export function buildInsightGraph({
 
     if (eventType === "search" && typeof event.context?.queryHash === "string") {
       const nodeId = `search:${stableIdPart(event.context.queryHash)}`;
+      if (nodeId === "search:") return;
       if (nodes.some((node) => node.id === nodeId)) return;
       const position = positionOnRing(nodes.length, Math.max(nodes.length + 1, 12), 42);
       nodes.push({
@@ -237,7 +292,7 @@ export function buildInsightGraph({
         type: "search",
         label:
           typeof event.context.queryText === "string"
-            ? event.context.queryText
+            ? normalizeDisplayText(event.context.queryText, "Search")
             : "Search",
         ts: coerceTimestamp(event.ts),
         weight: 1,

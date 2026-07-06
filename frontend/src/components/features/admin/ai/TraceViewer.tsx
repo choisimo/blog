@@ -58,13 +58,72 @@ const SPAN_TYPE_COLORS: Record<string, string> = {
   client_receive: 'bg-violet-500',
 };
 
+const TRACE_STATUSES = ['pending', 'success', 'error', 'timeout'] as const;
+const STATUS_FILTERS = ['all', ...TRACE_STATUSES] as const;
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const DISPLAY_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
+
+type TraceStatus = (typeof TRACE_STATUSES)[number];
+type StatusFilter = (typeof STATUS_FILTERS)[number];
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeTraceStatus(value: unknown): TraceStatus {
+  return TRACE_STATUSES.includes(value as TraceStatus)
+    ? (value as TraceStatus)
+    : 'pending';
+}
+
+function normalizeStatusFilter(value: unknown): StatusFilter {
+  return STATUS_FILTERS.includes(value as StatusFilter)
+    ? (value as StatusFilter)
+    : 'all';
+}
+
+export function normalizeDisplayText(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const decoded = decodeSelector(value);
+  if (!decoded || DISPLAY_CONTROL_PATTERN.test(decoded)) return fallback;
+  const cleaned = value.replace(/[\u0000-\u001F\u007F]+/g, ' ').trim();
+  return cleaned || fallback;
+}
+
+function normalizeDisplayDate(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || /[\r\n]/.test(trimmed)) return null;
+  return trimmed;
+}
+
 function StatusBadge({ status }: { status: string }) {
-  const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+  const safeStatus = normalizeTraceStatus(status);
+  const config = STATUS_CONFIG[safeStatus] || STATUS_CONFIG.pending;
   const Icon = config.icon;
   return (
     <Badge variant="outline" className={cn('gap-1', config.bg, config.color)}>
       <Icon className="h-3 w-3" />
-      {status}
+      {safeStatus}
     </Badge>
   );
 }
@@ -76,7 +135,10 @@ function formatLatency(ms: number | null): string {
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+  const safeDate = normalizeDisplayDate(dateStr);
+  if (!safeDate) return '-';
+  const date = new Date(safeDate);
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleString('ko-KR', {
     month: '2-digit',
     day: '2-digit',
@@ -98,12 +160,13 @@ function TraceWaterfall({ spans }: { spans: AITraceSpan[] }) {
       {spans.map((span) => {
         const startOffset = ((span.start_time_ms - minTime) / totalDuration) * 100;
         const width = ((span.latency_ms || 1) / totalDuration) * 100;
-        const barColor = SPAN_TYPE_COLORS[span.span_type] || 'bg-gray-500';
+        const spanType = normalizeDisplayText(span.span_type, 'unknown');
+        const barColor = SPAN_TYPE_COLORS[spanType] || 'bg-gray-500';
 
         return (
           <div key={span.id} className="flex items-center gap-4">
-            <div className="w-32 text-xs text-muted-foreground truncate" title={span.span_type}>
-              {span.span_type}
+            <div className="w-32 text-xs text-muted-foreground truncate" title={spanType}>
+              {spanType}
             </div>
             <div className="flex-1 h-6 bg-muted rounded relative">
               <div
@@ -140,11 +203,12 @@ function TraceDetailDialog({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (traceId && open) {
+    const safeTraceId = normalizeAdminSelector(traceId);
+    if (safeTraceId && open) {
       setLoading(true);
       setError(null);
       setDetail(null);
-      fetchTraceDetail(traceId).then((result) => {
+      fetchTraceDetail(safeTraceId).then((result) => {
         if (result.ok && result.data) {
           setDetail(result.data);
         } else {
@@ -208,7 +272,7 @@ function TraceDetailDialog({
               <div>
                 <span className="text-muted-foreground">Path:</span>
                 <code className="ml-2 text-xs bg-muted px-2 py-1 rounded">
-                  {detail.summary.request_path || '-'}
+                  {normalizeDisplayText(detail.summary.request_path, '-')}
                 </code>
               </div>
               <div>
@@ -238,9 +302,14 @@ function TraceDetailDialog({
                   >
                     <div className="flex items-center gap-2">
                       <div
-                        className={cn('w-2 h-2 rounded-full', SPAN_TYPE_COLORS[span.span_type])}
+                        className={cn(
+                          'w-2 h-2 rounded-full',
+                          SPAN_TYPE_COLORS[normalizeDisplayText(span.span_type, 'unknown')],
+                        )}
                       />
-                      <span className="font-mono">{span.span_type}</span>
+                      <span className="font-mono">
+                        {normalizeDisplayText(span.span_type, 'unknown')}
+                      </span>
                       {span.request_method && (
                         <Badge variant="outline" className="text-[10px]">
                           {span.request_method}
@@ -268,13 +337,22 @@ function TraceStatsCard() {
   const { fetchTraceStats } = useTraces();
   const [stats, setStats] = useState<TraceStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     fetchTraceStats(24).then((result) => {
       if (result.ok && result.data) {
         setStats(result.data.stats);
+      } else {
+        setStats(null);
+        setError(result.error || 'Failed to load trace stats');
       }
+      setLoading(false);
+    }).catch((err) => {
+      setStats(null);
+      setError(err instanceof Error ? err.message : 'Failed to load trace stats');
       setLoading(false);
     });
   }, [fetchTraceStats]);
@@ -284,6 +362,17 @@ function TraceStatsCard() {
       <Card>
         <CardContent className="flex items-center justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex items-center gap-2 py-4 text-sm text-red-500">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </CardContent>
       </Card>
     );
@@ -328,30 +417,35 @@ export function TraceViewer() {
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(0);
   const limit = 20;
+  const safeSearchTerm = normalizeAdminSelector(searchTerm);
+  const searchTraceId = searchTerm.trim() ? safeSearchTerm ?? undefined : undefined;
+  const visibleTraces = traces.filter((trace) => normalizeAdminSelector(trace.trace_id));
 
   useEffect(() => {
     fetchTraces({
       limit,
       offset: page * limit,
       status: statusFilter !== 'all' ? statusFilter : undefined,
-      traceId: searchTerm || undefined,
+      traceId: searchTraceId,
     });
-  }, [fetchTraces, page, statusFilter, searchTerm]);
+  }, [fetchTraces, page, statusFilter, searchTraceId]);
 
   const handleRefresh = () => {
     fetchTraces({
       limit,
       offset: page * limit,
       status: statusFilter !== 'all' ? statusFilter : undefined,
-      traceId: searchTerm || undefined,
+      traceId: searchTraceId,
     });
   };
 
   const handleViewDetail = (traceId: string) => {
-    setSelectedTraceId(traceId);
+    const safeTraceId = normalizeAdminSelector(traceId);
+    if (!safeTraceId) return;
+    setSelectedTraceId(safeTraceId);
     setDialogOpen(true);
   };
 
@@ -381,9 +475,9 @@ export function TraceViewer() {
               <Input
                 placeholder="Search by trace ID..."
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(0);
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(0);
                 }}
                 className="pl-9"
               />
@@ -391,7 +485,7 @@ export function TraceViewer() {
             <Select
               value={statusFilter}
               onValueChange={(v) => {
-                setStatusFilter(v);
+                setStatusFilter(normalizeStatusFilter(v));
                 setPage(0);
               }}
             >
@@ -427,11 +521,15 @@ export function TraceViewer() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {traces.map((trace) => (
+              {visibleTraces.map((trace) => {
+                const traceId = normalizeAdminSelector(trace.trace_id);
+                const traceLabel = traceId || 'trace';
+
+                return (
                 <TableRow key={trace.trace_id}>
-                  <TableCell className="font-mono text-xs">{trace.trace_id}</TableCell>
+                  <TableCell className="font-mono text-xs">{traceLabel}</TableCell>
                   <TableCell className="max-w-[200px] truncate text-xs">
-                    {trace.request_path || '-'}
+                    {normalizeDisplayText(trace.request_path, '-')}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={trace.status} />
@@ -447,16 +545,17 @@ export function TraceViewer() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      aria-label={`View trace ${trace.trace_id}`}
-                      title={`View trace ${trace.trace_id}`}
-                      onClick={() => handleViewDetail(trace.trace_id)}
+                      aria-label={`View trace ${traceLabel}`}
+                      title={`View trace ${traceLabel}`}
+                      onClick={() => handleViewDetail(traceLabel)}
                     >
                       <ChevronRight className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
-              {!loading && !error && traces.length === 0 && (
+                );
+              })}
+              {!loading && !error && visibleTraces.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No traces found

@@ -65,6 +65,76 @@ import { useModels, useProviders } from './hooks';
 import type { AIModel, ModelFormData, AIProvider } from './types';
 
 const ALL_FILTER_VALUE = 'all';
+const ADMIN_SELECTOR_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function decodeSelector(value: string): string | null {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAdminSelector(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const decoded = decodeSelector(trimmed);
+  if (!decoded) return null;
+
+  if ([trimmed, decoded].some((candidate) => /[\r\n\\/]/.test(candidate))) {
+    return null;
+  }
+
+  return ADMIN_SELECTOR_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function normalizeFilterProvider(value: unknown): string {
+  if (value === ALL_FILTER_VALUE) return ALL_FILTER_VALUE;
+  return normalizeAdminSelector(value) ?? ALL_FILTER_VALUE;
+}
+
+export function normalizeModelOptionalPositiveInteger(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  const normalized = Math.floor(value);
+  return normalized > 0 ? normalized : undefined;
+}
+
+export function normalizeModelOptionalNonNegativeNumber(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return value >= 0 ? value : undefined;
+}
+
+export function normalizeModelPriority(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
+}
+
+export function normalizeModelFormData(data: ModelFormData): ModelFormData | null {
+  const providerId = normalizeAdminSelector(data.providerId);
+  if (!providerId) return null;
+  return {
+    ...data,
+    providerId,
+    contextWindow: normalizeModelOptionalPositiveInteger(data.contextWindow),
+    maxTokens: normalizeModelOptionalPositiveInteger(data.maxTokens),
+    inputCostPer1k: normalizeModelOptionalNonNegativeNumber(data.inputCostPer1k),
+    outputCostPer1k: normalizeModelOptionalNonNegativeNumber(data.outputCostPer1k),
+    priority: normalizeModelPriority(data.priority),
+  };
+}
+
+function isSafeProvider(provider: AIProvider): boolean {
+  return Boolean(normalizeAdminSelector(provider.id));
+}
+
+function isSafeModel(model: AIModel): boolean {
+  return Boolean(
+    normalizeAdminSelector(model.id) &&
+      normalizeAdminSelector(model.provider?.id),
+  );
+}
 
 interface ModelFormProps {
   model?: AIModel;
@@ -133,7 +203,10 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           <Label htmlFor="providerId">Provider *</Label>
           <Select
             value={formData.providerId}
-            onValueChange={(v) => setFormData({ ...formData, providerId: v })}
+            onValueChange={(v) => {
+              const providerId = normalizeAdminSelector(v);
+              if (providerId) setFormData({ ...formData, providerId });
+            }}
             disabled={!!model}
           >
             <SelectTrigger>
@@ -340,6 +413,10 @@ export function ModelsManager() {
     useState<string>(ALL_FILTER_VALUE);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AIModel | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingModel, setDeletingModel] = useState(false);
+  const visibleProviders = providers.filter(isSafeProvider);
+  const visibleModels = models.filter(isSafeModel);
 
   useEffect(() => {
     fetchModels();
@@ -347,7 +424,9 @@ export function ModelsManager() {
   }, [fetchModels, fetchProviders]);
 
   const handleCreate = async (data: ModelFormData) => {
-    const result = await createModel(data);
+    const safeData = normalizeModelFormData(data);
+    if (!safeData) return;
+    const result = await createModel(safeData);
     if (result.ok) {
       setShowForm(false);
     }
@@ -355,31 +434,50 @@ export function ModelsManager() {
 
   const handleUpdate = async (data: ModelFormData) => {
     if (!editingModel) return;
-    const result = await updateModel(editingModel.id, data);
+    const modelId = normalizeAdminSelector(editingModel.id);
+    const safeData = normalizeModelFormData(data);
+    if (!modelId || !safeData) return;
+    const result = await updateModel(modelId, safeData);
     if (result.ok) {
       setEditingModel(null);
     }
   };
 
   const handleToggleEnabled = async (model: AIModel) => {
-    await updateModel(model.id, { isEnabled: !model.isEnabled });
+    const modelId = normalizeAdminSelector(model.id);
+    if (!modelId) return;
+    await updateModel(modelId, { isEnabled: !model.isEnabled });
   };
 
   const handleDeleteClick = (model: AIModel) => {
+    if (!normalizeAdminSelector(model.id)) return;
     setDeleteTarget(model);
+    setDeleteError(null);
   };
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    await deleteModel(deleteTarget.id);
-    setDeleteTarget(null);
+    if (deletingModel) return;
+    const modelId = normalizeAdminSelector(deleteTarget.id);
+    if (!modelId) return;
+    setDeletingModel(true);
+    setDeleteError(null);
+    const result = await deleteModel(modelId);
+    if (result.ok) {
+      setDeleteTarget(null);
+    } else {
+      setDeleteError(result.error || 'Failed to delete model');
+    }
+    setDeletingModel(false);
   };
 
   const handleTest = async (model: AIModel) => {
-    setTestingModel(model.id);
+    const modelId = normalizeAdminSelector(model.id);
+    if (!modelId) return;
+    setTestingModel(modelId);
     setTestResult(null);
     setShowTestDialog(true);
-    const result = await testModel(model.id);
+    const result = await testModel(modelId);
     setTestingModel(null);
     if (result.ok && result.data) {
       setTestResult(result.data);
@@ -392,7 +490,7 @@ export function ModelsManager() {
     }
   };
 
-  const filteredModels = models.filter((m) => {
+  const filteredModels = visibleModels.filter((m) => {
     if (filterProvider !== ALL_FILTER_VALUE && m.provider.id !== filterProvider) {
       return false;
     }
@@ -432,13 +530,13 @@ export function ModelsManager() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-xs"
           />
-          <Select value={filterProvider} onValueChange={setFilterProvider}>
+          <Select value={filterProvider} onValueChange={(value) => setFilterProvider(normalizeFilterProvider(value))}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Providers" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_FILTER_VALUE}>All Providers</SelectItem>
-              {providers.map((p) => (
+              {visibleProviders.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.displayName}
                 </SelectItem>
@@ -583,7 +681,7 @@ export function ModelsManager() {
             <DialogDescription>Configure a new AI model for use in the system</DialogDescription>
           </DialogHeader>
           <ModelForm
-            providers={providers}
+            providers={visibleProviders}
             onSubmit={handleCreate}
             onCancel={() => setShowForm(false)}
           />
@@ -600,7 +698,7 @@ export function ModelsManager() {
           {editingModel && (
             <ModelForm
               model={editingModel}
-              providers={providers}
+              providers={visibleProviders}
               onSubmit={handleUpdate}
               onCancel={() => setEditingModel(null)}
             />
@@ -624,7 +722,15 @@ export function ModelsManager() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Model</AlertDialogTitle>
@@ -632,10 +738,22 @@ export function ModelsManager() {
               Are you sure you want to delete model "{deleteTarget?.displayName}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteConfirm();
+              }}
+              disabled={deletingModel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingModel ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

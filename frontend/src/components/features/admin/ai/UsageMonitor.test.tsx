@@ -90,4 +90,31 @@ describe('UsageMonitor', () => {
       expect(mockFetchUsage).toHaveBeenCalled();
     });
   });
+
+  it('normalizes polluted usage breakdown display metadata', async () => {
+    mockUseUsage.mockReturnValue(
+      createUseUsageValue({
+        usage: {
+          ...createUsageData(),
+          breakdown: [
+            {
+              date: '2026-01-01%0Aevil',
+              requests: 12,
+              tokens: 34,
+              cost: 0.1234,
+              avgLatencyMs: 456,
+            },
+          ],
+        },
+      }),
+    );
+
+    render(<UsageMonitor />);
+
+    expect(screen.getByText('Unknown date')).toBeInTheDocument();
+    expect(screen.queryByText('2026-01-01%0Aevil')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockFetchUsage).toHaveBeenCalled();
+    });
+  });
 });

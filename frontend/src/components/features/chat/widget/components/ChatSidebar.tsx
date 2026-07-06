@@ -8,12 +8,15 @@ import { getLiveRooms } from "@/services/chat";
 import type { LiveRoom } from "@/services/chat";
 import type { ChatSessionMeta, QuestionMode } from "../types";
 
+const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
+const SIDEBAR_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
 export function TypingDots() {
   return (
-    <div className="flex items-center gap-1 py-1">
-      <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.3s]" />
-      <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.15s]" />
-      <span className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" />
+    <div aria-label="입력 중" className="flex items-center gap-1 py-1" role="status">
+      <span aria-hidden="true" className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.3s]" />
+      <span aria-hidden="true" className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.15s]" />
+      <span aria-hidden="true" className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" />
     </div>
   );
 }
@@ -127,8 +130,31 @@ function SettingToggleCard({
   );
 }
 
+function stripUnsafeSidebarControls(value: string): string {
+  return value
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(SIDEBAR_CONTROL_TEXT_PATTERN, "");
+}
+
+function normalizeSidebarLabel(value: unknown, fallback = ""): string {
+  if (typeof value !== "string") return fallback;
+  const normalized = stripUnsafeSidebarControls(value)
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeSidebarId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized)) return null;
+  return normalized;
+}
+
 function formatRoomName(room: string): string {
-  return room.replace(/^room:/, "").replace(/:/g, "/");
+  return normalizeSidebarLabel(room, "room:lobby")
+    .replace(/^room:/, "")
+    .replace(/:/g, "/");
 }
 
 export type ChatSidebarProps = {
@@ -169,6 +195,15 @@ export function ChatSidebar({
   onToggleLivePinned,
 }: ChatSidebarProps) {
   const [rooms, setRooms] = useState<LiveRoom[]>([]);
+  const normalizedCurrentRoom = normalizeSidebarId(currentRoom);
+  const normalizedSelectedSessionIds = selectedSessionIds.flatMap((id) => {
+    const normalized = normalizeSidebarId(id);
+    return normalized ? [normalized] : [];
+  });
+  const visibleSessions = sessions.flatMap((session) => {
+    const id = normalizeSidebarId(session.id);
+    return id ? [{ ...session, id }] : [];
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -221,6 +256,7 @@ export function ChatSidebar({
 
   return (
     <div
+      aria-label="채팅 사이드바"
       className={cn(
         "flex h-full w-72 shrink-0 flex-col overflow-hidden border-r",
         isTerminal
@@ -232,11 +268,12 @@ export function ChatSidebar({
         {/* 대화 모드 */}
         <div className={sectionClass}>
           <div className={labelClass}>
-            <MessageCircle className="w-3 h-3" />
+            <MessageCircle aria-hidden="true" className="w-3 h-3" focusable="false" />
             대화
           </div>
           <button
             type="button"
+            aria-current={questionMode === "article" ? "page" : undefined}
             className={itemClass(questionMode === "article")}
             onClick={() => onModeChange("article")}
           >
@@ -244,6 +281,7 @@ export function ChatSidebar({
           </button>
           <button
             type="button"
+            aria-current={questionMode === "general" ? "page" : undefined}
             className={itemClass(questionMode === "general")}
             onClick={() => onModeChange("general")}
           >
@@ -257,7 +295,7 @@ export function ChatSidebar({
         <div className={sectionClass}>
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className={labelClass}>
-              <Radio className="w-3 h-3" />
+              <Radio aria-hidden="true" className="w-3 h-3" focusable="false" />
               실시간
             </div>
             <button
@@ -273,7 +311,7 @@ export function ChatSidebar({
               )}
               title={
                 currentLiveRoomLabel
-                  ? `현재 방 AI 토론 (${currentLiveRoomLabel})`
+                  ? `현재 방 AI 토론 (${normalizeSidebarLabel(currentLiveRoomLabel)})`
                   : "현재 방 AI 토론"
               }
             >
@@ -292,25 +330,30 @@ export function ChatSidebar({
               활성 방 없음
             </p>
           ) : (
-            rooms.map((r) => {
-              const name = formatRoomName(r.room);
-              const isCurrent = currentRoom === r.room;
+            rooms.flatMap((r) => {
+              const room = normalizeSidebarId(r.room);
+              if (!room) return [];
+              const name = formatRoomName(room);
+              const isCurrent = normalizedCurrentRoom === room;
               return (
                 <button
-                  key={r.room}
+                  key={room}
                   type="button"
+                  aria-current={isCurrent ? "page" : undefined}
+                  aria-label={`실시간 방 선택: ${name}, ${r.onlineCount}명 온라인`}
                   className={itemClass(isCurrent)}
-                  onClick={() => onRoomSelect?.(r.room)}
+                  onClick={() => onRoomSelect?.(room)}
                 >
-                  <MessageCircle className="w-3 h-3 shrink-0" />
+                  <MessageCircle aria-hidden="true" className="w-3 h-3 shrink-0" focusable="false" />
                   <span className="min-w-0 flex-1 truncate text-left">
                     {name}
                   </span>
                   <Badge
                     variant="secondary"
+                    aria-label={`${r.onlineCount}명 온라인`}
                     className="text-[10px] px-1 py-0 h-4 shrink-0"
                   >
-                    <Users className="w-2.5 h-2.5 mr-0.5" />
+                    <Users aria-hidden="true" className="w-2.5 h-2.5 mr-0.5" focusable="false" />
                     {r.onlineCount}
                   </Badge>
                 </button>
@@ -324,10 +367,10 @@ export function ChatSidebar({
         {/* 대화 기록 */}
         <div className={sectionClass}>
           <div className={labelClass}>
-            <History className="w-3 h-3" />
+            <History aria-hidden="true" className="w-3 h-3" focusable="false" />
             대화 기록
           </div>
-          {sessions.length === 0 ? (
+          {visibleSessions.length === 0 ? (
             <p
               className={cn(
                 "text-xs px-2 py-1",
@@ -339,8 +382,9 @@ export function ChatSidebar({
               저장된 대화 없음
             </p>
           ) : (
-            sessions.slice(0, 10).map((s) => {
-              const checked = selectedSessionIds.includes(s.id);
+            visibleSessions.slice(0, 10).map((s) => {
+              const checked = normalizedSelectedSessionIds.includes(s.id);
+              const title = normalizeSidebarLabel(s.title, "제목 없음");
               return (
                 <div
                   key={s.id}
@@ -348,12 +392,14 @@ export function ChatSidebar({
                 >
                   <input
                     type="checkbox"
+                    aria-label={`대화 선택: ${title}`}
                     className="mt-1 h-3 w-3 shrink-0 rounded"
                     checked={checked}
                     onChange={() => onToggleSession(s.id)}
                   />
                   <button
                     type="button"
+                    aria-label={`대화 불러오기: ${title}`}
                     className={cn(
                       "min-w-0 rounded px-2 py-1.5 text-left text-sm transition-colors",
                       isTerminal
@@ -361,17 +407,17 @@ export function ChatSidebar({
                         : "text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
                     )}
                     onClick={() => onLoadSession(s.id)}
-                    title={s.title ?? "제목 없음"}
+                    title={title}
                   >
                     <span className="block break-words text-xs leading-4 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
-                      {s.title ?? "제목 없음"}
+                      {title}
                     </span>
                   </button>
                 </div>
               );
             })
           )}
-          {selectedSessionIds.length > 0 && (
+          {normalizedSelectedSessionIds.length > 0 && (
             <Button
               type="button"
               size="sm"
@@ -379,7 +425,7 @@ export function ChatSidebar({
               className="w-full mt-2 h-7 text-xs"
               onClick={onAggregateSelected}
             >
-              통합 질문 ({selectedSessionIds.length})
+              통합 질문 ({normalizedSelectedSessionIds.length})
             </Button>
           )}
         </div>
@@ -395,7 +441,7 @@ export function ChatSidebar({
         )}
       >
         <div className={labelClass}>
-          <Settings className="w-3 h-3" />
+          <Settings aria-hidden="true" className="w-3 h-3" focusable="false" />
           설정
         </div>
         {isTerminal ? (

@@ -28,18 +28,54 @@ const THEME_LABELS: Record<Theme, string> = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const normalizeTheme = (value: unknown): Theme | undefined => {
+  return typeof value === "string" && VALID_THEMES.includes(value as Theme)
+    ? (value as Theme)
+    : undefined;
+};
+
+const getThemeStorage = (): Storage | undefined => {
+  try {
+    return typeof window === "undefined" ? undefined : window.localStorage;
+  } catch {
+    return undefined;
+  }
+};
+
+const readStoredTheme = (): Theme | undefined => {
+  const storage = getThemeStorage();
+  if (!storage) return undefined;
+
+  try {
+    return normalizeTheme(storage.getItem("theme"));
+  } catch {
+    return undefined;
+  }
+};
+
+const readMetaDefaultTheme = (): Theme | undefined => {
+  if (typeof document === "undefined") return undefined;
+
+  return normalizeTheme(
+    document.querySelector<HTMLMetaElement>('meta[name="theme-default"]')
+      ?.content,
+  );
+};
+
+const persistTheme = (theme: Theme) => {
+  const storage = getThemeStorage();
+  if (!storage) return;
+
+  try {
+    storage.setItem("theme", theme);
+  } catch {
+    // Ignore storage write failures so theme rendering remains available.
+  }
+};
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem("theme") as Theme;
-    if (stored && VALID_THEMES.includes(stored)) return stored;
-
-    const metaDefault = document.querySelector<HTMLMetaElement>(
-      'meta[name="theme-default"]',
-    )?.content as Theme | undefined;
-
-    return metaDefault && VALID_THEMES.includes(metaDefault)
-      ? metaDefault
-      : FALLBACK_THEME;
+    return readStoredTheme() ?? readMetaDefaultTheme() ?? FALLBACK_THEME;
   });
   const isInitialMount = useRef(true);
 
@@ -82,7 +118,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.add(theme);
     }
 
-    localStorage.setItem("theme", theme);
+    persistTheme(theme);
 
     // Mark initial mount as complete after first theme application
     if (isInitialMount.current) {

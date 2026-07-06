@@ -16,14 +16,30 @@ export function extractImageFromMessage(text: string): {
   imageUrl: string | null;
   cleanText: string;
 } {
-  const imageUrlMatch = text.match(
-    /\[첨부 이미지\]\nURL: (https?:\/\/[^\s\n]+)/,
-  );
+  if (typeof text !== "string") {
+    return { imageUrl: null, cleanText: "" };
+  }
+
+  const imageUrlMatch = text.match(/\[첨부 이미지\]\nURL:\s*([^\s\n]+)/);
   if (imageUrlMatch) {
-    const imageUrl = imageUrlMatch[1];
+    let imageUrl: string | null = null;
+    try {
+      const parsed = new URL(imageUrlMatch[1]);
+      imageUrl =
+        parsed.protocol === "http:" || parsed.protocol === "https:"
+          ? parsed.toString()
+          : null;
+    } catch {
+      imageUrl = null;
+    }
+
+    if (!imageUrl) {
+      return { imageUrl: null, cleanText: text };
+    }
+
     const cleanText = text
       .replace(
-        /\n\n\[첨부 이미지\]\nURL: [^\n]+\n파일명: [^\n]+\n크기: [^\n]+/,
+        /\n\n\[첨부 이미지\]\nURL:\s*[^\n]+\n파일명:\s*[^\n]*\n크기:\s*[^\n]*/,
         "",
       )
       .trim();

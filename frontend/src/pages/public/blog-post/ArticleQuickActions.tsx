@@ -10,6 +10,33 @@ type ArticleQuickActionsProps = {
   tocPostTitle?: string;
 };
 
+const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
+const HAS_CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
+const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
+
+function normalizeQuickActionText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value
+    .replace(CONTROL_TEXT_PATTERN, " ")
+    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .trim();
+  return normalized || undefined;
+}
+
+function normalizeQuickActionPostId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (
+    !normalized ||
+    HAS_CONTROL_TEXT_PATTERN.test(normalized) ||
+    normalized.includes("\\") ||
+    normalized.includes("//")
+  ) {
+    return null;
+  }
+  return normalized;
+}
+
 export function ArticleQuickActions({
   postId,
   isTerminal,
@@ -17,6 +44,8 @@ export function ArticleQuickActions({
   tocPostTitle,
 }: ArticleQuickActionsProps) {
   const [showTop, setShowTop] = useState(false);
+  const safePostId = normalizeQuickActionPostId(postId);
+  const safeTocPostTitle = normalizeQuickActionText(tocPostTitle);
 
   const updateVisibility = useCallback(() => {
     setShowTop(window.scrollY > 300);
@@ -37,7 +66,7 @@ export function ArticleQuickActions({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  if (!postId) return null;
+  if (!safePostId) return null;
 
   return (
     <div
@@ -73,7 +102,7 @@ export function ArticleQuickActions({
 
       <TocDrawer
         content={tocContent}
-        postTitle={tocPostTitle}
+        postTitle={safeTocPostTitle}
         triggerPlacement="inline"
         triggerClassName="pointer-events-auto"
       />

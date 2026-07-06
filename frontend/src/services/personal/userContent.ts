@@ -65,6 +65,157 @@ export type UpdatePersonaInput = Omit<PersonaPayload, 'id'>;
 export type CreateMemoInput = Omit<MemoPayload, 'id'>;
 export type UpdateMemoInput = Omit<MemoPayload, 'id'>;
 
+const MAX_USER_CONTENT_ID_LENGTH = 160;
+const MAX_USER_CONTENT_TEXT_LENGTH = 100000;
+const MAX_USER_CONTENT_SINGLE_LINE_LENGTH = 500;
+const MAX_USER_CONTENT_TAGS = 50;
+const USER_CONTENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
+
+function decodeSelector(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    return decodeURIComponent(trimmed).trim();
+  } catch {
+    return trimmed;
+  }
+}
+
+function normalizeUserContentId(value: unknown, label = 'id'): string {
+  if (typeof value !== 'string') throw new Error(`Invalid user content ${label}`);
+  const normalized = decodeSelector(value);
+  if (
+    !normalized ||
+    normalized.length > MAX_USER_CONTENT_ID_LENGTH ||
+    !USER_CONTENT_ID_PATTERN.test(normalized)
+  ) {
+    throw new Error(`Invalid user content ${label}`);
+  }
+  return normalized;
+}
+
+function normalizeOptionalSelector(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return normalizeUserContentId(value, label);
+}
+
+function normalizeSingleLineText(value: unknown, label: string, maxLength = MAX_USER_CONTENT_SINGLE_LINE_LENGTH): string {
+  if (typeof value !== 'string') throw new Error(`Invalid user content ${label}`);
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength || /[\r\n]/.test(normalized)) {
+    throw new Error(`Invalid user content ${label}`);
+  }
+  return normalized;
+}
+
+function normalizeOptionalSingleLineText(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return normalizeSingleLineText(value, label);
+}
+
+function normalizeMultilineText(value: unknown, label: string): string {
+  if (typeof value !== 'string') throw new Error(`Invalid user content ${label}`);
+  const normalized = value.replace(/\r\n?/g, '\n').trim();
+  if (!normalized || normalized.length > MAX_USER_CONTENT_TEXT_LENGTH) {
+    throw new Error(`Invalid user content ${label}`);
+  }
+  return normalized;
+}
+
+function normalizeOptionalMultilineText(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  return normalizeMultilineText(value, label);
+}
+
+function normalizeOptionalBlankMultilineText(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') throw new Error(`Invalid user content ${label}`);
+
+  const normalized = value.replace(/\r\n?/g, '\n').trim();
+  if (normalized.length > MAX_USER_CONTENT_TEXT_LENGTH) {
+    throw new Error(`Invalid user content ${label}`);
+  }
+
+  return normalized;
+}
+
+function normalizeTags(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw new Error('Invalid user content tags');
+
+  return value
+    .slice(0, MAX_USER_CONTENT_TAGS)
+    .map(tag => normalizeSingleLineText(tag, 'tag', 80));
+}
+
+function normalizeTimestamp(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  if (!normalized || /[\r\n]/.test(normalized)) return undefined;
+  return Number.isFinite(Date.parse(normalized)) ? normalized : undefined;
+}
+
+function normalizeEtag(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  return normalizeSingleLineText(value, 'etag', 256);
+}
+
+function normalizeCursor(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  return normalizeSingleLineText(value, 'cursor', 256);
+}
+
+function normalizeErrorMessage(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || normalized.length > 500 || /[\r\n]/.test(normalized)) return null;
+  return normalized;
+}
+
+function normalizePersonaPayload(input: PersonaPayload): PersonaPayload {
+  return {
+    ...(input.id ? { id: normalizeUserContentId(input.id) } : {}),
+    name: normalizeSingleLineText(input.name, 'persona name'),
+    prompt: normalizeMultilineText(input.prompt, 'persona prompt'),
+    tags: normalizeTags(input.tags),
+  };
+}
+
+export function normalizeMemoSource(value: unknown): MemoSource | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid user content memo source');
+  }
+
+  const source = value as MemoSource;
+  const conversationId = normalizeOptionalSelector(source.conversationId, 'conversation id');
+  const conversationTitle = normalizeOptionalSingleLineText(
+    source.conversationTitle,
+    'conversation title',
+  );
+  const messageId = normalizeOptionalSelector(source.messageId, 'message id');
+  const normalized: MemoSource = {
+    ...(conversationId ? { conversationId } : {}),
+    ...(conversationTitle ? { conversationTitle } : {}),
+    ...(messageId ? { messageId } : {}),
+  };
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeMemoPayload(input: MemoPayload): MemoPayload {
+  return {
+    ...(input.id ? { id: normalizeUserContentId(input.id) } : {}),
+    originalContent: normalizeMultilineText(input.originalContent, 'memo original content'),
+    ...(normalizeOptionalBlankMultilineText(input.userNote, 'memo note') !== undefined
+      ? { userNote: normalizeOptionalBlankMultilineText(input.userNote, 'memo note') }
+      : {}),
+    tags: normalizeTags(input.tags),
+    ...(normalizeMemoSource(input.source) ? { source: normalizeMemoSource(input.source) } : {}),
+  };
+}
+
 async function request<T>(
   path: string,
   init?: RequestInit,
@@ -87,7 +238,7 @@ async function request<T>(
     let message = `HTTP ${res.status}`;
     try {
       const data = await res.json();
-      message = (data?.error?.message as string) ?? message;
+      message = normalizeErrorMessage(data?.error?.message) ?? message;
     } catch {
       // ignore body parse errors
     }
@@ -100,53 +251,112 @@ async function request<T>(
 
   const body = (await res.json()) as ApiEnvelope<T>;
   if (!body?.ok) {
-    throw new Error(body?.error?.message || 'Request failed');
+    throw new Error(normalizeErrorMessage(body?.error?.message) || 'Request failed');
   }
   return body;
 }
 
-function normalisePersona(raw: Record<string, unknown>): Persona {
-  return {
-    id: String(raw.id),
-    name: String(raw.name ?? ''),
-    prompt: String(raw.prompt ?? ''),
-    tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).map(String) : [],
-    createdAt: String(raw.createdAt ?? new Date().toISOString()),
-    updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
-    etag: raw.etag ? String(raw.etag) : null,
-  };
+function normalisePersona(raw: Record<string, unknown>): Persona | null {
+  try {
+    const id = normalizeUserContentId(raw.id);
+    const name = normalizeSingleLineText(raw.name, 'persona name');
+    const prompt = normalizeMultilineText(raw.prompt, 'persona prompt');
+    const createdAt = normalizeTimestamp(raw.createdAt);
+    if (!createdAt) return null;
+
+    return {
+      id,
+      name,
+      prompt,
+      tags: normalizeTags(raw.tags),
+      createdAt,
+      updatedAt: normalizeTimestamp(raw.updatedAt),
+      etag: normalizeEtag(raw.etag),
+    };
+  } catch {
+    return null;
+  }
 }
 
-function normaliseMemo(raw: Record<string, unknown>): MemoNote {
-  return {
-    id: String(raw.id),
-    originalContent: String(raw.originalContent ?? ''),
-    userNote: String(raw.userNote ?? ''),
-    tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).map(String) : [],
-    createdAt: String(raw.createdAt ?? new Date().toISOString()),
-    updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
-    source: raw.source ? { ...(raw.source as MemoSource) } : undefined,
-    etag: raw.etag ? String(raw.etag) : null,
-  };
+function normaliseMemo(raw: Record<string, unknown>): MemoNote | null {
+  try {
+    const id = normalizeUserContentId(raw.id);
+    const originalContent = normalizeMultilineText(raw.originalContent, 'memo original content');
+    const userNote = normalizeOptionalBlankMultilineText(raw.userNote, 'memo note') ?? '';
+    const createdAt = normalizeTimestamp(raw.createdAt);
+    if (!createdAt) return null;
+
+    return {
+      id,
+      originalContent,
+      userNote,
+      tags: normalizeTags(raw.tags),
+      createdAt,
+      updatedAt: normalizeTimestamp(raw.updatedAt),
+      source: normalizeMemoSource(raw.source),
+      etag: normalizeEtag(raw.etag),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function requireNormalisedPersona(raw: Record<string, unknown>, fallback: string): Persona {
+  const persona = normalisePersona(raw);
+  if (!persona) throw new Error(fallback);
+  return persona;
+}
+
+function requireNormalisedMemo(raw: Record<string, unknown>, fallback: string): MemoNote {
+  const memo = normaliseMemo(raw);
+  if (!memo) throw new Error(fallback);
+  return memo;
+}
+
+function requireRecordWithId(
+  value: unknown,
+  fallback: string,
+): Record<string, unknown> {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    typeof (value as Record<string, unknown>).id !== 'string' ||
+    !(value as Record<string, unknown>).id
+  ) {
+    throw new Error(fallback);
+  }
+
+  try {
+    normalizeUserContentId((value as Record<string, unknown>).id);
+    return value as Record<string, unknown>;
+  } catch {
+    throw new Error(fallback);
+  }
 }
 
 export async function listPersonas(cursor?: string | null): Promise<ListResponse<Persona>> {
-  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  const cursorValue = normalizeCursor(cursor);
+  const params = cursorValue ? `?cursor=${encodeURIComponent(cursorValue)}` : '';
   const res = await request<Record<string, unknown>[]>(`/api/v1/personas${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
-  const personas = payload.map(normalisePersona);
-  const cursorValue = (res.cursor ?? null) as string | null;
+  const personas = payload
+    .map(normalisePersona)
+    .filter((persona): persona is Persona => Boolean(persona));
+  const nextCursor = normalizeCursor(res.cursor);
   const hasMore = Boolean(res.hasMore);
-  return { items: personas, cursor: cursorValue, hasMore };
+  return { items: personas, cursor: nextCursor, hasMore };
 }
 
 export async function createPersona(input: PersonaPayload): Promise<Persona> {
-  const body = JSON.stringify(input);
+  const body = JSON.stringify(normalizePersonaPayload(input));
   const res = await request<Record<string, unknown>>('/api/v1/personas', {
     method: 'POST',
     body,
   });
-  return normalisePersona(res.data ?? {});
+  return requireNormalisedPersona(
+    requireRecordWithId(res.data, 'Persona response missing id'),
+    'Persona response missing id',
+  );
 }
 
 export async function updatePersona(
@@ -155,40 +365,53 @@ export async function updatePersona(
   etag?: string | null
 ): Promise<Persona> {
   const headers: Record<string, string> = {};
-  if (etag) headers['If-Match'] = etag;
-  const res = await request<Record<string, unknown>>(`/api/v1/personas/${encodeURIComponent(id)}`, {
+  const personaId = normalizeUserContentId(id);
+  const normalizedEtag = normalizeEtag(etag);
+  if (normalizedEtag) headers['If-Match'] = normalizedEtag;
+  const res = await request<Record<string, unknown>>(`/api/v1/personas/${encodeURIComponent(personaId)}`, {
     method: 'PUT',
     headers,
-    body: JSON.stringify(input),
+    body: JSON.stringify(normalizePersonaPayload(input)),
   });
-  return normalisePersona(res.data ?? {});
+  return requireNormalisedPersona(
+    requireRecordWithId(res.data, 'Persona response missing id'),
+    'Persona response missing id',
+  );
 }
 
 export async function deletePersona(id: string, etag?: string | null): Promise<void> {
   const headers: Record<string, string> = {};
-  if (etag) headers['If-Match'] = etag;
-  await request(`/api/v1/personas/${encodeURIComponent(id)}`, {
+  const personaId = normalizeUserContentId(id);
+  const normalizedEtag = normalizeEtag(etag);
+  if (normalizedEtag) headers['If-Match'] = normalizedEtag;
+  await request(`/api/v1/personas/${encodeURIComponent(personaId)}`, {
     method: 'DELETE',
     headers,
   }, false);
 }
 
 export async function listMemos(cursor?: string | null): Promise<ListResponse<MemoNote>> {
-  const params = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  const cursorValue = normalizeCursor(cursor);
+  const params = cursorValue ? `?cursor=${encodeURIComponent(cursorValue)}` : '';
   const res = await request<Record<string, unknown>[]>(`/api/v1/user-content/memos${params}`);
   const payload = Array.isArray(res.data) ? res.data : [];
-  const memos = payload.map(normaliseMemo);
-  const cursorValue = (res.cursor ?? null) as string | null;
+  const memos = payload
+    .map(normaliseMemo)
+    .filter((memo): memo is MemoNote => Boolean(memo));
+  const nextCursor = normalizeCursor(res.cursor);
   const hasMore = Boolean(res.hasMore);
-  return { items: memos, cursor: cursorValue, hasMore };
+  return { items: memos, cursor: nextCursor, hasMore };
 }
 
 export async function createMemo(input: MemoPayload): Promise<MemoNote> {
   const res = await request<Record<string, unknown>>('/api/v1/user-content/memos', {
     method: 'POST',
-    body: JSON.stringify(input),
+    body: JSON.stringify(normalizeMemoPayload(input)),
   });
-  return normaliseMemo(res.data ?? {});
+  return requireNormalisedMemo(
+    requireRecordWithId(res.data, 'Memo response missing id'),
+    'Memo response missing id',
+  );
 }
 
 export async function updateMemo(
@@ -197,19 +420,26 @@ export async function updateMemo(
   etag?: string | null
 ): Promise<MemoNote> {
   const headers: Record<string, string> = {};
-  if (etag) headers['If-Match'] = etag;
-  const res = await request<Record<string, unknown>>(`/api/v1/user-content/memos/${encodeURIComponent(id)}`, {
+  const memoId = normalizeUserContentId(id);
+  const normalizedEtag = normalizeEtag(etag);
+  if (normalizedEtag) headers['If-Match'] = normalizedEtag;
+  const res = await request<Record<string, unknown>>(`/api/v1/user-content/memos/${encodeURIComponent(memoId)}`, {
     method: 'PUT',
     headers,
-    body: JSON.stringify(input),
+    body: JSON.stringify(normalizeMemoPayload(input)),
   });
-  return normaliseMemo(res.data ?? {});
+  return requireNormalisedMemo(
+    requireRecordWithId(res.data, 'Memo response missing id'),
+    'Memo response missing id',
+  );
 }
 
 export async function deleteMemo(id: string, etag?: string | null): Promise<void> {
   const headers: Record<string, string> = {};
-  if (etag) headers['If-Match'] = etag;
-  await request(`/api/v1/user-content/memos/${encodeURIComponent(id)}`, {
+  const memoId = normalizeUserContentId(id);
+  const normalizedEtag = normalizeEtag(etag);
+  if (normalizedEtag) headers['If-Match'] = normalizedEtag;
+  await request(`/api/v1/user-content/memos/${encodeURIComponent(memoId)}`, {
     method: 'DELETE',
     headers,
   }, false);

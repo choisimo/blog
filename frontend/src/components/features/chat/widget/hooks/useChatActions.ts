@@ -21,8 +21,82 @@ import {
   extractAndSaveMemories,
 } from '@/services/personal/memory';
 
+function stripUnsafeActionControls(value: string): string {
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+}
+
+function normalizeActionLine(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = stripUnsafeActionControls(value)
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized || fallback;
+}
+
+function normalizeActionBody(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return stripUnsafeActionControls(value).replace(/\r\n?/g, '\n').trim();
+}
+
+function normalizeActionId(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(/[\u0000-\u001F\u007F]+/g, '-')
+    .replace(/[|/\\\s]+/g, '-')
+    .replace(/[^A-Za-z0-9:_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 96);
+  return normalized || fallback;
+}
+
+function normalizeSelectedBlockSource(
+  value: SelectedBlockAttachment['source'],
+): SelectedBlockAttachment['source'] {
+  if (!value || typeof value !== 'object') return undefined;
+  const source = value as Record<string, unknown>;
+  const normalized = {
+    url: normalizeActionLine(source.url),
+    title: normalizeActionLine(source.title),
+    year: normalizeActionLine(source.year),
+    slug: normalizeActionLine(source.slug),
+  };
+  return Object.fromEntries(
+    Object.entries(normalized).filter(([, field]) => Boolean(field)),
+  ) as SelectedBlockAttachment['source'];
+}
+
+function normalizeSelectedBlockAttachmentForSend(
+  attachment: SelectedBlockAttachment,
+  index: number,
+): SelectedBlockAttachment | null {
+  const markdown = normalizeActionBody(attachment.markdown);
+  if (!markdown) return null;
+  const textPreview = normalizeActionLine(
+    attachment.textPreview,
+    markdown.slice(0, 360),
+  );
+  const sizeBytes =
+    typeof attachment.sizeBytes === 'number' && Number.isFinite(attachment.sizeBytes)
+      ? Math.max(0, Math.trunc(attachment.sizeBytes))
+      : markdown.length;
+
+  return {
+    ...attachment,
+    kind: 'selected-block',
+    id: normalizeActionId(attachment.id, `selected-block-${index + 1}`),
+    name: normalizeActionLine(attachment.name, 'selected-block.md'),
+    contentType: normalizeActionLine(attachment.contentType, 'text/markdown'),
+    markdown,
+    textPreview,
+    sizeBytes,
+    source: normalizeSelectedBlockSource(attachment.source),
+    truncated: Boolean(attachment.truncated),
+  };
+}
+
 function formatLiveRoomName(room: string): string {
-  return String(room || 'room:lobby')
+  return normalizeActionLine(room, 'room:lobby')
     .replace(/^room:/, '')
     .replace(/:/g, '/');
 }
@@ -102,8 +176,13 @@ export function useChatActions({
 }: UseChatActionsProps) {
   const redactSelectedBlockAttachments = useCallback(
     (attachments: SelectedBlockAttachment[]): ChatMessageAttachment[] =>
-      attachments.map(
-        ({
+      attachments.flatMap((attachment, index) => {
+        const normalized = normalizeSelectedBlockAttachmentForSend(
+          attachment,
+          index,
+        );
+        if (!normalized) return [];
+        const {
           id,
           name,
           contentType,
@@ -111,7 +190,8 @@ export function useChatActions({
           sizeBytes,
           source,
           truncated,
-        }) => ({
+        } = normalized;
+        return [{
           kind: 'selected-block',
           id,
           name,
@@ -120,8 +200,8 @@ export function useChatActions({
           sizeBytes,
           source,
           truncated,
-        })
-      ),
+        }];
+      }),
     []
   );
 
@@ -133,25 +213,36 @@ export function useChatActions({
       };
     }
 
+    const replyToName = normalizeActionLine(liveReplyTarget.name);
+
     return {
-      replyToName: liveReplyTarget.name,
+      replyToName: replyToName || undefined,
       mentionedAgents:
-        liveReplyTarget.senderType === 'agent'
-          ? [liveReplyTarget.name.toLowerCase()]
+        liveReplyTarget.senderType === 'agent' && replyToName
+          ? [replyToName.toLowerCase()]
           : undefined,
     };
   }, [liveReplyTarget]);
 
   const getOutgoingLiveLabel = useCallback(
-    (text: string) =>
-      liveReplyTarget
-        ? `[Live → ${liveReplyTarget.name}] ${text}`
-        : `[Live] ${text}`,
+    (text: string) => {
+      const liveText = normalizeActionBody(text);
+      const replyToName = normalizeActionLine(liveReplyTarget?.name);
+      return liveReplyTarget && replyToName
+        ? `[Live → ${replyToName}] ${liveText}`
+        : `[Live] ${liveText}`;
+    },
     [liveReplyTarget]
   );
 
   const sendDirectLiveMessage = useCallback(
     async (text: string) => {
+      const liveText = normalizeActionBody(text);
+      if (!liveText) {
+        setInput('');
+        return;
+      }
+
       const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       const liveMeta = buildLiveReplyMeta();
 
@@ -159,12 +250,12 @@ export function useChatActions({
       push({
         id,
         role: 'user',
-        text: getOutgoingLiveLabel(text),
+        text: getOutgoingLiveLabel(liveText),
       });
 
       try {
         await sendVisitorMessage({
-          text,
+          text: liveText,
           replyToName: liveMeta.replyToName,
           mentionedAgents: liveMeta.mentionedAgents,
         });
@@ -385,7 +476,25 @@ export function useChatActions({
         uploaded = await uploadChatImage(imageToUpload, controller.signal);
       }
 
-      const selectedBlocksToSend = [...selectedBlockAttachments];
+      const selectedBlocksToSend = selectedBlockAttachments.flatMap(
+        (attachment, index) => {
+          const normalized = normalizeSelectedBlockAttachmentForSend(
+            attachment,
+            index,
+          );
+          return normalized ? [normalized] : [];
+        },
+      );
+      if (
+        selectedBlockAttachments.length > 0 &&
+        selectedBlocksToSend.length === 0 &&
+        !trimmed &&
+        !imageToUpload
+      ) {
+        setInput('');
+        setSelectedBlockAttachments([]);
+        return;
+      }
       const baseText =
         trimmed ||
         (imageToUpload
