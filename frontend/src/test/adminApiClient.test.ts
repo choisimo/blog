@@ -235,6 +235,20 @@ describe('admin API client auth retry', () => {
     expect(result).toEqual({ ok: false, error: 'Request failed (429)' });
   });
 
+  it('falls back when a local network Error message is unsafe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new Error(`Network failed\u0000${'x'.repeat(10_000)}`)),
+    );
+
+    const result = await adminApiFetch('/api/admin/example');
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Network error',
+    });
+  });
+
   it('does not force refresh after a 401 when no access token was available', async () => {
     mockState.getValidAccessToken.mockResolvedValue(null);
     const fetchMock = vi.fn().mockResolvedValue(

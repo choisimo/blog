@@ -194,7 +194,7 @@ export async function adminApiFetch<T>(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : 'Network error',
+      error: err instanceof Error ? normalizeAdminErrorMessage(err.message) ?? 'Network error' : 'Network error',
     };
   }
 }

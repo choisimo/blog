@@ -11,13 +11,21 @@ function normalizeCallbackCredential(value: string | null): string | null {
   return normalized;
 }
 
-function normalizeCallbackError(value: string | null): string {
-  return (
-    value
-      ?.replace(/[\u0000-\u001F\u007F]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim() || 'unknown error'
-  );
+const MAX_CALLBACK_ERROR_LENGTH = 240;
+const CALLBACK_ERROR_ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\)|[@-Z\\-_])/g;
+const CALLBACK_UNTERMINATED_OSC_PATTERN = /\u001b\][^\u0007]*$/g;
+const CALLBACK_TEXT_CONTROL_PATTERN = /[\u0000-\u001F\u007F]+/g;
+
+function normalizeCallbackError(value: unknown, fallback = 'unknown error'): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value
+    .replace(CALLBACK_ERROR_ANSI_ESCAPE_PATTERN, ' ')
+    .replace(CALLBACK_UNTERMINATED_OSC_PATTERN, ' ')
+    .replace(CALLBACK_TEXT_CONTROL_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized ? normalized.slice(0, MAX_CALLBACK_ERROR_LENGTH) : fallback;
 }
 
 export default function AdminAuthCallback() {
@@ -65,8 +73,10 @@ export default function AdminAuthCallback() {
           navigate(consumeAdminReturnPath(), { replace: true });
         } catch (exchangeError) {
           if (!cancelled) {
-            const message =
-              exchangeError instanceof Error ? exchangeError.message : 'OAuth handoff failed';
+            const message = normalizeCallbackError(
+              exchangeError instanceof Error ? exchangeError.message : null,
+              'OAuth handoff failed',
+            );
             setError(`Authentication failed: ${message}`);
           }
         }

@@ -41,6 +41,9 @@ const LEVEL_BADGE: Record<string, string> = {
 const LOG_LEVELS = new Set<LogEntry["level"]>(["error", "warn", "info", "debug"]);
 const LOG_STREAM_RECONNECT_MS = 3000;
 const LOG_BUFFER_CAP = 1000;
+const LOG_ANSI_ESCAPE_PATTERN =
+  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\)|[@-Z\\-_])/g;
+const LOG_TEXT_CONTROL_PATTERN = /[\u0000-\u001F\u007F]+/g;
 
 type LogStateSetter = Dispatch<SetStateAction<LogEntry[]>>;
 type BooleanRef = { current: boolean };
@@ -53,7 +56,8 @@ function appendLogEntry(setLogs: LogStateSetter, entry: LogEntry) {
 function normalizeLogText(value: unknown, maxLength: number): string | null {
   if (typeof value !== "string") return null;
   const normalized = value
-    .replace(/[\u0000-\u001F\u007F]+/g, " ")
+    .replace(LOG_ANSI_ESCAPE_PATTERN, " ")
+    .replace(LOG_TEXT_CONTROL_PATTERN, " ")
     .replace(/\s+/g, " ")
     .trim();
   return normalized && normalized.length <= maxLength ? normalized : null;
@@ -211,7 +215,8 @@ export async function connectLogStream({
     }
     setConnected(false);
     setConnectionError?.(
-      err instanceof Error ? err.message : "Failed to connect to log stream",
+      normalizeLogText(err instanceof Error ? err.message : null, 500) ??
+        "Failed to connect to log stream",
     );
     reconnect();
   }
