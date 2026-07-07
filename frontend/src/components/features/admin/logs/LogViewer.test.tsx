@@ -163,6 +163,33 @@ describe("LogViewer stream controller", () => {
     expect(setConnectionError).toHaveBeenCalledWith(null);
   });
 
+  it("normalizes failed stream connection errors before exposing them", async () => {
+    mockGetValidAccessToken.mockResolvedValue("test-token");
+    mockFetch.mockRejectedValue(
+      new Error("\u001b]0;ignored title\u0007Fetch\u001b[31m failed\u001b[0m"),
+    );
+
+    const state = createLogState();
+    const setConnected = vi.fn();
+    const setConnectionError = vi.fn();
+    const reconnect = vi.fn();
+
+    await connectLogStream({
+      abortRef: { current: null },
+      fetchStream: mockFetch,
+      getValidAccessToken: mockGetValidAccessToken,
+      pausedRef: { current: false },
+      reconnect,
+      setConnected,
+      setConnectionError,
+      setLogs: state.setLogs,
+    });
+
+    expect(setConnected).toHaveBeenCalledWith(false);
+    expect(setConnectionError).toHaveBeenCalledWith("Fetch failed");
+    expect(reconnect).toHaveBeenCalled();
+  });
+
   it("retries on non-ok responses without entering the stream parser", async () => {
     vi.useFakeTimers();
     mockGetValidAccessToken.mockResolvedValue("retry-token");
@@ -284,8 +311,8 @@ describe("LogViewer stream controller", () => {
         sseFrame({
           timestamp: "2026-03-19T00:00:01.000Z",
           level: "info",
-          service: " api\u0000worker\r\nInjected ",
-          message: " Started\u0000\r\nnow ",
+          service: " \u001b]2;ignored title\u0007api\u0000worker\r\nInjected\u001b[0m ",
+          message: " \u001b]0;ignored title\u0007Started\u001b[31m\u0000\r\nnow\u001b[0m ",
         }),
         sseFrame({
           timestamp: "2026-03-19T00:00:02.000Z",
