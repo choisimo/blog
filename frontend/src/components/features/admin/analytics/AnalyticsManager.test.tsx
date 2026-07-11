@@ -560,4 +560,59 @@ describe("getAllPostStats", () => {
     );
     expect(screen.queryByText(/^Refresh failed\.$/i)).not.toBeInTheDocument();
   });
+
+  it("falls back for unsafe stats refresh backend error messages", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "Aggregation queue unavailable%1B%5B31mretry",
+          },
+        }),
+        {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<StatsRefreshSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Run Refresh/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Refresh failed.")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText(/Aggregation queue unavailable/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("normalizes unsafe backend success messages before rendering refresh results", async () => {
+    mockAdminFetchRaw.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            message: "Stats refreshed successfully%1B%5B31mretry",
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    render(<StatsRefreshSection />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Run Refresh/i }));
+
+    expect(
+      await screen.findByText("Stats refreshed successfully."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Stats refreshed successfully%1B%5B31mretry"),
+    ).not.toBeInTheDocument();
+  });
 });

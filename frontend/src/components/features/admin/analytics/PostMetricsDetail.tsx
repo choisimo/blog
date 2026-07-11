@@ -142,8 +142,17 @@ function parseBrowserName(ua: string | null): string {
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message) return error.message;
-  return fallback;
+  if (!(error instanceof Error)) return fallback;
+  const normalized = error.message.trim();
+  if (
+    !normalized ||
+    normalized.length > 500 ||
+    /[\u0000-\u001F\u007F]/.test(normalized) ||
+    /%(?:0[0-9a-f]|1[0-9a-f]|7f)/i.test(normalized)
+  ) {
+    return fallback;
+  }
+  return normalized;
 }
 
 function HourlyChart({ data }: { data: HourlyPoint[] }) {

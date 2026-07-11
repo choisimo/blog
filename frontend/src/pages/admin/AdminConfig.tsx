@@ -30,13 +30,30 @@ import {
   rememberAdminReturnPath,
 } from '@/services/session/adminReturnTo';
 
-type AuthStep = 'initial-gate' | 'totp-login' | 'totp-setup' | 'authenticated';
+type AuthStep =
+  | 'initial-gate'
+  | 'totp-login'
+  | 'totp-setup'
+  | 'session-validation-error'
+  | 'authenticated';
+
+const SESSION_VALIDATION_ERROR_MESSAGE =
+  'Unable to verify the current admin session. Your saved session was left unchanged.';
 
 function normalizeAdminCredential(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.trim();
   if (!normalized || /[\u0000-\u001F\u007F]/.test(normalized)) return null;
   return normalized;
+}
+
+function isDefinitiveAuthRejection(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('status' in error)) {
+    return false;
+  }
+
+  const status = (error as { status?: unknown }).status;
+  return status === 401 || status === 403;
 }
 
 function ErrorMsg({ message }: { message: string }) {
@@ -99,6 +116,55 @@ function AuthCard({ children }: { children: React.ReactNode }) {
       />
       <div className='px-6 py-5'>{children}</div>
     </div>
+  );
+}
+
+interface SessionValidationErrorScreenProps {
+  loading: boolean;
+  onRetry: () => void;
+}
+
+function SessionValidationErrorScreen({
+  loading,
+  onRetry,
+}: SessionValidationErrorScreenProps) {
+  return (
+    <AuthShell>
+      <AuthCard>
+        <div className='mb-4'>
+          <div className='flex items-center gap-2 mb-1.5'>
+            <div className='flex h-6 w-6 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800'>
+              <ShieldCheck className='h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400' />
+            </div>
+            <h1 className='text-sm font-semibold text-zinc-900 dark:text-zinc-100'>
+              Session validation unavailable
+            </h1>
+          </div>
+          <p className='text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed pl-8'>
+            Authentication could not be confirmed. Retry without discarding the
+            saved session.
+          </p>
+        </div>
+
+        <Button
+          type='button'
+          className='admin-btn-primary w-full h-9 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all duration-150'
+          disabled={loading}
+          onClick={onRetry}
+        >
+          {loading ? (
+            <span className='flex items-center gap-1.5'>
+              <RefreshCw className='h-3 w-3 animate-spin' />
+              Checking session…
+            </span>
+          ) : (
+            'Retry session validation'
+          )}
+        </Button>
+
+        <ErrorMsg message={SESSION_VALIDATION_ERROR_MESSAGE} />
+      </AuthCard>
+    </AuthShell>
   );
 }
 
@@ -513,7 +579,10 @@ export default function AdminConfig() {
   const [error, setError] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
   const [gateLoading, setGateLoading] = useState(false);
+  const [sessionValidationLoading, setSessionValidationLoading] =
+    useState(false);
   const [setupToken, setSetupToken] = useState('');
+  const sessionValidationInFlightRef = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
   const isLoginRoute = location.pathname === '/admin/login';
@@ -537,42 +606,61 @@ export default function AdminConfig() {
     }
   }, [isLoginRoute, requestedPath]);
 
-  useEffect(() => {
-    migrateFromLegacyStorage();
-
-    const checkAuth = async () => {
-      if (isAuthenticated()) {
-        const token = await getValidAccessToken();
-        const normalizedToken = normalizeAdminCredential(token);
-        if (normalizedToken) {
-          try {
-            await getMe(normalizedToken);
-            setStep('authenticated');
-            scheduleTokenRefresh();
-            setPageLoading(false);
-            return;
-          } catch {
-            await logout();
-          }
-        }
+  const checkAuth = useCallback(
+    async (manualRetry = false) => {
+      if (sessionValidationInFlightRef.current) return;
+      sessionValidationInFlightRef.current = true;
+      if (manualRetry) {
+        setSessionValidationLoading(true);
       }
 
       try {
-        await resolveEntryStep();
-      } catch (err) {
-        setStep('initial-gate');
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to load admin auth status'
-        );
+        if (isAuthenticated()) {
+          const token = await getValidAccessToken();
+          const normalizedToken = normalizeAdminCredential(token);
+          if (normalizedToken) {
+            try {
+              await getMe(normalizedToken);
+              setStep('authenticated');
+              scheduleTokenRefresh();
+              setPageLoading(false);
+              return;
+            } catch (err) {
+              if (!isDefinitiveAuthRejection(err)) {
+                setStep('session-validation-error');
+                setPageLoading(false);
+                return;
+              }
+              await logout();
+            }
+          }
+        }
+
+        try {
+          await resolveEntryStep();
+        } catch (err) {
+          setStep('initial-gate');
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load admin auth status'
+          );
+        } finally {
+          setPageLoading(false);
+        }
       } finally {
-        setPageLoading(false);
+        setSessionValidationLoading(false);
+        sessionValidationInFlightRef.current = false;
       }
-    };
+    },
+    [getValidAccessToken, isAuthenticated, logout, resolveEntryStep]
+  );
+
+  useEffect(() => {
+    migrateFromLegacyStorage();
 
     void checkAuth();
-  }, [getValidAccessToken, isAuthenticated, logout, resolveEntryStep]);
+  }, [checkAuth]);
 
   useEffect(() => {
     if (step !== 'authenticated' || !isLoginRoute) {
@@ -610,8 +698,15 @@ export default function AdminConfig() {
   const handleTotpSuccess = useCallback(
     (response: TotpVerifyResponse) => {
       const userInfo = { ...response.user };
-      setTokens(response.accessToken, response.refreshToken, userInfo);
-      scheduleTokenRefresh();
+      const accepted = setTokens(
+        response.accessToken,
+        response.refreshToken,
+        userInfo
+      );
+      if (!accepted) {
+        setError('Invalid authentication response');
+        return;
+      }
       setError('');
       setStep('authenticated');
     },
@@ -627,6 +722,10 @@ export default function AdminConfig() {
     setError(msg);
   }, []);
 
+  const handleSessionValidationRetry = useCallback(() => {
+    void checkAuth(true);
+  }, [checkAuth]);
+
   const handleLogout = useCallback(async () => {
     await logout();
     try {
@@ -641,6 +740,15 @@ export default function AdminConfig() {
   }, [logout, resolveEntryStep]);
 
   if (pageLoading) return <PageLoadingState />;
+
+  if (step === 'session-validation-error') {
+    return (
+      <SessionValidationErrorScreen
+        loading={sessionValidationLoading}
+        onRetry={handleSessionValidationRetry}
+      />
+    );
+  }
 
   if (step === 'initial-gate') {
     return (

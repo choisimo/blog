@@ -81,6 +81,48 @@ describe('adminImages service', () => {
     );
   });
 
+  it('normalizes a rejected generation request without changing its request contract', async () => {
+    adminFetchRawMock.mockRejectedValue(new Error(' Gateway\u0000\r\n unavailable '));
+
+    await expect(
+      generatePostImages({ year: '2026', slug: 'demo-post', prompt: 'Draw cover' }),
+    ).rejects.toMatchObject({ message: 'Gateway unavailable' });
+
+    expect(adminFetchRawMock).toHaveBeenCalledTimes(1);
+    expect(adminFetchRawMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/v1/admin/ai-images/generate',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': expect.stringMatching(/^admin-ai-image:.+$/),
+        },
+        body: JSON.stringify({
+          year: '2026',
+          slug: 'demo-post',
+          prompt: 'Draw cover',
+          n: 1,
+          size: '1024x1024',
+          quality: 'medium',
+          outputFormat: 'png',
+        }),
+      },
+    );
+  });
+
+  it.each([
+    ['a non-Error object', { message: 'network unavailable' }],
+    ['an empty Error message', new Error('')],
+    ['a control-only Error message', new Error('\u0000\n\t')],
+    ['an oversized Error message', new Error('x'.repeat(1001))],
+  ])('uses the generation fallback for %s', async (_label, rejection) => {
+    adminFetchRawMock.mockRejectedValue(rejection);
+
+    await expect(
+      generatePostImages({ year: '2026', slug: 'demo-post', prompt: 'Draw cover' }),
+    ).rejects.toMatchObject({ message: 'Failed to generate image' });
+  });
+
   it('rejects generated image responses containing unsafe control characters', async () => {
     adminFetchRawMock.mockResolvedValue({
       ok: true,

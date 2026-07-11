@@ -287,7 +287,7 @@ function IndexStatusSection() {
       if (response.ok && response.data) {
         setStatus({
           count: response.data.count,
-          collection: normalizeRAGSelector(response.data.collection) || 'unknown',
+          collection: response.data.collection,
         });
       } else {
         setStatus(null);

@@ -121,6 +121,50 @@ function normalizeDisplayText(value: unknown, fallback: string): string {
   return cleaned || fallback;
 }
 
+const MAX_ANALYTICS_ERROR_MESSAGE_LENGTH = 300;
+const ANALYTICS_ERROR_CONTROL_PATTERN =
+  /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
+
+function hasEncodedAnalyticsControl(value: string): boolean {
+  let current = value;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    let decoded = current;
+    try {
+      decoded = current.replace(/(?:%[0-9a-f]{2})+/gi, (match) =>
+        decodeURIComponent(match),
+      );
+    } catch {
+      return true;
+    }
+
+    if (decoded === current) return false;
+    if (ANALYTICS_ERROR_CONTROL_PATTERN.test(decoded)) return true;
+    current = decoded;
+  }
+
+  return false;
+}
+
+function normalizeAnalyticsErrorMessage(
+  value: unknown,
+  fallback: string,
+): string {
+  if (typeof value !== "string") return fallback;
+
+  const cleaned = value.trim();
+  if (
+    !cleaned ||
+    cleaned.length > MAX_ANALYTICS_ERROR_MESSAGE_LENGTH ||
+    ANALYTICS_ERROR_CONTROL_PATTERN.test(cleaned) ||
+    hasEncodedAnalyticsControl(cleaned)
+  ) {
+    return fallback;
+  }
+
+  return cleaned;
+}
+
 function normalizeEditorPick(pick: EditorPick): EditorPick | null {
   const postSlug = normalizeAnalyticsSelector(pick.post_slug);
   const year = normalizeAnalyticsYear(pick.year);
@@ -156,16 +200,20 @@ function normalizePostStat(stat: PostStat): PostStat | null {
 function getAnalyticsErrorMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object") return fallback;
   const record = payload as { error?: unknown; message?: unknown };
-  if (typeof record.error === "string" && record.error) return record.error;
+  if (typeof record.error === "string" && record.error) {
+    return normalizeAnalyticsErrorMessage(record.error, fallback);
+  }
   if (record.error && typeof record.error === "object") {
     const nested = record.error as { message?: unknown; code?: unknown };
     if (typeof nested.message === "string" && nested.message) {
-      return nested.message;
+      return normalizeAnalyticsErrorMessage(nested.message, fallback);
     }
-    if (typeof nested.code === "string" && nested.code) return nested.code;
+    if (typeof nested.code === "string" && nested.code) {
+      return normalizeAnalyticsErrorMessage(nested.code, fallback);
+    }
   }
   if (typeof record.message === "string" && record.message) {
-    return record.message;
+    return normalizeAnalyticsErrorMessage(record.message, fallback);
   }
   return fallback;
 }
@@ -192,8 +240,10 @@ async function getEditorPicksResult(): Promise<EditorPicksResult> {
   } catch (err) {
     return {
       picks: [],
-      errorMessage:
-        err instanceof Error ? err.message : "Failed to load editor picks",
+      errorMessage: normalizeAnalyticsErrorMessage(
+        err instanceof Error ? err.message : undefined,
+        "Failed to load editor picks",
+      ),
     };
   }
 }
@@ -216,7 +266,10 @@ async function getTrendingPosts(
         trending: [],
         total: 0,
         degraded: Boolean(data?.degraded),
-        errorMessage: data?.error?.message || "Analytics backend unavailable",
+        errorMessage: getAnalyticsErrorMessage(
+          data,
+          "Analytics backend unavailable",
+        ),
       };
     }
     return {
@@ -246,12 +299,18 @@ async function refreshStats(): Promise<StatsRefreshResult> {
     }
     return {
       success: true,
-      message: data.data?.message || "Stats refreshed successfully.",
+      message: normalizeAnalyticsErrorMessage(
+        data.data?.message,
+        "Stats refreshed successfully.",
+      ),
     };
   } catch (err) {
     return {
       success: false,
-      message: err instanceof Error ? err.message : "Refresh failed.",
+      message: normalizeAnalyticsErrorMessage(
+        err instanceof Error ? err.message : undefined,
+        "Refresh failed.",
+      ),
     };
   }
 }

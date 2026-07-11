@@ -51,7 +51,7 @@ type AiImageGeneratorPanelProps = {
   content: string;
   year: string;
   slug: string;
-  onInsertMarkdown: (markdown: string) => void;
+  onInsertMarkdown: (markdown: string, imageUrl?: string) => void;
   onSetCoverImage: (url: string) => void;
 };
 
@@ -61,6 +61,9 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 const GENERATED_IMAGE_URL_CONTROL_PATTERN = /[\u0000-\u001F\u007F\\]/;
 const GENERATED_IMAGE_URL_ENCODED_UNSAFE_PATTERN = /%(?:0[0-9a-f]|1[0-9a-f]|7f|2f|5c)/i;
+const AI_IMAGE_SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const INVALID_AI_IMAGE_SLUG_MESSAGE =
+  'AI 이미지 슬러그는 영문자 또는 숫자로 시작하고 영문자, 숫자, 마침표(.), 밑줄(_), 하이픈(-)만 포함해야 합니다.';
 
 function normalizeGeneratedImageUrl(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -143,8 +146,12 @@ export default function AiImageGeneratorPanel({
     if (!/^[0-9]{4}$/.test(year)) {
       return '연도(YYYY)를 입력하면 이미지 생성이 가능합니다.';
     }
-    if (!slug.trim()) {
+    const trimmedSlug = slug.trim();
+    if (!trimmedSlug) {
       return '슬러그(slug)를 입력하면 이미지 저장 경로를 만들 수 있습니다.';
+    }
+    if (!AI_IMAGE_SLUG_PATTERN.test(trimmedSlug)) {
+      return INVALID_AI_IMAGE_SLUG_MESSAGE;
     }
     return null;
   }, [slug, year]);
@@ -152,21 +159,25 @@ export default function AiImageGeneratorPanel({
 
   const handleGenerate = async () => {
     try {
+      const trimmedSlug = slug.trim();
       if (!/^[0-9]{4}$/.test(year)) throw new Error('연도(YYYY)를 입력하세요');
-      if (!slug.trim()) throw new Error('슬러그(slug)를 먼저 입력하세요');
+      if (!trimmedSlug) throw new Error('슬러그(slug)를 먼저 입력하세요');
+      if (!AI_IMAGE_SLUG_PATTERN.test(trimmedSlug)) {
+        throw new Error(INVALID_AI_IMAGE_SLUG_MESSAGE);
+      }
 
       setIsGenerating(true);
       setErrorMessage(null);
       const response = await generatePostImages(
         {
           year,
-          slug: slug.trim(),
+          slug: trimmedSlug,
           prompt: buildFinalImagePrompt(prompt, suggestedPrompt),
           n: Number.parseInt(count, 10),
           size,
           quality,
           outputFormat: 'png',
-          alt: alt.trim() || title.trim() || `${slug.trim()} cover image`,
+          alt: alt.trim() || title.trim() || `${trimmedSlug} cover image`,
         },
       );
       setItems((previous) => [...response.items, ...previous]);
@@ -188,9 +199,17 @@ export default function AiImageGeneratorPanel({
   };
 
   const copyUrl = async (url: string) => {
-    await navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    window.setTimeout(() => setCopiedUrl(null), 1400);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(url);
+      window.setTimeout(() => setCopiedUrl(null), 1400);
+    } catch {
+      toast({
+        title: 'URL 복사 실패',
+        description: '클립보드에 접근할 수 없습니다. 브라우저 권한을 확인하세요.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -359,7 +378,7 @@ export default function AiImageGeneratorPanel({
                       'group relative block aspect-square w-full overflow-hidden rounded-md border bg-muted text-left',
                       'transition-transform duration-200 ease-spring hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
                     )}
-                    onClick={() => onInsertMarkdown(markdown)}
+                    onClick={() => onInsertMarkdown(markdown, imageUrl)}
                     aria-label={`본문에 ${imageAlt} 삽입`}
                     title={`본문에 ${imageAlt} 삽입`}
                   >
@@ -379,7 +398,7 @@ export default function AiImageGeneratorPanel({
                       size="sm"
                       variant="secondary"
                       className="min-h-9 px-2 text-xs"
-                      onClick={() => onInsertMarkdown(markdown)}
+                      onClick={() => onInsertMarkdown(markdown, imageUrl)}
                     >
                       삽입
                     </Button>

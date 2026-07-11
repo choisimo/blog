@@ -17,7 +17,9 @@ describe('AdminDashboard display boundaries', () => {
             path='/admin/config/:section'
             element={
               <AdminDashboard
-                userEmail={' admin\u0000@example.com\r\nX-Injected: yes '}
+                userEmail={
+                  ' admin\u0000@example.com\r\nX-Injected: yes\u001b[31m\u001b]0;osc-admin-payload\u0007 '
+                }
                 onLogout={vi.fn()}
               />
             }

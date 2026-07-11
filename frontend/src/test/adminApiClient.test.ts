@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockRefreshAccessToken, mockState } = vi.hoisted(() => ({
+const { mockGetApiBaseUrl, mockRefreshAccessToken, mockState } = vi.hoisted(() => ({
+  mockGetApiBaseUrl: vi.fn(),
   mockRefreshAccessToken: vi.fn(),
   mockState: {
-    refreshToken: 'refresh-token',
+    refreshToken: 'refresh-token' as string | null,
     getValidAccessToken: vi.fn(),
     setTokens: vi.fn(),
     clearAuth: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock('@/stores/session/useAuthStore', () => ({
 }));
 
 vi.mock('@/utils/network/apiBase', () => ({
-  getApiBaseUrl: () => 'https://api.example.com',
+  getApiBaseUrl: mockGetApiBaseUrl,
 }));
 
 vi.mock('@/services/session/auth', () => ({
@@ -26,14 +27,32 @@ vi.mock('@/services/session/auth', () => ({
 
 import { adminApiFetch, adminFetchRaw } from '@/services/admin/apiClient';
 
+interface RefreshCredentials {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: number;
+}
+
 function authorizationHeader(fetchMock: ReturnType<typeof vi.fn>, index: number) {
   const [, init] = fetchMock.mock.calls[index];
   return new Headers(init?.headers).get('Authorization');
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('admin API client auth retry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetApiBaseUrl.mockReset().mockReturnValue('https://api.example.com');
     mockState.refreshToken = 'refresh-token';
     mockState.getValidAccessToken.mockResolvedValue('old-access-token');
     mockRefreshAccessToken.mockResolvedValue({
@@ -49,6 +68,12 @@ describe('admin API client auth retry', () => {
   });
 
   it('forces token refresh before retrying adminApiFetch after a 401', async () => {
+    mockRefreshAccessToken.mockResolvedValueOnce({
+      accessToken: '  new-access-token  ',
+      refreshToken: '  new-refresh-token  ',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+    });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response('{}', { status: 401 }))
@@ -235,6 +260,17 @@ describe('admin API client auth retry', () => {
     expect(result).toEqual({ ok: false, error: 'Request failed (429)' });
   });
 
+  it('normalizes unsafe API base URL setup errors instead of rejecting', async () => {
+    mockGetApiBaseUrl.mockImplementationOnce(() => {
+      throw new Error('Base URL failed\r\nX-Injected: yes');
+    });
+
+    await expect(adminApiFetch('/api/admin/example')).resolves.toEqual({
+      ok: false,
+      error: 'Network error',
+    });
+  });
+
   it('falls back when a local network Error message is unsafe', async () => {
     vi.stubGlobal(
       'fetch',
@@ -345,6 +381,69 @@ describe('admin API client auth retry', () => {
     expect(mockRefreshAccessToken).toHaveBeenCalledWith('refresh-token');
   });
 
+  it('preserves logged-out auth when a stale forced refresh succeeds', async () => {
+    const refreshDeferred = createDeferred<RefreshCredentials>();
+    const refreshStarted = createDeferred<string>();
+    mockRefreshAccessToken.mockImplementationOnce((refreshToken: string) => {
+      refreshStarted.resolve(refreshToken);
+      return refreshDeferred.promise;
+    });
+    const originalResponse = new Response('{}', { status: 401 });
+    const fetchMock = vi.fn().mockResolvedValueOnce(originalResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const responsePromise = adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+    );
+
+    await expect(refreshStarted.promise).resolves.toBe('refresh-token');
+    mockState.refreshToken = null;
+    refreshDeferred.resolve({
+      accessToken: 'new-access-token',
+      refreshToken: 'new-refresh-token',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+    });
+
+    const response = await responsePromise;
+
+    expect(response).toBe(originalResponse);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockRefreshAccessToken).toHaveBeenCalledWith('refresh-token');
+    expect(mockState.setTokens).not.toHaveBeenCalled();
+    expect(mockState.clearAuth).not.toHaveBeenCalled();
+    expect(mockState.refreshToken).toBeNull();
+  });
+
+  it('preserves replacement auth when a stale forced refresh rejects', async () => {
+    const refreshDeferred = createDeferred<RefreshCredentials>();
+    const refreshStarted = createDeferred<string>();
+    mockRefreshAccessToken.mockImplementationOnce((refreshToken: string) => {
+      refreshStarted.resolve(refreshToken);
+      return refreshDeferred.promise;
+    });
+    const originalResponse = new Response('{}', { status: 401 });
+    const fetchMock = vi.fn().mockResolvedValueOnce(originalResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const responsePromise = adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+    );
+
+    await expect(refreshStarted.promise).resolves.toBe('refresh-token');
+    mockState.refreshToken = 'replacement-refresh-token';
+    refreshDeferred.reject(new Error('old refresh failed'));
+
+    const response = await responsePromise;
+
+    expect(response).toBe(originalResponse);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockRefreshAccessToken).toHaveBeenCalledWith('refresh-token');
+    expect(mockState.setTokens).not.toHaveBeenCalled();
+    expect(mockState.clearAuth).not.toHaveBeenCalled();
+    expect(mockState.refreshToken).toBe('replacement-refresh-token');
+  });
+
   it('clears auth instead of retrying with polluted refreshed tokens', async () => {
     mockRefreshAccessToken.mockResolvedValueOnce({
       accessToken: 'new-access-token\r\nX-Injected: yes',
@@ -362,6 +461,22 @@ describe('admin API client auth retry', () => {
     );
 
     expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockState.setTokens).not.toHaveBeenCalled();
+    expect(mockState.clearAuth).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears unchanged auth instead of retrying when forced refresh rejects', async () => {
+    mockRefreshAccessToken.mockRejectedValueOnce(new Error('refresh failed'));
+    const originalResponse = new Response('{}', { status: 401 });
+    const fetchMock = vi.fn().mockResolvedValueOnce(originalResponse);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await adminFetchRaw(
+      'https://api.example.com/api/v1/admin/config/current',
+    );
+
+    expect(response).toBe(originalResponse);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(mockState.setTokens).not.toHaveBeenCalled();
     expect(mockState.clearAuth).toHaveBeenCalledTimes(1);

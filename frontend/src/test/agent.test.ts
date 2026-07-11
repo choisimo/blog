@@ -88,6 +88,16 @@ describe('agent service', () => {
     ).rejects.toThrow('Bad message');
   });
 
+  it('sanitizes rejected adminFetchRaw error messages before rethrowing', async () => {
+    adminFetchRawMock.mockRejectedValue(
+      new Error(' Bad\u0000\ntransport message '),
+    );
+
+    await expect(
+      runBlogAgent({ message: 'hello', sessionId: 'agent-session' }),
+    ).rejects.toThrow('Bad transport message');
+  });
+
   it('normalizes token metadata before returning agent responses', async () => {
     adminFetchRawMock.mockResolvedValue({
       ok: true,

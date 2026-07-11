@@ -806,6 +806,57 @@ export interface RAGIndexResponse {
   error?: string;
 }
 
+function parseRAGCollectionsResponse(value: unknown): RAGCollectionsResponse | null {
+  if (!isRecord(value) || value.ok !== true || !isRecord(value.data)) {
+    return null;
+  }
+
+  const rawCollections = value.data.collections;
+  const total = value.data.total;
+  if (
+    !Array.isArray(rawCollections) ||
+    !rawCollections.every(
+      (collection) => isRecord(collection) && typeof collection.name === 'string',
+    ) ||
+    typeof total !== 'number' ||
+    !Number.isFinite(total)
+  ) {
+    return null;
+  }
+
+  return value as unknown as RAGCollectionsResponse;
+}
+
+function parseRAGStatusResponse(value: unknown): RAGStatusResponse | null {
+  if (!isRecord(value) || value.ok !== true || !isRecord(value.data)) {
+    return null;
+  }
+
+  const collection =
+    typeof value.data.collection === 'string'
+      ? normalizeRAGSelector(value.data.collection)
+      : null;
+  const count = value.data.count;
+  if (
+    !collection ||
+    typeof value.data.exists !== 'boolean' ||
+    typeof count !== 'number' ||
+    !Number.isFinite(count)
+  ) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    data: {
+      collection,
+      exists: value.data.exists,
+      count,
+      ...(isRecord(value.data.metadata) ? { metadata: value.data.metadata } : {}),
+    },
+  };
+}
+
 /**
  * 모든 ChromaDB 컬렉션 목록 조회
  */
@@ -823,12 +874,23 @@ export async function getCollections(): Promise<RAGCollectionsResponse> {
     const data = await res.json();
 
     if (!res.ok) {
-      return { ok: false, error: data.error || `HTTP ${res.status}` };
+      return { ok: false, error: getRAGErrorMessage(data, `HTTP ${res.status}`) };
     }
 
-    return data as RAGCollectionsResponse;
+    if (isRecord(data) && data.ok === false) {
+      return data as RAGCollectionsResponse;
+    }
+
+    return (
+      parseRAGCollectionsResponse(data) ?? {
+        ok: false,
+        error: 'Invalid response from RAG collections API',
+      }
+    );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch collections';
+    const message =
+      normalizeSingleLineText(err instanceof Error ? err.message : null) ??
+      'Failed to fetch collections';
     return { ok: false, error: message };
   }
 }
@@ -857,12 +919,23 @@ export async function getCollectionStatus(collection?: string): Promise<RAGStatu
     const data = await res.json();
 
     if (!res.ok) {
-      return { ok: false, error: data.error || `HTTP ${res.status}` };
+      return { ok: false, error: getRAGErrorMessage(data, `HTTP ${res.status}`) };
     }
 
-    return data as RAGStatusResponse;
+    if (isRecord(data) && data.ok === false) {
+      return { ok: false, error: getRAGErrorMessage(data, 'Failed to fetch status') };
+    }
+
+    return (
+      parseRAGStatusResponse(data) ?? {
+        ok: false,
+        error: 'Invalid response from RAG status API',
+      }
+    );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch status';
+    const message =
+      normalizeSingleLineText(err instanceof Error ? err.message : null) ??
+      'Failed to fetch status';
     return { ok: false, error: message };
   }
 }

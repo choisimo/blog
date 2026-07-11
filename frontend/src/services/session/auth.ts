@@ -78,12 +78,27 @@ type ApiErrorPayload =
 
 const MAX_AUTH_TOKEN_LENGTH = 4096;
 const MAX_AUTH_USER_FIELD_LENGTH = 256;
+const MAX_TOTP_CHALLENGE_ERROR_LENGTH = 256;
+const MAX_TOTP_SETUP_STATUS_ERROR_LENGTH = 256;
 const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/;
+const TOTP_CHALLENGE_ERROR_CONTROL_PATTERN =
+  /[\u0000-\u001F\u007F-\u009F\u2028\u2029]+/g;
+const TOTP_SETUP_STATUS_ERROR_CONTROL_PATTERN =
+  /[\u0000-\u001F\u007F-\u009F\u2028\u2029]+/g;
 
 export interface ApiResponse<T> {
   ok: boolean;
   data?: T;
   error?: ApiErrorPayload;
+}
+
+class GetMeHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+  }
 }
 
 function isUserInfo(value: unknown): value is UserInfo {
@@ -170,6 +185,38 @@ function getApiErrorMessage(
   return fallback;
 }
 
+function getTotpChallengeErrorMessage(
+  error: ApiErrorPayload | undefined
+): string {
+  const fallback = 'Failed to get challenge';
+  const normalized = getApiErrorMessage(error, fallback)
+    .replace(TOTP_CHALLENGE_ERROR_CONTROL_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized || normalized.length > MAX_TOTP_CHALLENGE_ERROR_LENGTH) {
+    return fallback;
+  }
+
+  return normalized;
+}
+
+function getTotpSetupStatusErrorMessage(
+  error: ApiErrorPayload | undefined
+): string {
+  const fallback = 'Failed to load TOTP setup status';
+  const normalized = getApiErrorMessage(error, fallback)
+    .replace(TOTP_SETUP_STATUS_ERROR_CONTROL_PATTERN, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized || normalized.length > MAX_TOTP_SETUP_STATUS_ERROR_LENGTH) {
+    return fallback;
+  }
+
+  return normalized;
+}
+
 async function parseApiResponse<T>(res: Response): Promise<ApiResponse<T>> {
   return res.json().catch(() => ({
     ok: false,
@@ -197,11 +244,20 @@ export async function initiateTotpChallenge(): Promise<TotpChallengeResponse> {
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/challenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+  }).catch((error: unknown) => {
+    throw new Error(
+      getTotpChallengeErrorMessage(
+        error instanceof Error ? error.message : undefined
+      )
+    );
   });
-  return unwrapApiResponse<TotpChallengeResponse>(
-    res,
-    'Failed to get challenge'
-  );
+  const json = await parseApiResponse<TotpChallengeResponse>(res);
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(getTotpChallengeErrorMessage(json.error));
+  }
+
+  return json.data;
 }
 
 /**
@@ -223,11 +279,30 @@ export async function verifyTotpCode(
  * Get TOTP setup status without requesting the secret itself.
  */
 export async function getTotpSetupStatus(): Promise<TotpSetupStatusResponse> {
-  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/status`);
-  return unwrapApiResponse<TotpSetupStatusResponse>(
-    res,
-    'Failed to load TOTP setup status'
+  const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/status`).catch(
+    (error: unknown) => {
+      throw new Error(
+        getTotpSetupStatusErrorMessage(
+          error instanceof Error ? error.message : undefined
+        )
+      );
+    }
   );
+  const json = await parseApiResponse<unknown>(res);
+
+  if (!res.ok || !json.ok || !json.data) {
+    throw new Error(getTotpSetupStatusErrorMessage(json.error));
+  }
+
+  if (
+    typeof json.data !== 'object' ||
+    Array.isArray(json.data) ||
+    typeof (json.data as { setupComplete?: unknown }).setupComplete !== 'boolean'
+  ) {
+    throw new Error('Invalid response');
+  }
+
+  return json.data as TotpSetupStatusResponse;
 }
 
 /**
@@ -249,7 +324,16 @@ export async function getTotpSetup(
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/totp/setup`, {
     headers,
   });
-  return unwrapApiResponse<TotpSetupResponse>(res, 'Failed to get TOTP setup');
+  const data = await unwrapApiResponse<unknown>(
+    res,
+    'Failed to get TOTP setup'
+  );
+  if (
+    typeof (data as { setupComplete?: unknown }).setupComplete !== 'boolean'
+  ) {
+    throw new Error('Invalid response');
+  }
+  return data as TotpSetupResponse;
 }
 
 /**
@@ -270,10 +354,14 @@ export async function verifyTotpSetup(
     headers,
     body: JSON.stringify({ code }),
   });
-  return unwrapApiResponse<TotpSetupVerifyResponse>(
+  const data = await unwrapApiResponse<TotpSetupVerifyResponse>(
     res,
     'Setup verification failed'
   );
+  if (data.setupComplete !== true) {
+    throw new Error('Setup verification failed');
+  }
+  return data;
 }
 
 /**
@@ -325,10 +413,22 @@ export async function getMe(accessToken: string): Promise<UserInfo> {
   const res = await fetch(`${getBaseUrl()}/api/v1/auth/me`, {
     headers: bearerAuth(normalizedAccessToken),
   });
-  const data = await unwrapApiResponse<{ user: UserInfo }>(
-    res,
-    'Failed to get user info'
-  );
+  const json = await parseApiResponse<{ user: UserInfo }>(res);
+  const response =
+    json && typeof json === 'object' && !Array.isArray(json) ? json : null;
+
+  if (!res.ok || !response?.ok || !response.data) {
+    const message = getApiErrorMessage(
+      response?.error,
+      'Failed to get user info'
+    );
+    if (!res.ok) {
+      throw new GetMeHttpError(message, res.status);
+    }
+    throw new Error(message);
+  }
+
+  const data = response.data;
   if (!isUserInfo(data.user)) {
     throw new Error('Failed to get user info');
   }

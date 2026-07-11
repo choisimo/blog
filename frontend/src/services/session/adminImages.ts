@@ -338,6 +338,13 @@ export async function generatePostImages(
     body: JSON.stringify({
       ...normalizedPayload,
     }),
+  }).catch((error: unknown) => {
+    throw new Error(
+      getErrorMessage(
+        error instanceof Error ? { message: error.message } : null,
+        'Failed to generate image',
+      ),
+    );
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok || !json?.ok) {

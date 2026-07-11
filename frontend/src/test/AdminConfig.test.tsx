@@ -71,6 +71,48 @@ describe('AdminConfig', () => {
     vi.restoreAllMocks();
   });
 
+  it('renders the TOTP challenge service error in the administrator alert', async () => {
+    mockGetTotpSetupStatus.mockResolvedValue({ setupComplete: true });
+    mockInitiateTotpChallenge.mockRejectedValue(
+      new Error('Challenge locked Try again'),
+    );
+
+    render(<AdminConfig />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Get Challenge' }),
+    );
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Challenge locked Try again');
+  });
+
+  it('renders the TOTP setup status service error in the initial-gate alert', async () => {
+    mockGetTotpSetupStatus.mockRejectedValue(
+      new Error('Status lookup failed Try again'),
+    );
+
+    render(<AdminConfig />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Status lookup failed Try again');
+    expect(screen.getByLabelText('Access key')).toBeInTheDocument();
+  });
+
+  it('keeps the initial gate when TOTP setup status success validation fails', async () => {
+    mockGetTotpSetupStatus.mockRejectedValue(new Error('Invalid response'));
+
+    render(<AdminConfig />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Invalid response',
+    );
+    expect(screen.getByLabelText('Access key')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Get Challenge' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('suppresses duplicate TOTP challenge requests while one is already running', async () => {
     mockGetTotpSetupStatus.mockResolvedValue({ setupComplete: true });
     let resolveChallenge: (value: { challengeId: string }) => void = () => {};
