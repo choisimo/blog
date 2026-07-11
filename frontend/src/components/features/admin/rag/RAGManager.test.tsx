@@ -99,6 +99,22 @@ describe('RAGManager', () => {
     expect(screen.queryByText('Unable to fetch index status.')).not.toBeInTheDocument();
   });
 
+  it('renders a fulfilled index status count through numeric formatting', async () => {
+    mockGetCollectionStatus.mockResolvedValue({
+      ok: true,
+      data: {
+        collection: 'posts',
+        exists: true,
+        count: 1234,
+      },
+    });
+
+    render(<RAGManager />);
+
+    expect(await screen.findByText((1234).toLocaleString())).toBeInTheDocument();
+    expect(screen.getByText('posts')).toBeInTheDocument();
+  });
+
   it('prevents Enter key duplicate semantic searches while a search is running', async () => {
     let resolveSearch: (value: unknown) => void = () => undefined;
     mockSemanticSearch.mockReturnValue(

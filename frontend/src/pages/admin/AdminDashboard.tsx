@@ -120,9 +120,13 @@ function normalizeAdminSubtab(value: string | undefined): string | undefined {
   return normalized;
 }
 
+const ADMIN_DISPLAY_ESCAPE_SEQUENCE_PATTERN =
+  /\u001B(?:\][\s\S]*?(?:\u0007|\u001B\\|$)|\[[0-?]*[ -/]*(?:[@-~]|$))/g;
+
 function normalizeAdminDisplayText(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value
+    .replace(ADMIN_DISPLAY_ESCAPE_SEQUENCE_PATTERN, ' ')
     .replace(/[\u0000-\u001F\u007F]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

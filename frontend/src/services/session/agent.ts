@@ -272,6 +272,8 @@ export async function runBlogAgent(
       'Idempotency-Key': createIdempotencyKey(),
     },
     body: JSON.stringify(normalizedPayload),
+  }).catch((error: unknown) => {
+    throw new Error(getErrorMessage(error, 'AI agent request failed'));
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok || !json?.ok) {

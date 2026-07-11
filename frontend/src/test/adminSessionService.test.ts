@@ -306,6 +306,52 @@ describe('admin session service', () => {
     expect(uploadOptions.body).toBeInstanceOf(FormData);
   });
 
+  it('leaves a later-file presign transport rejection unchanged', async () => {
+    const laterPresignError = new Error(' Later\u0000\nmessage ');
+    mockAdminFetchRaw
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { uploadUrl: '/images/upload-direct' },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { url: '/images/2026/test-post/first.png' },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      )
+      .mockRejectedValueOnce(laterPresignError);
+
+    const firstFile = new File(['first'], 'first.png', { type: 'image/png' });
+    const secondFile = new File(['second'], 'second.png', { type: 'image/png' });
+
+    await expect(
+      uploadPostImages(
+        { year: 2026, slug: 'test-post' },
+        [firstFile, secondFile],
+      ),
+    ).rejects.toBe(laterPresignError);
+    expect(mockAdminFetchRaw).toHaveBeenCalledTimes(3);
+    expect(mockAdminFetchRaw.mock.calls.map(([url]) => url)).toEqual([
+      'https://worker.example.com/api/v1/images/presign',
+      'https://worker.example.com/api/v1/images/upload-direct',
+      'https://worker.example.com/api/v1/images/presign',
+    ]);
+  });
+
   it('rejects invalid image upload path values before admin fetch', async () => {
     const file = new File(['image'], 'cover.png', { type: 'image/png' });
 

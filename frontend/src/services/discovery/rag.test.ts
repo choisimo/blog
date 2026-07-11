@@ -55,6 +55,296 @@ describe('admin rag API helpers', () => {
     expect(result).toEqual({ ok: false, error: 'Not authenticated. Please log in again.' });
   });
 
+  it('normalizes non-2xx collection backend errors at the service boundary', async () => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ error: { message: 'Collections unavailable\r\nRetry later' } }),
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const result = await getCollections();
+
+    expect(fetchSpy).toHaveBeenCalledWith('https://api.example.com/api/v1/rag/collections', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer admin-token',
+      },
+    });
+    expect(result).toEqual({ ok: false, error: 'Collections unavailable Retry later' });
+  });
+
+  it('preserves a valid empty collection success envelope', async () => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, data: { collections: [], total: 0 } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(getCollections()).resolves.toEqual({
+      ok: true,
+      data: { collections: [], total: 0 },
+    });
+  });
+
+  it.each([
+    {
+      name: 'missing collection array',
+      payload: { ok: true, data: { total: 0 } },
+    },
+    {
+      name: 'non-object collection row',
+      payload: { ok: true, data: { collections: [null], total: 1 } },
+    },
+    {
+      name: 'collection row without a string name',
+      payload: { ok: true, data: { collections: [{}], total: 1 } },
+    },
+    {
+      name: 'non-numeric total',
+      payload: { ok: true, data: { collections: [], total: '0' } },
+    },
+  ])('rejects a malformed 2xx success envelope with $name', async ({ payload }) => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(getCollections()).resolves.toEqual({
+      ok: false,
+      error: 'Invalid response from RAG collections API',
+    });
+  });
+
+  it.each([
+    {
+      name: 'admin header acquisition',
+      arrange: () => {
+        mockGetAuthHeadersAsync.mockRejectedValue(
+          new Error('Header acquisition failed\r\nwith unsafe detail'),
+        );
+      },
+      expected: 'Header acquisition failed with unsafe detail',
+    },
+    {
+      name: 'native fetch',
+      arrange: () => {
+        mockGetAuthHeadersAsync.mockResolvedValue({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer admin-token',
+        });
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+          new Error('Collection request failed\r\nwith unsafe detail'),
+        );
+      },
+      expected: 'Collection request failed with unsafe detail',
+    },
+    {
+      name: 'JSON parsing',
+      arrange: () => {
+        mockGetAuthHeadersAsync.mockResolvedValue({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer admin-token',
+        });
+        const response = new Response('{}', { status: 200 });
+        vi.spyOn(response, 'json').mockRejectedValue(
+          new Error('Collection JSON invalid\r\nwith unsafe detail'),
+        );
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+      },
+      expected: 'Collection JSON invalid with unsafe detail',
+    },
+  ])('normalizes $name rejection messages', async ({ arrange, expected }) => {
+    arrange();
+
+    await expect(getCollections()).resolves.toEqual({ ok: false, error: expected });
+  });
+
+  it('preserves authenticated default and selected collection status requests', async () => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            collection: 'posts',
+            exists: true,
+            count: 1234,
+            metadata: { source: 'chroma' },
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const expected = {
+      ok: true,
+      data: {
+        collection: 'posts',
+        exists: true,
+        count: 1234,
+        metadata: { source: 'chroma' },
+      },
+    };
+
+    await expect(getCollectionStatus()).resolves.toEqual(expected);
+    await expect(getCollectionStatus(' posts ')).resolves.toEqual(expected);
+    expect(fetchSpy).toHaveBeenNthCalledWith(1, 'https://api.example.com/api/v1/rag/status', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer admin-token',
+      },
+    });
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      'https://api.example.com/api/v1/rag/status?collection=posts',
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer admin-token',
+        },
+      },
+    );
+  });
+
+  it.each([
+    {
+      name: 'non-2xx backend',
+      status: 503,
+      payload: { error: { message: 'Status unavailable\r\nRetry later' } },
+      expected: 'Status unavailable Retry later',
+    },
+    {
+      name: '2xx application',
+      status: 200,
+      payload: { ok: false, error: { message: 'Status denied\r\nRetry login' } },
+      expected: 'Status denied Retry login',
+    },
+  ])('normalizes $name status errors', async ({ status, payload, expected }) => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(getCollectionStatus()).resolves.toEqual({ ok: false, error: expected });
+  });
+
+  it.each([
+    {
+      name: 'admin header acquisition',
+      arrange: () => {
+        mockGetAuthHeadersAsync.mockRejectedValue(
+          new Error('Status header acquisition failed\r\nwith unsafe detail'),
+        );
+      },
+      expected: 'Status header acquisition failed with unsafe detail',
+    },
+    {
+      name: 'native fetch',
+      arrange: () => {
+        mockGetAuthHeadersAsync.mockResolvedValue({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer admin-token',
+        });
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+          new Error('Status request failed\r\nwith unsafe detail'),
+        );
+      },
+      expected: 'Status request failed with unsafe detail',
+    },
+    {
+      name: 'JSON parsing',
+      arrange: () => {
+        mockGetAuthHeadersAsync.mockResolvedValue({
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer admin-token',
+        });
+        const response = new Response('{}', { status: 200 });
+        vi.spyOn(response, 'json').mockRejectedValue(
+          new Error('Status JSON invalid\r\nwith unsafe detail'),
+        );
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(response);
+      },
+      expected: 'Status JSON invalid with unsafe detail',
+    },
+  ])('normalizes status $name rejection messages', async ({ arrange, expected }) => {
+    arrange();
+
+    await expect(getCollectionStatus()).resolves.toEqual({ ok: false, error: expected });
+  });
+
+  it.each([
+    {
+      name: 'missing count',
+      payload: { ok: true, data: { collection: 'posts', exists: true } },
+    },
+    {
+      name: 'non-numeric count',
+      payload: { ok: true, data: { collection: 'posts', exists: true, count: '12' } },
+    },
+    {
+      name: 'invalid collection',
+      payload: { ok: true, data: { collection: 'posts%0Aevil', exists: true, count: 12 } },
+    },
+    {
+      name: 'non-string collection',
+      payload: { ok: true, data: { collection: 123, exists: true, count: 12 } },
+    },
+    {
+      name: 'non-boolean existence flag',
+      payload: { ok: true, data: { collection: 'posts', exists: 'yes', count: 12 } },
+    },
+  ])('rejects a malformed status success envelope with $name', async ({ payload }) => {
+    mockGetAuthHeadersAsync.mockResolvedValue({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer admin-token',
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(getCollectionStatus()).resolves.toEqual({
+      ok: false,
+      error: 'Invalid response from RAG status API',
+    });
+  });
+
   it('injects authorization for document indexing requests', async () => {
     mockGetAuthHeadersAsync.mockResolvedValue({
       'Content-Type': 'application/json',

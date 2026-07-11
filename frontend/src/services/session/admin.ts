@@ -218,6 +218,30 @@ function buildDirectUploadUrl(baseUrl: string, uploadUrl: unknown): string | nul
   }
 }
 
+const CREATE_POST_PR_URL_VALIDATION_BASE = 'https://example.invalid/';
+
+function normalizeCreatePostPrUrl(
+  value: unknown,
+): string | null | undefined {
+  const normalized = normalizeSafeAdminString(value);
+  if (!normalized) {
+    const isAbsent =
+      value === undefined ||
+      value === null ||
+      (typeof value === 'string' && !value.trim());
+    return isAbsent ? undefined : null;
+  }
+
+  try {
+    const parsed = new URL(normalized, CREATE_POST_PR_URL_VALIDATION_BASE);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+      ? normalized
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeCreatePostPrResponse(
   value: unknown,
 ): CreatePostPrResponse | null {
@@ -226,10 +250,12 @@ function normalizeCreatePostPrResponse(
   const branch = normalizeSafeAdminString(record.branch);
   const path = normalizeSafeAdminString(record.path);
   if (!branch || !path) return null;
+  const prUrl = normalizeCreatePostPrUrl(record.prUrl);
+  if (prUrl === null) return null;
 
   return {
     ...record,
-    prUrl: normalizeSafeAdminString(record.prUrl) ?? undefined,
+    prUrl,
     outboxId: normalizeSafeAdminString(record.outboxId) ?? undefined,
     branch,
     path,
@@ -285,6 +311,9 @@ export async function createPostPR(
   const res = await adminFetchRaw(`${base}/api/v1/admin/create-post-pr`, {
     method: 'POST',
     body: JSON.stringify(normalizedPayload),
+  }).catch((error: unknown) => {
+    const errorPayload = error instanceof Error ? { message: error.message } : null;
+    throw new Error(getAdminErrorMessage(errorPayload, 'Failed to create PR'));
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
@@ -321,8 +350,13 @@ export async function uploadPostImages(
   const postId = `${year}/${slug}`;
   const uploadedItems: Array<{ url: string; variantWebp?: { url: string } | null }> = [];
 
-  for (const file of imageFiles as File[]) {
-    const directResult = await uploadPostImageDirect(normalizedBase, postId, file);
+  for (const [index, file] of (imageFiles as File[]).entries()) {
+    const directResult = await uploadPostImageDirect(
+      normalizedBase,
+      postId,
+      file,
+      index === 0
+    );
     if (directResult) {
       uploadedItems.push(directResult);
       continue;
@@ -342,9 +376,10 @@ export async function uploadPostImages(
 async function uploadPostImageDirect(
   baseUrl: string,
   postId: string,
-  file: File
+  file: File,
+  boundFirstIterationTransportRejection: boolean
 ): Promise<{ url: string; variantWebp?: { url: string } | null } | null> {
-  const presign = await adminFetchRaw(`${baseUrl}/api/v1/images/presign`, {
+  const presignRequest = adminFetchRaw(`${baseUrl}/api/v1/images/presign`, {
     method: 'POST',
     body: JSON.stringify({
       filename: normalizeSafeAdminString(file.name),
@@ -352,6 +387,14 @@ async function uploadPostImageDirect(
       postId,
     }),
   });
+  const presign = boundFirstIterationTransportRejection
+    ? await presignRequest.catch((error: unknown) => {
+        const errorPayload = error instanceof Error ? { message: error.message } : null;
+        throw new Error(
+          getAdminErrorMessage(errorPayload, 'Failed to presign image upload')
+        );
+      })
+    : await presignRequest;
 
   const presignJson = await presign.json().catch(() => ({}));
   const presignUploadUrl = buildDirectUploadUrl(baseUrl, presignJson?.data?.uploadUrl);
@@ -363,10 +406,18 @@ async function uploadPostImageDirect(
   formData.append('file', file, file.name);
   formData.append('postId', postId);
 
-  const uploadResponse = await adminFetchRaw(presignUploadUrl, {
+  const uploadRequest = adminFetchRaw(presignUploadUrl, {
     method: 'POST',
     body: formData,
   });
+  const uploadResponse = boundFirstIterationTransportRejection
+    ? await uploadRequest.catch((error: unknown) => {
+        const errorPayload = error instanceof Error ? { message: error.message } : null;
+        throw new Error(
+          getAdminErrorMessage(errorPayload, 'Failed to upload image directly')
+        );
+      })
+    : await uploadRequest;
 
   const uploadJson = await uploadResponse.json().catch(() => ({}));
   const uploadedUrl = normalizeImagePath(uploadJson?.data?.url);
@@ -402,6 +453,9 @@ async function uploadPostImagesCompatibility(
   const res = await adminFetchRaw(`${base}/api/v1/images/upload`, {
     method: 'POST',
     body: fd,
+  }).catch((error: unknown) => {
+    const errorPayload = error instanceof Error ? { message: error.message } : null;
+    throw new Error(getAdminErrorMessage(errorPayload, 'Failed to upload'));
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {

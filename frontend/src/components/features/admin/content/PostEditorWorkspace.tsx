@@ -244,6 +244,18 @@ export function PostEditorWorkspace() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const dragDepthRef = useRef(0);
+  const uploadInFlightRef = useRef<boolean>(false);
+  const draftAutosaveTimeoutRef = useRef<number | null>(null);
+  const draftAutosaveVersionRef = useRef(0);
+
+  const cancelPendingDraftAutosave = useCallback(() => {
+    const timeoutId = draftAutosaveTimeoutRef.current;
+    draftAutosaveTimeoutRef.current = null;
+    draftAutosaveVersionRef.current += 1;
+    if (timeoutId !== null && typeof window !== 'undefined') {
+      window.clearTimeout(timeoutId);
+    }
+  }, []);
 
   useEffect(() => {
     if (!slugTouched && title.trim()) {
@@ -274,7 +286,7 @@ export function PostEditorWorkspace() {
       setTags(normalizeTagList(draft.tags || '').join(', '));
       setPublished(draft.published ?? true);
       setCoverImage(normalizeCoverImageUrl(draft.coverImage || '') || '');
-      setContent(draft.content || '## 개요\n\n');
+      setContent(typeof draft.content === 'string' ? draft.content : '## 개요\n\n');
       setDraftSavedAt(draft.updatedAt || null);
       if (draft.updatedAt) {
         toast({
@@ -329,13 +341,29 @@ export function PostEditorWorkspace() {
   );
 
   useEffect(() => {
-    if (!draftReady) return undefined;
-    const timeoutId = window.setTimeout(() => saveDraft(false), 1200);
-    return () => window.clearTimeout(timeoutId);
-  }, [draftReady, saveDraft]);
+    if (!draftReady || typeof window === 'undefined') return undefined;
+
+    cancelPendingDraftAutosave();
+    const autosaveVersion = draftAutosaveVersionRef.current;
+    const timeoutId = window.setTimeout(() => {
+      if (
+        draftAutosaveVersionRef.current !== autosaveVersion ||
+        draftAutosaveTimeoutRef.current !== timeoutId
+      ) {
+        return;
+      }
+
+      draftAutosaveTimeoutRef.current = null;
+      saveDraft(false);
+    }, 1200);
+    draftAutosaveTimeoutRef.current = timeoutId;
+
+    return cancelPendingDraftAutosave;
+  }, [cancelPendingDraftAutosave, draftReady, saveDraft]);
 
   const clearDraft = () => {
     if (typeof window !== 'undefined') {
+      cancelPendingDraftAutosave();
       window.localStorage.removeItem(DRAFT_STORAGE_KEY);
     }
     setDraftSavedAt(null);
@@ -384,6 +412,7 @@ export function PostEditorWorkspace() {
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
+    const innerSelectionLength = end > start ? end - start : 'text'.length;
     setContent(previous => {
       const selected = previous.slice(start, end) || 'text';
       return `${previous.slice(0, start)}${prefix}${selected}${suffix}${previous.slice(end)}`;
@@ -391,7 +420,8 @@ export function PostEditorWorkspace() {
 
     window.requestAnimationFrame(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+      const selectionStart = start + prefix.length;
+      textarea.setSelectionRange(selectionStart, selectionStart + innerSelectionLength);
     });
   }, [insertAtCursor]);
 
@@ -504,6 +534,16 @@ export function PostEditorWorkspace() {
         return;
       }
 
+      if (uploadInFlightRef.current) {
+        toast({
+          title: '이미지 업로드 진행 중',
+          description: '진행 중인 업로드가 끝난 뒤 다시 시도하세요.',
+        });
+        return;
+      }
+
+      uploadInFlightRef.current = true;
+
       try {
         const normalizedYear = normalizePostYear(year);
         if (!normalizedYear) throw new Error('연도(YYYY)를 입력하세요');
@@ -519,16 +559,18 @@ export function PostEditorWorkspace() {
           imageFiles,
         );
 
-        result.items.forEach((item, index) => {
-          const url = getImageUrl(item);
-          const original = imageFiles[index];
-          const markdown = appendAttachedImage(
-            url,
-            original?.name || url.split('/').pop() || 'image',
-            'upload',
-          );
-          insertAtCursor(markdown);
-        });
+        const markdown = result.items
+          .map((item, index) => {
+            const url = getImageUrl(item);
+            const original = imageFiles[index];
+            return appendAttachedImage(
+              url,
+              original?.name || url.split('/').pop() || 'image',
+              'upload',
+            );
+          })
+          .join('\n');
+        if (markdown) insertAtCursor(markdown);
 
         toast({
           title: '이미지 첨부 완료',
@@ -543,6 +585,7 @@ export function PostEditorWorkspace() {
           variant: 'destructive',
         });
       } finally {
+        uploadInFlightRef.current = false;
         setIsUploading(false);
       }
     },
@@ -607,12 +650,11 @@ export function PostEditorWorkspace() {
   };
 
   const handleGeneratedMarkdownInsert = useCallback(
-    (markdown: string) => {
-      const urlMatch = markdown.match(/\(([^)]+)\)/);
-      if (urlMatch?.[1]) {
+    (markdown: string, imageUrl?: string) => {
+      if (imageUrl) {
         appendAttachedImage(
-          urlMatch[1],
-          urlMatch[1].split('/').pop() || 'generated-image',
+          imageUrl,
+          imageUrl.split('/').pop() || 'generated-image',
           'generated',
           markdown,
         );
@@ -623,8 +665,16 @@ export function PostEditorWorkspace() {
   );
 
   const copyText = async (value: string) => {
-    await navigator.clipboard.writeText(value);
-    toast({ title: '복사 완료' });
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({ title: '복사 완료' });
+    } catch {
+      toast({
+        title: 'URL 복사 실패',
+        description: '클립보드에 접근할 수 없습니다. 브라우저 권한을 확인하세요.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const insertLink = () => {

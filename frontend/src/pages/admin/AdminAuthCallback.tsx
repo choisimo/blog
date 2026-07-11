@@ -69,7 +69,15 @@ export default function AdminAuthCallback() {
           if (cancelled) {
             return;
           }
-          setTokens(response.accessToken, response.refreshToken, response.user);
+          const accepted = setTokens(
+            response.accessToken,
+            response.refreshToken,
+            response.user,
+          );
+          if (!accepted) {
+            setError('Authentication failed: invalid credentials');
+            return;
+          }
           navigate(consumeAdminReturnPath(), { replace: true });
         } catch (exchangeError) {
           if (!cancelled) {
@@ -93,7 +101,11 @@ export default function AdminAuthCallback() {
         return;
       }
 
-      setTokensFromOAuth(token, refreshToken);
+      const accepted = setTokensFromOAuth(token, refreshToken);
+      if (!accepted) {
+        setError('Authentication failed: invalid credentials');
+        return;
+      }
       navigate(consumeAdminReturnPath(), { replace: true });
     };
 

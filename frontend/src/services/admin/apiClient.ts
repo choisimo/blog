@@ -109,26 +109,34 @@ function getAdminApiErrorMessage(payload: unknown, fallback: string): string {
 
 async function forceRefreshAdminAccessToken(): Promise<string | null> {
   const { refreshToken, clearAuth } = useAuthStore.getState();
-  const normalizedRefreshToken = normalizeAdminToken(refreshToken);
-  if (!normalizedRefreshToken) {
+  const initiatingRefreshToken = normalizeAdminToken(refreshToken);
+  if (!initiatingRefreshToken) {
     clearAuth();
     return null;
   }
 
   try {
-    const result = await refreshAccessToken(normalizedRefreshToken);
+    const result = await refreshAccessToken(initiatingRefreshToken);
+    const currentAuth = useAuthStore.getState();
+    const currentRefreshToken = normalizeAdminToken(currentAuth.refreshToken);
+    if (currentRefreshToken !== initiatingRefreshToken) {
+      return null;
+    }
+
     const normalizedAccessToken = normalizeAdminToken(result.accessToken);
     const nextRefreshToken = normalizeAdminToken(result.refreshToken);
     if (!normalizedAccessToken || !nextRefreshToken) {
-      clearAuth();
+      currentAuth.clearAuth();
       return null;
     }
-    useAuthStore
-      .getState()
-      .setTokens(normalizedAccessToken, nextRefreshToken);
+    currentAuth.setTokens(normalizedAccessToken, nextRefreshToken);
     return normalizedAccessToken;
   } catch {
-    clearAuth();
+    const currentAuth = useAuthStore.getState();
+    const currentRefreshToken = normalizeAdminToken(currentAuth.refreshToken);
+    if (currentRefreshToken === initiatingRefreshToken) {
+      currentAuth.clearAuth();
+    }
     return null;
   }
 }
@@ -155,11 +163,10 @@ export async function adminApiFetch<T>(
   endpoint: string,
   options: AdminApiFetchOptions = {}
 ): Promise<AdminApiResult<T>> {
-  const { getValidAccessToken } = useAuthStore.getState();
-  const API_BASE = getApiBaseUrl();
-  const { body, pathPrefix = '', ...fetchOptions } = options;
-
   try {
+    const { getValidAccessToken } = useAuthStore.getState();
+    const API_BASE = getApiBaseUrl();
+    const { body, pathPrefix = '', ...fetchOptions } = options;
     const rawToken = await getValidAccessToken();
     const token = normalizeAdminToken(rawToken);
     if (!token) {

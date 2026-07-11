@@ -93,6 +93,20 @@ describe('PostMetricsDetail', () => {
     expect(screen.queryByText('No visits recorded yet.')).not.toBeInTheDocument();
   });
 
+  it('falls back when the shared admin API rejects with a polluted Error message', async () => {
+    mockAdminApiFetch.mockRejectedValue(
+      new Error('Internal admin failure%0AInjected visitor error'),
+    );
+
+    render(<PostMetricsDetail slug="hello-world" year="2026" onBack={vi.fn()} />);
+
+    expect(await screen.findByText('Failed to load visit logs')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Internal admin failure%0AInjected visitor error'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Unable to load visitor log.')).toBeInTheDocument();
+  });
+
   it('shows metrics load errors instead of treating failed hourly traffic as empty', async () => {
     mockAdminApiFetch.mockImplementation(async (endpoint: string) => {
       if (endpoint.endsWith('/visits?limit=50&offset=0')) {

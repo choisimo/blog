@@ -32,8 +32,8 @@ export interface AuthState {
   isRefreshing: boolean;
 
   // Actions
-  setTokens: (accessToken: string, refreshToken: string, user?: UserInfo) => void;
-  setTokensFromOAuth: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, refreshToken: string, user?: UserInfo) => boolean;
+  setTokensFromOAuth: (accessToken: string, refreshToken: string) => boolean;
   setUser: (user: UserInfo | null) => void;
   clearAuth: () => void;
   logout: () => Promise<void>;
@@ -88,6 +88,7 @@ export const useAuthStore = create<AuthState>()(
 
       /**
        * Set both tokens after successful OTP verification
+       * Returns whether both tokens were accepted by store normalization
        */
       setTokens: (accessToken, refreshToken, user) => {
         const normalizedAccessToken = normalizeAuthStoreToken(accessToken);
@@ -95,7 +96,7 @@ export const useAuthStore = create<AuthState>()(
 
         if (!normalizedAccessToken || !normalizedRefreshToken) {
           get().clearAuth();
-          return;
+          return false;
         }
 
         set({
@@ -104,9 +105,11 @@ export const useAuthStore = create<AuthState>()(
           user: user ?? get().user,
         });
         scheduleTokenRefresh();
+        return true;
       },
       /**
        * Set both tokens after successful OAuth callback
+       * Returns whether both tokens were accepted by store normalization
        */
       setTokensFromOAuth: (accessToken, refreshToken) => {
         const normalizedAccessToken = normalizeAuthStoreToken(accessToken);
@@ -114,7 +117,7 @@ export const useAuthStore = create<AuthState>()(
 
         if (!normalizedAccessToken || !normalizedRefreshToken) {
           get().clearAuth();
-          return;
+          return false;
         }
 
         set({
@@ -122,6 +125,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken: normalizedRefreshToken,
         });
         scheduleTokenRefresh();
+        return true;
       },
 
       /**
@@ -146,15 +150,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       /**
-       * Full logout: API call + clear state
+       * Full logout: clear local state + API call
        */
       logout: async () => {
         const { refreshToken } = get();
-        try {
-          await logoutApi(refreshToken ?? undefined);
-        } finally {
-          get().clearAuth();
-        }
+        get().clearAuth();
+        await logoutApi(refreshToken ?? undefined);
       },
 
       /**
@@ -212,16 +213,29 @@ export const useAuthStore = create<AuthState>()(
               set({ isRefreshing: false });
               return null;
             }
+
+            const normalizedAccessToken = normalizeAuthStoreToken(result.accessToken);
+            const normalizedRefreshToken = normalizeAuthStoreToken(result.refreshToken);
+
+            if (!normalizedAccessToken || !normalizedRefreshToken) {
+              get().clearAuth();
+              return null;
+            }
+
             set({
-              accessToken: result.accessToken,
-              refreshToken: result.refreshToken,
+              accessToken: normalizedAccessToken,
+              refreshToken: normalizedRefreshToken,
               isRefreshing: false,
             });
             scheduleTokenRefresh();
-            return result.accessToken;
+            return normalizedAccessToken;
           } catch (error) {
             console.error('Token refresh failed:', error);
-            get().clearAuth();
+            if (get().refreshToken === refreshToken) {
+              get().clearAuth();
+            } else {
+              set({ isRefreshing: false });
+            }
             return null;
           } finally {
             refreshPromise = null;

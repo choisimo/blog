@@ -85,8 +85,8 @@ describe('admin auth security hardening', () => {
         JSON.stringify({
           ok: true,
           data: {
-            accessToken: createToken(),
-            refreshToken: createToken(7 * 24 * 3600),
+            accessToken: 'opaque-access-token',
+            refreshToken: 'opaque-refresh-token',
             tokenType: 'Bearer',
             expiresIn: 900,
             user: {
@@ -123,6 +123,52 @@ describe('admin auth security hardening', () => {
         method: 'POST',
       })
     );
+    expect(useAuthStore.getState().accessToken).toBe('opaque-access-token');
+    expect(useAuthStore.getState().refreshToken).toBe('opaque-refresh-token');
+    expect(window.location.hash).toBe('');
+  });
+
+  it('does not navigate when a handoff response is rejected by the auth store', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            accessToken: 'access token',
+            refreshToken: 'refresh-token',
+            tokenType: 'Bearer',
+            expiresIn: 900,
+            user: {
+              username: 'admin',
+              email: 'admin@example.com',
+              role: 'admin',
+              emailVerified: true,
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+    );
+
+    sessionStorage.setItem('admin.returnTo', '/admin/config/logs');
+    window.history.replaceState(
+      null,
+      '',
+      '/admin/auth/callback#handoff=oauth-handoff-test'
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: invalid credentials'),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBeNull();
+    expect(useAuthStore.getState().refreshToken).toBeNull();
+    expect(sessionStorage.getItem('admin.returnTo')).toBe('/admin/config/logs');
     expect(window.location.hash).toBe('');
   });
 
@@ -140,6 +186,26 @@ describe('admin auth security hardening', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/admin/config/logs', { replace: true });
     });
 
+    expect(window.location.hash).toBe('');
+  });
+
+  it('does not navigate or consume the return path when the real store rejects legacy fragments', async () => {
+    sessionStorage.setItem('admin.returnTo', '/admin/config/logs');
+    window.history.replaceState(
+      null,
+      '',
+      `/admin/auth/callback#token=${encodeURIComponent('access token')}&refreshToken=opaque-refresh-token`
+    );
+
+    render(<AdminAuthCallback />);
+
+    expect(
+      await screen.findByText('Authentication failed: invalid credentials'),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().accessToken).toBeNull();
+    expect(useAuthStore.getState().refreshToken).toBeNull();
+    expect(sessionStorage.getItem('admin.returnTo')).toBe('/admin/config/logs');
     expect(window.location.hash).toBe('');
   });
 

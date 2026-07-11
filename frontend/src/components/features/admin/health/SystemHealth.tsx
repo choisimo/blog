@@ -48,6 +48,8 @@ const HEALTH_PROVIDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 function normalizeHealthText(value: unknown, fallback = ""): string {
   if (typeof value !== "string") return fallback;
   const normalized = value
+    .replace(/\u001B\][^\u0007\u001B]*(?:\u0007|\u001B\\)/g, "")
+    .replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, "")
     .replace(/[\u0000-\u001F\u007F]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
