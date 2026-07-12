@@ -14,7 +14,12 @@ vi.mock('@/components/molecules/SparkInline', () => ({
 }));
 
 vi.mock('@/components/features/blog/ImageLightbox', () => ({
-  ClickableImage: ({ alt }: { alt?: string }) => <img alt={alt || ''} />,
+  ClickableImage: ({ alt }: { alt?: string }) => {
+    if (alt === 'force-render-error') {
+      throw new Error('Forced markdown renderer failure');
+    }
+    return <img alt={alt || ''} />;
+  },
   EmbeddedVideo: ({ children }: { children?: ReactNode }) => (
     <video>{children}</video>
   ),
@@ -64,5 +69,37 @@ describe('MarkdownRenderer link boundaries', () => {
 
     expect(unsafeAnchor).not.toHaveAttribute('href');
     expect(unsafeAnchor).not.toHaveAttribute('target');
+  });
+
+  it('falls back to safe readable source when a custom renderer throws', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const source = [
+      'Readable introduction.',
+      '',
+      '![force-render-error](/images/failure.png)',
+      '',
+      'Literal \\* marker and partial **draft',
+    ].join('\n');
+
+    try {
+      const { container } = render(<MarkdownRenderer content={source} />);
+      const fallback = container.querySelector(
+        '[data-markdown-fallback="article"]'
+      );
+
+      expect(fallback).toBeInTheDocument();
+      expect(fallback).toHaveAttribute('role', 'document');
+      expect(fallback).toHaveTextContent('Readable introduction.');
+      expect(fallback).toHaveTextContent(
+        'Literal \\* marker and partial **draft'
+      );
+      expect(fallback?.querySelector('pre')).toHaveClass(
+        'whitespace-pre-wrap',
+        'break-words'
+      );
+      expect(container.querySelector('img')).not.toBeInTheDocument();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

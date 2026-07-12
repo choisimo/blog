@@ -20,6 +20,7 @@ import {
 } from 'react';
 import type { Element as HastElement, ElementContent } from 'hast';
 import { Button } from '@/components/ui/button';
+import MarkdownRenderBoundary from '@/components/molecules/MarkdownRenderBoundary';
 import SparkInline from '@/components/molecules/SparkInline';
 import { blogMarkdownSanitizeSchema } from './markdownSanitizeSchema';
 import {
@@ -1193,7 +1194,7 @@ function MarkdownRendererInner({
             <p
               key={key}
               className={cn(
-                'article-readable mb-6 leading-8 text-justify',
+                'article-readable mb-6 text-pretty leading-8 text-foreground/90 [overflow-wrap:anywhere]',
                 isTerminal && 'border-l border-border/50 pl-4'
               )}
             >
@@ -1230,7 +1231,7 @@ function MarkdownRendererInner({
       ul: ({ children }: { children?: ReactNode }) => (
         <ul
           className={cn(
-            'article-readable list-disc pl-6 mb-6 space-y-3',
+            'article-readable mb-7 list-disc space-y-3 pl-7 marker:text-primary/70',
             isTerminal && 'list-none'
           )}
         >
@@ -1238,14 +1239,14 @@ function MarkdownRendererInner({
         </ul>
       ),
       ol: ({ children }: { children?: ReactNode }) => (
-        <ol className='article-readable list-decimal pl-6 mb-6 space-y-3'>
+        <ol className='article-readable mb-7 list-decimal space-y-3 pl-7 marker:font-semibold marker:text-primary/70'>
           {children}
         </ol>
       ),
       li: ({ children }: { children?: ReactNode }) => (
         <li
           className={cn(
-            'leading-8 text-justify',
+            'pl-1 text-pretty leading-8 [overflow-wrap:anywhere]',
             isTerminal && 'before:content-["-_"] before:text-primary'
           )}
         >
@@ -1255,7 +1256,7 @@ function MarkdownRendererInner({
       blockquote: ({ children }: { children?: ReactNode }) => (
         <blockquote
           className={cn(
-            'article-readable border-l-4 border-primary pl-6 my-8 italic bg-muted/30 py-4 rounded-r-lg',
+            'article-readable relative my-9 overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-muted/60 via-background to-muted/35 px-6 py-5 italic shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-primary',
             isTerminal &&
               'bg-[hsl(var(--terminal-code-bg))] border-primary/60 not-italic font-mono'
           )}
@@ -1343,7 +1344,7 @@ function MarkdownRendererInner({
             target={safeHref ? '_blank' : undefined}
             rel={safeHref ? 'noopener noreferrer' : undefined}
             className={cn(
-              'text-primary hover:underline',
+              'font-medium text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:decoration-primary',
               isTerminal &&
                 'underline decoration-dotted underline-offset-4 hover:decoration-solid'
             )}
@@ -1411,10 +1412,10 @@ function MarkdownRendererInner({
       cite: ({ children }: { children?: ReactNode }) => <cite>{children}</cite>,
       hr: () => <hr className='article-wide-block my-12 border-border/70' />,
       table: ({ children }: { children?: ReactNode }) => (
-        <div className='article-table-shell overflow-x-auto my-8'>
+        <div className='article-table-shell my-9 overflow-x-auto rounded-2xl border border-border/70 bg-card/80 shadow-sm'>
           <table
             className={cn(
-              'min-w-full divide-y divide-border rounded-lg shadow-sm',
+              'min-w-full divide-y divide-border',
               isTerminal && 'font-mono text-sm'
             )}
           >
@@ -1425,7 +1426,7 @@ function MarkdownRendererInner({
       th: ({ children }: { children?: ReactNode }) => (
         <th
           className={cn(
-            'px-4 py-2 text-left font-semibold bg-muted',
+            'whitespace-nowrap bg-muted/70 px-4 py-3 text-left text-sm font-semibold',
             isTerminal &&
               'bg-[hsl(var(--terminal-code-bg))] text-primary uppercase text-xs tracking-wider'
           )}
@@ -1434,7 +1435,7 @@ function MarkdownRendererInner({
         </th>
       ),
       td: ({ children }: { children?: ReactNode }) => (
-        <td className='px-4 py-2 border-t'>{children}</td>
+        <td className='border-t px-4 py-3 align-top leading-7'>{children}</td>
       ),
     };
   }, [
@@ -1449,21 +1450,23 @@ function MarkdownRendererInner({
   return (
     <div
       className={cn(
-        'article-flow prose prose-neutral dark:prose-invert max-w-none prose-lg content',
+        'article-flow prose prose-lg prose-neutral content max-w-none dark:prose-invert prose-headings:text-balance prose-p:text-pretty',
         isTerminal && 'prose-headings:font-mono prose-headings:tracking-wide',
         className
       )}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[
-          rehypeRaw,
-          [rehypeSanitize, blogMarkdownSanitizeSchema],
-        ]}
-        components={markdownComponents}
-      >
-        {sanitizedContent}
-      </ReactMarkdown>
+      <MarkdownRenderBoundary source={sanitizedContent} variant='article'>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[
+            rehypeRaw,
+            [rehypeSanitize, blogMarkdownSanitizeSchema],
+          ]}
+          components={markdownComponents}
+        >
+          {sanitizedContent}
+        </ReactMarkdown>
+      </MarkdownRenderBoundary>
     </div>
   );
 }
