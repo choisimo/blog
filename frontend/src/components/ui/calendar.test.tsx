@@ -3,7 +3,6 @@ import type * as ReactTypes from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-day-picker', async () => {
-  const React = await import('react');
 
   type DayPickerProps = ReactTypes.HTMLAttributes<HTMLDivElement> & {
     classNames?: Record<string, string>;

@@ -85,9 +85,7 @@ const ChartContainer = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'> & {
     config: ChartConfig;
-    children: React.ComponentProps<
-      typeof RechartsPrimitive.ResponsiveContainer
-    >['children'];
+    children: React.ReactNode;
   }
 >(({ id, className, children, config, 'aria-label': ariaLabel, title, ...props }, ref) => {
   const uniqueId = React.useId();
@@ -108,7 +106,7 @@ const ChartContainer = React.forwardRef<
       >
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer>
-          {sanitizeChartNode(children)}
+          <>{sanitizeChartNode(children)}</>
         </RechartsPrimitive.ResponsiveContainer>
       </div>
     </ChartContext.Provider>

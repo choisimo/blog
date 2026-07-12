@@ -86,10 +86,15 @@ function normalizeProviderHealth(value: unknown): ProviderHealth | null {
     healthStatus: normalizeHealthText(record.healthStatus, "unknown"),
     lastHealthCheck: typeof record.lastHealthCheck === "string" ? record.lastHealthCheck : null,
     isEnabled: Boolean(record.isEnabled),
-    modelCount: Number.isSafeInteger(record.modelCount) ? record.modelCount : 0,
-    enabledModelCount: Number.isSafeInteger(record.enabledModelCount)
-      ? record.enabledModelCount
-      : 0,
+    modelCount:
+      typeof record.modelCount === 'number' && Number.isSafeInteger(record.modelCount)
+        ? record.modelCount
+        : 0,
+    enabledModelCount:
+      typeof record.enabledModelCount === 'number' &&
+      Number.isSafeInteger(record.enabledModelCount)
+        ? record.enabledModelCount
+        : 0,
     healthError: normalizeHealthText(record.healthError) || null,
   };
 }

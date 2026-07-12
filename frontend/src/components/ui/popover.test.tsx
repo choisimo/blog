@@ -7,7 +7,7 @@ import { PopoverContent } from './popover';
 vi.mock('@radix-ui/react-popover', () => {
   const Content = React.forwardRef<
     HTMLDivElement,
-    Record<string, unknown> & { children?: ReactNode }
+    React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode }
   >(({ children, ...props }, ref) => (
     <div ref={ref} {...props}>
       {children}

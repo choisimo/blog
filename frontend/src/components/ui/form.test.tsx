@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockUseFormContext = vi.hoisted(() => vi.fn());
 
 vi.mock('react-hook-form', async () => {
-  const React = await import('react');
 
   return {
     Controller: ({

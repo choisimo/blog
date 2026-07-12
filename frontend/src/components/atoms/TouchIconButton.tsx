@@ -8,8 +8,8 @@ const ANSI_ESCAPE_PATTERN =
 const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
 
 function sanitizeAccessibleText(value: unknown): string | undefined {
-  if (typeof value !== 'string') return value;
-  const sanitized = value
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  const sanitized = String(value)
     .replace(ANSI_ESCAPE_PATTERN, '')
     .replace(CONTROL_TEXT_PATTERN, '')
     .trim();

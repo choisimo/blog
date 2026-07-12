@@ -38,7 +38,6 @@ describe('ChatInput', () => {
         label={'\u001b[31mChat composer\u0000'}
         title={'Composer\u0007 title'}
         liveReplyTarget={{
-          id: 'reply-1',
           name: '\u001b[32mAlice\u0008',
           senderType: 'agent',
         }}
@@ -66,8 +65,10 @@ describe('ChatInput', () => {
         {...props}
         selectedBlockAttachments={[
           {
+            kind: 'selected-block',
             id: 'block-1',
             name: '\u001b[31mSelected block\u0000',
+            contentType: 'text/markdown',
             markdown: '\u001b[32mFallback preview\u0007',
             textPreview: 'Preview\u0008 text',
             sizeBytes: 2048,
@@ -123,8 +124,10 @@ describe('ChatInput', () => {
         {...props}
         selectedBlockAttachments={[
           {
+            kind: 'selected-block',
             id: 'block-\u001b[31m1',
             name: 'Unsafe block',
+            contentType: 'text/markdown',
             markdown: 'Unsafe preview',
             textPreview: '',
             sizeBytes: 1024,

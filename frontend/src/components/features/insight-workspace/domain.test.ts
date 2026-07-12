@@ -26,7 +26,10 @@ describe("insight workspace domain guards", () => {
           articleUrl: "/blog/2026/safe-post",
           title: "Chat\u0000\r\nInjected\u007F",
           summary: "Summary\r\nInjected",
+          createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z",
+          messageCount: 1,
+          mode: "article",
         },
       ],
       aiMemoEvents: [

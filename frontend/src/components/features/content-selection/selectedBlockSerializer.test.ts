@@ -59,7 +59,7 @@ describe('selected block serialization', () => {
         slug: 'safe-post',
       },
     });
-    expect(attachment?.source.url).toBeUndefined();
+    expect(attachment?.source?.url).toBeUndefined();
   });
 
   it('truncates oversized markdown after normalizing selected text', () => {

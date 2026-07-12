@@ -89,6 +89,6 @@ describe('selectedBlockSerializer', () => {
     } as any);
 
     expect(attachment?.truncated).toBe(true);
-    expect(attachment?.markdown).toEndWith('\n...(truncated)');
+    expect(attachment?.markdown?.endsWith('\n...(truncated)')).toBe(true);
   });
 });

@@ -290,7 +290,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
       }
       const result = await revealSecret(normalizedSecret.id, reason);
 
-      if (result.ok && result.data) {
+      if (result.ok && 'data' in result && result.data) {
         if (kind === 'copy') {
           await copySecretValue(normalizedSecret, result.data.value);
         } else {
@@ -447,7 +447,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
 
   const handleGenerate = async () => {
     const result = await generateValue('apiKey', undefined, 'sk');
-    if (result.ok && result.data) {
+      if (result.ok && 'data' in result && result.data) {
       setFormData((prev) => ({ ...prev, value: result.data!.value }));
     }
   };

@@ -1,13 +1,13 @@
-import type { SVGProps } from "react";
+import { forwardRef, type SVGProps } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { DefaultDock } from "./DefaultDock";
 import type { DockAction } from "../types";
 
-const TestIcon = (props: SVGProps<SVGSVGElement>) => (
-  <svg data-testid="dock-icon" {...props} />
-);
+const TestIcon = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg ref={ref} data-testid="dock-icon" {...props} />
+));
 
 const action = (overrides: Partial<DockAction> = {}): DockAction => ({
   key: "chat",

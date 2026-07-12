@@ -59,13 +59,13 @@ describe("ChatInput", () => {
 
   it("normalizes attachment and image display labels", () => {
     const selectedBlockAttachment = {
+      kind: "selected-block" as const,
       id: "block-1",
       name: " Block\r\nName ",
       contentType: "text/markdown",
       textPreview: "preview",
       markdown: "markdown",
       sizeBytes: 512,
-      source: "selection",
       truncated: false,
     } as SelectedBlockAttachment;
     const image = new File(["image"], " photo\u0000\nname.png ", {
@@ -85,13 +85,13 @@ describe("ChatInput", () => {
 
   it("sanitizes selected block preview text before rendering expanded attachment content", () => {
     const selectedBlockAttachment = {
+      kind: "selected-block" as const,
       id: "block-1",
       name: "Block",
       contentType: "text/markdown",
       textPreview: "preview\u0000\r\nline\u007F",
       markdown: "markdown",
       sizeBytes: 512,
-      source: "selection",
       truncated: false,
     } as SelectedBlockAttachment;
 

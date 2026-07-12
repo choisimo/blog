@@ -27,7 +27,7 @@ describe("useLensDeck", () => {
       items: [
         {
           id: "card\u0000/1",
-          personaId: "mentor\u0000",
+          personaId: "mentor\u0000" as never,
           angleKey: "angle\u0000|1",
           title: "Title\u0000\r\nInjected\u007F",
           summary: "Summary\u007F",

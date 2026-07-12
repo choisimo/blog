@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeChatMultilineText } from '@/services/chat/api';
-import { ChatError } from '@/services/chat';
+import { ChatError } from '@/services/chat/types';
 
 describe('normalizeChatMultilineText', () => {
   it('normalizes multiline chat text while preserving line breaks', () => {

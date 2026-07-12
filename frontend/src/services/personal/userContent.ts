@@ -123,11 +123,6 @@ function normalizeMultilineText(value: unknown, label: string): string {
   return normalized;
 }
 
-function normalizeOptionalMultilineText(value: unknown, label: string): string | undefined {
-  if (value === undefined || value === null) return undefined;
-  return normalizeMultilineText(value, label);
-}
-
 function normalizeOptionalBlankMultilineText(value: unknown, label: string): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string') throw new Error(`Invalid user content ${label}`);

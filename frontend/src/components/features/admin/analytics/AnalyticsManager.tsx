@@ -234,8 +234,8 @@ async function getEditorPicksResult(): Promise<EditorPicksResult> {
     }
     return {
       picks: (Array.isArray(data.data?.picks) ? data.data.picks : [])
-        .map(normalizeEditorPick)
-        .filter((pick): pick is EditorPick => pick !== null),
+          .map((pick: EditorPick) => normalizeEditorPick(pick))
+        .filter((pick: EditorPick | null): pick is EditorPick => pick !== null),
     };
   } catch (err) {
     return {
@@ -274,8 +274,8 @@ async function getTrendingPosts(
     }
     return {
       trending: (Array.isArray(data.data?.trending) ? data.data.trending : [])
-        .map(normalizeTrendingPost)
-        .filter((post): post is TrendingPost => post !== null),
+          .map((post: TrendingPost) => normalizeTrendingPost(post))
+        .filter((post: TrendingPost | null): post is TrendingPost => post !== null),
       total: data.data?.total ?? 0,
       degraded: Boolean(data?.degraded),
     };

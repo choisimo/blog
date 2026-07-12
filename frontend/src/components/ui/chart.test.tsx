@@ -3,7 +3,6 @@ import type * as ReactTypes from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('recharts', async () => {
-  const React = await import('react');
 
   const ResponsiveContainer = ({
     children,

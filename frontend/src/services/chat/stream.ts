@@ -8,6 +8,10 @@ import type { ChatStreamEvent } from "./types";
 
 export const MAX_STREAM_BUFFER_CHARS = 1_000_000;
 const STREAM_BUFFER_LIMIT_ERROR = "Chat stream frame exceeded maximum size";
+type ChatStreamSource = Extract<
+  ChatStreamEvent,
+  { type: "sources" }
+>["sources"][number];
 
 function normalizeStreamString(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -113,9 +117,26 @@ export function parseStreamObject(obj: unknown): ChatStreamEvent[] {
 
   const srcs = o.sources;
   if (Array.isArray(srcs)) {
-    const sources = srcs.flatMap((source) => {
-      const normalized = normalizeStreamString(source);
-      return normalized ? [normalized] : [];
+    const sources = srcs.flatMap<ChatStreamSource>((source) => {
+      if (typeof source === "string") {
+        const url = normalizeStreamString(source);
+        return url ? [{ url }] : [];
+      }
+
+      if (!source || typeof source !== "object") return [];
+
+      const record = source as Record<string, unknown>;
+      const title = normalizeStreamString(record.title) ?? undefined;
+      const url = normalizeStreamString(record.url) ?? undefined;
+      const snippet = normalizeStreamString(record.snippet) ?? undefined;
+      const score =
+        typeof record.score === "number" && Number.isFinite(record.score)
+          ? record.score
+          : undefined;
+
+      return title || url || snippet || score !== undefined
+        ? [{ title, url, snippet, score }]
+        : [];
     });
     if (sources.length > 0) {
       events.push({ type: "sources", sources });

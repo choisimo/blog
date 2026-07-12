@@ -37,7 +37,12 @@ describe("SearchBar", () => {
     vi.useRealTimers();
     vi.clearAllMocks();
     isTerminalMock.mockReturnValue(false);
-    searchWebMock.mockResolvedValue({ results: [], answer: "web answer" });
+    searchWebMock.mockResolvedValue({
+      results: [],
+      answer: "web answer",
+      query: "",
+      responseTime: 0,
+    });
   });
 
   it("sanitizes search labels, title, placeholder, query display, and clear label", () => {

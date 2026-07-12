@@ -397,7 +397,7 @@ export function useCommentsFeed(postId: string) {
       currentCursor = cursor;
 
       stream = openCommentStream(
-        safePostId,
+        safePostId!,
         cursor,
         (items) => {
           clearReconnectTimer();
@@ -434,7 +434,7 @@ export function useCommentsFeed(postId: string) {
       requestedAt = new Date().toISOString();
 
       try {
-        const archived = await getArchivedComments(safePostId);
+        const archived = await getArchivedComments(safePostId!);
 
         if (archived) {
           if (!cancelled) {
@@ -447,7 +447,7 @@ export function useCommentsFeed(postId: string) {
           return;
         }
 
-        const response = await fetch(buildCommentsListUrl(safePostId));
+        const response = await fetch(buildCommentsListUrl(safePostId!));
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }

@@ -150,7 +150,10 @@ export async function fetchUnreadNotifications(limit = 50): Promise<AppNotificat
 
   return parsed.data.data.items
     .map(toAppNotification)
-    .filter((notification): notification is AppNotification => Boolean(notification));
+      .filter(
+        (notification: AppNotification | null): notification is AppNotification =>
+          Boolean(notification),
+      );
 }
 
 export async function fetchNotificationHistory(limit = 50): Promise<AppNotification[]> {
@@ -179,7 +182,10 @@ export async function fetchNotificationHistory(limit = 50): Promise<AppNotificat
 
   return parsed.data.data.items
     .map(toAppNotification)
-    .filter((notification): notification is AppNotification => Boolean(notification));
+      .filter(
+        (notification: AppNotification | null): notification is AppNotification =>
+          Boolean(notification),
+      );
 }
 
 export async function syncUnreadNotifications(limit = 50): Promise<void> {

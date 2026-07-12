@@ -207,6 +207,8 @@ function parseRAGSearchResult(value: unknown): RAGSearchResult | null {
         ? Math.max(0, 1 - value.distance)
         : null;
   const id = normalizeRAGSelector(value.id);
+  const document = normalizeMultilineText(value.document);
+  const snippet = normalizeMultilineText(value.snippet);
 
   if (!id || content === null || score === null) {
     return null;
@@ -218,11 +220,11 @@ function parseRAGSearchResult(value: unknown): RAGSearchResult | null {
     content,
     metadata: normalizeRAGResultMetadata(value.metadata),
     score,
-    ...(normalizeMultilineText(value.document) ? { document: normalizeMultilineText(value.document) } : {}),
+    ...(document ? { document } : {}),
     ...(typeof value.distance === 'number' && Number.isFinite(value.distance)
       ? { distance: value.distance }
       : {}),
-    ...(normalizeMultilineText(value.snippet) ? { snippet: normalizeMultilineText(value.snippet) } : {}),
+    ...(snippet ? { snippet } : {}),
   };
 }
 
@@ -878,7 +880,7 @@ export async function getCollections(): Promise<RAGCollectionsResponse> {
     }
 
     if (isRecord(data) && data.ok === false) {
-      return data as RAGCollectionsResponse;
+      return data as unknown as RAGCollectionsResponse;
     }
 
     return (

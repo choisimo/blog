@@ -6,7 +6,7 @@ import { HeaderSearchBar } from '@/components/features/search/HeaderSearchBar';
 const navigateMock = vi.hoisted(() => vi.fn());
 const addSearchQueryMock = vi.hoisted(() => vi.fn());
 const removeSearchQueryMock = vi.hoisted(() => vi.fn());
-const getRecentQueriesMock = vi.hoisted(() => vi.fn(() => []));
+const getRecentQueriesMock = vi.hoisted(() => vi.fn((): string[] => []));
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock,

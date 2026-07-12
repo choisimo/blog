@@ -6,7 +6,10 @@ import { DrawerContent, DrawerDescription, DrawerTitle } from './drawer';
 
 vi.mock('vaul', () => {
   const makePrimitive = (tag: 'div' | 'button') =>
-    React.forwardRef<HTMLElement, Record<string, unknown> & { children?: ReactNode }>(
+    React.forwardRef<
+      HTMLElement,
+      React.HTMLAttributes<HTMLElement> & { children?: ReactNode }
+    >(
       ({ children, ...props }, ref) =>
         React.createElement(tag, { ref, ...props }, children)
     );

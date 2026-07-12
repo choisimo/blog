@@ -21,6 +21,7 @@ function post(category: unknown): BlogPost {
     slug: String(category),
     year: '2026',
     published: true,
+    language: 'ko',
   };
 }
 
