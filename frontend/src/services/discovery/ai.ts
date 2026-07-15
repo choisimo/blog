@@ -68,6 +68,7 @@ const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
 const MULTILINE_CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const WHITESPACE_PATTERN = /\s+/g;
 const MAX_AI_ERROR_MESSAGE_LENGTH = 1000;
+export const AI_TASK_TIMEOUT_MS = 120_000;
 
 // ============================================================================
 // Utilities
@@ -161,7 +162,7 @@ async function invokeTask<T>(
   payload: TaskPayload,
 ): Promise<T> {
   try {
-    const signal = AbortSignal.timeout(45_000);
+    const signal = AbortSignal.timeout(AI_TASK_TIMEOUT_MS);
     if (DIRECT_TASK_MODES.has(mode)) {
       return await invokeDirectTask<T>(mode, payload, signal);
     }
@@ -185,7 +186,7 @@ async function invokeTask<T>(
     return data as T;
   } catch (err) {
     if (err instanceof DOMException && err.name === "TimeoutError") {
-      throw new Error("AI task timed out after 30 seconds");
+      throw new Error(`AI task timed out after ${AI_TASK_TIMEOUT_MS / 1000} seconds`);
     }
     throw err;
   }

@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { signJwt } from '../src/lib/jwt';
+import { AIService } from '../src/lib/ai-service';
 import ai from '../src/routes/ai';
 import type { Env } from '../src/types';
 
@@ -71,6 +72,30 @@ describe('AI route security guards', () => {
       ok: false,
       error: { message: 'prompt is too large' },
     });
+  });
+
+  it('allows production-length inference before aborting the origin request', async () => {
+    const token = await createUserToken();
+    const generate = vi.spyOn(AIService.prototype, 'generate').mockResolvedValue('pong');
+
+    const response = await createApp().request(
+      'https://example.com/api/v1/ai/generate',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ prompt: 'Reply with exactly: pong' }),
+      },
+      env
+    );
+
+    expect(response.status).toBe(200);
+    expect(generate).toHaveBeenCalledWith(
+      'Reply with exactly: pong',
+      expect.objectContaining({ timeout: 120_000 })
+    );
   });
 
   it('keeps AI validation available when KV rate-limit writes are exhausted', async () => {

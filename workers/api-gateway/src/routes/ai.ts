@@ -22,7 +22,10 @@ const AI_PROMPT_MAX_CHARS = 16000;
 const AI_CHAT_MAX_MESSAGES = 32;
 const AI_CHAT_MAX_CONTENT_CHARS = 32000;
 const AI_VISION_MAX_IMAGE_CHARS = 8 * 1024 * 1024;
-const AI_DEFAULT_TIMEOUT_MS = 30000;
+// Production inference regularly takes 45-100 seconds. Keep the edge deadline
+// aligned with the frontend's user-visible AI task budget so the origin result
+// is not discarded while it is still being generated.
+const AI_DEFAULT_TIMEOUT_MS = 120_000;
 const AI_VISION_TIMEOUT_MS = 45000;
 const AI_RATE_WINDOW_SECONDS = 60;
 const AI_DEFAULT_RATE_LIMIT = 30;

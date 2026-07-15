@@ -18,7 +18,7 @@
     "type-check": "tsc -b config/tsconfig.app.json config/tsconfig.node.json --pretty false",
     "test": "vitest --config config/vite.config.ts",
     "test:run": "vitest run --config config/vite.config.ts",
-    "test:deploy": "vitest run --config config/vite.config.ts src/test/Smoke.test.tsx src/test/apiBase.test.ts src/test/runtimeConfig.test.ts src/test/MarkdownRenderer.test.tsx src/components/molecules/ChatMarkdown.test.tsx src/services/discovery/rag.test.ts",
+    "test:deploy": "vitest run --config config/vite.config.ts src/test/Smoke.test.tsx src/test/apiBase.test.ts src/test/runtimeConfig.test.ts src/test/MarkdownRenderer.test.tsx src/components/molecules/ChatMarkdown.test.tsx src/services/discovery/rag.test.ts src/services/discovery/ai.timeout.test.ts",
     "test:ui": "vitest --ui --config config/vite.config.ts",
     "test:coverage": "vitest run --coverage --config config/vite.config.ts",
     "test:e2e": "playwright test",
