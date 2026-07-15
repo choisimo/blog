@@ -220,7 +220,7 @@ describe("useChatSession", () => {
 
     render(
       <Harness
-        initialMessages={[{ role: "user", text: "hello" }]}
+        initialMessages={[{ id: "message-1", role: "user", text: "hello" }]}
         initialSessionKey={"session-1\r\nX-Injected: yes"}
         onReady={(next) => { handle = next; }}
         persistOptIn

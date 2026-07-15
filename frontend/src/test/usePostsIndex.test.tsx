@@ -13,6 +13,7 @@ vi.mock('@/data/content/posts', () => ({
 }));
 
 const post = {
+  id: 'safe-post',
   year: '2026',
   slug: 'safe-post',
   title: 'Safe Post',
@@ -21,6 +22,8 @@ const post = {
   author: 'nodove',
   category: 'Tech',
   tags: [],
+  content: '',
+  language: 'ko',
 } as BlogPost;
 
 function PostsIndexProbe() {

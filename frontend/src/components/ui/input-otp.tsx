@@ -42,7 +42,7 @@ const InputOTP = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof OTPInput>
 >(
   (
-    { className, containerClassName, children, 'aria-label': ariaLabel, title, ...props },
+    { className, containerClassName, 'aria-label': ariaLabel, title, ...props },
     ref
   ) => (
   <OTPInput
@@ -55,9 +55,7 @@ const InputOTP = React.forwardRef<
     aria-label={sanitizeInputOTPOptionalText(ariaLabel)}
     title={sanitizeInputOTPOptionalText(title)}
     {...props}
-  >
-    {sanitizeInputOTPNode(children)}
-  </OTPInput>
+  />
   )
 );
 InputOTP.displayName = 'InputOTP';

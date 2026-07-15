@@ -3,7 +3,6 @@ import type * as ReactTypes from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-resizable-panels', async () => {
-  const React = await import('react');
 
   type PanelGroupProps = ReactTypes.HTMLAttributes<HTMLDivElement> & {
     direction?: 'horizontal' | 'vertical';
@@ -131,6 +130,7 @@ describe('Resizable text boundaries', () => {
   it('omits empty sanitized accessibility text and preserves rich child nodes', () => {
     render(
       <ResizablePanelGroup
+        direction='horizontal'
         aria-label={'\u001b]0;Hidden group\u0007\u001b[31m\u0000'}
         title={'\u0007'}
       >

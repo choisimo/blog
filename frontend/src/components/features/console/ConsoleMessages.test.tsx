@@ -19,13 +19,15 @@ describe('ConsoleMessages', () => {
             id: 'user-1',
             role: 'user',
             content: '\u001B]0;Hidden question\u0007\u001b[32mQuestion\u0008 body',
+            timestamp: 0,
           },
           {
             id: 'assistant-1',
             role: 'assistant',
             content: '\u001B]0;Hidden answer\u0007Answer\u0009 body',
+            timestamp: 0,
             error: '\u001B]0;Hidden error\u0007\u001b[33mFailed\u000a',
-            citations: [{ id: 'cite-1', title: 'Citation' }],
+            citations: [{ id: 'cite-1', title: 'Citation', snippet: 'Snippet', score: 1 }],
           },
         ]}
       />
@@ -69,6 +71,7 @@ describe('ConsoleMessages', () => {
             id: 'assistant-stream',
             role: 'assistant',
             content: '',
+            timestamp: 0,
             isStreaming: true,
           },
         ]}

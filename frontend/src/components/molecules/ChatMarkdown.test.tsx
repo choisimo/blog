@@ -78,7 +78,35 @@ describe('ChatMarkdown', () => {
     expect(screen.getByRole('button', { name: 'Copy code' })).toBeInTheDocument();
   });
 
-  it('provides accessible copy labels for plain code blocks', () => {
+  it('preserves literal and incomplete special markers while streaming', () => {
+    const { container } = render(
+      <ChatMarkdown
+        isStreaming
+        content={'Literal \\* star, multiplication 2 * 3, partial **draft, pending `code'}
+      />
+    );
+
+    expect(container).toHaveTextContent(
+      'Literal * star, multiplication 2 * 3, partial **draft, pending `code'
+    );
+    expect(container.querySelector('em')).not.toBeInTheDocument();
+    expect(container.querySelector('strong')).not.toBeInTheDocument();
+    expect(container.querySelector('code')).not.toBeInTheDocument();
+  });
+
+  it('still renders completed emphasis markers during streaming', () => {
+    render(
+      <ChatMarkdown
+        isStreaming
+        content='Completed *emphasis* and **strong**.'
+      />
+    );
+
+    expect(screen.getByText('emphasis', { selector: 'em' })).toBeInTheDocument();
+    expect(screen.getByText('strong', { selector: 'strong' })).toBeInTheDocument();
+  });
+
+  it('provides accessible copy labels for plain code blocks', async () => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: {
@@ -92,6 +120,7 @@ describe('ChatMarkdown', () => {
 
     fireEvent.click(copyButton);
 
+    await screen.findByRole('button', { name: 'Code copied' });
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('plain code');
   });
 });

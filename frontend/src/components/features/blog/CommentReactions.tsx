@@ -29,6 +29,10 @@ interface CommentReactionsProps {
 }
 
 const allowedEmojiSet = new Set<ReactionEmoji>(ALLOWED_EMOJIS);
+
+function isReactionEmoji(value: string): value is ReactionEmoji {
+  return allowedEmojiSet.has(value as ReactionEmoji);
+}
 const unsafeCommentIdPattern = /[\u0000-\u001F\u007F/\\]/;
 const REACTION_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
 const REACTION_ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
@@ -75,7 +79,7 @@ function normalizeReactionCounts(
   const normalized = new Map<ReactionEmoji, number>();
 
   for (const reaction of reactionCounts) {
-    if (!allowedEmojiSet.has(reaction.emoji)) continue;
+    if (!isReactionEmoji(reaction.emoji)) continue;
 
     const count = Number.isFinite(reaction.count)
       ? Math.floor(reaction.count)

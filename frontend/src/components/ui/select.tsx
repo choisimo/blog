@@ -35,19 +35,24 @@ const sanitizeSelectNode = (children: React.ReactNode): React.ReactNode => {
   return children;
 };
 
-const Select = React.forwardRef<
-  React.ElementRef<typeof SelectPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>
->(({ children, 'aria-label': ariaLabel, title, ...props }, ref) => (
-  <SelectPrimitive.Root
-    ref={ref}
-    aria-label={sanitizeSelectOptionalText(ariaLabel)}
-    title={sanitizeSelectOptionalText(title)}
-    {...props}
-  >
-    {sanitizeSelectNode(children)}
-  </SelectPrimitive.Root>
-));
+type SelectProps = React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root> & {
+  'aria-label'?: string | number;
+  title?: string | number;
+};
+
+const Select = ({ children, 'aria-label': ariaLabel, title, ...props }: SelectProps) => {
+  const rootProps = {
+    ...props,
+    'aria-label': sanitizeSelectOptionalText(ariaLabel),
+    title: sanitizeSelectOptionalText(title),
+  } as React.ComponentPropsWithoutRef<typeof SelectPrimitive.Root>;
+
+  return (
+    <SelectPrimitive.Root {...rootProps}>
+      {sanitizeSelectNode(children)}
+    </SelectPrimitive.Root>
+  );
+};
 Select.displayName = SelectPrimitive.Root.displayName;
 
 const SelectGroup = React.forwardRef<

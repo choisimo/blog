@@ -7,7 +7,7 @@ import { HoverCardContent } from './hover-card';
 vi.mock('@radix-ui/react-hover-card', () => {
   const Content = React.forwardRef<
     HTMLDivElement,
-    Record<string, unknown> & { children?: ReactNode }
+    React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode }
   >(({ children, ...props }, ref) => (
     <div ref={ref} {...props}>
       {children}

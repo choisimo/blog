@@ -106,7 +106,11 @@ describe('VisitedPostsMinimap', () => {
         title: '\u001b[36mHelpful Chat\u0000',
         articleTitle: '\u001b[31mUnsafe Article\u0000',
         articleUrl: 'https://example.test/blog/2026/safe-post',
+        summary: 'Helpful summary',
+        createdAt: '2026-07-05T00:00:00.000Z',
         updatedAt: '2026-07-05T00:00:00.000Z',
+        messageCount: 1,
+        mode: 'article',
       },
     ]);
 

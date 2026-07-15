@@ -6,7 +6,10 @@ import { SheetContent, SheetDescription, SheetTitle } from './sheet';
 
 vi.mock('@radix-ui/react-dialog', () => {
   const makePrimitive = (tag: 'div' | 'button') =>
-    React.forwardRef<HTMLElement, Record<string, unknown> & { children?: ReactNode }>(
+    React.forwardRef<
+      HTMLElement,
+      React.HTMLAttributes<HTMLElement> & { children?: ReactNode }
+    >(
       ({ children, ...props }, ref) =>
         React.createElement(tag, { ref, ...props }, children)
     );

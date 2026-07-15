@@ -62,7 +62,12 @@ function toStringList(value: unknown): string[] {
 
 function toNumberList(value: unknown, fallback: number[]): number[] {
     if (!Array.isArray(value) && !ArrayBuffer.isView(value)) return fallback;
-    const values = Array.from(value).map((item) => toNumberParam(item));
+    const items = Array.isArray(value)
+        ? value
+        : "length" in value
+          ? Array.from(value as unknown as ArrayLike<unknown>)
+          : [];
+    const values = items.map((item) => toNumberParam(item));
     return values.length > 0 ? values : fallback;
 }
 

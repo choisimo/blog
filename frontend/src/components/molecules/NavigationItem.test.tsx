@@ -1,3 +1,4 @@
+import { forwardRef, type SVGProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,9 +26,9 @@ vi.mock('react-router-dom', () => ({
   useLocation: () => locationMock,
 }));
 
-const TestIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg data-testid='navigation-icon' {...props} />
-);
+const TestIcon = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg ref={ref} data-testid='navigation-icon' {...props} />
+));
 
 describe('NavigationItem', () => {
   it('sanitizes internal link labels, accessibility text, and preserves active styling', () => {

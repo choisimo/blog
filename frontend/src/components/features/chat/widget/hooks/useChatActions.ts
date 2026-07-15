@@ -86,7 +86,7 @@ function normalizeSelectedBlockAttachmentForSend(
     kind: 'selected-block',
     id: normalizeActionId(attachment.id, `selected-block-${index + 1}`),
     name: normalizeActionLine(attachment.name, 'selected-block.md'),
-    contentType: normalizeActionLine(attachment.contentType, 'text/markdown'),
+    contentType: 'text/markdown',
     markdown,
     textPreview,
     sizeBytes,

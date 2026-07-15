@@ -41,6 +41,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 import { cn } from '@/lib/utils';
 import { Copy, Check, Table2 } from 'lucide-react';
+import MarkdownRenderBoundary from './MarkdownRenderBoundary';
 
 // Terminal-style syntax highlighting theme for chat
 const terminalChatTheme: { [key: string]: React.CSSProperties } = {
@@ -158,34 +159,13 @@ export function normalizeMarkdownHref(value: unknown): string | null {
 }
 
 /**
- * Sanitize incomplete markdown during streaming to prevent parse errors
- * This helps avoid flickering and layout shifts when markdown is incomplete
+ * CommonMark parsers already treat incomplete delimiters as literal text or
+ * open-ended code blocks at EOF. Appending synthetic closing markers changes
+ * user-visible text (for example, multiplication asterisks become emphasis),
+ * so streaming content must remain byte-for-byte stable after sanitization.
  */
 function sanitizeStreamingMarkdown(content: string): string {
-  let result = content;
-  
-  // Count unclosed code fences
-  const codeFenceMatches = result.match(/```/g);
-  if (codeFenceMatches && codeFenceMatches.length % 2 === 1) {
-    result = `${result}\n\`\`\``;
-  }
-  
-  // Handle incomplete inline code
-  const inlineCodeMatches = result.match(/(?<!`)`(?!`)/g);
-  if (inlineCodeMatches && inlineCodeMatches.length % 2 === 1) {
-    result = `${result}\``;
-  }
-  
-  // Handle incomplete bold/italic markers at the end
-  // Only if the marker appears at the very end without closing
-  if (/\*\*[^*]+$/.test(result) && !/\*\*[^*]+\*\*/.test(result.slice(-50))) {
-    result = `${result}**`;
-  }
-  if (/(?<!\*)\*[^*]+$/.test(result) && !/(?<!\*)\*[^*]+\*(?!\*)/.test(result.slice(-30))) {
-    result = `${result}*`;
-  }
-  
-  return result;
+  return content;
 }
 
 // Isolated code block — owns its own copied state so parent doesn't re-render on copy
@@ -348,7 +328,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
       <strong className={cn('text-[13px] font-semibold', isTerminal && 'font-mono')}>{children}</strong>
     ),
     p: ({ children }) => (
-      <p className='text-[13px] leading-relaxed break-words [overflow-wrap:anywhere]'>{children}</p>
+      <p className='text-pretty text-[13px] leading-relaxed text-foreground/90 break-words [overflow-wrap:anywhere]'>{children}</p>
     ),
     ul: ({ children }) => (
       <ul className={cn('pl-4 text-[13px] leading-relaxed list-disc space-y-1', isTerminal && 'list-none')}>
@@ -365,7 +345,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
     ),
     blockquote: ({ children }) => (
       <blockquote className={cn(
-        'rounded-md border-l-4 border-primary/40 bg-muted/40 pl-3 py-1 text-[13px] italic',
+        'relative overflow-hidden rounded-xl border border-border/70 bg-muted/35 px-4 py-3 text-[13px] italic shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary/70',
         isTerminal && 'bg-[hsl(var(--terminal-code-bg))] border-primary/60 not-italic font-mono'
       )}>
         {children}
@@ -373,9 +353,11 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
     ),
     code({ inline, className, children, ...props }: CodeComponentProps) {
       const match = /language-(\w+)/.exec(className || '');
-      const codeString = String(children).replace(/\n$/, '');
+      const rawCode = String(children);
+      const codeString = rawCode.replace(/\n$/, '');
+      const isBlock = inline === false || rawCode.endsWith('\n');
 
-      if (!inline && match) {
+      if (isBlock && match) {
         return (
           <ChatCodeBlock
             language={match[1]}
@@ -386,7 +368,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
       }
 
       // Code block without language specified
-      if (!inline && !match && codeString.includes('\n')) {
+      if (isBlock && !match) {
         return (
           <ChatPlainCodeBlock codeString={codeString} isTerminal={isTerminal} />
         );
@@ -496,7 +478,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
 
   return (
     <div className={cn(
-      'chat-markdown prose prose-sm prose-neutral max-w-none dark:prose-invert',
+      'chat-markdown prose prose-sm prose-neutral max-w-none dark:prose-invert prose-headings:text-balance',
       'break-words [overflow-wrap:anywhere]',
       '[&>p]:mb-3 [&>p:last-child]:mb-0',
       '[&>ul]:my-2 [&>ol]:my-2',
@@ -506,9 +488,11 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = memo(({
       aria-label={safeLabel}
       title={safeTitle}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {displayContent}
-      </ReactMarkdown>
+      <MarkdownRenderBoundary source={displayContent} variant='chat'>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+          {displayContent}
+        </ReactMarkdown>
+      </MarkdownRenderBoundary>
     </div>
   );
 });

@@ -22,7 +22,7 @@ vi.mock("@/pages/public/errors/ErrorStatusPage", () => ({
   ),
 }));
 
-function ThrowingChild() {
+function ThrowingChild(): never {
   const error = new Error(
     "\u001b]0;Hidden message\u0007\u001b[31mBad\u001b[0m\u0000message"
   );

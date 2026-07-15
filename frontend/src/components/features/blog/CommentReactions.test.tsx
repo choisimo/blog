@@ -14,8 +14,8 @@ vi.mock('@/hooks/ui/use-mobile', () => ({
 
 vi.mock('@/services/engagement/reactions', () => ({
   ALLOWED_EMOJIS: ['👍', '❤️', '😂'],
-  addReaction: vi.fn(() => Promise.resolve()),
-  removeReaction: vi.fn(() => Promise.resolve()),
+  addReaction: vi.fn(() => Promise.resolve({ added: true })),
+  removeReaction: vi.fn(() => Promise.resolve({ removed: true })),
   getUserReactions: vi.fn(() => new Set()),
   setUserReactions: vi.fn(),
 }));
@@ -29,8 +29,8 @@ describe('CommentReactions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getUserReactionsMock.mockReturnValue(new Set());
-    addReactionMock.mockResolvedValue(undefined);
-    removeReactionMock.mockResolvedValue(undefined);
+    addReactionMock.mockResolvedValue({ added: true });
+    removeReactionMock.mockResolvedValue({ removed: true });
   });
 
   it('sanitizes group labels, trigger text, reaction counts, and action labels', () => {

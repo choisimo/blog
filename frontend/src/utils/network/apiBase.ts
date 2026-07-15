@@ -65,7 +65,7 @@ export function getApiBaseUrl(): string {
   const runtimeBaseUrl = normalizeConfiguredApiBaseUrl(fromRuntime);
   if (runtimeBaseUrl) {
     baseUrl = runtimeBaseUrl;
-    rawBaseUrl = fromRuntime;
+    rawBaseUrl = typeof fromRuntime === 'string' ? fromRuntime : runtimeBaseUrl;
     source = "runtime";
   }
 
@@ -92,7 +92,7 @@ export function getApiBaseUrl(): string {
             /^http:\/\/127\.0\.0\.1(:\d+)?(\/|$)/.test(localStorageBaseUrl);
           if (!import.meta.env.PROD || isLocalhostOverride) {
             baseUrl = localStorageBaseUrl;
-            rawBaseUrl = parsed;
+            rawBaseUrl = localStorageBaseUrl;
             source = "localStorage";
           }
         }
