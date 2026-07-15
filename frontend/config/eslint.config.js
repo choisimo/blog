@@ -19,6 +19,11 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Sanitizers intentionally match ASCII control-character ranges before
+      // rendering or forwarding untrusted text. ESLint treats every explicit
+      // control range as suspicious, which turns the security boundary into
+      // hundreds of false positives.
+      'no-control-regex': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
