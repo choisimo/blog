@@ -420,6 +420,13 @@ export async function ensureSessionNotebook(sessionId, options = {}) {
   notebookBootstrapJobs.set(sessionId, job);
   if (waitForBootstrap) {
     await job;
+  } else {
+    void job.catch((err) => {
+      logger.warn({}, "Open Notebook bootstrap failed in background", {
+        sessionId,
+        error: err?.message,
+      });
+    });
   }
 
   return session.notebookId;

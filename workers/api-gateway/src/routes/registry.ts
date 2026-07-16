@@ -35,6 +35,7 @@ import contact from './contact';
 import notifications from './notifications';
 import adminLogs from './admin-logs';
 import siteContent from './site-content';
+import agent from './agent';
 
 export type WorkerRouteRegistryEntry = {
   boundaryId: string;
@@ -70,6 +71,7 @@ export const WORKER_ROUTE_REGISTRY: WorkerRouteRegistryEntry[] = [
   { boundaryId: 'admin-logs', path: '/admin/logs', router: adminLogs },
   { boundaryId: 'site-content', path: '/site-content', router: siteContent },
   { boundaryId: 'gateway', path: '/gateway', router: gateway },
+  { boundaryId: 'agent', path: '/agent', router: agent },
 ];
 
 function normalizePublicApiPath(pathname: string, fallbackPath: string): string {
@@ -86,7 +88,10 @@ function normalizePublicApiPath(pathname: string, fallbackPath: string): string 
   return `/api/v1${raw.startsWith('/') ? raw : `/${raw}`}`;
 }
 
-function applyBoundaryHeaderMiddleware(boundaryId: string, routePath: string): MiddlewareHandler<HonoEnv> {
+function applyBoundaryHeaderMiddleware(
+  boundaryId: string,
+  routePath: string
+): MiddlewareHandler<HonoEnv> {
   return async (c, next) => {
     await next();
     const pathname = normalizePublicApiPath(c.req.path, routePath);
@@ -96,7 +101,7 @@ function applyBoundaryHeaderMiddleware(boundaryId: string, routePath: string): M
         responder: 'worker',
         edgeMode: 'native',
         originMode: 'worker',
-      },
+      }
     );
     for (const [key, value] of Object.entries(headers) as [string, string][]) {
       c.res.headers.set(key, value);
@@ -127,12 +132,9 @@ export function canProxyPath(pathname: string, method?: string) {
 }
 
 export function buildProxyBoundaryHeaders(pathname: string, method?: string) {
-  return buildRouteBoundaryHeaders(
-    method ? { pathname, method } : pathname,
-    {
-      responder: 'worker-proxy',
-      edgeMode: 'proxy',
-      originMode: 'backend',
-    },
-  );
+  return buildRouteBoundaryHeaders(method ? { pathname, method } : pathname, {
+    responder: 'worker-proxy',
+    edgeMode: 'proxy',
+    originMode: 'backend',
+  });
 }

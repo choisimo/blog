@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 describe('generic backend proxy', () => {
-  it('does not expose agent or execute paths through the public backend proxy', async () => {
+  it('guards agent paths and does not expose execute paths through the public backend proxy', async () => {
     const upstreamFetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(null, {
         status: 204,
@@ -29,9 +29,48 @@ describe('generic backend proxy', () => {
       method: 'POST',
     });
 
-    expect(agentResponse.status).toBe(404);
+    expect(agentResponse.status).toBe(401);
     expect(executeResponse.status).toBe(404);
     expect(upstreamFetch).not.toHaveBeenCalled();
+  });
+
+  it('proxies authenticated admin agent requests through the origin boundary', async () => {
+    const token = await signJwt(
+      {
+        sub: 'admin-user',
+        role: 'admin',
+        username: 'admin',
+        type: 'access',
+        emailVerified: true,
+      },
+      env
+    );
+    const upstreamFetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async () => new Response(null, { status: 204 }));
+
+    const response = await SELF.fetch('https://example.com/api/v1/agent/run', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: 'Reply exactly AGENT_OK',
+        sessionId: 'agent-test',
+        mode: 'default',
+      }),
+    });
+
+    expect(response.status).toBe(204);
+    expect(upstreamFetch).toHaveBeenCalledTimes(1);
+
+    const [upstreamUrl, requestInit] = upstreamFetch.mock.calls[0] ?? [];
+    const forwardedHeaders = new Headers(requestInit?.headers);
+
+    expect(upstreamUrl).toBe('https://backend.example/api/v1/agent/run');
+    expect(forwardedHeaders.get('Authorization')).toBe(`Bearer ${token}`);
+    expect(forwardedHeaders.get('X-Backend-Key')).toBe('comments-backend-key');
   });
 
   it('does not overwrite Host while forwarding backend-owned paths', async () => {
@@ -97,11 +136,12 @@ describe('generic backend proxy', () => {
       },
       env
     );
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-      new Response('event: ping\ndata: {"ok":true}\n\n', {
-        status: 200,
-        headers: { 'Content-Type': 'text/event-stream' },
-      })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response('event: ping\ndata: {"ok":true}\n\n', {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        })
     );
 
     const response = await SELF.fetch('https://example.com/api/v1/admin/logs/stream', {
