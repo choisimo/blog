@@ -37,7 +37,8 @@ import {
 import { AGENT } from "../../config/constants.js";
 import { createLogger } from "../../lib/logger.js";
 
-const DEFAULT_MODEL = process.env.AGENT_MODEL || "gpt-4.1";
+const DEFAULT_MODEL =
+  process.env.AGENT_MODEL || process.env.AI_DEFAULT_MODEL || "gpt-4.1";
 const MAX_TOOL_ITERATIONS = AGENT.MAX_TOOL_ITERATIONS;
 const MAX_CONTEXT_MESSAGES = AGENT.MAX_CONTEXT_MESSAGES;
 const TOOL_TIMEOUT = Math.max(

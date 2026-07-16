@@ -49,6 +49,32 @@ const DEFAULT_TIMEOUT = TIMEOUTS.DEFAULT; // 2 minutes
 const CIRCUIT_BREAKER_THRESHOLD = CIRCUIT_BREAKER.THRESHOLD;
 const CIRCUIT_BREAKER_RESET_TIME = CIRCUIT_BREAKER.RESET_TIME; // 30 seconds
 
+// The protected Spark route currently exposes Chat Completions as an SSE
+// stream. Aggregate that stream for callers using the synchronous chat API.
+const STREAM_AGGREGATION_MODELS = new Set(["gpt-5.3-codex-spark"]);
+
+function normalizeModelList(value) {
+  let candidates = value;
+
+  if (typeof candidates === "string") {
+    try {
+      candidates = JSON.parse(candidates);
+    } catch {
+      candidates = candidates.split(",");
+    }
+  }
+
+  if (!Array.isArray(candidates)) {
+    return [];
+  }
+
+  return [...new Set(
+    candidates
+      .map((model) => String(model || "").trim())
+      .filter(Boolean),
+  )];
+}
+
 // ============================================================================
 // Logger
 // ============================================================================
@@ -88,6 +114,9 @@ export class OpenAICompatClient {
       config.ai?.defaultModel ||
       process.env.AI_DEFAULT_MODEL ||
       AI_MODELS.DEFAULT;
+    this.fallbackModels = normalizeModelList(
+      options.fallbackModels ?? AI_MODELS.FALLBACKS,
+    );
 
     // Initialize OpenAI client
     this._openai = new OpenAI({
@@ -115,6 +144,7 @@ export class OpenAICompatClient {
     logger.info({ operation: "init" }, "OpenAICompatClient initialized", {
       baseUrl: this.baseUrl,
       defaultModel: this.defaultModel,
+      fallbackModels: this.fallbackModels,
     });
   }
 
@@ -123,6 +153,91 @@ export class OpenAICompatClient {
    */
   get openai() {
     return this._openai;
+  }
+
+  _containsImageContent(messages) {
+    return (messages || []).some((message) => {
+      if (!Array.isArray(message?.content)) {
+        return false;
+      }
+
+      return message.content.some(
+        (part) => part?.type === "image_url" || part?.image_url,
+      );
+    });
+  }
+
+  _getModelCandidates(primaryModel, messages, options = {}) {
+    const allowFallback =
+      options.allowFallback !== false && !this._containsImageContent(messages);
+    const fallbackModels = allowFallback
+      ? normalizeModelList(options.fallbackModels ?? this.fallbackModels)
+      : [];
+
+    return [...new Set([primaryModel, ...fallbackModels].filter(Boolean))];
+  }
+
+  async _chatCompletionForModel(messages, options, model, isFallback) {
+    if (STREAM_AGGREGATION_MODELS.has(model)) {
+      const stream = await this._openai.chat.completions.create(
+        {
+          model,
+          messages,
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.maxTokens || options.max_tokens,
+          stream: true,
+        },
+        {
+          timeout: options.timeout || DEFAULT_TIMEOUT,
+        },
+      );
+
+      let content = "";
+      let responseModel = model;
+      let finishReason;
+      let usage;
+
+      for await (const chunk of stream) {
+        responseModel = chunk.model || responseModel;
+        finishReason =
+          chunk.choices?.[0]?.finish_reason ?? finishReason;
+        usage = chunk.usage ?? usage;
+        content += chunk.choices?.[0]?.delta?.content || "";
+      }
+
+      return {
+        content,
+        model: responseModel,
+        provider: isFallback
+          ? "openai-compat-fallback"
+          : "openai-compat-stream-aggregate",
+        usage,
+        finishReason,
+      };
+    }
+
+    const response = await this._openai.chat.completions.create(
+      {
+        model,
+        messages,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens || options.max_tokens,
+        stream: false,
+      },
+      {
+        timeout: options.timeout || DEFAULT_TIMEOUT,
+      },
+    );
+
+    return {
+      content: response.choices[0]?.message?.content || "",
+      model: response.model || model,
+      provider: isFallback
+        ? "openai-compat-fallback"
+        : "openai-compat",
+      usage: response.usage,
+      finishReason: response.choices[0]?.finish_reason,
+    };
   }
 
   _shouldTryLegacyCompletions(error) {
@@ -307,75 +422,88 @@ export class OpenAICompatClient {
       );
     }
 
-    const model = options.model || this.defaultModel;
+    const primaryModel = options.model || this.defaultModel;
+    const modelCandidates = this._getModelCandidates(
+      primaryModel,
+      messages,
+      options,
+    );
 
     logger.debug({ operation: "chat", requestId }, "Starting chat request", {
-      model,
+      model: primaryModel,
+      fallbackModels: modelCandidates.slice(1),
       messageCount: messages?.length,
     });
 
-    try {
-      const response = await this._openai.chat.completions.create(
-        {
-          model,
-          messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxTokens || options.max_tokens,
-          stream: false,
-        },
-        {
-          timeout: options.timeout || DEFAULT_TIMEOUT,
-        },
-      );
+    let lastError;
 
-      const duration = Date.now() - startTime;
-      this._recordSuccess();
+    for (const [index, model] of modelCandidates.entries()) {
+      const isFallback = index > 0;
 
-      const result = {
-        content: response.choices[0]?.message?.content || "",
-        model: response.model || model,
-        provider: "openai-compat",
-        usage: response.usage,
-        finishReason: response.choices[0]?.finish_reason,
-      };
-
-      logger.info({ operation: "chat", requestId }, "Chat completed", {
-        duration,
-        model: result.model,
-        responseLength: result.content?.length,
-      });
-
-      return result;
-    } catch (error) {
-      if (this._shouldTryLegacyCompletions(error)) {
-        try {
-          return await this._chatViaLegacyCompletions(
-            messages,
-            options,
-            model,
-            requestId,
-            startTime,
-          );
-        } catch (fallbackError) {
-          logger.warn(
-            { operation: "chat", requestId },
-            "Legacy completions fallback failed",
-            { model, error: fallbackError.message },
-          );
-        }
+      if (isFallback) {
+        logger.warn(
+          { operation: "chat", requestId },
+          "Retrying chat with fallback model",
+          {
+            primaryModel,
+            fallbackModel: model,
+            previousError: lastError?.message,
+          },
+        );
       }
 
-      const duration = Date.now() - startTime;
-      this._recordFailure();
+      try {
+        const result = await this._chatCompletionForModel(
+          messages,
+          options,
+          model,
+          isFallback,
+        );
+        const duration = Date.now() - startTime;
+        this._recordSuccess();
 
-      logger.error({ operation: "chat", requestId }, "Chat failed", {
-        duration,
-        model,
-        error: error.message,
-      });
+        logger.info({ operation: "chat", requestId }, "Chat completed", {
+          duration,
+          model: result.model,
+          fallbackUsed: isFallback,
+          responseLength: result.content?.length,
+        });
 
-      throw error;
+        return result;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    if (lastError && this._shouldTryLegacyCompletions(lastError)) {
+      try {
+        return await this._chatViaLegacyCompletions(
+          messages,
+          options,
+          primaryModel,
+          requestId,
+          startTime,
+        );
+      } catch (fallbackError) {
+        logger.warn(
+          { operation: "chat", requestId },
+          "Legacy completions fallback failed",
+          { model: primaryModel, error: fallbackError.message },
+        );
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    this._recordFailure();
+
+    logger.error({ operation: "chat", requestId }, "Chat failed", {
+      duration,
+      model: primaryModel,
+      attemptedModels: modelCandidates,
+      error: lastError?.message || "No AI model candidates configured",
+    });
+
+    throw lastError || new Error("No AI model candidates configured");
   }
 
   /**
@@ -469,7 +597,12 @@ export class OpenAICompatClient {
    */
   async *streamChat(messages, options = {}) {
     const requestId = `stream-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const model = options.model || this.defaultModel;
+    const primaryModel = options.model || this.defaultModel;
+    const modelCandidates = this._getModelCandidates(
+      primaryModel,
+      messages,
+      options,
+    );
 
     if (this._isCircuitOpen()) {
       logger.warn(
@@ -482,40 +615,77 @@ export class OpenAICompatClient {
     }
 
     logger.debug({ operation: "streamChat", requestId }, "Starting stream request", {
-      model,
+      model: primaryModel,
+      fallbackModels: modelCandidates.slice(1),
       messageCount: messages?.length,
     });
 
-    try {
-      const stream = await this._openai.chat.completions.create(
-        {
-          model,
-          messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxTokens,
-          stream: true,
-        },
-        {
-          timeout: options.timeout || DEFAULT_TIMEOUT,
-        },
-      );
+    let lastError;
 
-      for await (const chunk of stream) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          yield content;
-        }
+    for (const [index, model] of modelCandidates.entries()) {
+      const isFallback = index > 0;
+      let emittedContent = false;
+
+      if (isFallback) {
+        logger.warn(
+          { operation: "streamChat", requestId },
+          "Retrying stream with fallback model",
+          {
+            primaryModel,
+            fallbackModel: model,
+            previousError: lastError?.message,
+          },
+        );
       }
 
-      this._recordSuccess();
-    } catch (error) {
-      this._recordFailure();
-      logger.error({ operation: "streamChat", requestId }, "Stream failed", {
-        model,
-        error: error.message,
-      });
-      throw error;
+      try {
+        const stream = await this._openai.chat.completions.create(
+          {
+            model,
+            messages,
+            temperature: options.temperature ?? 0.7,
+            max_tokens: options.maxTokens,
+            stream: true,
+          },
+          {
+            timeout: options.timeout || DEFAULT_TIMEOUT,
+          },
+        );
+
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            emittedContent = true;
+            yield content;
+          }
+        }
+
+        this._recordSuccess();
+        return;
+      } catch (error) {
+        lastError = error;
+
+        // Once content reached the caller, restarting with another model would
+        // duplicate or contradict the partial response.
+        if (emittedContent) {
+          this._recordFailure();
+          logger.error(
+            { operation: "streamChat", requestId },
+            "Stream failed after emitting content",
+            { model, error: error.message },
+          );
+          throw error;
+        }
+      }
     }
+
+    this._recordFailure();
+    logger.error({ operation: "streamChat", requestId }, "Stream failed", {
+      model: primaryModel,
+      attemptedModels: modelCandidates,
+      error: lastError?.message || "No AI model candidates configured",
+    });
+    throw lastError || new Error("No AI model candidates configured");
   }
 
   /**
