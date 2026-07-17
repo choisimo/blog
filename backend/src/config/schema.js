@@ -27,7 +27,7 @@ export const configSchema = z.object({
   AI_ASYNC_MODE: z.enum(['true', 'false']).default('false'),
   AI_IMAGE_PROXY_BASE_URL: z.string().default('https://api.openai.com/v1'),
   AI_IMAGE_PROXY_API_KEY: z.string().optional(),
-  AI_IMAGE_MODEL: z.string().default(AI_MODELS.DEFAULT || 'gpt-5.5'),
+  AI_IMAGE_MODEL: z.string().default('gpt-5.6-sol'),
   AI_IMAGE_TIMEOUT_MS: z.coerce.number().int().positive().default(300_000),
   AI_IMAGE_MAX_COUNT: z.coerce.number().int().positive().max(4).default(4),
   AI_IMAGE_MAX_PROMPT_LENGTH: z.coerce.number().int().positive().default(4_000),

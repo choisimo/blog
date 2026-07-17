@@ -290,6 +290,12 @@ export function getSecurityConfigurationErrors(currentConfig = config) {
     if (missingOrPlaceholder(currentConfig.ai?.image?.proxyApiKey)) {
       errors.push('AI_IMAGE_PROXY_API_KEY is required and cannot be a placeholder when admin AI image generation is enabled in protected environments');
     }
+    if (missingOrPlaceholder(currentConfig.services?.workerApiUrl)) {
+      errors.push('WORKER_API_URL is required when admin AI image generation is enabled in protected environments');
+    }
+    if (missingOrPlaceholder(currentConfig.assetsBaseUrl)) {
+      errors.push('ASSETS_BASE_URL is required when admin AI image generation is enabled in protected environments');
+    }
   }
 
   return errors;

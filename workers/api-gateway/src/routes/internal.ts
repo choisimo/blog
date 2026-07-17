@@ -25,6 +25,17 @@ import { getDomainOutboxSummary, listStuckDomainOutboxEvents } from '../lib/doma
 
 const internal = new Hono<HonoEnv>();
 
+const MAX_GENERATED_IMAGE_BYTES = 12_582_912;
+const MAX_GENERATED_IMAGE_BASE64_LENGTH = Math.ceil(MAX_GENERATED_IMAGE_BYTES / 3) * 4;
+const GENERATED_IMAGE_KEY_PATTERN =
+  /^images\/\d{4}\/[A-Za-z0-9_-]{1,140}\/[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9][A-Za-z0-9._-]{0,199}\.(png|webp)$/;
+
+type GeneratedImageUpload = {
+  key?: string;
+  contentType?: string;
+  data?: string;
+};
+
 type WarmPriority = 'interactive' | 'publish' | 'revisit' | 'hot' | 'idle';
 
 type WarmSegment = {
@@ -73,6 +84,123 @@ internal.use('*', async (c, next) => {
   }
 
   await next();
+});
+
+function decodeGeneratedImageBase64(value: string): Uint8Array | null {
+  if (
+    !value ||
+    value.length > MAX_GENERATED_IMAGE_BASE64_LENGTH ||
+    value.length % 4 !== 0 ||
+    !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)
+  ) {
+    return null;
+  }
+
+  try {
+    const binary = atob(value);
+    if (!binary.length || binary.length > MAX_GENERATED_IMAGE_BYTES) {
+      return null;
+    }
+
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
+function isExpectedRaster(bytes: Uint8Array, contentType: string): boolean {
+  if (contentType === 'image/png') {
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    return signature.every((value, index) => bytes[index] === value);
+  }
+
+  if (contentType === 'image/webp') {
+    return (
+      bytes.length >= 12 &&
+      String.fromCharCode(...bytes.subarray(0, 4)) === 'RIFF' &&
+      String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP'
+    );
+  }
+
+  return false;
+}
+
+function resolveGeneratedImageUrl(env: HonoEnv['Bindings'], key: string): string | null {
+  if (!env.ASSETS_BASE_URL) {
+    return null;
+  }
+
+  try {
+    const baseUrl = new URL(env.ASSETS_BASE_URL);
+    if (baseUrl.protocol !== 'https:') {
+      return null;
+    }
+    baseUrl.pathname = `${baseUrl.pathname.replace(/\/$/, '')}/${key}`;
+    baseUrl.search = '';
+    baseUrl.hash = '';
+    return baseUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
+internal.post('/images/generated', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as GeneratedImageUpload | null;
+  const key = body?.key?.trim() || '';
+  const contentType = body?.contentType?.trim().toLowerCase() || '';
+  const expectedExtension = contentType === 'image/png' ? '.png' : '.webp';
+
+  if (
+    !body ||
+    !GENERATED_IMAGE_KEY_PATTERN.test(key) ||
+    key.includes('..') ||
+    !['image/png', 'image/webp'].includes(contentType) ||
+    !key.endsWith(expectedExtension)
+  ) {
+    return badRequest(c, 'Invalid generated image metadata');
+  }
+
+  const bytes = decodeGeneratedImageBase64(body.data || '');
+  if (!bytes || !isExpectedRaster(bytes, contentType)) {
+    return badRequest(c, 'Invalid generated image data');
+  }
+
+  const url = resolveGeneratedImageUrl(c.env, key);
+  if (!url || !c.env.R2) {
+    return serverError(c, 'Generated image storage is not configured');
+  }
+
+  try {
+    await c.env.R2.put(key, bytes, {
+      httpMetadata: {
+        contentType,
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
+    });
+  } catch (error) {
+    console.error('Failed to persist generated image:', {
+      key,
+      contentType,
+      size: bytes.byteLength,
+      error: error instanceof Error ? error.message : 'unknown error',
+    });
+    return serverError(c, 'Failed to persist generated image');
+  }
+
+  return success(
+    c,
+    {
+      key,
+      url,
+      size: bytes.byteLength,
+      contentType,
+    },
+    201
+  );
 });
 
 function parseLimit(value: string | undefined, fallback: number) {

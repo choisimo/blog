@@ -58,7 +58,7 @@ describe('adminImages service', () => {
         prompt: ' Draw\u0000\r\ncover ',
         alt: ' Hero\u0000\nImage ',
         n: 99,
-        quality: 'hd',
+        quality: 'high',
         size: '1024x1536',
       }),
     ).resolves.toMatchObject({ dir: '/images/posts/2026/demo' });
@@ -73,7 +73,7 @@ describe('adminImages service', () => {
           prompt: 'Draw \ncover',
           n: 4,
           size: '1024x1536',
-          quality: 'hd',
+          quality: 'high',
           outputFormat: 'png',
           alt: 'Hero Image',
         }),
@@ -108,6 +108,22 @@ describe('adminImages service', () => {
         }),
       },
     );
+  });
+
+  it.each([
+    ['legacy size', { size: '1792x1024' }],
+    ['legacy quality', { quality: 'hd' }],
+  ])('rejects unsupported %s before calling the API', async (_label, override) => {
+    await expect(
+      generatePostImages({
+        year: '2026',
+        slug: 'demo-post',
+        prompt: 'Draw cover',
+        ...override,
+      } as Parameters<typeof generatePostImages>[0]),
+    ).rejects.toThrow(/Invalid AI image (size|quality)/);
+
+    expect(adminFetchRawMock).not.toHaveBeenCalled();
   });
 
   it.each([

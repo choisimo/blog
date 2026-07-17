@@ -25,10 +25,8 @@ const SIZE_OPTIONS = [
   "1024x1024",
   "1536x1024",
   "1024x1536",
-  "1792x1024",
-  "1024x1792",
 ];
-const QUALITY_OPTIONS = ["low", "medium", "high", "standard", "hd", "auto"];
+const QUALITY_OPTIONS = ["low", "medium", "high", "auto"];
 
 function clamp(value, min, max) {
   const parsed = Number(value);
@@ -173,6 +171,61 @@ function requireFeatureEnabled() {
   return null;
 }
 
+function normalizeFailureStatus(value) {
+  const status = Number(value);
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : null;
+}
+
+function normalizeFailureCode(value, fallback) {
+  const candidate = String(value || "");
+  return /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(candidate) ? candidate : fallback;
+}
+
+function failureMetadata(error, requestId) {
+  const upstreamStatus = normalizeFailureStatus(error?.details?.status);
+  const gatewayStatus = normalizeFailureStatus(error?.statusCode || error?.status);
+  const status = upstreamStatus || gatewayStatus || (error?.name === "ZodError" ? 400 : null);
+  const cause = String(error?.details?.cause || "");
+  const code = normalizeFailureCode(
+    error?.details?.upstreamCode || error?.code,
+    error?.name === "ZodError"
+      ? "INVALID_IMAGE_GENERATION_INPUT"
+      : "IMAGE_GENERATION_FAILED",
+  );
+  const retryableCauses = new Set([
+    "timeout",
+    "network",
+    "dns",
+    "connection_refused",
+    "connection_reset",
+    "network_timeout",
+  ]);
+
+  return {
+    code,
+    retryable:
+      retryableCauses.has(cause) ||
+      status === 408 ||
+      status === 429 ||
+      (status !== null && status >= 500),
+    status,
+    requestId: text(error?.details?.requestId || requestId, 128),
+  };
+}
+
+function failureResult({ operation, error, code, status, requestId }) {
+  return {
+    success: false,
+    operation,
+    error,
+    actions: [],
+    code,
+    retryable: false,
+    status,
+    requestId,
+  };
+}
+
 export function createImageGenerationTool(options = {}) {
   const imageService = options.imageService || litellmImageGenerationService;
   const storageService = options.storageService || generatedImageStorageService;
@@ -277,21 +330,34 @@ export function createImageGenerationTool(options = {}) {
 
         const featureError = requireFeatureEnabled();
         if (featureError) {
-          return { success: false, operation: input.operation, error: featureError, actions: [] };
+          return failureResult({
+            operation: input.operation,
+            error: featureError,
+            code: "IMAGE_GENERATION_DISABLED",
+            status: 503,
+            requestId,
+          });
         }
 
         const targetError = validateGenerationTarget(input);
         if (targetError) {
-          return { success: false, operation: input.operation, error: targetError, actions: [] };
+          return failureResult({
+            operation: input.operation,
+            error: targetError,
+            code: "INVALID_IMAGE_TARGET",
+            status: 400,
+            requestId,
+          });
         }
 
         if (!prompt || prompt.length < 8) {
-          return {
-            success: false,
+          return failureResult({
             operation: input.operation,
             error: "prompt or article context is required for image generation",
-            actions: [],
-          };
+            code: "INVALID_IMAGE_PROMPT",
+            status: 400,
+            requestId,
+          });
         }
 
         logger.info({ requestId }, "Agent image generation requested", {
@@ -320,6 +386,7 @@ export function createImageGenerationTool(options = {}) {
           subdir: config.ai?.image?.storageSubdir,
           images: generation.items,
           alt,
+          requestId,
         });
         const actions = buildActions(input.operation, stored.items);
 
@@ -348,14 +415,19 @@ export function createImageGenerationTool(options = {}) {
           actions,
         };
       } catch (error) {
+        const failure = failureMetadata(error, requestId);
         logger.error({ requestId }, "Agent image generation failed", {
           error: error.message,
+          code: failure.code,
+          status: failure.status,
+          cause: error?.details?.cause || null,
         });
         return {
           success: false,
           operation: args?.operation || "unknown",
           error: error.message,
           actions: [],
+          ...failure,
         };
       }
     },

@@ -1,13 +1,11 @@
 import { adminFetchRaw } from '@/services/admin/apiClient';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 
-export type AdminAiImageQuality = 'low' | 'medium' | 'high' | 'standard' | 'hd' | 'auto';
+export type AdminAiImageQuality = 'low' | 'medium' | 'high' | 'auto';
 export type AdminAiImageSize =
   | '1024x1024'
   | '1536x1024'
-  | '1024x1536'
-  | '1792x1024'
-  | '1024x1792';
+  | '1024x1536';
 
 export type GeneratePostImagesPayload = {
   year: string | number;
@@ -75,8 +73,6 @@ const AI_IMAGE_SIZES: readonly AdminAiImageSize[] = [
   '1024x1024',
   '1536x1024',
   '1024x1536',
-  '1792x1024',
-  '1024x1792',
 ];
 const SINGLE_LINE_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
 const SINGLE_LINE_CONTROL_TEST_PATTERN = /[\u0000-\u001F\u007F]/;
@@ -86,8 +82,6 @@ const AI_IMAGE_QUALITIES: readonly AdminAiImageQuality[] = [
   'low',
   'medium',
   'high',
-  'standard',
-  'hd',
   'auto',
 ];
 

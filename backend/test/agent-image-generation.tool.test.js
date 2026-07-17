@@ -117,4 +117,76 @@ test("image_generation generation operations require year and slug", async () =>
 
   assert.equal(result.success, false);
   assert.match(result.error, /year is required/);
+  assert.equal(result.code, "INVALID_IMAGE_TARGET");
+  assert.equal(result.retryable, false);
+  assert.equal(result.status, 400);
+  assert.match(result.requestId, /^agent-image-/);
+});
+
+for (const [field, value] of [
+  ["size", "1792x1024"],
+  ["quality", "hd"],
+]) {
+  test(`image_generation rejects unsupported legacy ${field}`, async () => {
+    let generated = false;
+    const tool = createImageGenerationTool({
+      imageService: {
+        async generateImages() {
+          generated = true;
+        },
+      },
+    });
+
+    const result = await tool.execute({
+      operation: "generate_cover",
+      year: "2026",
+      slug: `unsupported-${field}`,
+      prompt: "Create a clean editorial image for contract validation.",
+      [field]: value,
+    });
+
+    assert.equal(result.success, false);
+    assert.equal(generated, false);
+    assert.deepEqual(result.actions, []);
+    assert.equal(result.code, "INVALID_IMAGE_GENERATION_INPUT");
+    assert.equal(result.retryable, false);
+    assert.equal(result.status, 400);
+    assert.match(result.requestId, /^agent-image-/);
+  });
+}
+
+test("image_generation exposes safe upstream failure metadata", async () => {
+  const tool = createImageGenerationTool({
+    imageService: {
+      async generateImages(_input, options) {
+        const error = new Error("AI image proxy request failed");
+        error.code = "BAD_GATEWAY";
+        error.statusCode = 502;
+        error.details = {
+          requestId: options.requestId,
+          status: 401,
+          upstreamCode: "invalid_api_key",
+        };
+        throw error;
+      },
+    },
+  });
+
+  const result = await tool.execute(
+    {
+      operation: "generate_cover",
+      year: "2026",
+      slug: "agent-failure",
+      prompt: "Create an image that will fail safely.",
+    },
+    { runId: "agent-image-failure" },
+  );
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, "AI image proxy request failed");
+  assert.deepEqual(result.actions, []);
+  assert.equal(result.code, "invalid_api_key");
+  assert.equal(result.retryable, false);
+  assert.equal(result.status, 401);
+  assert.equal(result.requestId, "agent-image-failure");
 });

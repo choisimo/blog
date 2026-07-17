@@ -112,6 +112,8 @@ test("security config rejects protected placeholder secrets and image proxy gaps
         proxyApiKey: "",
       },
     },
+    services: {},
+    assetsBaseUrl: "",
     features: {
       aiEnabled: true,
       adminAiImageEnabled: true,
@@ -122,4 +124,6 @@ test("security config rejects protected placeholder secrets and image proxy gaps
   assert.ok(errors.some((error) => error.includes("GATEWAY_SIGNING_SECRET")));
   assert.ok(errors.some((error) => error.includes("AI_API_KEY")));
   assert.ok(errors.some((error) => error.includes("AI_IMAGE_PROXY_API_KEY")));
+  assert.ok(errors.some((error) => error.includes("WORKER_API_URL")));
+  assert.ok(errors.some((error) => error.includes("ASSETS_BASE_URL")));
 });

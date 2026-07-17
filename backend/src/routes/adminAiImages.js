@@ -11,8 +11,8 @@ import { generatedImageStorageService } from '../services/ai-image/generated-ima
 const logger = createLogger('admin-ai-images-route');
 const router = Router();
 
-const SIZE_OPTIONS = ['1024x1024', '1536x1024', '1024x1536', '1792x1024', '1024x1792'];
-const QUALITY_OPTIONS = ['low', 'medium', 'high', 'standard', 'hd', 'auto'];
+const SIZE_OPTIONS = ['1024x1024', '1536x1024', '1024x1536'];
+const QUALITY_OPTIONS = ['low', 'medium', 'high', 'auto'];
 
 function buildGenerateSchema() {
   const imageConfig = config.ai?.image || {};
@@ -74,6 +74,7 @@ router.post('/generate', requireAdmin, async (req, res, next) => {
           subdir: config.ai?.image?.storageSubdir,
           images: generation.items,
           alt: input.alt || `${input.slug} cover image`,
+          requestId,
         });
 
         logger.info({ requestId }, 'Generated AI images saved', {

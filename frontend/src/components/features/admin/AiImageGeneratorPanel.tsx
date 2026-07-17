@@ -33,8 +33,6 @@ const IMAGE_SIZES: Array<{ value: AdminAiImageSize; label: string }> = [
   { value: '1024x1024', label: '1:1 square' },
   { value: '1536x1024', label: '3:2 wide' },
   { value: '1024x1536', label: '2:3 tall' },
-  { value: '1792x1024', label: '16:9 wide' },
-  { value: '1024x1792', label: '9:16 tall' },
 ];
 
 const IMAGE_QUALITIES: Array<{ value: AdminAiImageQuality; label: string }> = [

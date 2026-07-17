@@ -7,6 +7,8 @@ import { config } from '../../config.js';
 import { BadGatewayError, BadRequestError } from '../../middleware/errorHandler.js';
 
 const BLOCKED_TEXT_PREFIXES = ['<svg', '<?xml', '<!doctype', '<html'];
+const REMOTE_UPLOAD_PATH = '/api/v1/internal/images/generated';
+const REMOTE_UPLOAD_TIMEOUT_MS = 60_000;
 
 function sanitizeSegment(value) {
   return String(value || '')
@@ -88,7 +90,7 @@ async function normalizePng(buffer, maxOutputBytes) {
   }
 }
 
-async function buildWebpVariant(pngBuffer, baseName, destDirAbs, relDir) {
+async function buildWebpVariant(pngBuffer, baseName) {
   const image = sharp(pngBuffer, { failOn: 'error' });
   const metadata = await image.metadata();
   const maxWidth = 1024;
@@ -97,15 +99,121 @@ async function buildWebpVariant(pngBuffer, baseName, destDirAbs, relDir) {
   const resized = sourceWidth > maxWidth ? image.resize({ width: maxWidth }) : image;
   const webpBuffer = await resized.webp({ quality: 82 }).toBuffer();
   const filename = `${baseName}-w${width}.webp`;
-  await fse.writeFile(path.join(destDirAbs, filename), webpBuffer);
 
   return {
+    buffer: webpBuffer,
     filename,
-    path: path.posix.join(relDir, filename),
-    url: `/images/${relDir}/${filename}`,
     width,
     sizeBytes: webpBuffer.length,
   };
+}
+
+function normalizeRemoteBaseUrl(value, name) {
+  try {
+    const url = new URL(String(value || ''));
+    if (url.protocol !== 'https:') {
+      throw new Error('HTTPS is required');
+    }
+    url.pathname = url.pathname.replace(/\/$/, '');
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    throw new BadGatewayError('Generated image storage is not configured', {
+      missing: name,
+    });
+  }
+}
+
+function buildRemoteStorageConfig() {
+  if (!config.security?.protectedEnvironment) {
+    return null;
+  }
+
+  if (!config.services?.workerApiUrl || !config.backendKey || !config.assetsBaseUrl) {
+    throw new BadGatewayError('Generated image storage is not configured', {
+      workerApiUrl: Boolean(config.services?.workerApiUrl),
+      backendKey: Boolean(config.backendKey),
+      assetsBaseUrl: Boolean(config.assetsBaseUrl),
+    });
+  }
+
+  return {
+    workerApiUrl: normalizeRemoteBaseUrl(config.services.workerApiUrl, 'WORKER_API_URL'),
+    backendKey: config.backendKey,
+    assetsBaseUrl: normalizeRemoteBaseUrl(config.assetsBaseUrl, 'ASSETS_BASE_URL'),
+  };
+}
+
+function buildAssetUrl(assetsBaseUrl, key) {
+  return new URL(key, `${assetsBaseUrl}/`).toString();
+}
+
+async function uploadRemoteAsset({ remoteConfig, key, buffer, contentType, requestId }) {
+  const uploadUrl = new URL(REMOTE_UPLOAD_PATH, `${remoteConfig.workerApiUrl}/`);
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Backend-Key': remoteConfig.backendKey,
+  };
+  const safeRequestId = String(requestId || '')
+    .replace(/[^a-zA-Z0-9._:-]/g, '-')
+    .slice(0, 128);
+  if (safeRequestId) {
+    headers['X-Request-ID'] = safeRequestId;
+  }
+
+  let response;
+  try {
+    response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        key,
+        contentType,
+        data: buffer.toString('base64'),
+      }),
+      signal: AbortSignal.timeout(REMOTE_UPLOAD_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new BadGatewayError('Generated image storage request failed', {
+      requestId: safeRequestId || undefined,
+      cause: error?.name === 'TimeoutError' ? 'timeout' : 'network_error',
+    });
+  }
+
+  const payload = await response.json().catch(() => null);
+  const stored = payload?.ok === true ? payload.data : null;
+  const expectedUrl = buildAssetUrl(remoteConfig.assetsBaseUrl, key);
+  if (
+    !response.ok ||
+    stored?.key !== key ||
+    stored?.url !== expectedUrl ||
+    stored?.contentType !== contentType ||
+    stored?.size !== buffer.length
+  ) {
+    throw new BadGatewayError('Generated image storage rejected the upload', {
+      requestId: safeRequestId || undefined,
+      upstreamStatus: response.status,
+    });
+  }
+
+  return stored.url;
+}
+
+async function persistAsset({
+  remoteConfig,
+  key,
+  absolutePath,
+  buffer,
+  contentType,
+  requestId,
+}) {
+  if (remoteConfig) {
+    return uploadRemoteAsset({ remoteConfig, key, buffer, contentType, requestId });
+  }
+
+  await fse.writeFile(absolutePath, buffer);
+  return `/${key}`;
 }
 
 function uniqueFilename(destDirAbs, desiredName) {
@@ -137,13 +245,21 @@ export class GeneratedImageStorageService {
     return { abs, rel };
   }
 
-  async saveImages({ year, slug, subdir, images, alt }) {
+  async saveImages({ year, slug, subdir, images, alt, requestId }) {
     const { abs, rel } = this.buildDirectory({ year, slug, subdir });
-    await fse.ensureDir(abs);
+    const remoteConfig = buildRemoteStorageConfig();
+    if (!remoteConfig) {
+      await fse.ensureDir(abs);
+    }
 
     const maxOutputBytes = config.ai?.image?.maxOutputBytes || 12_582_912;
     const safeAlt = sanitizeMarkdownAlt(alt);
     const timestamp = buildTimestamp();
+    const requestToken = crypto
+      .createHash('sha256')
+      .update(String(requestId || crypto.randomUUID()))
+      .digest('hex')
+      .slice(0, 8);
     const items = [];
 
     for (let index = 0; index < images.length; index += 1) {
@@ -151,24 +267,51 @@ export class GeneratedImageStorageService {
       const normalized = await normalizePng(source.buffer, maxOutputBytes);
       const hash = crypto.createHash('sha256').update(normalized.buffer).digest('hex').slice(0, 10);
       const ordinal = String(index + 1).padStart(2, '0');
-      const baseName = `generated-${timestamp}-${ordinal}-${hash}`;
-      const filename = uniqueFilename(abs, `${baseName}.png`);
+      const baseName = `generated-${timestamp}-${ordinal}-${hash}-${requestToken}`;
+      const filename = remoteConfig
+        ? `${baseName}.png`
+        : uniqueFilename(abs, `${baseName}.png`);
       const resolvedBaseName = filename.replace(/\.png$/i, '');
+      const relativePath = path.posix.join(rel, filename);
+      const key = path.posix.join('images', relativePath);
 
-      await fse.writeFile(path.join(abs, filename), normalized.buffer);
+      const url = await persistAsset({
+        remoteConfig,
+        key,
+        absolutePath: path.join(abs, filename),
+        buffer: normalized.buffer,
+        contentType: 'image/png',
+        requestId,
+      });
 
       let variantWebp = null;
       try {
-        variantWebp = await buildWebpVariant(normalized.buffer, resolvedBaseName, abs, rel);
+        const variant = await buildWebpVariant(normalized.buffer, resolvedBaseName);
+        const variantPath = path.posix.join(rel, variant.filename);
+        const variantKey = path.posix.join('images', variantPath);
+        const variantUrl = await persistAsset({
+          remoteConfig,
+          key: variantKey,
+          absolutePath: path.join(abs, variant.filename),
+          buffer: variant.buffer,
+          contentType: 'image/webp',
+          requestId,
+        });
+        variantWebp = {
+          filename: variant.filename,
+          path: variantPath,
+          url: variantUrl,
+          width: variant.width,
+          sizeBytes: variant.sizeBytes,
+        };
       } catch {
         variantWebp = null;
       }
 
-      const url = `/images/${rel}/${filename}`;
       const markdownUrl = variantWebp?.url || url;
       items.push({
         filename,
-        path: path.posix.join(rel, filename),
+        path: relativePath,
         url,
         variantWebp,
         alt: safeAlt,
@@ -181,7 +324,9 @@ export class GeneratedImageStorageService {
     }
 
     return {
-      dir: `/images/${rel}`,
+      dir: remoteConfig
+        ? buildAssetUrl(remoteConfig.assetsBaseUrl, `${path.posix.join('images', rel)}/`)
+        : `/images/${rel}`,
       items,
     };
   }

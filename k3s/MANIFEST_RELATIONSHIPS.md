@@ -243,12 +243,13 @@ Ingress terminal-origin
 | `LOG_LEVEL` | `info` | `api` | 로그 레벨 |
 | `SITE_BASE_URL` | `https://blog.example.com` | `api` | 공개 사이트 URL |
 | `API_BASE_URL` | `https://api.example.com` | `api` | 공개 API base URL |
+| `ASSETS_BASE_URL` | `https://assets-b.nodove.com` | `api` | 생성 이미지를 포함한 공개 R2 asset origin |
 | `ALLOWED_ORIGINS` | `https://blog.example.com,http://localhost:5173` | `api` | CORS 허용 origin |
 | `RATE_LIMIT_MAX` | `60` | `api` | 요청 제한 수 |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | `api` | rate limit window |
 | `AI_DEFAULT_MODEL` | `gpt-4.1` | `api`, `open-notebook` | 기본 LLM 모델 |
 | `AI_ASYNC_MODE` | `false` | `api` | async AI 토글 |
-| `AI_IMAGE_MODEL` | `gpt-5.5` | `api` | admin AI 이미지 생성 모델 |
+| `AI_IMAGE_MODEL` | `gpt-5.6-sol` | `api` | admin AI 이미지 생성 모델 |
 | `AI_IMAGE_TIMEOUT_MS` | `300000` | `api` | admin AI 이미지 proxy timeout |
 | `AI_IMAGE_MAX_COUNT` | `4` | `api` | 요청당 admin AI 이미지 생성 상한 |
 | `AI_IMAGE_MAX_PROMPT_LENGTH` | `4000` | `api` | admin AI 이미지 prompt 길이 상한 |
@@ -265,6 +266,7 @@ Ingress terminal-origin
 | `POSTS_SOURCE` | `filesystem` | `api` | 게시글 소스 타입 |
 | `OPEN_NOTEBOOK_URL` | `http://open-notebook:8501` | `api` | 내부 notebook endpoint |
 | `OPEN_NOTEBOOK_ENABLED` | `true` | `api` | notebook 기능 플래그 |
+| `WORKER_API_URL` | `https://api.nodove.com` | `api` | 생성 이미지 R2 업로드용 내부 Worker endpoint |
 | `TERMINAL_SERVER_URL` | `http://terminal-server:8080` | `api` | 내부 terminal endpoint |
 | `TERMINAL_GATEWAY_URL` | `https://terminal.example.com` | `api` | 공개 terminal gateway URL |
 | `FEATURE_AI_ENABLED` | `true` | `api` | AI 기능 플래그 |

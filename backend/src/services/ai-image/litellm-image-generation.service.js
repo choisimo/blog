@@ -76,15 +76,66 @@ function buildGenerationPayload(input, imageConfig) {
   };
 }
 
-function mapUpstreamError(status, payload) {
+function safeText(value, redactions = []) {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+
+  let result = String(value).replace(/\s+/g, ' ').trim();
+  for (const candidate of redactions) {
+    const normalized = String(candidate || '').replace(/\s+/g, ' ').trim();
+    if (normalized.length >= 4) {
+      result = result.split(normalized).join('[redacted]');
+    }
+  }
+
+  result = result
+    .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, '[redacted]');
+  return result ? result.slice(0, 500) : null;
+}
+
+function safeIdentifier(value) {
+  const result = safeText(value);
+  return result && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/.test(result) ? result : null;
+}
+
+function extractUpstreamError(response, payload, redactions) {
+  const upstreamError = payload && typeof payload === 'object' ? payload.error : null;
+  const upstreamCode =
+    upstreamError && typeof upstreamError === 'object'
+      ? upstreamError.code || upstreamError.type
+      : payload?.code;
   const upstreamMessage =
-    typeof payload?.error === 'string'
-      ? payload.error
-      : payload?.error?.message || payload?.message || `AI image proxy returned HTTP ${status}`;
-  return new BadGatewayError('AI image proxy request failed', {
-    status,
-    upstreamMessage,
-  });
+    typeof upstreamError === 'string'
+      ? upstreamError
+      : upstreamError?.message || payload?.message;
+  const upstreamRequestId =
+    payload?.request_id ||
+    payload?.requestId ||
+    upstreamError?.request_id ||
+    upstreamError?.requestId ||
+    response.headers.get('x-request-id') ||
+    response.headers.get('request-id');
+
+  return {
+    status: response.status,
+    upstreamCode: safeIdentifier(upstreamCode),
+    upstreamMessage:
+      safeText(upstreamMessage, redactions) ||
+      `AI image proxy returned HTTP ${response.status}`,
+    upstreamRequestId: safeIdentifier(upstreamRequestId),
+  };
+}
+
+function classifyRequestFailure(error) {
+  if (error?.name === 'AbortError' || error?.name === 'TimeoutError') return 'timeout';
+
+  const code = String(error?.cause?.code || error?.code || '').toUpperCase();
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return 'dns';
+  if (code === 'ECONNREFUSED') return 'connection_refused';
+  if (code === 'ECONNRESET') return 'connection_reset';
+  if (code === 'ETIMEDOUT') return 'network_timeout';
+  if (code.startsWith('ERR_TLS_') || code.startsWith('CERT_')) return 'tls';
+  return 'network';
 }
 
 export class LiteLLMImageGenerationService {
@@ -190,23 +241,43 @@ export class LiteLLMImageGenerationService {
       });
     } catch (error) {
       const durationMs = Date.now() - startedAt;
+      const cause = classifyRequestFailure(error);
       logger.error({ requestId }, 'AI image generation request failed', {
         durationMs,
-        error: error.message,
+        model: imageConfig.model,
+        cause,
       });
-      if (error?.name === 'AbortError' || error?.name === 'TimeoutError') {
+      if (cause === 'timeout') {
         throw new GatewayTimeoutError('AI image proxy request timed out', {
+          requestId,
+          cause,
           timeoutMs: imageConfig.timeoutMs,
         });
       }
       throw new BadGatewayError('AI image proxy request failed', {
-        message: error.message,
+        requestId,
+        cause,
       });
     }
 
     const body = await response.json().catch(() => null);
     if (!response.ok) {
-      throw mapUpstreamError(response.status, body);
+      const durationMs = Date.now() - startedAt;
+      const details = extractUpstreamError(response, body, [
+        imageConfig.proxyApiKey,
+        input.prompt,
+      ]);
+      logger.warn({ requestId }, 'AI image proxy returned a non-2xx response', {
+        durationMs,
+        model: imageConfig.model,
+        status: details.status,
+        upstreamCode: details.upstreamCode,
+        upstreamRequestId: details.upstreamRequestId,
+      });
+      throw new BadGatewayError('AI image proxy request failed', {
+        requestId,
+        ...details,
+      });
     }
     if (!Array.isArray(body?.data) || body.data.length === 0) {
       throw new BadGatewayError('AI image proxy returned no images');
