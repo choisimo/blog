@@ -1,4 +1,4 @@
-name: Build Blog Backend Images
+name: Release Blog Backend Image
 
 on:
   push:
@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Custom image tag (default: git SHA)'
-        required: false
-        default: ''
+        description: 'Immutable backend image tag'
+        required: true
+        default: '7b3ff8a'
 
 permissions:
   contents: read
@@ -45,7 +45,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: |
             backend/package-lock.json
-            backend/terminal-server/package-lock.json
 
       - name: Install backend dependencies
         working-directory: backend
@@ -54,18 +53,6 @@ jobs:
       - name: Run backend tests
         working-directory: backend
         run: npm test
-
-      - name: Install terminal-server dependencies
-        working-directory: backend/terminal-server
-        run: npm ci
-
-      - name: Run terminal-server tests
-        working-directory: backend/terminal-server
-        run: npm test
-
-      - name: Build terminal-server
-        working-directory: backend/terminal-server
-        run: npm run build
 
       - name: Set up variables
         id: vars
@@ -90,8 +77,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-api
           tags: |
-            type=raw,value=${{ steps.vars.outputs.sha_short }}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=${{ github.event.inputs.image_tag }},enable=${{ github.event.inputs.image_tag != '' }}
 
       - name: Build and push Blog API
@@ -102,18 +87,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max,ignore-error=true
-
-      - name: Build and push Terminal Server
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend/terminal-server
-          file: ./backend/terminal-server/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:${{ steps.vars.outputs.sha_short }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/blog-terminal:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max,ignore-error=true
 
@@ -132,10 +105,7 @@ jobs:
           echo "╚════════════════════════════════════════════════════════════╝"
           echo ""
           echo "Images pushed to GHCR:"
-          echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:${{ needs.build-and-push.outputs.sha_short }}"
-          echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:latest"
-          echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:${{ needs.build-and-push.outputs.sha_short }}"
-          echo "  - ghcr.io/${{ github.repository_owner }}/blog-terminal:latest"
+          echo "  - ghcr.io/${{ github.repository_owner }}/blog-api:${{ github.event.inputs.image_tag }}"
           echo ""
           echo "┌────────────────────────────────────────────────────────────┐"
           echo "│ GITOPS DEPLOYMENT SUMMARY                                  │"
@@ -143,7 +113,7 @@ jobs:
           echo "│ Argo CD watches the k3s directory in this repository.      │"
           echo "│                                                            │"
           echo "│ Argo CD Image Updater selects immutable SHA tags for       │"
-          echo "│ blog-api and blog-terminal, then Argo CD auto-syncs.      │"
+          echo "│ blog-api, then Argo CD auto-syncs.                         │"
           echo "│                                                            │"
           echo "│ Expected lag: registry publish + updater scan + sync.      │"
           echo "│ No manual kubectl rollout restart is required.             │"
