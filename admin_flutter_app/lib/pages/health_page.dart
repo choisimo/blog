@@ -18,6 +18,7 @@ class HealthPage extends StatelessWidget {
                 'Backend, RAG, agent, AI provider 상태를 현재 API 기준으로 확인합니다.'),
         JsonActionCard(
           title: 'Backend health',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/healthz',
           autoRun: true,
           actionLabel: 'Refresh',
@@ -25,6 +26,7 @@ class HealthPage extends StatelessWidget {
         ),
         JsonActionCard(
           title: 'RAG health',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/rag/health',
           autoRun: true,
           actionLabel: 'Refresh',
@@ -32,15 +34,15 @@ class HealthPage extends StatelessWidget {
         ),
         JsonActionCard(
           title: 'Agent health',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/agent/health',
-          autoRun: true,
           actionLabel: 'Refresh',
           action: () => api.get('/api/v1/agent/health'),
         ),
         JsonActionCard(
           title: 'AI providers list',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/ai/providers',
-          autoRun: true,
           actionLabel: 'Refresh',
           action: () => api.get('/api/v1/admin/ai/providers'),
         ),

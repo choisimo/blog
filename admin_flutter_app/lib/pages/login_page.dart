@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/auth_store.dart';
 import '../widgets/form_widgets.dart';
@@ -27,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
   Map<String, dynamic>? _setup;
   Object? _status;
   String? _error;
-  bool _busy = false;
+  bool _busy = true;
 
   @override
   void initState() {
@@ -119,6 +123,33 @@ class _LoginPageState extends State<LoginPage> {
     await _guard(() => widget.auth.consumeOAuthHandoff(_handoff.text.trim()));
   }
 
+  Future<void> _openAuthenticator() async {
+    await _guard(() async {
+      final rawUri = _setup?['otpauthUri']?.toString();
+      final uri = rawUri == null ? null : Uri.tryParse(rawUri);
+      if (uri == null || uri.scheme != 'otpauth') {
+        throw const FormatException(
+            'The setup response has no valid otpauth URI.');
+      }
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception('No authenticator application accepted the setup URI.');
+      }
+    });
+  }
+
+  Uint8List? _decodeQrDataUrl(String? value) {
+    if (value == null || !value.startsWith('data:image/')) return null;
+    final separator = value.indexOf(',');
+    if (separator < 0 || !value.substring(0, separator).contains(';base64')) {
+      return null;
+    }
+    try {
+      return base64Decode(value.substring(separator + 1));
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,8 +190,14 @@ class _LoginPageState extends State<LoginPage> {
                             controller: _baseUrl,
                             hint: AuthStore.defaultBaseUrl),
                         const SizedBox(height: 12),
-                        if (_step == _LoginStep.loading)
+                        if (_step == _LoginStep.loading && _busy)
                           const Center(child: CircularProgressIndicator()),
+                        if (_step == _LoginStep.loading && !_busy)
+                          _busyButton(
+                            label: 'Retry setup status',
+                            onPressed: _loadStatus,
+                            icon: Icons.refresh,
+                          ),
                         if (_step == _LoginStep.gate) _gateCard(),
                         if (_step == _LoginStep.setup) _setupCard(),
                         if (_step == _LoginStep.login) _loginCard(),
@@ -243,6 +280,8 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _setupCard() {
     final qr = _setup?['qrDataUrl']?.toString();
+    final qrBytes = _decodeQrDataUrl(qr);
+    final otpauthUri = _setup?['otpauthUri']?.toString();
     final secret = _setup?['secret']?.toString();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -254,13 +293,42 @@ class _LoginPageState extends State<LoginPage> {
                 .titleMedium
                 ?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
-        if (qr != null && qr.startsWith('data:image'))
+        if (qrBytes != null)
           Center(
             child: Padding(
               padding: const EdgeInsets.all(8),
-              child: Image.network(qr, width: 190, height: 190),
+              child: Image.memory(
+                qrBytes,
+                width: 190,
+                height: 190,
+                semanticLabel: 'Authenticator setup QR code',
+                gaplessPlayback: true,
+                errorBuilder: (context, error, stackTrace) => const SizedBox(
+                  width: 190,
+                  height: 190,
+                  child: Center(child: Text('QR code could not be rendered.')),
+                ),
+              ),
             ),
           ),
+        if (otpauthUri != null && otpauthUri.startsWith('otpauth://')) ...[
+          OutlinedButton.icon(
+            onPressed: _busy ? null : _openAuthenticator,
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open authenticator app'),
+          ),
+          const SizedBox(height: 8),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Show setup URI'),
+            children: [
+              SelectableText(
+                otpauthUri,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+            ],
+          ),
+        ],
         if (secret != null)
           SelectableText('Manual key: $secret',
               style: const TextStyle(fontFamily: 'monospace')),

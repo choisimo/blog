@@ -1,23 +1,42 @@
 import 'package:flutter/material.dart';
 
+import '../theme/admin_theme.dart';
+
 class PageLayout extends StatelessWidget {
-  const PageLayout({super.key, required this.children, this.maxWidth = 1320});
+  const PageLayout({super.key, required this.children, this.maxWidth});
 
   final List<Widget> children;
-  final double maxWidth;
+  final double? maxWidth;
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: children),
-        ),
-      ),
+    final tokens = AdminThemeTokens.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final horizontalPadding = constraints.maxWidth < tokens.mobileBreakpoint
+            ? 12.0
+            : tokens.spaceLg;
+        return SingleChildScrollView(
+          key: const PageStorageKey<String>('page-scroll'),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            tokens.spaceMd,
+            horizontalPadding,
+            tokens.spaceLg,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxWidth ?? tokens.maxContentWidth,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

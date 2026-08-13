@@ -51,6 +51,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
             subtitle: '방문 통계, 실시간 방문자, 에디터 픽, 게시글별 상세 로그를 관리합니다.'),
         JsonActionCard(
           title: 'Trending posts',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/analytics/trending',
           autoRun: true,
           actionLabel: 'Load trending',
@@ -79,6 +80,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Realtime visitors',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/analytics/realtime',
           autoRun: true,
           action: () =>
@@ -86,6 +88,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Editor picks',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/analytics/editor-picks',
           autoRun: true,
           action: () => widget.api.get('/api/v1/analytics/editor-picks',
@@ -93,12 +96,14 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Refresh stats',
+          actionKind: AdminActionKind.mutation,
           description: 'POST /api/v1/analytics/refresh-stats',
           actionLabel: 'Refresh stats',
           action: () => widget.api.post('/api/v1/analytics/refresh-stats'),
         ),
         JsonActionCard(
           title: 'All post stats',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/analytics/posts?orderBy=',
           autoRun: true,
           children: [
@@ -114,6 +119,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Post metrics detail',
+          actionKind: AdminActionKind.read,
           description: 'GET metrics and visits for a single post',
           actionLabel: 'Load detail',
           children: [
@@ -139,6 +145,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Create or update editor pick',
+          actionKind: AdminActionKind.mutation,
           description: 'POST /api/v1/analytics/admin/editor-picks',
           actionLabel: 'Save pick',
           children: [
@@ -149,6 +156,7 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Update editor pick by post',
+          actionKind: AdminActionKind.mutation,
           description: 'PUT /api/v1/analytics/admin/editor-picks/:year/:slug',
           actionLabel: 'Update pick',
           children: [
@@ -164,9 +172,17 @@ class _AnalyticsPageState extends State<AnalyticsPage> {
         ),
         JsonActionCard(
           title: 'Remove editor pick',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'analytics.remove-editor-pick',
           description:
               'DELETE /api/v1/analytics/admin/editor-picks/:year/:slug',
           actionLabel: 'Remove pick',
+          confirmation: const AdminConfirmation(
+            title: 'Remove editor pick?',
+            consequence:
+                'This removes the selected post from the editor picks collection.',
+            confirmLabel: 'Remove pick',
+          ),
           children: [
             ControlGrid(children: [
               LabeledTextField(label: 'Year', controller: _year),

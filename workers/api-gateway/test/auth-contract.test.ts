@@ -2,6 +2,7 @@ import { env, SELF } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   REFRESH_TOKEN_EXPIRY,
+  generateAccessToken,
   generateRefreshToken,
   signJwt,
   verifyJwt,
@@ -362,5 +363,153 @@ describe('auth contract', () => {
     expect(payload.data.expiresIn).toBe(300);
     expect(payload.data.challengeId).toMatch(/^totp-challenge-v1\./);
     await expect(env.KV.get(`auth:challenge:${payload.data.challengeId}`)).resolves.toBeNull();
+  });
+
+  it('rate limits repeated TOTP verification attempts when User-Agent rotates', async () => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const response = await SELF.fetch('https://example.com/api/v1/auth/totp/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'CF-Connecting-IP': '203.0.113.42',
+          'User-Agent': `auth-contract-${attempt}-${crypto.randomUUID()}`,
+        },
+        body: JSON.stringify({ challengeId: 'invalid-challenge', code: '000000' }),
+      });
+      expect(response.status).toBe(401);
+    }
+
+    const limited = await SELF.fetch('https://example.com/api/v1/auth/totp/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CF-Connecting-IP': '203.0.113.42',
+        'User-Agent': `auth-contract-limited-${crypto.randomUUID()}`,
+      },
+      body: JSON.stringify({ challengeId: 'invalid-challenge', code: '000000' }),
+    });
+    const payload = (await limited.json()) as {
+      ok: boolean;
+      error: { code: string; message: string };
+    };
+
+    expect(limited.status).toBe(429);
+    expect(payload.ok).toBe(false);
+    expect(payload.error.code).toBe('TOTP_RATE_LIMITED');
+  });
+
+  it('uses one conservative TOTP verification bucket when the Cloudflare IP is missing', async () => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const response = await SELF.fetch('https://example.com/api/v1/auth/totp/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': `missing-ip-${attempt}-${crypto.randomUUID()}`,
+        },
+        body: JSON.stringify({ challengeId: 'invalid-challenge', code: '000000' }),
+      });
+      expect(response.status).toBe(401);
+    }
+
+    const limited = await SELF.fetch('https://example.com/api/v1/auth/totp/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': `missing-ip-limited-${crypto.randomUUID()}`,
+      },
+      body: JSON.stringify({ challengeId: 'invalid-challenge', code: '000000' }),
+    });
+    const payload = (await limited.json()) as {
+      ok: boolean;
+      error: { code: string };
+    };
+
+    expect(limited.status).toBe(429);
+    expect(payload.ok).toBe(false);
+    expect(payload.error.code).toBe('TOTP_RATE_LIMITED');
+  });
+
+  it('rejects refresh tokens without exposing the configured TOTP seed', async () => {
+    const seed = 'JBSWY3DPEHPK3PXP';
+    await env.KV.put('totp:setup:complete', 'true');
+    await env.KV.put('totp:secret', seed);
+
+    const refreshToken = await generateRefreshToken(
+      {
+        sub: 'admin',
+        role: 'admin',
+        username: 'admin',
+        email: 'admin@example.com',
+        emailVerified: true,
+      },
+      env
+    );
+
+    const response = await SELF.fetch('https://example.com/api/v1/auth/totp/setup', {
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    });
+    const payload = await response.json();
+    const serializedPayload = JSON.stringify(payload);
+
+    expect(response.status).toBe(401);
+    expect(serializedPayload).not.toContain(seed);
+    expect(serializedPayload).not.toContain('otpauthUri');
+  });
+
+  it('rejects unverified admin access tokens without exposing the configured TOTP seed', async () => {
+    const seed = 'JBSWY3DPEHPK3PXP';
+    await env.KV.put('totp:setup:complete', 'true');
+    await env.KV.put('totp:secret', seed);
+
+    const accessToken = await generateAccessToken(
+      {
+        sub: 'admin',
+        role: 'admin',
+        username: 'admin',
+        email: 'admin@example.com',
+        emailVerified: false,
+      },
+      env
+    );
+
+    const response = await SELF.fetch('https://example.com/api/v1/auth/totp/setup', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const payload = await response.json();
+    const serializedPayload = JSON.stringify(payload);
+
+    expect(response.status).toBe(401);
+    expect(serializedPayload).not.toContain(seed);
+    expect(serializedPayload).not.toContain('otpauthUri');
+  });
+
+  it('allows a verified admin access token to retrieve the configured TOTP seed', async () => {
+    const seed = 'JBSWY3DPEHPK3PXP';
+    await env.KV.put('totp:setup:complete', 'true');
+    await env.KV.put('totp:secret', seed);
+
+    const accessToken = await generateAccessToken(
+      {
+        sub: 'admin',
+        role: 'admin',
+        username: 'admin',
+        email: 'admin@example.com',
+        emailVerified: true,
+      },
+      env
+    );
+
+    const response = await SELF.fetch('https://example.com/api/v1/auth/totp/setup', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const payload = (await response.json()) as {
+      ok: boolean;
+      data: { secret: string; otpauthUri: string; setupComplete: boolean };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.ok).toBe(true);
+    expect(payload.data).toMatchObject({ secret: seed, setupComplete: true });
+    expect(payload.data.otpauthUri).toContain(seed);
   });
 });

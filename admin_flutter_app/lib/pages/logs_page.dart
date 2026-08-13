@@ -17,18 +17,26 @@ class LogsPage extends StatefulWidget {
 }
 
 class _LogsPageState extends State<LogsPage> {
+  static const _maxStreamLines = 200;
+  static const _streamFlushInterval = Duration(milliseconds: 75);
+
   final _level = TextEditingController();
   final _service = TextEditingController();
   final _limit = TextEditingController(text: '200');
   final _offset = TextEditingController(text: '0');
   final _since = TextEditingController();
-  final List<String> _stream = [];
+  final ValueNotifier<List<String>> _streamLines =
+      ValueNotifier<List<String>>(const []);
+  final List<String> _pendingStreamLines = [];
   StreamSubscription<String>? _subscription;
+  Timer? _streamFlushTimer;
   String? _streamError;
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    _streamFlushTimer?.cancel();
+    unawaited(_subscription?.cancel());
+    _streamLines.dispose();
     _level.dispose();
     _service.dispose();
     _limit.dispose();
@@ -38,30 +46,79 @@ class _LogsPageState extends State<LogsPage> {
   }
 
   Future<void> _toggleStream() async {
-    if (_subscription != null) {
-      await _subscription?.cancel();
+    final activeSubscription = _subscription;
+    if (activeSubscription != null) {
       if (mounted) setState(() => _subscription = null);
+      await activeSubscription.cancel();
       return;
     }
     if (!mounted) return;
+
+    _streamFlushTimer?.cancel();
+    _streamFlushTimer = null;
+    _pendingStreamLines.clear();
+    _streamLines.value = const [];
     setState(() {
-      _stream.clear();
       _streamError = null;
     });
     final sub = widget.api.streamLines('/api/v1/admin/logs/stream').listen(
       (line) {
-        if (!mounted) return;
-        setState(() {
-          _stream.insert(0, line);
-          if (_stream.length > 200) _stream.removeLast();
-        });
+        final parsed = _parseStreamLine(line);
+        if (!mounted || parsed == null) return;
+        _pendingStreamLines.add(parsed);
+        if (_pendingStreamLines.length > _maxStreamLines) {
+          _pendingStreamLines.removeRange(
+              0, _pendingStreamLines.length - _maxStreamLines);
+        }
+        _streamFlushTimer ??=
+            Timer(_streamFlushInterval, _flushPendingStreamLines);
       },
       onError: (Object error) {
         if (!mounted) return;
-        setState(() => _streamError = error.toString());
+        setState(() {
+          _subscription = null;
+          _streamError = error.toString();
+        });
       },
+      onDone: () {
+        if (mounted) setState(() => _subscription = null);
+      },
+      cancelOnError: true,
     );
     if (mounted) setState(() => _subscription = sub);
+  }
+
+  String? _parseStreamLine(String line) {
+    final normalized = line.trimRight();
+    final fieldLine = normalized.trimLeft();
+    if (fieldLine.isEmpty || fieldLine.startsWith(':')) return null;
+
+    final separator = fieldLine.indexOf(':');
+    if (separator < 0) return normalized;
+
+    final field = fieldLine.substring(0, separator);
+    var value = fieldLine.substring(separator + 1);
+    if (value.startsWith(' ')) value = value.substring(1);
+    return switch (field) {
+      'data' => value.isEmpty ? null : value,
+      'event' || 'id' || 'retry' => null,
+      _ => normalized,
+    };
+  }
+
+  void _flushPendingStreamLines() {
+    _streamFlushTimer = null;
+    if (!mounted || _pendingStreamLines.isEmpty) return;
+
+    final lines = <String>[
+      ..._pendingStreamLines.reversed,
+      ..._streamLines.value,
+    ];
+    _pendingStreamLines.clear();
+    if (lines.length > _maxStreamLines) {
+      lines.removeRange(_maxStreamLines, lines.length);
+    }
+    _streamLines.value = List<String>.unmodifiable(lines);
   }
 
   @override
@@ -73,6 +130,7 @@ class _LogsPageState extends State<LogsPage> {
         JsonActionCard(
           title: 'Load logs',
           description: 'GET /api/v1/admin/logs',
+          actionKind: AdminActionKind.read,
           autoRun: true,
           actionLabel: 'Load logs',
           children: [
@@ -142,13 +200,16 @@ class _LogsPageState extends State<LogsPage> {
                   decoration: BoxDecoration(
                       border: Border.all(color: Theme.of(context).dividerColor),
                       borderRadius: BorderRadius.circular(12)),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _stream.length,
-                    itemBuilder: (context, index) => SelectableText(
-                        _stream[index],
-                        style: const TextStyle(
-                            fontFamily: 'monospace', fontSize: 12)),
+                  child: ValueListenableBuilder<List<String>>(
+                    valueListenable: _streamLines,
+                    builder: (context, lines, _) => ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: lines.length,
+                      itemBuilder: (context, index) => SelectableText(
+                          lines[index],
+                          style: const TextStyle(
+                              fontFamily: 'monospace', fontSize: 12)),
+                    ),
                   ),
                 ),
               ),

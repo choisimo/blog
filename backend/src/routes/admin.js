@@ -2,7 +2,9 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { queryAll, isD1Configured } from '../lib/d1.js';
 import requireAdmin from '../middleware/adminAuth.js'; // centralized admin auth middleware
+import { hashIdempotencyPayload } from '../lib/idempotency.js';
 import { buildFrontmatterMarkdown } from '../lib/markdown.js';
+import { normalizePostSlug } from '../lib/post-slug.js';
 import {
   getDomainOutboxRepository,
   getDomainOutboxSummary,
@@ -219,15 +221,19 @@ router.post('/create-post-pr', requireAdmin, async (req, res, next) => {
     }
 
     const baseTitle = String(title || slugRaw || 'New Post');
-    const normalizedSlug = (baseTitle || 'post')
-      .toString()
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9\-\s_]/g, '')
-      .replace(/[\s_]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    const filename = `${normalizedSlug || 'post'}.md`;
+    const normalizedSlug = normalizePostSlug(slugRaw || baseTitle);
+    const filename = `${normalizedSlug}.md`;
+    const frontmatterInput =
+      frontmatter && typeof frontmatter === 'object' ? frontmatter : {};
+    const body = typeof content === 'string' ? content : '';
+    const requestFingerprint = hashIdempotencyPayload({
+      title: baseTitle,
+      slug: normalizedSlug,
+      year,
+      content: body,
+      frontmatter: frontmatterInput,
+      draft: Boolean(draft),
+    });
 
     const fm = {
       title: baseTitle,
@@ -235,9 +241,8 @@ router.post('/create-post-pr', requireAdmin, async (req, res, next) => {
       tags: [],
       category: 'General',
       published: draft ? false : true,
-      ...(frontmatter && typeof frontmatter === 'object' ? frontmatter : {}),
+      ...frontmatterInput,
     };
-    const body = typeof content === 'string' ? content : '';
     const markdown = buildFrontmatterMarkdown(fm, body);
 
     const stamp = buildTimestamp();
@@ -257,17 +262,41 @@ router.post('/create-post-pr', requireAdmin, async (req, res, next) => {
         commitMessage: `feat(post): add ${year}/${filename}`,
         prTitle,
         prBody,
+        requestFingerprint,
       },
       idempotencyKey: getIdempotencyKey(req, `github.pr.create-post:${year}:${normalizedSlug}:${stamp}`),
     });
+
+    const storedPayload =
+      outbox.payload && typeof outbox.payload === 'object' && !Array.isArray(outbox.payload)
+        ? outbox.payload
+        : {};
+    const storedFingerprint =
+      typeof storedPayload.requestFingerprint === 'string'
+        ? storedPayload.requestFingerprint
+        : null;
+    if (storedFingerprint && storedFingerprint !== requestFingerprint) {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: 'IDEMPOTENCY_KEY_REUSED',
+          message: 'Idempotency-Key was reused with a different create-post request payload',
+        },
+      });
+    }
+
+    const responseBranch =
+      typeof storedPayload.branch === 'string' ? storedPayload.branch : branch;
+    const responsePath =
+      typeof storedPayload.path === 'string' ? storedPayload.path : destPath;
 
     return res.status(202).json({
       ok: true,
       data: {
         status: 'pending',
         outboxId: outbox.id,
-        branch,
-        path: destPath,
+        branch: responseBranch,
+        path: responsePath,
       },
     });
   } catch (err) {

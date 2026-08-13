@@ -134,10 +134,12 @@ class _AiPageState extends State<AiPage> {
             subtitle: 'GET/POST/PUT/DELETE /api/v1/admin/ai/providers'),
         JsonActionCard(
             title: 'List providers',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/admin/ai/providers')),
         JsonActionCard(
           title: 'Create provider',
+          actionKind: AdminActionKind.mutation,
           actionLabel: 'Create',
           children: [
             JsonTextField(label: 'Provider JSON', controller: _providerBody)
@@ -147,6 +149,7 @@ class _AiPageState extends State<AiPage> {
         ),
         JsonActionCard(
           title: 'Update provider',
+          actionKind: AdminActionKind.mutation,
           actionLabel: 'Update',
           children: [
             ControlGrid(children: [
@@ -160,7 +163,8 @@ class _AiPageState extends State<AiPage> {
         ),
         JsonActionCard(
           title: 'Provider operations',
-          description: 'health, kill-switch, enable, delete',
+          actionKind: AdminActionKind.mutation,
+          description: 'PUT /api/v1/admin/ai/providers/:id/health',
           actionLabel: 'Run health check',
           children: [
             ControlGrid(children: [
@@ -172,7 +176,15 @@ class _AiPageState extends State<AiPage> {
         ),
         JsonActionCard(
             title: 'Kill switch provider',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.kill-switch-provider',
             actionLabel: 'Kill switch',
+            confirmation: const AdminConfirmation(
+              title: 'Activate provider kill switch?',
+              consequence:
+                  'This disables the selected AI provider and may interrupt model traffic routed to it.',
+              confirmLabel: 'Activate kill switch',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Provider ID', controller: _providerId)
@@ -182,6 +194,7 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/providers/${Uri.encodeComponent(_providerId.text.trim())}/kill-switch')),
         JsonActionCard(
             title: 'Enable provider',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Enable',
             children: [
               ControlGrid(children: [
@@ -192,7 +205,15 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/providers/${Uri.encodeComponent(_providerId.text.trim())}/enable')),
         JsonActionCard(
             title: 'Delete provider',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.delete-provider',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete AI provider?',
+              consequence:
+                  'This removes the provider configuration and can invalidate models or routes that depend on it.',
+              confirmLabel: 'Delete provider',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Provider ID', controller: _providerId)
@@ -207,6 +228,7 @@ class _AiPageState extends State<AiPage> {
             subtitle: '모델 목록, 생성, 수정, 삭제, playground 기반 테스트'),
         JsonActionCard(
           title: 'List models',
+          actionKind: AdminActionKind.read,
           autoRun: true,
           children: [
             ControlGrid(children: [
@@ -219,6 +241,7 @@ class _AiPageState extends State<AiPage> {
         ),
         JsonActionCard(
             title: 'Create model',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Create',
             children: [
               JsonTextField(label: 'Model JSON', controller: _modelBody)
@@ -227,6 +250,7 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_modelBody.text))),
         JsonActionCard(
             title: 'Update model',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Update',
             children: [
               ControlGrid(children: [
@@ -239,7 +263,15 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_modelBody.text))),
         JsonActionCard(
             title: 'Delete model',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.delete-model',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete AI model?',
+              consequence:
+                  'This removes the model configuration and may break routes that reference it.',
+              confirmLabel: 'Delete model',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Model ID', controller: _modelId)
@@ -249,6 +281,7 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/models/${Uri.encodeComponent(_modelId.text.trim())}')),
         JsonActionCard(
             title: 'Test model',
+            actionKind: AdminActionKind.mutation,
             description: 'POST /api/v1/admin/ai/playground/run',
             actionLabel: 'Test',
             children: [
@@ -268,10 +301,12 @@ class _AiPageState extends State<AiPage> {
         const SectionTitle('AI Routes', subtitle: '모델 라우팅 정책을 관리합니다.'),
         JsonActionCard(
             title: 'List routes',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/admin/ai/routes')),
         JsonActionCard(
             title: 'Create route',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Create',
             children: [
               JsonTextField(label: 'Route JSON', controller: _routeBody)
@@ -280,6 +315,7 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_routeBody.text))),
         JsonActionCard(
             title: 'Update route',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Update',
             children: [
               ControlGrid(children: [
@@ -292,7 +328,15 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_routeBody.text))),
         JsonActionCard(
             title: 'Delete route',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.delete-route',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete AI route?',
+              consequence:
+                  'This removes the routing policy and may stop requests that depend on it.',
+              confirmLabel: 'Delete route',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Route ID', controller: _routeId)
@@ -306,6 +350,7 @@ class _AiPageState extends State<AiPage> {
         const SectionTitle('AI Playground', subtitle: '모델 실행과 실행 이력을 관리합니다.'),
         JsonActionCard(
             title: 'Run playground',
+            actionKind: AdminActionKind.mutation,
             description: 'POST /api/v1/admin/ai/playground/run',
             actionLabel: 'Run',
             children: [
@@ -315,12 +360,14 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_playgroundBody.text))),
         JsonActionCard(
             title: 'History',
+            actionKind: AdminActionKind.read,
             description: 'GET /api/v1/admin/ai/playground/history',
             autoRun: true,
             action: () =>
                 widget.api.get('/api/v1/admin/ai/playground/history')),
         JsonActionCard(
             title: 'History detail',
+            actionKind: AdminActionKind.read,
             actionLabel: 'Load detail',
             children: [
               ControlGrid(children: [
@@ -331,7 +378,15 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/playground/history/${Uri.encodeComponent(_historyId.text.trim())}')),
         JsonActionCard(
             title: 'Delete history item',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.delete-playground-history-item',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete playground history item?',
+              consequence:
+                  'This permanently removes the selected AI playground execution record.',
+              confirmLabel: 'Delete history item',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'History ID', controller: _historyId)
@@ -341,7 +396,15 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/playground/history/${Uri.encodeComponent(_historyId.text.trim())}')),
         JsonActionCard(
             title: 'Clear history',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.clear-playground-history',
             actionLabel: 'Clear',
+            confirmation: const AdminConfirmation(
+              title: 'Clear all playground history?',
+              consequence:
+                  'This permanently removes every stored AI playground execution record.',
+              confirmLabel: 'Clear all history',
+            ),
             action: () =>
                 widget.api.delete('/api/v1/admin/ai/playground/history')),
       ]);
@@ -351,6 +414,7 @@ class _AiPageState extends State<AiPage> {
             subtitle: '기간, provider, model 기준 사용량을 조회하고 config export를 실행합니다.'),
         JsonActionCard(
             title: 'Usage query',
+            actionKind: AdminActionKind.read,
             description: 'GET /api/v1/admin/ai/usage',
             autoRun: true,
             children: [
@@ -368,6 +432,7 @@ class _AiPageState extends State<AiPage> {
             }),
         JsonActionCard(
             title: 'Export AI config',
+            actionKind: AdminActionKind.read,
             description: 'GET /api/v1/admin/ai/config/export',
             action: () => widget.api.get('/api/v1/admin/ai/config/export')),
       ]);
@@ -376,6 +441,7 @@ class _AiPageState extends State<AiPage> {
         const SectionTitle('AI Traces', subtitle: 'AI 호출 trace와 요약 통계를 확인합니다.'),
         JsonActionCard(
             title: 'Trace list',
+            actionKind: AdminActionKind.read,
             description: 'GET /api/v1/admin/ai/traces',
             autoRun: true,
             children: [
@@ -390,6 +456,7 @@ class _AiPageState extends State<AiPage> {
             }),
         JsonActionCard(
             title: 'Trace detail',
+            actionKind: AdminActionKind.read,
             actionLabel: 'Load detail',
             children: [
               ControlGrid(children: [
@@ -400,6 +467,7 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/traces/${Uri.encodeComponent(_traceId.text.trim())}')),
         JsonActionCard(
             title: 'Trace summary',
+            actionKind: AdminActionKind.read,
             description: 'GET /api/v1/admin/ai/traces/stats/summary',
             children: [
               ControlGrid(children: [
@@ -419,10 +487,12 @@ class _AiPageState extends State<AiPage> {
             subtitle: 'backend /api/v1/agent/prompts 관리자 프롬프트를 관리합니다.'),
         JsonActionCard(
             title: 'List prompts',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/agent/prompts')),
         JsonActionCard(
             title: 'Update prompt mode',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Update',
             children: [
               ControlGrid(children: [
@@ -438,7 +508,15 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_promptBody.text))),
         JsonActionCard(
             title: 'Delete prompt override',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.delete-prompt-override',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete prompt override?',
+              consequence:
+                  'This removes the selected mode override and changes which prompt the agent uses.',
+              confirmLabel: 'Delete override',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Mode', controller: _mode)
@@ -453,10 +531,12 @@ class _AiPageState extends State<AiPage> {
             subtitle: '관리자 AI prompt templates CRUD와 적용 기능'),
         JsonActionCard(
             title: 'List templates',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/admin/ai/prompt-templates')),
         JsonActionCard(
             title: 'Create template',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Create',
             children: [
               JsonTextField(label: 'Template JSON', controller: _templateBody)
@@ -465,6 +545,7 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_templateBody.text))),
         JsonActionCard(
             title: 'Update template',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Update',
             children: [
               ControlGrid(children: [
@@ -477,6 +558,7 @@ class _AiPageState extends State<AiPage> {
                 body: parseJsonObject(_templateBody.text))),
         JsonActionCard(
             title: 'Use template',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Apply',
             children: [
               ControlGrid(children: [
@@ -487,7 +569,15 @@ class _AiPageState extends State<AiPage> {
                 '/api/v1/admin/ai/prompt-templates/${Uri.encodeComponent(_templateId.text.trim())}/use')),
         JsonActionCard(
             title: 'Delete template',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'ai.delete-prompt-template',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete prompt template?',
+              consequence:
+                  'This permanently removes the selected reusable prompt template.',
+              confirmLabel: 'Delete template',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Template ID', controller: _templateId)

@@ -8,7 +8,7 @@
  * - Secure value retrieval
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import type { HonoEnv, Env, Secret, SecretCategory, SecretPublic, SecretAuditLog } from '../types';
 import { success, badRequest, notFound, error } from '../lib/response';
 import { requireAdmin } from '../middleware/auth';
@@ -224,9 +224,10 @@ secrets.get('/', async (c) => {
 });
 
 /**
- * GET /:id - Get a single secret (without value unless ?reveal=true)
+ * Handle GET /:id - Get a single secret (without value unless ?reveal=true).
+ * Registered after named GET routes so the wildcard cannot shadow them.
  */
-secrets.get('/:id', async (c) => {
+async function getSecretById(c: Context<HonoEnv>) {
   const { id } = c.req.param();
   const reveal = c.req.query('reveal') === 'true';
 
@@ -269,7 +270,7 @@ secrets.get('/:id', async (c) => {
   }
 
   return success(c, { secret: result });
-});
+}
 
 /**
  * POST / - Create a new secret
@@ -938,5 +939,8 @@ secrets.get('/overview', async (c) => {
     recentActivity: recentAuditResult.results,
   });
 });
+
+// Dynamic GET routes must remain after all named GET routes.
+secrets.get('/:id', getSecretById);
 
 export default secrets;

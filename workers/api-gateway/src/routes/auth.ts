@@ -35,6 +35,7 @@
  */
 
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
 import { success, badRequest, unauthorized, error } from '../lib/response';
 import {
@@ -76,6 +77,7 @@ import {
   type RefreshFamilyRecord,
   type RefreshTokenRecord,
 } from '../lib/auth-state-repository';
+import { enforceKvRateLimit } from '../lib/rate-limit';
 
 const auth = new Hono<HonoEnv>();
 
@@ -98,10 +100,43 @@ const OAUTH_STATE_TTL = 5 * 60;
 
 // OAuth handoff TTL (60 seconds)
 const OAUTH_HANDOFF_TTL_SECONDS = 60;
+const TOTP_CHALLENGE_RATE_LIMIT = 20;
+const TOTP_VERIFY_RATE_LIMIT = 8;
+const TOTP_RATE_LIMIT_WINDOW_SECONDS = 5 * 60;
 
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+async function totpRateLimitIdentity(c: Context<HonoEnv>): Promise<string> {
+  // Cloudflare supplies this header at the edge. A missing value intentionally
+  // shares one conservative bucket; attacker-controlled UA/XFF values must not
+  // shard the primary TOTP attempt cap.
+  const ip = c.req.header('cf-connecting-ip')?.trim().toLowerCase() || 'missing-cf-ip';
+  const digest = await crypto.subtle.digest('SHA-256', textEncoder.encode(`cf-ip:${ip}`));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .slice(0, 32);
+}
+
+async function enforceTotpRateLimit(
+  c: Context<HonoEnv>,
+  operation: 'challenge' | 'verify'
+): Promise<Response | null> {
+  const identity = await totpRateLimitIdentity(c);
+  // Cloudflare KV get/put is a non-atomic, best-effort guard. Parallel bursts
+  // can still lose increments, so an atomic edge/DO limiter remains residual
+  // production hardening rather than something this helper can guarantee.
+  return enforceKvRateLimit(c, {
+    key: `ratelimit:auth:totp:${operation}:${identity}`,
+    limit: operation === 'challenge' ? TOTP_CHALLENGE_RATE_LIMIT : TOTP_VERIFY_RATE_LIMIT,
+    windowSeconds: TOTP_RATE_LIMIT_WINDOW_SECONDS,
+    label: 'auth-totp',
+    message: 'Too many TOTP attempts',
+    code: 'TOTP_RATE_LIMITED',
+    logContext: { operation, identityPrefix: identity.slice(0, 8) },
+  });
+}
 
 /** Build admin token payload with emailVerified: true */
 function adminPayload(email: string) {
@@ -473,8 +508,12 @@ auth.get('/totp/setup', async (c) => {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     try {
       const payload = await verifyJwt(token, c.env);
-      if (payload.role !== 'admin') {
-        return unauthorized(c, 'Admin token required');
+      if (
+        payload.type !== 'access' ||
+        payload.role !== 'admin' ||
+        payload.emailVerified !== true
+      ) {
+        return unauthorized(c, 'Verified admin access token required');
       }
     } catch {
       return unauthorized(c, 'Invalid admin token');
@@ -559,6 +598,9 @@ auth.post('/totp/setup/verify', async (c) => {
  * Stateless — no user identity or KV write needed yet.
  */
 auth.post('/totp/challenge', async (c) => {
+  const rateLimit = await enforceTotpRateLimit(c, 'challenge');
+  if (rateLimit) return rateLimit;
+
   const setupComplete = await c.env.KV.get(KV_TOTP_SETUP_KEY);
   if (setupComplete !== 'true') {
     return error(c, 'TOTP not configured — complete setup first', 400);
@@ -587,6 +629,9 @@ auth.post('/totp/verify', async (c) => {
   if (!challengeId || !code) {
     return badRequest(c, 'challengeId and code required');
   }
+
+  const rateLimit = await enforceTotpRateLimit(c, 'verify');
+  if (rateLimit) return rateLimit;
 
   // Validate challenge. New challenges are stateless; legacy KV-backed
   // challenges are consumed as a compatibility fallback.

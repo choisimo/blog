@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -7,27 +8,66 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'json_utils.dart';
 
-class AuthStore extends ChangeNotifier {
-  AuthStore({http.Client? client}) : _client = client ?? http.Client();
+abstract interface class AdminSecureStorage {
+  Future<String?> read({required String key});
 
-  static const _secureStorage = FlutterSecureStorage();
+  Future<void> write({required String key, required String value});
+
+  Future<void> delete({required String key});
+}
+
+class FlutterAdminSecureStorage implements AdminSecureStorage {
+  const FlutterAdminSecureStorage();
+
+  static const _delegate = FlutterSecureStorage();
+
+  @override
+  Future<String?> read({required String key}) => _delegate.read(key: key);
+
+  @override
+  Future<void> write({required String key, required String value}) =>
+      _delegate.write(key: key, value: value);
+
+  @override
+  Future<void> delete({required String key}) => _delegate.delete(key: key);
+}
+
+class AuthStore extends ChangeNotifier {
+  AuthStore({
+    http.Client? client,
+    AdminSecureStorage? secureStorage,
+    this.requestTimeout = const Duration(seconds: 30),
+  })  : _client = client ?? http.Client(),
+        _secureStorage = secureStorage ?? const FlutterAdminSecureStorage();
+
   static const defaultBaseUrl = String.fromEnvironment(
     'ADMIN_API_BASE_URL',
     defaultValue: 'https://api.nodove.com',
   );
+  static const allowedApiOrigins = String.fromEnvironment(
+    'ADMIN_API_ALLOWED_ORIGINS',
+    defaultValue: '',
+  );
   static const _baseUrlKey = 'noblog.admin.baseUrl';
   static const _accessTokenKey = 'noblog.admin.accessToken';
   static const _refreshTokenKey = 'noblog.admin.refreshToken';
+  static const _sessionOriginKey = 'noblog.admin.sessionOrigin';
   static const _userKey = 'noblog.admin.user';
 
   final http.Client _client;
+  final AdminSecureStorage _secureStorage;
+  final Duration requestTimeout;
+  Future<String?>? _refreshInFlight;
+  Future<void> _sessionMutationTail = Future<void>.value();
+  int _sessionGeneration = 0;
 
-  String baseUrl = defaultBaseUrl;
+  String _baseUrl = defaultBaseUrl;
   String? accessToken;
   String? refreshToken;
   Map<String, dynamic>? user;
   bool initialized = false;
 
+  String get baseUrl => _baseUrl;
   bool get isAuthenticated => accessToken != null && refreshToken != null;
   String get userLabel =>
       (user?['email'] ?? user?['username'] ?? user?['role'] ?? 'admin')
@@ -36,14 +76,22 @@ class AuthStore extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     final savedBaseUrl = prefs.getString(_baseUrlKey);
-    baseUrl = _initialBaseUrl(savedBaseUrl);
-    if (savedBaseUrl != baseUrl) {
-      await prefs.setString(_baseUrlKey, baseUrl);
+    _baseUrl = _initialBaseUrl(savedBaseUrl);
+    if (savedBaseUrl != _baseUrl) {
+      await prefs.setString(_baseUrlKey, _baseUrl);
     }
-    accessToken = await _secureStorage.read(key: _accessTokenKey) ??
-        prefs.getString(_accessTokenKey);
-    refreshToken = await _secureStorage.read(key: _refreshTokenKey) ??
-        prefs.getString(_refreshTokenKey);
+    final secureAccessToken = await _secureStorage.read(key: _accessTokenKey);
+    final secureRefreshToken = await _secureStorage.read(key: _refreshTokenKey);
+    accessToken =
+        _normalizeToken(secureAccessToken ?? prefs.getString(_accessTokenKey));
+    refreshToken = _normalizeToken(
+        secureRefreshToken ?? prefs.getString(_refreshTokenKey));
+    if (secureAccessToken != null && accessToken == null) {
+      await _secureStorage.delete(key: _accessTokenKey);
+    }
+    if (secureRefreshToken != null && refreshToken == null) {
+      await _secureStorage.delete(key: _refreshTokenKey);
+    }
     if (prefs.getString(_accessTokenKey) != null ||
         prefs.getString(_refreshTokenKey) != null) {
       await _migratePlaintextTokens(prefs);
@@ -56,32 +104,76 @@ class AuthStore extends ChangeNotifier {
         user = null;
       }
     }
+    await _enforceSessionOrigin(prefs);
     initialized = true;
     notifyListeners();
   }
 
   Future<void> setBaseUrl(String value) async {
-    baseUrl = normalizeBaseUrl(value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_baseUrlKey, baseUrl);
+    final nextBaseUrl = _validatedBaseUrl(value);
+    if (nextBaseUrl == _baseUrl) {
+      await _serializeSessionMutation(() async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_baseUrlKey, nextBaseUrl);
+      });
+      return;
+    }
+
+    // Invalidate refresh completions synchronously before any storage await.
+    _baseUrl = nextBaseUrl;
+    _invalidateSessionInMemory();
     notifyListeners();
+    await _serializeSessionMutation(() async {
+      final prefs = await SharedPreferences.getInstance();
+      await _deleteSessionStorage(prefs);
+      await prefs.setString(_baseUrlKey, nextBaseUrl);
+    });
   }
 
   static String _initialBaseUrl(String? savedBaseUrl) {
     if (savedBaseUrl == null || savedBaseUrl.trim().isEmpty) {
-      return normalizeBaseUrl(defaultBaseUrl);
+      return _validatedBaseUrl(defaultBaseUrl);
     }
-    if (_isLoopbackBaseUrl(savedBaseUrl)) {
-      return normalizeBaseUrl(defaultBaseUrl);
+    try {
+      if (_isLoopbackBaseUrl(savedBaseUrl)) {
+        return _validatedBaseUrl(defaultBaseUrl);
+      }
+      return _validatedBaseUrl(savedBaseUrl);
+    } on FormatException {
+      return _validatedBaseUrl(defaultBaseUrl);
     }
-    return normalizeBaseUrl(savedBaseUrl);
+  }
+
+  static String _validatedBaseUrl(String value) {
+    final normalized = normalizeBaseUrl(value);
+    if (_isLoopbackBaseUrl(normalized)) return normalized;
+
+    final allowed = <String>{normalizeBaseUrl(defaultBaseUrl)};
+    for (final configured in allowedApiOrigins.split(',')) {
+      if (configured.trim().isEmpty) continue;
+      try {
+        allowed.add(normalizeBaseUrl(configured));
+      } on FormatException {
+        // Invalid build-time entries grant no access.
+      }
+    }
+    if (!allowed.contains(normalized)) {
+      throw const FormatException(
+        'API origin is not allowlisted. Add it with '
+        'ADMIN_API_ALLOWED_ORIGINS at build time.',
+      );
+    }
+    return normalized;
   }
 
   static bool _isLoopbackBaseUrl(String value) {
-    final normalized = normalizeBaseUrl(value);
-    final uri = Uri.tryParse(normalized);
-    final host = uri?.host.toLowerCase();
-    return host == 'localhost' || host == '127.0.0.1' || host == '::1';
+    try {
+      final normalized = normalizeBaseUrl(value);
+      final host = Uri.parse(normalized).host.toLowerCase();
+      return host == 'localhost' || host == '127.0.0.1' || host == '::1';
+    } on FormatException {
+      return false;
+    }
   }
 
   Uri uri(String path, [Map<String, String?> query = const {}]) {
@@ -91,7 +183,7 @@ class AuthStore extends ChangeNotifier {
       final value = entry.value;
       if (value != null && value.trim().isNotEmpty) filtered[entry.key] = value;
     }
-    return Uri.parse('$baseUrl$cleanPath')
+    return Uri.parse('$_baseUrl$cleanPath')
         .replace(queryParameters: filtered.isEmpty ? null : filtered);
   }
 
@@ -107,45 +199,112 @@ class AuthStore extends ChangeNotifier {
     required String refreshToken,
     Map<String, dynamic>? user,
   }) async {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    this.user = user ?? this.user;
-    final prefs = await SharedPreferences.getInstance();
-    await _secureStorage.write(key: _accessTokenKey, value: accessToken);
-    await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
-    await prefs.remove(_accessTokenKey);
-    await prefs.remove(_refreshTokenKey);
-    if (this.user != null) {
-      await prefs.setString(_userKey, jsonEncode(this.user));
-    }
-    notifyListeners();
+    final nextAccessToken = _requireToken(accessToken, 'access token');
+    final nextRefreshToken = _requireToken(refreshToken, 'refresh token');
+    final nextUser = user ?? this.user;
+    final generation = ++_sessionGeneration;
+    final origin = _baseUrl;
+
+    await _serializeSessionMutation(() async {
+      if (!_ownsSessionMutation(generation, origin)) return;
+      await _persistSession(
+        origin: origin,
+        accessToken: nextAccessToken,
+        refreshToken: nextRefreshToken,
+        user: nextUser,
+      );
+      if (!_ownsSessionMutation(generation, origin)) return;
+      this.accessToken = nextAccessToken;
+      this.refreshToken = nextRefreshToken;
+      this.user = nextUser;
+      notifyListeners();
+    });
   }
 
   Future<void> clearLocal() async {
+    _invalidateSessionInMemory();
+    notifyListeners();
+    await _serializeSessionMutation(() async {
+      final prefs = await SharedPreferences.getInstance();
+      await _deleteSessionStorage(prefs);
+    });
+  }
+
+  void _invalidateSessionInMemory() {
+    _sessionGeneration += 1;
     accessToken = null;
     refreshToken = null;
     user = null;
-    final prefs = await SharedPreferences.getInstance();
+  }
+
+  Future<void> _deleteSessionStorage(SharedPreferences prefs) async {
     await _secureStorage.delete(key: _accessTokenKey);
     await _secureStorage.delete(key: _refreshTokenKey);
+    await _secureStorage.delete(key: _sessionOriginKey);
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userKey);
-    notifyListeners();
+  }
+
+  Future<void> _enforceSessionOrigin(SharedPreferences prefs) async {
+    if (accessToken == null && refreshToken == null) {
+      if (user != null) {
+        _invalidateSessionInMemory();
+        await _deleteSessionStorage(prefs);
+      }
+      return;
+    }
+    if (accessToken == null || refreshToken == null) {
+      _invalidateSessionInMemory();
+      await _deleteSessionStorage(prefs);
+      return;
+    }
+
+    final storedOrigin = await _secureStorage.read(key: _sessionOriginKey);
+    if (storedOrigin == null) {
+      final productionOrigin = _validatedBaseUrl(defaultBaseUrl);
+      if (_baseUrl == productionOrigin) {
+        // One-time migration for sessions created before origin binding.
+        await _secureStorage.write(
+          key: _sessionOriginKey,
+          value: productionOrigin,
+        );
+      } else {
+        _invalidateSessionInMemory();
+        await _deleteSessionStorage(prefs);
+      }
+      return;
+    }
+
+    String normalizedOrigin;
+    try {
+      normalizedOrigin = _validatedBaseUrl(storedOrigin);
+    } on FormatException {
+      _invalidateSessionInMemory();
+      await _deleteSessionStorage(prefs);
+      return;
+    }
+    if (normalizedOrigin != _baseUrl) {
+      _invalidateSessionInMemory();
+      await _deleteSessionStorage(prefs);
+    }
   }
 
   Future<void> logout() async {
     final token = refreshToken;
+    final logoutUri = uri('/api/v1/auth/logout');
+    await clearLocal();
     try {
-      await _client.post(
-        uri('/api/v1/auth/logout'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': token}),
-      );
+      await _client
+          .post(
+            logoutUri,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': token}),
+          )
+          .timeout(requestTimeout);
     } catch (_) {
       // Local logout still proceeds.
     }
-    await clearLocal();
   }
 
   bool isTokenExpired(String token, {int bufferSeconds = 60}) {
@@ -172,38 +331,179 @@ class AuthStore extends ChangeNotifier {
     return refreshAccessTokenNow();
   }
 
-  Future<String?> refreshAccessTokenNow() async {
-    if (refreshToken == null ||
-        isTokenExpired(refreshToken!, bufferSeconds: 0)) {
-      await clearLocal();
+  Future<String?> refreshAccessTokenNow() {
+    final pending = _refreshInFlight;
+    if (pending != null) return pending;
+
+    late final Future<String?> refresh;
+    refresh = _performRefresh().whenComplete(() {
+      if (identical(_refreshInFlight, refresh)) {
+        _refreshInFlight = null;
+      }
+    });
+    _refreshInFlight = refresh;
+    return refresh;
+  }
+
+  Future<String?> _performRefresh() async {
+    final initiatingRefreshToken = refreshToken;
+    final initiatingGeneration = _sessionGeneration;
+    final initiatingOrigin = _baseUrl;
+    if (initiatingRefreshToken == null ||
+        isTokenExpired(initiatingRefreshToken, bufferSeconds: 0)) {
+      if (_ownsRefresh(
+        initiatingRefreshToken,
+        initiatingGeneration,
+        initiatingOrigin,
+      )) {
+        await clearLocal();
+      }
       return null;
     }
     final http.Response response;
     try {
-      response = await _client.post(
-        uri('/api/v1/auth/refresh'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': refreshToken}),
-      );
+      response = await _client
+          .post(
+            uri('/api/v1/auth/refresh'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': initiatingRefreshToken}),
+          )
+          .timeout(requestTimeout);
     } catch (_) {
-      await clearLocal();
+      // Preserve the refresh token on transient transport failures so the
+      // session can recover when connectivity returns.
+      return null;
+    }
+    if (!_ownsRefresh(
+      initiatingRefreshToken,
+      initiatingGeneration,
+      initiatingOrigin,
+    )) {
       return null;
     }
     final json = _tryDecodeMap(response.body);
+    if (response.statusCode == 408 ||
+        response.statusCode == 429 ||
+        response.statusCode >= 500) {
+      return null;
+    }
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         json?['ok'] != true ||
         json?['data'] == null) {
-      await clearLocal();
+      if (_ownsRefresh(
+        initiatingRefreshToken,
+        initiatingGeneration,
+        initiatingOrigin,
+      )) {
+        await clearLocal();
+      }
       return null;
     }
     final data = asMap(json!['data']);
-    await saveTokens(
-      accessToken: data['accessToken'].toString(),
-      refreshToken: data['refreshToken'].toString(),
-      user: user,
-    );
-    return accessToken;
+    final nextAccessToken = data['accessToken'];
+    final nextRefreshToken = data['refreshToken'];
+    if (nextAccessToken is! String || nextRefreshToken is! String) {
+      if (_ownsRefresh(
+        initiatingRefreshToken,
+        initiatingGeneration,
+        initiatingOrigin,
+      )) {
+        await clearLocal();
+      }
+      return null;
+    }
+    late final String normalizedAccessToken;
+    late final String normalizedRefreshToken;
+    try {
+      normalizedAccessToken = _requireToken(nextAccessToken, 'access token');
+      normalizedRefreshToken = _requireToken(nextRefreshToken, 'refresh token');
+    } on FormatException {
+      if (_ownsRefresh(
+        initiatingRefreshToken,
+        initiatingGeneration,
+        initiatingOrigin,
+      )) {
+        await clearLocal();
+      }
+      return null;
+    }
+
+    final initiatingUser = user;
+    return _serializeSessionMutation(() async {
+      if (!_ownsRefresh(
+        initiatingRefreshToken,
+        initiatingGeneration,
+        initiatingOrigin,
+      )) {
+        return null;
+      }
+      await _persistSession(
+        origin: initiatingOrigin,
+        accessToken: normalizedAccessToken,
+        refreshToken: normalizedRefreshToken,
+        user: initiatingUser,
+      );
+      if (!_ownsRefresh(
+        initiatingRefreshToken,
+        initiatingGeneration,
+        initiatingOrigin,
+      )) {
+        return null;
+      }
+      accessToken = normalizedAccessToken;
+      refreshToken = normalizedRefreshToken;
+      user = initiatingUser;
+      notifyListeners();
+      return normalizedAccessToken;
+    });
+  }
+
+  bool _ownsRefresh(
+    String? initiatingRefreshToken,
+    int initiatingGeneration,
+    String initiatingOrigin,
+  ) {
+    return refreshToken == initiatingRefreshToken &&
+        _ownsSessionMutation(initiatingGeneration, initiatingOrigin);
+  }
+
+  bool _ownsSessionMutation(int generation, String origin) {
+    return _sessionGeneration == generation && _baseUrl == origin;
+  }
+
+  Future<void> _persistSession({
+    required String origin,
+    required String accessToken,
+    required String refreshToken,
+    required Map<String, dynamic>? user,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await _secureStorage.write(key: _sessionOriginKey, value: origin);
+    await _secureStorage.write(key: _accessTokenKey, value: accessToken);
+    await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
+    await prefs.remove(_accessTokenKey);
+    await prefs.remove(_refreshTokenKey);
+    if (user == null) {
+      await prefs.remove(_userKey);
+    } else {
+      await prefs.setString(_userKey, jsonEncode(user));
+    }
+  }
+
+  Future<T> _serializeSessionMutation<T>(Future<T> Function() mutation) {
+    final previous = _sessionMutationTail;
+    final release = Completer<void>();
+    _sessionMutationTail = release.future;
+
+    return (() async {
+      await previous;
+      try {
+        return await mutation();
+      } finally {
+        release.complete();
+      }
+    })();
   }
 
   Future<void> _migratePlaintextTokens(SharedPreferences prefs) async {
@@ -223,7 +523,9 @@ class AuthStore extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> getTotpStatus() async {
-    final response = await _client.get(uri('/api/v1/auth/totp/status'));
+    final response = await _client
+        .get(uri('/api/v1/auth/totp/status'))
+        .timeout(requestTimeout);
     return _unwrap(response, 'Failed to load TOTP status');
   }
 
@@ -234,21 +536,23 @@ class AuthStore extends ChangeNotifier {
         if (setupToken != null && setupToken.isNotEmpty)
           'Setup-Token': setupToken
       },
-    );
+    ).timeout(requestTimeout);
     return _unwrap(response, 'Failed to load TOTP setup');
   }
 
   Future<Map<String, dynamic>> verifyTotpSetup(String code,
       {String? setupToken}) async {
-    final response = await _client.post(
-      uri('/api/v1/auth/totp/setup/verify'),
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-        if (setupToken != null && setupToken.isNotEmpty)
-          'Setup-Token': setupToken,
-      },
-      body: jsonEncode({'code': code}),
-    );
+    final response = await _client
+        .post(
+          uri('/api/v1/auth/totp/setup/verify'),
+          headers: <String, String>{
+            'Content-Type': 'application/json',
+            if (setupToken != null && setupToken.isNotEmpty)
+              'Setup-Token': setupToken,
+          },
+          body: jsonEncode({'code': code}),
+        )
+        .timeout(requestTimeout);
     return _unwrap(response, 'TOTP setup verification failed');
   }
 
@@ -256,35 +560,51 @@ class AuthStore extends ChangeNotifier {
     final response = await _client.post(
       uri('/api/v1/auth/totp/challenge'),
       headers: const {'Content-Type': 'application/json'},
-    );
+    ).timeout(requestTimeout);
     final data = await _unwrap(response, 'Failed to create TOTP challenge');
     return data['challengeId'].toString();
   }
 
   Future<void> verifyTotpCode(String challengeId, String code) async {
-    final response = await _client.post(
-      uri('/api/v1/auth/totp/verify'),
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'challengeId': challengeId, 'code': code}),
-    );
+    final response = await _client
+        .post(
+          uri('/api/v1/auth/totp/verify'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({'challengeId': challengeId, 'code': code}),
+        )
+        .timeout(requestTimeout);
     final data = await _unwrap(response, 'TOTP verification failed');
+    final accessToken = data['accessToken'];
+    final refreshToken = data['refreshToken'];
+    if (accessToken is! String || refreshToken is! String) {
+      throw const FormatException(
+          'Authentication response contains invalid tokens.');
+    }
     await saveTokens(
-      accessToken: data['accessToken'].toString(),
-      refreshToken: data['refreshToken'].toString(),
+      accessToken: accessToken,
+      refreshToken: refreshToken,
       user: asMap(data['user']),
     );
   }
 
   Future<void> consumeOAuthHandoff(String handoff) async {
-    final response = await _client.post(
-      uri('/api/v1/auth/oauth/handoff/consume'),
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'handoff': handoff}),
-    );
+    final response = await _client
+        .post(
+          uri('/api/v1/auth/oauth/handoff/consume'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({'handoff': handoff}),
+        )
+        .timeout(requestTimeout);
     final data = await _unwrap(response, 'OAuth handoff failed');
+    final accessToken = data['accessToken'];
+    final refreshToken = data['refreshToken'];
+    if (accessToken is! String || refreshToken is! String) {
+      throw const FormatException(
+          'Authentication response contains invalid tokens.');
+    }
     await saveTokens(
-      accessToken: data['accessToken'].toString(),
-      refreshToken: data['refreshToken'].toString(),
+      accessToken: accessToken,
+      refreshToken: refreshToken,
       user: asMap(data['user']),
     );
   }
@@ -293,7 +613,7 @@ class AuthStore extends ChangeNotifier {
     final token = await getValidAccessToken();
     if (token == null) throw Exception('Not authenticated');
     final response = await _client.get(uri('/api/v1/auth/me'),
-        headers: {'Authorization': 'Bearer $token'});
+        headers: {'Authorization': 'Bearer $token'}).timeout(requestTimeout);
     final data = await _unwrap(response, 'Failed to load user');
     return asMap(data['user']);
   }
@@ -325,5 +645,24 @@ class AuthStore extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  static String? _normalizeToken(String? value) {
+    if (value == null) return null;
+    if (value.isEmpty ||
+        value.length > 4096 ||
+        value != value.trim() ||
+        RegExp(r'\s').hasMatch(value) ||
+        RegExp(r'[\x00-\x1F\x7F]').hasMatch(value) ||
+        RegExp(r'%(?:0a|0d)', caseSensitive: false).hasMatch(value)) {
+      return null;
+    }
+    return value;
+  }
+
+  static String _requireToken(String value, String label) {
+    final normalized = _normalizeToken(value);
+    if (normalized == null) throw FormatException('Invalid $label.');
+    return normalized;
   }
 }

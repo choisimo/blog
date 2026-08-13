@@ -38,9 +38,30 @@ String prettyJson(Object? value) {
 }
 
 String normalizeBaseUrl(String value) {
-  var result = value.trim();
-  while (result.endsWith('/')) {
-    result = result.substring(0, result.length - 1);
+  final candidate = value.trim();
+  final uri = Uri.tryParse(candidate);
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+    throw const FormatException('API Base URL must be an absolute URL.');
   }
-  return result;
+
+  final scheme = uri.scheme.toLowerCase();
+  final host = uri.host.toLowerCase();
+  final loopback = host == 'localhost' || host == '127.0.0.1' || host == '::1';
+  if (scheme != 'https' && !(scheme == 'http' && loopback)) {
+    throw const FormatException(
+        'API Base URL must use HTTPS (HTTP is allowed only for loopback).');
+  }
+  if (uri.userInfo.isNotEmpty ||
+      uri.hasQuery ||
+      uri.hasFragment ||
+      (uri.path.isNotEmpty && uri.path != '/')) {
+    throw const FormatException(
+        'API Base URL cannot include credentials, a path, query, or fragment.');
+  }
+
+  return Uri(
+    scheme: scheme,
+    host: host,
+    port: uri.hasPort ? uri.port : null,
+  ).toString().replaceFirst(RegExp(r'/$'), '');
 }

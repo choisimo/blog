@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/api_client.dart';
 import '../core/auth_store.dart';
+import '../theme/admin_theme.dart';
 import 'admin_ops_page.dart';
 import 'ai_page.dart';
 import 'analytics_page.dart';
@@ -15,102 +16,283 @@ import 'secrets_page.dart';
 import 'workers_page.dart';
 
 enum AdminTab {
-  health('Health', Icons.monitor_heart),
-  rag('RAG', Icons.storage),
-  analytics('Analytics', Icons.bar_chart),
-  logs('Logs', Icons.receipt_long),
-  content('Content', Icons.article),
-  ai('AI', Icons.psychology),
-  config('Env', Icons.tune),
-  secrets('Secrets', Icons.key),
-  workers('Workers', Icons.cloud),
-  newPost('New Post', Icons.post_add),
-  ops('Admin Ops', Icons.settings_suggest);
-
-  const AdminTab(this.label, this.icon);
-  final String label;
-  final IconData icon;
+  health,
+  rag,
+  analytics,
+  logs,
+  content,
+  ai,
+  config,
+  secrets,
+  workers,
+  newPost,
+  ops,
 }
 
+enum InactiveDestinationPolicy {
+  pauseAnimations,
+  keepAliveBounded,
+}
+
+typedef AdminPageBuilder = Widget Function(
+  AuthStore auth,
+  AdminApiClient api,
+);
+
+@immutable
+class AdminDestination {
+  const AdminDestination({
+    required this.id,
+    required this.pathSegment,
+    required this.label,
+    required this.icon,
+    required this.pageBuilder,
+    this.inactivePolicy = InactiveDestinationPolicy.pauseAnimations,
+  });
+
+  final AdminTab id;
+  final String pathSegment;
+  final String label;
+  final IconData icon;
+  final AdminPageBuilder pageBuilder;
+  final InactiveDestinationPolicy inactivePolicy;
+}
+
+final List<AdminDestination> adminDestinations = List.unmodifiable([
+  AdminDestination(
+    id: AdminTab.health,
+    pathSegment: 'health',
+    label: 'Health',
+    icon: Icons.monitor_heart_outlined,
+    pageBuilder: (_, api) => HealthPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.rag,
+    pathSegment: 'rag',
+    label: 'RAG',
+    icon: Icons.storage_outlined,
+    pageBuilder: (_, api) => RagPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.analytics,
+    pathSegment: 'analytics',
+    label: 'Analytics',
+    icon: Icons.bar_chart_outlined,
+    pageBuilder: (_, api) => AnalyticsPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.logs,
+    pathSegment: 'logs',
+    label: 'Logs',
+    icon: Icons.receipt_long_outlined,
+    pageBuilder: (_, api) => LogsPage(api: api),
+    inactivePolicy: InactiveDestinationPolicy.keepAliveBounded,
+  ),
+  AdminDestination(
+    id: AdminTab.content,
+    pathSegment: 'content',
+    label: 'Content',
+    icon: Icons.article_outlined,
+    pageBuilder: (_, api) => ContentPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.ai,
+    pathSegment: 'ai',
+    label: 'AI',
+    icon: Icons.psychology_outlined,
+    pageBuilder: (_, api) => AiPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.config,
+    pathSegment: 'environment',
+    label: 'Environment',
+    icon: Icons.tune_outlined,
+    pageBuilder: (_, api) => ConfigPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.secrets,
+    pathSegment: 'secrets',
+    label: 'Secrets',
+    icon: Icons.key_outlined,
+    pageBuilder: (_, api) => SecretsPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.workers,
+    pathSegment: 'workers',
+    label: 'Workers',
+    icon: Icons.cloud_outlined,
+    pageBuilder: (_, api) => WorkersPage(api: api),
+  ),
+  AdminDestination(
+    id: AdminTab.newPost,
+    pathSegment: 'new-post',
+    label: 'New Post',
+    icon: Icons.post_add_outlined,
+    pageBuilder: (auth, api) => NewPostPage(api: api, auth: auth),
+  ),
+  AdminDestination(
+    id: AdminTab.ops,
+    pathSegment: 'operations',
+    label: 'Admin Ops',
+    icon: Icons.settings_suggest_outlined,
+    pageBuilder: (_, api) => AdminOpsPage(api: api),
+  ),
+]);
+
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key, required this.auth, required this.api});
+  const DashboardPage({
+    super.key,
+    required this.auth,
+    required this.api,
+    this.destinations = const [],
+  });
 
   final AuthStore auth;
   final AdminApiClient api;
+  final List<AdminDestination> destinations;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  AdminTab _tab = AdminTab.health;
+  late AdminTab _tab;
+  final List<AdminTab> _visited = [];
+  final Map<AdminTab, Widget> _pages = {};
+
+  List<AdminDestination> get _destinations =>
+      widget.destinations.isEmpty ? adminDestinations : widget.destinations;
+
+  @override
+  void initState() {
+    super.initState();
+    assert(_destinations.isNotEmpty);
+    _tab = _destinations.first.id;
+    _visit(_tab);
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.auth == widget.auth && oldWidget.api == widget.api) return;
+    for (final tab in _visited) {
+      _pages[tab] = _buildPage(tab);
+    }
+  }
+
+  AdminDestination _destinationFor(AdminTab tab) {
+    return _destinations.firstWhere((destination) => destination.id == tab);
+  }
+
+  Widget _buildPage(AdminTab tab) {
+    final destination = _destinationFor(tab);
+    return KeyedSubtree(
+      key: PageStorageKey<String>('admin:${destination.pathSegment}'),
+      child: destination.pageBuilder(widget.auth, widget.api),
+    );
+  }
+
+  void _visit(AdminTab tab) {
+    if (!_visited.contains(tab)) _visited.add(tab);
+    _pages.putIfAbsent(tab, () => _buildPage(tab));
+  }
+
+  void _select(AdminTab tab) {
+    if (_tab == tab) return;
+    setState(() {
+      _visit(tab);
+      _tab = tab;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final body = switch (_tab) {
-      AdminTab.health => HealthPage(api: widget.api),
-      AdminTab.rag => RagPage(api: widget.api),
-      AdminTab.analytics => AnalyticsPage(api: widget.api),
-      AdminTab.logs => LogsPage(api: widget.api),
-      AdminTab.content => ContentPage(api: widget.api),
-      AdminTab.ai => AiPage(api: widget.api),
-      AdminTab.config => ConfigPage(api: widget.api),
-      AdminTab.secrets => SecretsPage(api: widget.api),
-      AdminTab.workers => WorkersPage(api: widget.api),
-      AdminTab.newPost => NewPostPage(api: widget.api, auth: widget.auth),
-      AdminTab.ops => AdminOpsPage(api: widget.api),
-    };
+    final tokens = AdminThemeTokens.of(context);
+    final current = _destinationFor(_tab);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 960;
+        final wide = constraints.maxWidth >= tokens.desktopBreakpoint;
+        final showIdentity = constraints.maxWidth >= 760;
         return Scaffold(
           appBar: AppBar(
+            titleSpacing: wide ? tokens.spaceMd : 0,
             title: Row(
               children: [
-                const Icon(Icons.admin_panel_settings),
-                const SizedBox(width: 8),
-                Text('noblog admin · ${_tab.label}'),
+                const Icon(Icons.admin_panel_settings_outlined),
+                SizedBox(width: tokens.spaceSm),
+                Flexible(
+                  child: Text(
+                    'noblog admin · ${current.label}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             actions: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Center(
-                    child: Text(widget.auth.userLabel,
-                        style: const TextStyle(
-                            fontFamily: 'monospace', fontSize: 12))),
-              ),
+              if (showIdentity)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: tokens.spaceSm),
+                  child: Center(
+                    child: Text(
+                      widget.auth.userLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontFamily: 'monospace',
+                          ),
+                    ),
+                  ),
+                ),
               IconButton(
-                tooltip: 'Logout',
-                onPressed: () => widget.auth.logout(),
+                tooltip: 'Log out',
+                onPressed: widget.auth.logout,
                 icon: const Icon(Icons.logout),
               ),
+              SizedBox(width: tokens.spaceXs),
             ],
           ),
           drawer: wide
               ? null
-              : Drawer(
-                  child: _NavigationList(
-                      current: _tab,
-                      onChanged: (tab) => setState(() => _tab = tab))),
+              : _AdminDrawer(
+                  current: _tab,
+                  destinations: _destinations,
+                  userLabel: widget.auth.userLabel,
+                  onChanged: _select,
+                  onLogout: widget.auth.logout,
+                ),
           body: Row(
             children: [
               if (wide)
                 NavigationRail(
-                  selectedIndex: AdminTab.values.indexOf(_tab),
+                  selectedIndex: _destinations
+                      .indexWhere((destination) => destination.id == _tab),
                   onDestinationSelected: (index) =>
-                      setState(() => _tab = AdminTab.values[index]),
-                  labelType: NavigationRailLabelType.all,
-                  minWidth: 92,
+                      _select(_destinations[index].id),
+                  groupAlignment: -1,
+                  scrollable: true,
                   destinations: [
-                    for (final tab in AdminTab.values)
+                    for (final destination in _destinations)
                       NavigationRailDestination(
-                          icon: Icon(tab.icon), label: Text(tab.label)),
+                        icon: Icon(destination.icon),
+                        selectedIcon: Icon(
+                          destination.icon,
+                          fill: 1,
+                        ),
+                        label: Text(destination.label),
+                      ),
                   ],
                 ),
-              if (wide) const VerticalDivider(width: 1),
-              Expanded(child: body),
+              if (wide) const VerticalDivider(),
+              Expanded(
+                key: const ValueKey('admin-destination-host'),
+                child: _LazyDestinationHost(
+                  current: _tab,
+                  visited: _visited,
+                  pages: _pages,
+                ),
+              ),
             ],
           ),
         );
@@ -119,30 +301,115 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-class _NavigationList extends StatelessWidget {
-  const _NavigationList({required this.current, required this.onChanged});
+class _LazyDestinationHost extends StatelessWidget {
+  const _LazyDestinationHost({
+    required this.current,
+    required this.visited,
+    required this.pages,
+  });
 
   final AdminTab current;
-  final ValueChanged<AdminTab> onChanged;
+  final List<AdminTab> visited;
+  final Map<AdminTab, Widget> pages;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        children: [
-          const ListTile(
-              title: Text('Admin navigation'), leading: Icon(Icons.menu)),
-          for (final tab in AdminTab.values)
+    return IndexedStack(
+      index: visited.indexOf(current),
+      sizing: StackFit.expand,
+      children: [
+        for (final tab in visited)
+          TickerMode(
+            enabled: tab == current,
+            child: RepaintBoundary(child: pages[tab]!),
+          ),
+      ],
+    );
+  }
+}
+
+class _AdminDrawer extends StatelessWidget {
+  const _AdminDrawer({
+    required this.current,
+    required this.destinations,
+    required this.userLabel,
+    required this.onChanged,
+    required this.onLogout,
+  });
+
+  final AdminTab current;
+  final List<AdminDestination> destinations;
+  final String userLabel;
+  final ValueChanged<AdminTab> onChanged;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = AdminThemeTokens.of(context);
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                tokens.spaceMd,
+                tokens.spaceLg,
+                tokens.spaceMd,
+                tokens.spaceMd,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Admin navigation',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  SizedBox(height: tokens.spaceXs),
+                  Text(
+                    userLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.symmetric(vertical: tokens.spaceSm),
+                children: [
+                  for (final destination in destinations)
+                    ListTile(
+                      minTileHeight: 48,
+                      leading: Icon(destination.icon),
+                      title: Text(destination.label),
+                      selected: current == destination.id,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        onChanged(destination.id);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const Divider(),
             ListTile(
-              leading: Icon(tab.icon),
-              title: Text(tab.label),
-              selected: current == tab,
+              minTileHeight: 48,
+              leading: const Icon(Icons.logout),
+              title: const Text('Log out'),
               onTap: () {
                 Navigator.of(context).pop();
-                onChanged(tab);
+                onLogout();
               },
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

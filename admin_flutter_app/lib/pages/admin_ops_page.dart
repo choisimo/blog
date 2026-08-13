@@ -71,6 +71,7 @@ class _AdminOpsPageState extends State<AdminOpsPage> {
             subtitle: '기존 글의 새 버전을 제안하는 GitHub PR outbox 이벤트를 생성합니다.'),
         JsonActionCard(
           title: 'Propose new version',
+          actionKind: AdminActionKind.mutation,
           description: 'POST /api/v1/admin/propose-new-version',
           actionLabel: 'Create proposal event',
           children: [
@@ -105,8 +106,16 @@ class _AdminOpsPageState extends State<AdminOpsPage> {
         ),
         JsonActionCard(
           title: 'Archive comments',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'admin-ops.archive-comments',
           description: 'POST /api/v1/admin/archive-comments?dryRun=1|0',
           actionLabel: _archiveDryRun ? 'Dry run' : 'Archive',
+          confirmation: const AdminConfirmation(
+            title: 'Run comment archive?',
+            consequence:
+                'When dry run is off, this creates an archive operation for old comments and cannot be treated as a read-only preview.',
+            confirmLabel: 'Run archive',
+          ),
           action: () => widget.api.post('/api/v1/admin/archive-comments',
               query: {'dryRun': _archiveDryRun ? '1' : '0'}),
         ),
@@ -118,6 +127,7 @@ class _AdminOpsPageState extends State<AdminOpsPage> {
                 'GitHub PR, comment archive, deploy hook 등 backend domain outbox 상태를 조회하고 flush합니다.'),
         JsonActionCard(
           title: 'List outbox events',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/backend-outbox',
           autoRun: true,
           children: [
@@ -139,8 +149,16 @@ class _AdminOpsPageState extends State<AdminOpsPage> {
         ),
         JsonActionCard(
           title: 'Flush outbox',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'admin-ops.flush-backend-outbox',
           description: 'POST /api/v1/admin/backend-outbox/flush',
           actionLabel: 'Flush',
+          confirmation: const AdminConfirmation(
+            title: 'Flush backend outbox?',
+            consequence:
+                'This dispatches pending external operations and may trigger GitHub, archive, or deploy side effects.',
+            confirmLabel: 'Flush outbox',
+          ),
           children: [
             JsonTextField(label: 'Flush JSON', controller: _flushBody)
           ],

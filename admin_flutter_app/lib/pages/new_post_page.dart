@@ -22,6 +22,7 @@ class NewPostPage extends StatefulWidget {
 
 class _NewPostPageState extends State<NewPostPage> {
   final _uuid = const Uuid();
+  late String _createPrIdempotencyKey = _newCreatePrIdempotencyKey();
   final _title = TextEditingController(text: 'New Post');
   final _slug = TextEditingController(text: 'new-post');
   final _year = TextEditingController(text: DateTime.now().year.toString());
@@ -156,22 +157,33 @@ class _NewPostPageState extends State<NewPostPage> {
   }
 
   Future<Object?> _createPr() {
-    return widget.api.post('/api/v1/admin/create-post-pr', body: {
-      'title': _title.text.trim().isEmpty ? 'New Post' : _title.text.trim(),
-      'slug': _normalizedSlug(),
-      'year': _year.text.trim(),
-      'content': _content.text,
-      'draft': !_published,
-      'frontmatter': {
-        'category':
-            _category.text.trim().isEmpty ? 'General' : _category.text.trim(),
-        'tags': _tagList(),
-        if (_coverImage.text.trim().isNotEmpty)
-          'coverImage': _coverImage.text.trim(),
-        'published': _published,
+    final key = _createPrIdempotencyKey;
+    return widget.api.post(
+      '/api/v1/admin/create-post-pr',
+      headers: {'Idempotency-Key': key},
+      body: {
+        'title': _title.text.trim().isEmpty ? 'New Post' : _title.text.trim(),
+        'slug': _normalizedSlug(),
+        'year': _year.text.trim(),
+        'content': _content.text,
+        'draft': !_published,
+        'frontmatter': {
+          'category':
+              _category.text.trim().isEmpty ? 'General' : _category.text.trim(),
+          'tags': _tagList(),
+          if (_coverImage.text.trim().isNotEmpty)
+            'coverImage': _coverImage.text.trim(),
+          'published': _published,
+        },
       },
+    ).then((result) {
+      _createPrIdempotencyKey = _newCreatePrIdempotencyKey();
+      return result;
     });
   }
+
+  String _newCreatePrIdempotencyKey() =>
+      'flutter-admin-create-post-${_uuid.v4()}';
 
   Future<Object?> _generateImage() async {
     final result = await widget.api.post(
@@ -363,6 +375,7 @@ class _NewPostPageState extends State<NewPostPage> {
             subtitle: 'backend LiteLLM image generation 상태 확인과 이미지 생성을 실행합니다.'),
         JsonActionCard(
             title: 'AI image health',
+            actionKind: AdminActionKind.read,
             description: 'GET /api/v1/admin/ai-images/health',
             action: () => widget.api.get('/api/v1/admin/ai-images/health')),
         Card(

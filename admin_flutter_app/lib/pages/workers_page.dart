@@ -77,18 +77,21 @@ class _WorkersPageState extends State<WorkersPage> {
                 'worker manifest, known secrets, per-worker wrangler config를 확인합니다.'),
         JsonActionCard(
           title: 'List workers',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/list',
           autoRun: true,
           action: () => widget.api.get('/api/v1/admin/workers/list'),
         ),
         JsonActionCard(
           title: 'Known worker secrets',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/secrets',
           autoRun: true,
           action: () => widget.api.get('/api/v1/admin/workers/secrets'),
         ),
         JsonActionCard(
           title: 'Worker config',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/:workerId/config',
           actionLabel: 'Load config',
           children: [
@@ -106,24 +109,28 @@ class _WorkersPageState extends State<WorkersPage> {
             subtitle: 'wrangler CLI를 통해 D1, KV, R2 리소스 목록을 조회합니다.'),
         JsonActionCard(
           title: 'D1 databases',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/d1/databases',
           autoRun: true,
           action: () => widget.api.get('/api/v1/admin/workers/d1/databases'),
         ),
         JsonActionCard(
           title: 'KV namespaces',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/kv/namespaces',
           autoRun: true,
           action: () => widget.api.get('/api/v1/admin/workers/kv/namespaces'),
         ),
         JsonActionCard(
           title: 'R2 buckets',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/r2/buckets',
           autoRun: true,
           action: () => widget.api.get('/api/v1/admin/workers/r2/buckets'),
         ),
         JsonActionCard(
           title: 'Resource snapshot',
+          actionKind: AdminActionKind.read,
           description: 'D1/KV/R2를 한 번에 조회합니다.',
           actionLabel: 'Refresh all',
           action: () async => {
@@ -168,8 +175,16 @@ class _WorkersPageState extends State<WorkersPage> {
         ),
         JsonActionCard(
           title: 'Deploy worker',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'workers.deploy-worker',
           description: 'POST /api/v1/admin/workers/:workerId/deploy',
           actionLabel: 'Deploy',
+          confirmation: const AdminConfirmation(
+            title: 'Deploy worker?',
+            consequence:
+                'When dry run is off, this deploys the selected worker and can change production traffic behavior.',
+            confirmLabel: 'Deploy worker',
+          ),
           action: () => widget.api.post(
               '/api/v1/admin/workers/${_encodedWorkerId()}/deploy',
               body: {
@@ -180,8 +195,16 @@ class _WorkersPageState extends State<WorkersPage> {
         ),
         JsonActionCard(
           title: 'Update manifest vars',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'workers.update-manifest-vars',
           description: 'POST /api/v1/admin/workers/:workerId/vars',
           actionLabel: 'Save vars',
+          confirmation: const AdminConfirmation(
+            title: 'Update worker variables?',
+            consequence:
+                'This rewrites worker environment variables in the manifest and may affect the next deployment.',
+            confirmLabel: 'Update variables',
+          ),
           children: [JsonTextField(label: 'Vars JSON', controller: _varsBody)],
           action: () => widget.api.post(
               '/api/v1/admin/workers/${_encodedWorkerId()}/vars',
@@ -189,8 +212,16 @@ class _WorkersPageState extends State<WorkersPage> {
         ),
         JsonActionCard(
           title: 'Set worker secret',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'workers.set-worker-secret',
           description: 'POST /api/v1/admin/workers/:workerId/secret',
           actionLabel: 'Set secret',
+          confirmation: const AdminConfirmation(
+            title: 'Set worker secret?',
+            consequence:
+                'This writes or replaces a worker secret and may affect production integrations.',
+            confirmLabel: 'Set secret',
+          ),
           children: [
             JsonTextField(label: 'Secret JSON', controller: _secretBody)
           ],
@@ -205,6 +236,7 @@ class _WorkersPageState extends State<WorkersPage> {
             subtitle: '실시간 tail 스트림 대신 backend가 안내하는 wrangler tail 명령을 조회합니다.'),
         JsonActionCard(
           title: 'Tail command',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/admin/workers/:workerId/tail',
           actionLabel: 'Show command',
           children: [

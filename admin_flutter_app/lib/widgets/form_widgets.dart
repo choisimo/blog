@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/admin_theme.dart';
+
 class LabeledTextField extends StatelessWidget {
   const LabeledTextField({
     super.key,
@@ -31,8 +33,7 @@ class LabeledTextField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: obscureText,
       onChanged: onChanged,
-      decoration: InputDecoration(
-          labelText: label, hintText: hint, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: label, hintText: hint),
     );
   }
 }
@@ -56,34 +57,47 @@ class JsonTextField extends StatelessWidget {
         labelText: label,
         alignLabelWithHint: true,
         hintText: example,
-        border: const OutlineInputBorder(),
       ),
     );
   }
 }
 
 class ControlGrid extends StatelessWidget {
-  const ControlGrid({super.key, required this.children});
+  const ControlGrid({
+    super.key,
+    required this.children,
+    this.minItemWidth,
+    this.maxColumns = 3,
+  });
 
   final List<Widget> children;
+  final double? minItemWidth;
+  final int maxColumns;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 900
-            ? 3
-            : constraints.maxWidth >= 600
-                ? 2
-                : 1;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: columns == 1 ? 5.2 : 4.2,
-          children: children,
+        if (children.isEmpty) return const SizedBox.shrink();
+        final tokens = AdminThemeTokens.of(context);
+        final gap = tokens.spaceMd;
+        final minimum = minItemWidth ?? tokens.minControlWidth;
+        final available = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : minimum * maxColumns + gap * (maxColumns - 1);
+        final fittedColumns = available < tokens.mobileBreakpoint
+            ? 1
+            : ((available + gap) / (minimum + gap)).floor();
+        final columns = fittedColumns.clamp(1, maxColumns);
+        final itemWidth = (available - gap * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final child in children)
+              SizedBox(width: itemWidth, child: child),
+          ],
         );
       },
     );

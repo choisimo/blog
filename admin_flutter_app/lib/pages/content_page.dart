@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -16,10 +18,16 @@ class ContentPage extends StatefulWidget {
 }
 
 class _ContentPageState extends State<ContentPage> {
+  static const _previewDebounce = Duration(milliseconds: 200);
+
   final _key = TextEditingController(text: 'home_ai_cta');
   final _markdown = TextEditingController();
   final _label = TextEditingController();
   final _href = TextEditingController();
+  final ValueNotifier<String> _previewMarkdown = ValueNotifier<String>('');
+  final ValueNotifier<({String href, String label})> _previewCta =
+      ValueNotifier((href: '', label: ''));
+  Timer? _previewTimer;
   bool _enabled = true;
   Object? _lastResult;
   String? _error;
@@ -27,6 +35,9 @@ class _ContentPageState extends State<ContentPage> {
 
   @override
   void dispose() {
+    _previewTimer?.cancel();
+    _previewMarkdown.dispose();
+    _previewCta.dispose();
     _key.dispose();
     _markdown.dispose();
     _label.dispose();
@@ -50,6 +61,7 @@ class _ContentPageState extends State<ContentPage> {
         _label.text = block['ctaLabel']?.toString() ?? '';
         _href.text = block['ctaHref']?.toString() ?? '';
         _enabled = block['enabled'] != false;
+        _syncPreviewFromControllers();
       }
       setState(() => _lastResult = data);
     } catch (error) {
@@ -57,6 +69,29 @@ class _ContentPageState extends State<ContentPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _scheduleMarkdownPreview(String markdown) {
+    _previewTimer?.cancel();
+    _previewTimer = Timer(_previewDebounce, () {
+      _previewTimer = null;
+      if (!mounted || _previewMarkdown.value == markdown) return;
+      _previewMarkdown.value = markdown;
+    });
+  }
+
+  void _updateCtaPreview() {
+    final preview = (href: _href.text, label: _label.text);
+    if (_previewCta.value != preview) _previewCta.value = preview;
+  }
+
+  void _syncPreviewFromControllers() {
+    _previewTimer?.cancel();
+    _previewTimer = null;
+    if (_previewMarkdown.value != _markdown.text) {
+      _previewMarkdown.value = _markdown.text;
+    }
+    _updateCtaPreview();
   }
 
   Future<void> _save() async {
@@ -100,18 +135,15 @@ class _ContentPageState extends State<ContentPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ControlGrid(children: [
-                    LabeledTextField(
-                        label: 'Block key',
-                        controller: _key,
-                        onChanged: (_) => setState(() {})),
+                    LabeledTextField(label: 'Block key', controller: _key),
                     LabeledTextField(
                         label: 'CTA label',
                         controller: _label,
-                        onChanged: (_) => setState(() {})),
+                        onChanged: (_) => _updateCtaPreview()),
                     LabeledTextField(
                         label: 'CTA href',
                         controller: _href,
-                        onChanged: (_) => setState(() {})),
+                        onChanged: (_) => _updateCtaPreview()),
                   ]),
                   const SizedBox(height: 12),
                   SwitchListTile(
@@ -126,7 +158,7 @@ class _ContentPageState extends State<ContentPage> {
                       controller: _markdown,
                       minLines: 8,
                       maxLines: 18,
-                      onChanged: (_) => setState(() {})),
+                      onChanged: _scheduleMarkdownPreview),
                   const SizedBox(height: 12),
                   Wrap(spacing: 8, children: [
                     FilledButton.tonalIcon(
@@ -170,13 +202,24 @@ class _ContentPageState extends State<ContentPage> {
                         borderRadius: BorderRadius.circular(12)),
                     child: Padding(
                         padding: const EdgeInsets.all(12),
-                        child: MarkdownBody(data: _markdown.text)),
+                        child: ValueListenableBuilder<String>(
+                          valueListenable: _previewMarkdown,
+                          builder: (context, markdown, _) =>
+                              MarkdownBody(data: markdown),
+                        )),
                   ),
-                  if (_label.text.isNotEmpty && _href.text.isNotEmpty)
-                    Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: FilledButton(
-                            onPressed: null, child: Text(_label.text))),
+                  ValueListenableBuilder<({String href, String label})>(
+                    valueListenable: _previewCta,
+                    builder: (context, cta, _) {
+                      if (cta.label.isEmpty || cta.href.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: FilledButton(
+                              onPressed: null, child: Text(cta.label)));
+                    },
+                  ),
                 ]),
           ),
         ),

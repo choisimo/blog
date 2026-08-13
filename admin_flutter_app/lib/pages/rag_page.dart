@@ -50,6 +50,7 @@ class _RagPageState extends State<RagPage> {
             subtitle: '검색, 임베딩, 컬렉션, 인덱스 작업을 관리합니다.'),
         JsonActionCard(
           title: 'Health',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/rag/health',
           autoRun: true,
           action: () =>
@@ -57,12 +58,14 @@ class _RagPageState extends State<RagPage> {
         ),
         JsonActionCard(
           title: 'Collections',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/rag/collections',
           autoRun: true,
           action: () => widget.api.get('/api/v1/rag/collections'),
         ),
         JsonActionCard(
           title: 'Collection status',
+          actionKind: AdminActionKind.read,
           description: 'GET /api/v1/rag/status?collection=',
           actionLabel: 'Get status',
           children: [
@@ -76,6 +79,7 @@ class _RagPageState extends State<RagPage> {
         ),
         JsonActionCard(
           title: 'Semantic search',
+          actionKind: AdminActionKind.read,
           description: 'POST /api/v1/rag/search',
           actionLabel: 'Search',
           children: [
@@ -95,6 +99,7 @@ class _RagPageState extends State<RagPage> {
         ),
         JsonActionCard(
           title: 'Generate embeddings',
+          actionKind: AdminActionKind.mutation,
           description: 'POST /api/v1/rag/embed',
           actionLabel: 'Embed',
           children: [
@@ -105,6 +110,7 @@ class _RagPageState extends State<RagPage> {
         ),
         JsonActionCard(
           title: 'Index documents',
+          actionKind: AdminActionKind.mutation,
           description: 'POST /api/v1/rag/index',
           actionLabel: 'Index',
           children: [JsonTextField(label: 'Body JSON', controller: _indexDocs)],
@@ -118,8 +124,16 @@ class _RagPageState extends State<RagPage> {
         ),
         JsonActionCard(
           title: 'Delete indexed document',
+          actionKind: AdminActionKind.destructive,
+          actionId: 'rag.delete-indexed-document',
           description: 'DELETE /api/v1/rag/index/:documentId',
           actionLabel: 'Delete',
+          confirmation: const AdminConfirmation(
+            title: 'Delete indexed document?',
+            consequence:
+                'This removes the selected document from the RAG index and may reduce search coverage.',
+            confirmLabel: 'Delete document',
+          ),
           children: [
             ControlGrid(children: [
               LabeledTextField(label: 'Document ID', controller: _deleteId),

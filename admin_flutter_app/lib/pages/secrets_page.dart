@@ -35,6 +35,7 @@ class _SecretsPageState extends State<SecretsPage> {
       TextEditingController(text: '{"limit":"50","offset":"0"}');
   final _importBody =
       TextEditingController(text: '{"secrets":[],"overwrite":false}');
+  final _breakGlassReason = TextEditingController();
   bool _includeValues = false;
 
   @override
@@ -46,7 +47,8 @@ class _SecretsPageState extends State<SecretsPage> {
       _secretBody,
       _generateBody,
       _auditQuery,
-      _importBody
+      _importBody,
+      _breakGlassReason,
     ]) {
       c.dispose();
     }
@@ -86,10 +88,12 @@ class _SecretsPageState extends State<SecretsPage> {
             subtitle: 'secrets health와 overview를 확인합니다.'),
         JsonActionCard(
             title: 'Overview',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/admin/secrets/overview')),
         JsonActionCard(
             title: 'Health',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/admin/secrets/health')),
       ]);
@@ -99,6 +103,7 @@ class _SecretsPageState extends State<SecretsPage> {
             subtitle: 'secret 목록, 생성, 수정, 삭제, reveal, generate'),
         JsonActionCard(
             title: 'List secrets',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             children: [
               ControlGrid(children: [
@@ -110,6 +115,7 @@ class _SecretsPageState extends State<SecretsPage> {
                 query: {'categoryId': _categoryId.text})),
         JsonActionCard(
             title: 'Get secret',
+            actionKind: AdminActionKind.read,
             actionLabel: 'Get',
             children: [
               ControlGrid(children: [
@@ -120,7 +126,15 @@ class _SecretsPageState extends State<SecretsPage> {
                 '/api/v1/admin/secrets/${Uri.encodeComponent(_secretId.text.trim())}')),
         JsonActionCard(
             title: 'Create secret',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'secrets.create-secret',
             actionLabel: 'Create',
+            confirmation: const AdminConfirmation(
+              title: 'Create secret?',
+              consequence:
+                  'This writes a new credential or sensitive value to the secret store.',
+              confirmLabel: 'Create secret',
+            ),
             children: [
               JsonTextField(label: 'Secret JSON', controller: _secretBody)
             ],
@@ -128,7 +142,15 @@ class _SecretsPageState extends State<SecretsPage> {
                 body: parseJsonObject(_secretBody.text))),
         JsonActionCard(
             title: 'Update secret',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'secrets.update-secret',
             actionLabel: 'Update',
+            confirmation: const AdminConfirmation(
+              title: 'Update secret?',
+              consequence:
+                  'This replaces stored secret metadata or value and may affect dependent services.',
+              confirmLabel: 'Update secret',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Secret ID', controller: _secretId)
@@ -140,7 +162,15 @@ class _SecretsPageState extends State<SecretsPage> {
                 body: parseJsonObject(_secretBody.text))),
         JsonActionCard(
             title: 'Delete secret',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'secrets.delete-secret',
             actionLabel: 'Delete',
+            confirmation: const AdminConfirmation(
+              title: 'Delete secret?',
+              consequence:
+                  'This permanently removes the selected secret and may break dependent services.',
+              confirmLabel: 'Delete secret',
+            ),
             children: [
               ControlGrid(children: [
                 LabeledTextField(label: 'Secret ID', controller: _secretId)
@@ -150,16 +180,31 @@ class _SecretsPageState extends State<SecretsPage> {
                 '/api/v1/admin/secrets/${Uri.encodeComponent(_secretId.text.trim())}')),
         JsonActionCard(
             title: 'Reveal secret value',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'secrets.reveal-secret-value',
             actionLabel: 'Reveal',
+            resultTtl: const Duration(seconds: 30),
+            confirmation: const AdminConfirmation(
+              title: 'Reveal secret value?',
+              consequence:
+                  'This exposes plaintext secret material in the admin response and on screen.',
+              confirmLabel: 'Reveal value',
+            ),
             children: [
               ControlGrid(children: [
-                LabeledTextField(label: 'Secret ID', controller: _secretId)
+                LabeledTextField(label: 'Secret ID', controller: _secretId),
+                LabeledTextField(
+                    label: 'Break-glass reason',
+                    controller: _breakGlassReason,
+                    hint: 'Required in production (minimum 8 characters)')
               ])
             ],
             action: () => widget.api.post(
-                '/api/v1/admin/secrets/${Uri.encodeComponent(_secretId.text.trim())}/reveal')),
+                '/api/v1/admin/secrets/${Uri.encodeComponent(_secretId.text.trim())}/reveal',
+                body: {'reason': _requiredBreakGlassReason()})),
         JsonActionCard(
             title: 'Generate value',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Generate',
             children: [
               JsonTextField(label: 'Generate JSON', controller: _generateBody)
@@ -173,10 +218,12 @@ class _SecretsPageState extends State<SecretsPage> {
             subtitle: 'secret category 목록과 생성'),
         JsonActionCard(
             title: 'List categories',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             action: () => widget.api.get('/api/v1/admin/secrets/categories')),
         JsonActionCard(
             title: 'Create category',
+            actionKind: AdminActionKind.mutation,
             actionLabel: 'Create',
             children: [
               JsonTextField(label: 'Category JSON', controller: _categoryBody)
@@ -190,6 +237,7 @@ class _SecretsPageState extends State<SecretsPage> {
             subtitle: 'secret access/change audit 로그'),
         JsonActionCard(
             title: 'Audit log',
+            actionKind: AdminActionKind.read,
             autoRun: true,
             children: [
               JsonTextField(
@@ -211,18 +259,56 @@ class _SecretsPageState extends State<SecretsPage> {
             title: const Text('includeValues'),
             value: _includeValues,
             onChanged: (value) => setState(() => _includeValues = value)),
+        if (_includeValues) ...[
+          LabeledTextField(
+              label: 'Break-glass reason',
+              controller: _breakGlassReason,
+              hint: 'Required in production (minimum 8 characters)'),
+          const SizedBox(height: 12),
+        ],
         JsonActionCard(
             title: 'Export secrets',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'secrets.export-secrets',
             actionLabel: 'Export',
-            action: () => widget.api.get('/api/v1/admin/secrets/export',
-                query: {'includeValues': _includeValues ? 'true' : ''})),
+            resultTtl: _includeValues ? const Duration(seconds: 30) : null,
+            confirmation: const AdminConfirmation(
+              title: 'Export secrets?',
+              consequence:
+                  'When includeValues is enabled, this response contains plaintext secret values that can be copied or logged.',
+              confirmLabel: 'Export secrets',
+            ),
+            action: () =>
+                widget.api.get('/api/v1/admin/secrets/export', headers: {
+                  if (_includeValues)
+                    'X-Break-Glass-Reason': _requiredBreakGlassReason(),
+                }, query: {
+                  'includeValues': _includeValues ? 'true' : ''
+                })),
         JsonActionCard(
             title: 'Import secrets',
+            actionKind: AdminActionKind.destructive,
+            actionId: 'secrets.import-secrets',
             actionLabel: 'Import',
+            confirmation: const AdminConfirmation(
+              title: 'Import secrets?',
+              consequence:
+                  'This writes credentials to the secret store and may overwrite existing values when requested.',
+              confirmLabel: 'Import secrets',
+            ),
             children: [
               JsonTextField(label: 'Import body JSON', controller: _importBody)
             ],
             action: () => widget.api.post('/api/v1/admin/secrets/import',
                 body: parseJsonObject(_importBody.text))),
       ]);
+
+  String _requiredBreakGlassReason() {
+    final reason = _breakGlassReason.text.trim();
+    if (reason.length < 8) {
+      throw const FormatException(
+          'Enter a break-glass reason of at least 8 characters.');
+    }
+    return reason;
+  }
 }
