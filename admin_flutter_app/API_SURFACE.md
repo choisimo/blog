@@ -1,6 +1,8 @@
 # 관리자 API 사용 범위
 
-이 Flutter 앱은 업로드된 `blog-main` 저장소에서 확인한 현재 관리자 API와 React 관리자 화면을 기준으로 작성했습니다.
+이 Flutter 앱에서 선언되거나 호출되는 현재 관리자 API를 Worker/Backend registration과 대조한 목록입니다. 2026-08-12 기준 고유한 `method + path pattern`은 103개이며, `GET /auth/me`를 제외한 102개가 UI·자동 refresh·stream 경로에서 도달 가능합니다. `GET /auth/me`는 `AuthStore.getMe`에 구현되어 있지만 현재 UI 호출자는 없습니다.
+
+`POST`, `PUT`, `DELETE` 요청에는 앱이 `Idempotency-Key`를 자동 부착합니다. 서버가 해당 계약을 구현한 경로에서만 중복 억제가 보장됩니다. finite 요청에는 timeout이 적용되며, logs stream은 연결 수립에만 timeout이 적용됩니다.
 
 ## 인증
 
@@ -19,7 +21,8 @@
 - `GET /api/v1/healthz`
 - `GET /api/v1/rag/health`
 - `GET /api/v1/agent/health`
-- `GET /api/v1/admin/ai/providers`
+
+Health 화면은 AI 관리 절의 `GET /api/v1/admin/ai/providers`도 재사용합니다.
 
 ## RAG
 
@@ -55,23 +58,39 @@
 
 ## AI 관리
 
-- `GET/POST/PUT/DELETE /api/v1/admin/ai/providers`
+- `GET /api/v1/admin/ai/providers`
+- `POST /api/v1/admin/ai/providers`
+- `PUT /api/v1/admin/ai/providers/:id`
+- `PUT /api/v1/admin/ai/providers/:id/health`
 - `POST /api/v1/admin/ai/providers/:id/kill-switch`
 - `POST /api/v1/admin/ai/providers/:id/enable`
-- `GET/POST/PUT/DELETE /api/v1/admin/ai/models`
-- `GET/POST/PUT/DELETE /api/v1/admin/ai/routes`
+- `DELETE /api/v1/admin/ai/providers/:id`
+- `GET /api/v1/admin/ai/models`
+- `POST /api/v1/admin/ai/models`
+- `PUT /api/v1/admin/ai/models/:id`
+- `DELETE /api/v1/admin/ai/models/:id`
+- `GET /api/v1/admin/ai/routes`
+- `POST /api/v1/admin/ai/routes`
+- `PUT /api/v1/admin/ai/routes/:id`
+- `DELETE /api/v1/admin/ai/routes/:id`
 - `POST /api/v1/admin/ai/playground/run`
-- `GET/DELETE /api/v1/admin/ai/playground/history`
-- `GET/DELETE /api/v1/admin/ai/playground/history/:id`
+- `GET /api/v1/admin/ai/playground/history`
+- `GET /api/v1/admin/ai/playground/history/:id`
+- `DELETE /api/v1/admin/ai/playground/history/:id`
+- `DELETE /api/v1/admin/ai/playground/history`
 - `GET /api/v1/admin/ai/usage`
 - `GET /api/v1/admin/ai/config/export`
 - `GET /api/v1/admin/ai/traces`
 - `GET /api/v1/admin/ai/traces/:id`
 - `GET /api/v1/admin/ai/traces/stats/summary`
-- `GET/POST/PUT/DELETE /api/v1/admin/ai/prompt-templates`
+- `GET /api/v1/admin/ai/prompt-templates`
+- `POST /api/v1/admin/ai/prompt-templates`
+- `PUT /api/v1/admin/ai/prompt-templates/:id`
 - `POST /api/v1/admin/ai/prompt-templates/:id/use`
+- `DELETE /api/v1/admin/ai/prompt-templates/:id`
 - `GET /api/v1/agent/prompts`
-- `PUT/DELETE /api/v1/agent/prompts/:mode`
+- `PUT /api/v1/agent/prompts/:mode`
+- `DELETE /api/v1/agent/prompts/:mode`
 
 ## Config
 
@@ -86,11 +105,15 @@
 
 - `GET /api/v1/admin/secrets/overview`
 - `GET /api/v1/admin/secrets/health`
-- `GET/POST /api/v1/admin/secrets`
-- `GET/PUT/DELETE /api/v1/admin/secrets/:id`
+- `GET /api/v1/admin/secrets`
+- `POST /api/v1/admin/secrets`
+- `GET /api/v1/admin/secrets/:id`
+- `PUT /api/v1/admin/secrets/:id`
+- `DELETE /api/v1/admin/secrets/:id`
 - `POST /api/v1/admin/secrets/:id/reveal`
 - `POST /api/v1/admin/secrets/generate`
-- `GET/POST /api/v1/admin/secrets/categories`
+- `GET /api/v1/admin/secrets/categories`
+- `POST /api/v1/admin/secrets/categories`
 - `GET /api/v1/admin/secrets/audit`
 - `GET /api/v1/admin/secrets/export`
 - `POST /api/v1/admin/secrets/import`
