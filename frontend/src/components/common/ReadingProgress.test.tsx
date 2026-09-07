@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ReadingProgress } from './ReadingProgress';
@@ -37,6 +37,29 @@ const setScrollGeometry = ({
 describe('ReadingProgress', () => {
   afterEach(() => {
     useThemeMock.mockReset();
+  });
+
+  it('tracks the visible header edge and pins to the viewport when the header scrolls away', async () => {
+    useThemeMock.mockReturnValue({ isTerminal: false });
+    const header = document.createElement('header');
+    header.className = 'ui-header';
+    let bottom = 81;
+    header.getBoundingClientRect = () => ({ bottom } as DOMRect);
+    document.body.append(header);
+    const view = render(<ReadingProgress />);
+    try {
+      const bar = screen.getByRole('progressbar').parentElement!;
+      expect(bar).toHaveStyle({ top: '81px' });
+      bottom = -120;
+      fireEvent.scroll(window);
+      await waitFor(() => expect(bar).toHaveStyle({ top: '0px' }));
+      bottom = 49;
+      fireEvent.resize(window);
+      await waitFor(() => expect(bar).toHaveStyle({ top: '49px' }));
+    } finally {
+      view.unmount();
+      header.remove();
+    }
   });
 
   it('sanitizes the progressbar accessibility label and exposes progress values', async () => {
