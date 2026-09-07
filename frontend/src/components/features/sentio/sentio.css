@@ -187,7 +187,7 @@
   border-top: 1px solid hsl(var(--ui-line));
 }
 .sentio-loading {
-  min-height: 24rem;
+  min-height: 36rem;
   border: 1px dashed hsl(var(--ui-line));
   border-radius: var(--sentio-radius);
   background: hsl(var(--ui-soft) / 0.35);
@@ -244,7 +244,7 @@
 }
 .sentio-deck-stage {
   position: relative;
-  height: 24rem;
+  height: 36rem;
   margin-bottom: 24px;
 }
 .sentio-deck-nav {
@@ -464,4 +464,175 @@
   .sentio-mode-card:active:not(:disabled) {
     transform: none;
   }
+}
+
+/* In-place exploration: the frame is stable while only this card's text changes. */
+.sentio-lens-exploration-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+}
+.sentio-evidence-toggle {
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid hsl(var(--ui-line));
+  color: hsl(var(--ui-accent));
+  font-size: 12px;
+}
+.sentio-evidence-toggle:hover {
+  background: hsl(var(--ui-accent-soft));
+}
+.sentio-exploration-controls {
+  flex-shrink: 0;
+  padding: 12px 16px 16px;
+  border-top: 1px solid hsl(var(--ui-line));
+  background: hsl(var(--ui-surface));
+  border-radius: 0 0 16px 16px;
+}
+.sentio-thought > .sentio-exploration-controls {
+  margin: 20px -8px -8px;
+  padding: 12px 8px 8px;
+}
+.sentio-exploration-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 44px;
+}
+.sentio-exploration-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  color: hsl(var(--ui-muted));
+  font-size: 11px;
+}
+.sentio-exploration-history {
+  display: flex;
+  gap: 4px;
+}
+.sentio-exploration-history button,
+.sentio-exploration-form button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+}
+.sentio-exploration-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+.sentio-exploration-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sentio-exploration-choice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid hsl(var(--ui-line));
+  border-radius: 8px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.6;
+  color: hsl(var(--ui-accent));
+  background: hsl(var(--ui-accent-soft) / 0.3);
+}
+.sentio-exploration-choice svg {
+  flex-shrink: 0;
+}
+.sentio-exploration-choice span {
+  overflow-wrap: anywhere;
+}
+.sentio-exploration-controls button {
+  transition: transform 140ms var(--sentio-ease);
+}
+.sentio-exploration-controls button:hover:not(:disabled) {
+  background: hsl(var(--ui-accent-soft));
+}
+.sentio-exploration-controls button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.sentio-exploration-controls :is(button, input):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sentio-exploration-controls :is(button, input):focus-visible {
+  outline: 2px solid hsl(var(--ui-accent));
+  outline-offset: 2px;
+}
+.sentio-exploration-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  border: 1px solid hsl(var(--ui-line));
+  border-radius: 8px;
+}
+.sentio-exploration-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: hsl(var(--ui-text));
+  font-size: 12px;
+}
+.sentio-exploration-body {
+  min-height: 180px;
+  overflow-wrap: anywhere;
+}
+.sentio-exploration-body .sentio-exploration-question {
+  margin: 0 0 16px;
+  color: hsl(var(--ui-text));
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+.sentio-exploration-pending p {
+  color: hsl(var(--ui-muted));
+  font-size: 13px;
+  line-height: 1.7;
+}
+.sentio-exploration-pending span {
+  display: block;
+  height: 10px;
+  margin-top: 12px;
+  border-radius: 4px;
+  background: hsl(var(--ui-soft));
+}
+.sentio-exploration-pending span:last-child {
+  width: 60%;
+}
+.sentio-exploration-body .sentio-exploration-error {
+  padding: 10px;
+  border-radius: 8px;
+  background: hsl(var(--ui-danger-soft));
+  color: hsl(var(--ui-danger));
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sentio-exploration-controls button {
+    transition: none;
+  }
+}
+.sentio-exploration-choice > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }

@@ -665,7 +665,7 @@ export default function SparkInline({
                 paragraph={text}
                 postTitle={safePostTitle}
                 cacheKey={`${contentKey}:prism`}
-                enabled={activeMode === 'prism'}
+                enabled={open && activeMode === 'prism'}
                 onReady={handleLensReady}
               />
             )}
@@ -678,7 +678,7 @@ export default function SparkInline({
                 paragraph={text}
                 postTitle={safePostTitle}
                 cacheKey={`${contentKey}:chain`}
-                enabled={activeMode === 'chain'}
+                enabled={open && activeMode === 'chain'}
                 onReady={handleThoughtReady}
               />
             )}

@@ -236,6 +236,8 @@ export type ChatStreamEvent =
 
 export type StreamChatInput = {
   text: string;
+  /** Explicit isolated session; never replaces the visitor's active chat. */
+  sessionId?: string;
   page?: { url?: string; title?: string };
   currentPost?: PageContext["article"];
   signal?: AbortSignal;

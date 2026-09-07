@@ -1,9 +1,15 @@
+import { useLayoutEffect, useRef } from 'react';
 import './sentio.css';
+import CardExploration, {
+  CardExplorationBody,
+  type CardExplorationProps,
+} from './CardExploration';
 import type { ThoughtCard as ThoughtCardData } from '@/services/chat';
 
 type ThoughtCardProps = {
   card: ThoughtCardData;
   index: number;
+  exploration?: CardExplorationProps;
 };
 
 const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
@@ -36,7 +42,18 @@ function normalizeTextList(value: unknown, limit: number): string[] {
     .slice(0, limit);
 }
 
-export default function ThoughtCard({ card, index }: ThoughtCardProps) {
+export default function ThoughtCard({
+  card,
+  index,
+  exploration,
+}: ThoughtCardProps) {
+  const frameRef = useRef<HTMLElement>(null);
+  const originalHeight = useRef<number>();
+  useLayoutEffect(() => {
+    if (!exploration?.state && frameRef.current) {
+      originalHeight.current = frameRef.current.getBoundingClientRect().height;
+    }
+  });
   const safeIndex = Number.isFinite(index) ? Math.max(0, Math.trunc(index)) : 0;
   const cardId = normalizeKey(card.id, `thought-${safeIndex + 1}`);
   const topicLabel = normalizeDisplayText(card.trackKey, cardId).replace(
@@ -50,7 +67,14 @@ export default function ThoughtCard({ card, index }: ThoughtCardProps) {
   const tags = normalizeTextList(card.tags, 8);
 
   return (
-    <article className='sentio-thought not-prose'>
+    <article
+      ref={frameRef}
+      className='sentio-thought not-prose'
+      data-card-id={card.id}
+      style={{
+        minHeight: exploration?.state ? originalHeight.current : undefined,
+      }}
+    >
       <div className='sentio-thought-header'>
         <span
           className='sentio-thought-number'
@@ -60,25 +84,32 @@ export default function ThoughtCard({ card, index }: ThoughtCardProps) {
         </span>
         <span className='sentio-thought-topic'>{topicLabel}</span>
       </div>
-      <h3>{title}</h3>
-      {subtitle && <p className='sentio-thought-subtitle'>{subtitle}</p>}
-      <p className='sentio-thought-body'>{body}</p>
-      {bullets.length > 0 && (
-        <ul>
-          {bullets.map((bullet, bulletIndex) => (
-            <li key={`${cardId}-${bulletIndex}`}>
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
+      {exploration?.state ? (
+        <CardExplorationBody state={exploration.state} />
+      ) : (
+        <>
+          <h3>{title}</h3>
+          {subtitle && <p className='sentio-thought-subtitle'>{subtitle}</p>}
+          <p className='sentio-thought-body'>{body}</p>
+          {bullets.length > 0 && (
+            <ul>
+              {bullets.map((bullet, bulletIndex) => (
+                <li key={`${cardId}-${bulletIndex}`}>
+                  <span>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {tags.length > 0 && (
+            <div className='sentio-thought-tags'>
+              {tags.map((tag, tagIndex) => (
+                <span key={`${tag}-${tagIndex}`}>{tag}</span>
+              ))}
+            </div>
+          )}
+        </>
       )}
-      {tags.length > 0 && (
-        <div className='sentio-thought-tags'>
-          {tags.map((tag, tagIndex) => (
-            <span key={`${tag}-${tagIndex}`}>{tag}</span>
-          ))}
-        </div>
-      )}
+      {exploration && <CardExploration {...exploration} />}
     </article>
   );
 }

@@ -5,6 +5,7 @@ import ThoughtCard from './ThoughtCard';
 import { useThoughtFeed, type ThoughtFeedSource } from './hooks/useThoughtFeed';
 import AsyncArtifactStatusChip from './AsyncArtifactStatusChip';
 import './sentio.css';
+import { useCardExploration } from './hooks/useCardExploration';
 
 type ThoughtFeedProps = {
   paragraph: string;
@@ -48,6 +49,12 @@ export default function ThoughtFeed({
   enabled,
   onReady,
 }: ThoughtFeedProps) {
+  const exploration = useCardExploration({
+    scopeKey: `${cacheKey}::${paragraph}`,
+    paragraph,
+    postTitle,
+    enabled,
+  });
   const safePostTitle = normalizeDisplayText(postTitle);
   const safeCacheKey = normalizeCacheKey(cacheKey);
   const {
@@ -175,7 +182,9 @@ export default function ThoughtFeed({
         <div>
           <span className='sentio-result-label'>생각의 흐름</span>
           <h4>질문에서 다음 질문으로</h4>
-          <p>마음에 닿는 질문에 잠시 머물며, 나만의 답을 떠올려보세요.</p>
+          <p>
+            질문을 선택하면 같은 카드의 설명이 그 방향으로 실시간 갱신됩니다.
+          </p>
         </div>
         <AsyncArtifactStatusChip
           status={status}
@@ -195,7 +204,38 @@ export default function ThoughtFeed({
         aria-label='이어지는 질문'
       >
         {cards.map((card, index) => (
-          <ThoughtCard key={card.id} card={card} index={index} />
+          <ThoughtCard
+            key={card.id}
+            card={card}
+            index={index}
+            exploration={{
+              state: exploration.states[card.id],
+              questions: (card.bullets ?? [])
+                .filter(point => /[?？]|어떻게|무엇|왜/.test(point))
+                .slice(0, 2).length
+                ? (card.bullets ?? [])
+                    .filter(point => /[?？]|어떻게|무엇|왜/.test(point))
+                    .slice(0, 2)
+                : [
+                    '이 질문을 구체적인 사례로 풀어보면?',
+                    '여기서 한 단계 더 나아가면 어떤 질문이 생길까?',
+                  ],
+              available: exploration.available,
+              onExplore: question => {
+                void exploration.explore(
+                  {
+                    id: card.id,
+                    title: card.title,
+                    body: [card.body, ...(card.bullets ?? [])].join('\n'),
+                  },
+                  question
+                );
+              },
+              onStop: () => exploration.stop(card.id),
+              onBack: () => exploration.back(card.id),
+              onReset: () => exploration.reset(card.id),
+            }}
+          />
         ))}
         <div ref={sentinelRef} className='h-4 w-full' aria-hidden='true' />
       </div>
