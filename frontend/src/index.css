@@ -1,3 +1,17 @@
+@import "./styles/ui-tokens.css";
+@import "./styles/ui-layouts.css";
+@import "./styles/ui-home.css";
+@import "./styles/ui-pages.css";
+@import "./styles/ui-workspaces.css";
+@import "./styles/ui-editor.css";
+@import "./styles/ui-adaptive.css";
+@import "./styles/ui-projects.css";
+@import "./styles/ui-insight.css";
+@import "./styles/ui-comments.css";
+@import "./styles/ui-rich-controls.css";
+@import "./styles/ui-scrollbars.css";
+@import "./styles/ui-reading.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -623,23 +637,6 @@
 }
 
 /* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-muted;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/30;
-}
-
 /* Better focus styles */
 
 *:focus-visible {
@@ -684,24 +681,6 @@
    ============================================ */
 
 /* Terminal theme scrollbar */
-.terminal ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.terminal ::-webkit-scrollbar-track {
-  background: hsl(var(--terminal-code-bg));
-}
-
-.terminal ::-webkit-scrollbar-thumb {
-  background: hsl(var(--terminal-glow) / 0.3);
-  border-radius: 3px;
-}
-
-.terminal ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--terminal-glow) / 0.5);
-}
-
 /* Terminal cursor blink animation */
 @keyframes terminal-cursor-blink {
   0%,
@@ -1601,10 +1580,10 @@
 }
 
 /* Light 테마 모달/다이얼로그 */
-:root:not(.dark):not(.terminal) [role='dialog'],
-:root:not(.dark):not(.terminal) [data-radix-dialog-content],
-.light [role='dialog'],
-.light [data-radix-dialog-content] {
+:root:not(.dark):not(.terminal) [role='dialog']:not(.ui-image-viewer),
+:root:not(.dark):not(.terminal) [data-radix-dialog-content]:not(.ui-image-viewer),
+.light [role='dialog']:not(.ui-image-viewer),
+.light [data-radix-dialog-content]:not(.ui-image-viewer) {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   box-shadow:
@@ -1644,22 +1623,6 @@
 }
 
 /* Light 테마 스크롤바 */
-:root:not(.dark):not(.terminal) ::-webkit-scrollbar-track,
-.light ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
-
-:root:not(.dark):not(.terminal) ::-webkit-scrollbar-thumb,
-.light ::-webkit-scrollbar-thumb {
-  background: hsl(220 13% 75%);
-  border-radius: 5px;
-}
-
-:root:not(.dark):not(.terminal) ::-webkit-scrollbar-thumb:hover,
-.light ::-webkit-scrollbar-thumb:hover {
-  background: hsl(220 13% 65%);
-}
-
 /* Light 테마 뱃지/칩 */
 :root:not(.dark):not(.terminal) .badge,
 :root:not(.dark):not(.terminal) [data-slot='badge'],
@@ -1744,8 +1707,8 @@
 }
 
 /* Dark 테마 모달/다이얼로그 */
-.dark [role='dialog'],
-.dark [data-radix-dialog-content] {
+.dark [role='dialog']:not(.ui-image-viewer),
+.dark [data-radix-dialog-content]:not(.ui-image-viewer) {
   background: hsl(var(--popover));
   border: 1px solid hsl(var(--border));
   box-shadow:
@@ -1778,19 +1741,6 @@
 }
 
 /* Dark 테마 스크롤바 */
-.dark ::-webkit-scrollbar-track {
-  background: hsl(var(--background));
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: hsl(var(--border-strong, 0 0% 30%));
-  border-radius: 5px;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 40%);
-}
-
 /* Dark 테마 뱃지/칩 */
 .dark .badge,
 .dark [data-slot='badge'] {
@@ -1893,24 +1843,7 @@
   text-decoration-color: hsl(var(--terminal-amber) / 0.3);
 }
 
-.article-code-card {
-  min-width: 0;
-}
-
-.article-code-card :where(.article-code-highlighter) {
-  overflow-x: visible !important;
-}
-
-.article-code-card
-  :where(.article-code-highlighter, .article-code-highlighter code) {
-  white-space: pre-wrap !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.article-code-card .article-code-highlighter span {
-  white-space: pre-wrap !important;
-}
+/* Article code wrapping is owned by styles/ui-reading.css and data-wrapped. */
 
 /* 기본 테마 목록 스타일 */
 :not(.terminal) .prose ul,
@@ -1956,176 +1889,7 @@
   @apply text-center text-sm text-muted-foreground mt-3;
 }
 
-/* Blog article visual reading flow */
-.article-flow {
-  --article-readable-max: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  column-gap: 1rem;
-}
-
-.article-flow > * {
-  min-width: 0;
-}
-
-.article-flow
-  > :where(
-    .article-readable,
-    .article-text-panel,
-    p,
-    ul,
-    ol,
-    blockquote,
-    h4,
-    h5,
-    h6,
-    em,
-    strong,
-    span,
-    cite,
-    small
-  ) {
-  width: 100%;
-  max-width: var(--article-readable-max);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.article-flow
-  > :where(
-    .article-heading,
-    .article-wide-block,
-    .article-code-card,
-    .article-table-shell,
-    .article-media-frame,
-    hr
-  ) {
-  width: 100%;
-  max-width: none;
-}
-
-.article-flow > .article-table-shell {
-  border: 1px solid hsl(var(--border) / 0.72);
-  border-radius: 16px;
-  background: hsl(var(--card) / 0.72);
-  box-shadow: 0 14px 34px hsl(220 35% 18% / 0.08);
-}
-
-.article-flow > .article-table-shell table {
-  margin: 0;
-}
-
-.article-media-frame {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.article-media-surface {
-  transition:
-    transform 220ms var(--ease-smooth),
-    border-color 220ms var(--ease-smooth),
-    opacity 220ms var(--ease-smooth);
-}
-
-.article-media-frame:focus-within .article-media-surface,
-.article-media-frame:hover .article-media-surface {
-  transform: translateY(-1px);
-  border-color: hsl(var(--primary) / 0.42);
-}
-
-.article-media-frame--terminal .article-media-surface {
-  box-shadow: none;
-}
-
-@media (min-width: 1024px) {
-  .article-flow {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    column-gap: clamp(1rem, 2vw, 1.75rem);
-  }
-
-  .article-flow
-    > :where(
-      .article-readable,
-      .article-text-panel,
-      p,
-      ul,
-      ol,
-      blockquote,
-      h4,
-      h5,
-      h6,
-      em,
-      strong,
-      span,
-      cite,
-      small
-    ) {
-    grid-column: 1 / -1;
-    max-width: none;
-  }
-
-  .article-flow > .article-heading {
-    grid-column: 2 / 12;
-  }
-
-  .article-flow > :where(.article-wide-block, .article-code-card) {
-    grid-column: 2 / 12;
-  }
-
-  .article-flow > .article-table-shell {
-    grid-column: 2 / 12;
-  }
-
-  .article-flow > .article-media-frame {
-    grid-column: 2 / 12;
-  }
-
-  .article-flow > .article-media-frame[data-layout='wide'],
-  .article-flow > .article-media-frame[data-layout='full'] {
-    grid-column: 1 / -1;
-  }
-
-  .article-flow > .article-media-frame[data-layout='compact'] {
-    grid-column: 4 / 10;
-  }
-
-  .article-flow > .article-media-frame[data-layout='aside-left'] {
-    grid-column: 1 / 6;
-  }
-
-  .article-flow > .article-media-frame[data-layout='aside-right'] {
-    grid-column: 8 / -1;
-  }
-
-  .article-flow
-    > .article-code-card:has(+ .article-media-frame[data-layout='wide']),
-  .article-flow
-    > .article-table-shell:has(+ .article-media-frame[data-layout='wide']) {
-    grid-column: 1 / 8;
-  }
-
-  .article-flow > .article-code-card + .article-media-frame[data-layout='wide'],
-  .article-flow
-    > .article-table-shell
-    + .article-media-frame[data-layout='wide'] {
-    grid-column: 8 / -1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .article-media-surface,
-  .article-media-frame img,
-  .article-media-frame span {
-    transition-duration: 1ms !important;
-  }
-
-  .article-media-frame:focus-within .article-media-surface,
-  .article-media-frame:hover .article-media-surface,
-  .article-media-frame img {
-    transform: none !important;
-  }
-}
+/* Article flow is defined in styles/ui-reading.css. */
 
 /* ============================================
    Compact TUI System
@@ -2291,12 +2055,7 @@ button[class*='bg-primary']:not([class*='bg-primary/']) {
 
   /* Disable backdrop-filter on very low-end devices (prefers-reduced-motion as proxy) */
   @media (prefers-reduced-motion: reduce) {
-    .backdrop-blur,
-    .backdrop-blur-sm,
-    .backdrop-blur-md,
-    .backdrop-blur-lg,
-    .backdrop-blur-xl,
-    [class*='backdrop-blur'] {
+    :is(.backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl, [class*='backdrop-blur']):not(.ui-image-viewer__tools) {
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
       background-color: hsl(var(--background) / 0.95) !important;

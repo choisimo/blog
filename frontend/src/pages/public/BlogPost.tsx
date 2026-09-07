@@ -1,3 +1,4 @@
+import { TableOfContents } from '@/components/features/blog/TableOfContents';
 import { useParams, Navigate, useLocation } from 'react-router-dom';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { ReadingProgress } from '@/components/common/ReadingProgress';
@@ -15,6 +16,7 @@ import {
 import {
   formatReadingTimeLabel,
   getAvailableLanguages,
+  hasNativeTranslationContent,
   resolveLocalizedPost,
 } from '@/utils/content/blog';
 import {
@@ -213,9 +215,7 @@ const BlogPost = () => {
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
     if (!post) return false;
-    const defaultLang = post.defaultLanguage || post.language || 'ko';
-    if (language === defaultLang) return true;
-    return !!post.translations?.[language];
+    return hasNativeTranslationContent(post, language);
   }, [post, language]);
 
   const localized = useMemo(() => {
@@ -227,10 +227,15 @@ const BlogPost = () => {
     }
 
     if (aiTranslation && !hasNativeTranslation) {
+      const nativeTranslation = post.translations?.[language];
+      const nativeDescription = nativeTranslation?.description?.trim();
       return {
-        title: aiTranslation.title,
-        description: aiTranslation.description,
-        excerpt: aiTranslation.description,
+        title: nativeTranslation?.title?.trim() || aiTranslation.title,
+        description: nativeDescription || aiTranslation.description,
+        excerpt:
+          nativeTranslation?.excerpt?.trim() ||
+          nativeDescription ||
+          aiTranslation.description,
         content: aiTranslation.content,
       };
     }
@@ -519,9 +524,7 @@ ${description}
       return;
     }
 
-    const defaultLang = post.defaultLanguage || post.language || 'ko';
-
-    if (language === defaultLang || post.translations?.[language]) {
+    if (hasNativeTranslation) {
       setAiTranslation(null);
       setTranslationError(null);
       setTranslationStatus('idle');
@@ -530,30 +533,68 @@ ${description}
 
     let cancelled = false;
     let pollTimer: number | null = null;
+    let deadlineTimer: number | null = null;
     let pollAttempts = 0;
+    let pollingFinished = false;
+    let deadlineExpired = false;
+    const requestController = new AbortController();
     const pollStartMs = Date.now();
     const MAX_POLL_ATTEMPTS = 5;
     const MAX_POLL_DURATION_MS = 20_000;
 
+    const stopPolling = () => {
+      pollingFinished = true;
+      if (pollTimer !== null) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+      if (deadlineTimer !== null) {
+        clearTimeout(deadlineTimer);
+        deadlineTimer = null;
+      }
+    };
+
+    const failPollingAsTimeout = () => {
+      if (cancelled || pollingFinished) return;
+
+      stopPolling();
+      requestController.abort();
+      setTranslationError({
+        code: 'AI_TIMEOUT',
+        retryable: true,
+      });
+      setTranslationStatus('error');
+    };
+
     const scheduleRetry = (delaySeconds?: number) => {
+      if (cancelled || pollingFinished) return;
+
       pollAttempts += 1;
+      const elapsedMs = Date.now() - pollStartMs;
       if (
         pollAttempts >= MAX_POLL_ATTEMPTS ||
-        Date.now() - pollStartMs >= MAX_POLL_DURATION_MS
+        elapsedMs >= MAX_POLL_DURATION_MS
       ) {
-        setTranslationStatus('idle');
+        failPollingAsTimeout();
         return;
       }
-      const retryDelayMs = Math.max(1, delaySeconds ?? 15) * 1000;
+      const requestedDelayMs = Math.max(1, delaySeconds ?? 15) * 1000;
+      const retryDelayMs = Math.min(
+        requestedDelayMs,
+        MAX_POLL_DURATION_MS - elapsedMs
+      );
       pollTimer = window.setTimeout(() => {
+        pollTimer = null;
         void loadTranslation();
       }, retryDelayMs);
     };
 
     const loadTranslation = async () => {
       try {
-        const result = await getCachedTranslation(year, slug, language);
-        if (cancelled) return;
+        const result = await getCachedTranslation(year, slug, language, {
+          signal: requestController.signal,
+        });
+        if (cancelled || pollingFinished) return;
 
         if (result.translation) {
           setAiTranslation(result.translation);
@@ -566,26 +607,39 @@ ${description}
           return;
         }
 
+        stopPolling();
         setTranslationError(null);
         setTranslationStatus(result.translation ? 'ready' : 'idle');
       } catch (err) {
-        console.error('Translation failed:', err);
-        if (!cancelled) {
-          if (err instanceof TranslationApiError) {
-            setTranslationError({
-              code: err.code,
-              retryable: err.retryable,
-            });
-          } else {
-            setTranslationError({
-              code: 'UNKNOWN',
-              retryable: false,
-            });
-          }
-          setTranslationStatus('error');
+        if (cancelled) return;
+        if (deadlineExpired && requestController.signal.aborted) {
+          failPollingAsTimeout();
+          return;
         }
+        if (pollingFinished) return;
+
+        stopPolling();
+        console.error('Translation failed:', err);
+        if (err instanceof TranslationApiError) {
+          setTranslationError({
+            code: err.code,
+            retryable: err.retryable,
+          });
+        } else {
+          setTranslationError({
+            code: 'UNKNOWN',
+            retryable: false,
+          });
+        }
+        setTranslationStatus('error');
       }
     };
+
+    deadlineTimer = window.setTimeout(() => {
+      deadlineTimer = null;
+      deadlineExpired = true;
+      failPollingAsTimeout();
+    }, MAX_POLL_DURATION_MS);
 
     setTranslationStatus('warming');
     setTranslationError(null);
@@ -594,11 +648,10 @@ ${description}
 
     return () => {
       cancelled = true;
-      if (pollTimer !== null) {
-        clearTimeout(pollTimer);
-      }
+      stopPolling();
+      requestController.abort();
     };
-  }, [language, post, slug, translationRetryNonce, year]);
+  }, [hasNativeTranslation, language, post, slug, translationRetryNonce, year]);
 
   const handleRetryTranslation = useCallback(() => {
     setTranslationError(null);
@@ -787,15 +840,15 @@ ${description}
 
   if (loading) {
     return (
-      <div className='container mx-auto max-w-4xl px-4 py-12'>
-        <div className='space-y-4 animate-pulse rounded-3xl border border-border/60 bg-card/60 p-6 shadow-sm'>
-          <div className='h-4 w-24 rounded bg-muted'></div>
-          <div className='h-10 w-3/4 rounded bg-muted'></div>
-          <div className='h-4 w-1/2 rounded bg-muted'></div>
-          <div className='mt-8 space-y-2'>
-            <div className='h-4 rounded bg-muted'></div>
-            <div className='h-4 rounded bg-muted'></div>
-            <div className='h-4 w-5/6 rounded bg-muted'></div>
+      <div className="ui-page ui-article-loading">
+        <div className="ui-article-skeleton space-y-4 motion-safe:animate-pulse" role='status' aria-label='글을 불러오는 중'>
+          <div className="h-4 w-24 rounded bg-muted"></div>
+          <div className="h-10 w-3/4 rounded bg-muted"></div>
+          <div className="h-4 w-1/2 rounded bg-muted"></div>
+          <div className="mt-8 space-y-2">
+            <div className="h-4 rounded bg-muted"></div>
+            <div className="h-4 rounded bg-muted"></div>
+            <div className="h-4 w-5/6 rounded bg-muted"></div>
           </div>
         </div>
       </div>
@@ -810,26 +863,26 @@ ${description}
 
   return (
     <>
-      <ReadingProgress />
+      <ReadingProgress targetSelector="[data-reading-content]" />
       <div
         className={cn(
-          'min-h-screen bg-gradient-to-b from-[#f5f6fb] via-background to-background/70 dark:from-[#04050a] dark:via-[#0b0f18] dark:to-[#111827]',
+          'ui-page ui-article-page',
           isTerminal &&
             'bg-background from-background via-background to-background'
         )}
       >
         <div
-          className='mx-auto w-full max-w-[1500px] px-4 pt-6 pb-32 sm:pt-12 2xl:max-w-[1600px]'
+          className="ui-article-container"
           style={safeAreaPaddingStyle}
         >
           <div
             className={cn(
-              'relative grid grid-cols-1 justify-items-center gap-8'
+              'ui-article-layout'
             )}
           >
             <article
               className={cn(
-                'mx-auto w-full max-w-5xl space-y-12',
+                'ui-article',
                 isTerminal && 'terminal-card p-4 sm:p-6'
               )}
             >
@@ -898,6 +951,9 @@ ${description}
                 relatedPostsDescLabel={str.blog.relatedPostsDesc}
               />
             </article>
+            <aside className="ui-article-toc" aria-label='글 목차'>
+              <TableOfContents content={contentForRender} postTitle={displayTitle} />
+            </aside>
           </div>
         </div>
       </div>

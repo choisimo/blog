@@ -226,8 +226,8 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Route Name *</Label>
-          <Input
+          <Label className="ui-label" htmlFor="name">Route Name *</Label>
+          <Input className="ui-input"
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -237,7 +237,7 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="strategy">Routing Strategy</Label>
+          <Label className="ui-label" htmlFor="strategy">Routing Strategy</Label>
           <Select
             value={formData.routingStrategy}
             onValueChange={(v) =>
@@ -260,8 +260,8 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Input
+        <Label className="ui-label" htmlFor="description">Description</Label>
+        <Input className="ui-input"
           id="description"
           value={formData.description || ''}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -270,7 +270,7 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="primaryModel">Primary Model</Label>
+        <Label className="ui-label" htmlFor="primaryModel">Primary Model</Label>
         <Select
           value={formData.primaryModelId || ''}
           onValueChange={(v) => {
@@ -300,7 +300,7 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label>Fallback Models</Label>
+        <Label className="ui-label">Fallback Models</Label>
         <p className="text-xs text-muted-foreground mb-2">
           Select models to use when the primary model fails
         </p>
@@ -321,7 +321,7 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label>Context Window Fallbacks</Label>
+        <Label className="ui-label">Context Window Fallbacks</Label>
         <p className="text-xs text-muted-foreground mb-2">
           Select models for long context scenarios
         </p>
@@ -345,8 +345,8 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="retries">Retries</Label>
-          <Input
+          <Label className="ui-label" htmlFor="retries">Retries</Label>
+          <Input className="ui-input"
             id="retries"
             type="number"
             value={formData.numRetries}
@@ -358,8 +358,8 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="timeout">Timeout (seconds)</Label>
-          <Input
+          <Label className="ui-label" htmlFor="timeout">Timeout (seconds)</Label>
+          <Input className="ui-input"
             id="timeout"
             type="number"
             value={formData.timeoutSeconds}
@@ -380,14 +380,14 @@ function RouteForm({ route, models, onSubmit, onCancel }: RouteFormProps) {
           onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
           className="h-4 w-4"
         />
-        <Label htmlFor="isDefault">Set as default route</Label>
+        <Label className="ui-label" htmlFor="isDefault">Set as default route</Label>
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button className="ui-control" data-ui-variant="outline" type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button className="ui-control" data-ui-variant="default" type="submit" disabled={submitting}>
           {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           {route ? 'Update' : 'Create'} Route
         </Button>
@@ -499,20 +499,20 @@ export function RoutesManager() {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={["ui-admin-section ui-admin-routesmanager", ("ui-panel")].filter(Boolean).join(' ')}>
+      <CardHeader className="ui-panel-header">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Routing Rules</CardTitle>
-            <CardDescription>Configure model routing and fallback strategies</CardDescription>
+            <CardTitle className="ui-panel-title">Routing Rules</CardTitle>
+            <CardDescription className="ui-description">Configure model routing and fallback strategies</CardDescription>
           </div>
-          <Button onClick={() => setShowForm(true)}>
+          <Button className="ui-control" data-ui-variant="default" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Route
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="ui-panel-body space-y-4">
         {error && (
           <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
@@ -535,7 +535,7 @@ export function RoutesManager() {
                     : route.isEnabled
                     ? 'border-border'
                     : 'border-dashed border-muted-foreground/30 opacity-60'
-                }`}
+                }  `}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
@@ -582,7 +582,7 @@ export function RoutesManager() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
+                      <Button className="ui-control" data-ui-variant="ghost"
                         variant="ghost"
                         size="icon"
                         aria-label={`Open route actions for ${route.name}`}
@@ -634,7 +634,7 @@ export function RoutesManager() {
 
       {/* Create Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="ui-dialog max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Route</DialogTitle>
             <DialogDescription>Configure a new routing rule</DialogDescription>
@@ -649,7 +649,7 @@ export function RoutesManager() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingRoute} onOpenChange={() => setEditingRoute(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="ui-dialog max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Route</DialogTitle>
             <DialogDescription>Update routing configuration</DialogDescription>
@@ -674,7 +674,7 @@ export function RoutesManager() {
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Route</AlertDialogTitle>
             <AlertDialogDescription>

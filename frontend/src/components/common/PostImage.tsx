@@ -76,7 +76,11 @@ export function normalizePostImageSrc(src: string | undefined): string | null {
   return protocol === 'blob:' ? candidate : null;
 }
 
-export function PostImage({
+export function PostImage(props: PostImageProps) {
+  return <PostImageContent key={normalizePostImageSrc(props.src) || ''} {...props} />;
+}
+
+function PostImageContent({
   src,
   alt = '',
   title = '',
@@ -108,13 +112,13 @@ export function PostImage({
   const shouldShowImage = normalizedSrc && !hasError;
 
   return (
-    <div className={cn(styles.container, containerClassName)}>
+    <div className={cn('relative', styles.container, containerClassName)}>
       {shouldShowImage ? (
         <>
           {isLoading && (
             <div 
               className={cn(
-                'animate-pulse',
+                'absolute inset-0 motion-safe:animate-pulse',
                 showGradient 
                   ? `bg-gradient-to-br ${gradientFrom} ${gradientTo}` 
                   : 'bg-muted',
@@ -128,12 +132,13 @@ export function PostImage({
             alt={sanitizedAlt}
             className={cn(
               styles.image,
-              isLoading && 'opacity-0 absolute',
+              isLoading && 'opacity-0',
               className
             )}
             onError={handleError}
             onLoad={handleLoad}
             loading="lazy"
+            decoding="async"
           />
         </>
       ) : (

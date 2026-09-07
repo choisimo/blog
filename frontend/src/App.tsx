@@ -41,6 +41,7 @@ const Unauthorized = lazy(() => import("./pages/public/Unauthorized"));
 const AdminConfig = lazy(() => import("./pages/admin/AdminConfig"));
 const AdminAuthCallback = lazy(() => import("./pages/admin/AdminAuthCallback"));
 import "./App.css";
+import { PublicShell } from "@/components/organisms/layout";
 const VisitedPostsMinimap = lazy(() =>
   import("@/components/features/navigation/VisitedPostsMinimap").then((m) => ({
     default: m.VisitedPostsMinimap,
@@ -88,6 +89,16 @@ function useInsightWorkspaceActive() {
   return pathname === "/insight" || pathname.startsWith("/insight/");
 }
 
+function useAdminWorkspaceActive() {
+  const { pathname } = useLocation();
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
+function RouteHeader() {
+  const adminWorkspaceActive = useAdminWorkspaceActive();
+  return adminWorkspaceActive ? null : <Header />;
+}
+
 function useCleanBlogListing() {
   const { pathname } = useLocation();
   return pathname === "/blog";
@@ -101,13 +112,16 @@ function ensureAIMemoPadMounted() {
 
 function RouteMain({ children }: { children: ReactNode }) {
   const insightWorkspaceActive = useInsightWorkspaceActive();
+  const adminWorkspaceActive = useAdminWorkspaceActive();
 
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       className={
-        insightWorkspaceActive
-          ? "flex-1"
-          : "flex-1 pb-[calc(110px+env(safe-area-inset-bottom,0px))] md:pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-[calc(96px+env(safe-area-inset-bottom,0px))]"
+        insightWorkspaceActive || adminWorkspaceActive
+          ? "ui-main-content ui-workspace-route flex-1"
+          : "ui-main-content flex-1 pb-[calc(110px+env(safe-area-inset-bottom,0px))] md:pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-[calc(96px+env(safe-area-inset-bottom,0px))]"
       }
     >
       {children}
@@ -117,24 +131,26 @@ function RouteMain({ children }: { children: ReactNode }) {
 
 function RouteFooter() {
   const insightWorkspaceActive = useInsightWorkspaceActive();
-  if (insightWorkspaceActive) return null;
+  const adminWorkspaceActive = useAdminWorkspaceActive();
+  if (insightWorkspaceActive || adminWorkspaceActive) return null;
   return <Footer />;
 }
 
 function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
   const insightWorkspaceActive = useInsightWorkspaceActive();
   const cleanBlogListing = useCleanBlogListing();
+  const adminWorkspaceActive = useAdminWorkspaceActive();
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (cleanBlogListing) {
+    if (cleanBlogListing || adminWorkspaceActive) {
       document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
       return;
     }
     ensureAIMemoPadMounted();
-  }, [cleanBlogListing]);
+  }, [cleanBlogListing, adminWorkspaceActive]);
 
-  if (insightWorkspaceActive || cleanBlogListing) return null;
+  if (insightWorkspaceActive || cleanBlogListing || adminWorkspaceActive) return null;
 
   return (
     <>
@@ -232,8 +248,8 @@ function App() {
           <LanguageProvider>
             <ThemeProvider>
               <TooltipProvider>
-                <div className="min-h-screen flex flex-col bg-background text-foreground">
-                  <Header />
+                <PublicShell>
+                  <RouteHeader />
                   <RouteMain>
                     <Suspense fallback={<PageTransitionFallback />}>
                       <Routes>
@@ -341,7 +357,7 @@ function App() {
                   <RouteFooter />
                   <GlobalAssistants fabOn={fabOn} />
                   <Toaster />
-                </div>
+                </PublicShell>
               </TooltipProvider>
             </ThemeProvider>
           </LanguageProvider>

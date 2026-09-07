@@ -8,6 +8,7 @@ import {
   SheetContent,
   SheetTrigger,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { BookOpen, Menu, X } from "lucide-react";
 import { buildMarkdownToc } from "@/utils/content/markdownHeadings";
@@ -99,6 +100,26 @@ function normalizeTocItems(items: TocItem[]): TocItem[] {
     .filter((item) => item.id && item.title);
 }
 
+function haveSameTocItems(left: TocItem[], right: TocItem[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every(
+      (item, index) =>
+        item.id === right[index]?.id &&
+        item.title === right[index]?.title &&
+        item.level === right[index]?.level,
+    )
+  );
+}
+
+function getScrollBehavior(): ScrollBehavior {
+  return typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ? 'auto'
+    : 'smooth';
+}
+
 export const TableOfContents = ({
   content,
   onClose,
@@ -119,10 +140,20 @@ export const TableOfContents = ({
   const STICKY_TOP_PX = 96;
 
   useEffect(() => {
-    const headings = normalizeTocItems(buildMarkdownToc(content, postTitle) as TocItem[]);
-    setToc(headings);
-    setActiveId(headings[0]?.id ?? "");
-    itemRefs.current = {};
+    const headings = normalizeTocItems(
+      buildMarkdownToc(content, postTitle) as TocItem[]
+    );
+    const validIds = new Set(headings.map((heading) => heading.id));
+
+    setToc((previous) =>
+      haveSameTocItems(previous, headings) ? previous : headings,
+    );
+    setActiveId((previous) =>
+      previous && validIds.has(previous) ? previous : (headings[0]?.id ?? ''),
+    );
+    itemRefs.current = Object.fromEntries(
+      Object.entries(itemRefs.current).filter(([id]) => validIds.has(id)),
+    );
   }, [content, postTitle]);
 
   useEffect(() => {
@@ -131,7 +162,7 @@ export const TableOfContents = ({
     let mutationObserver: MutationObserver | null = null;
 
     const visibleHeadings = new Map<string, number>();
-    const observedHeadingIds = new Set<string>();
+    const observedHeadingElements = new WeakSet<Element>();
     const headingObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -158,8 +189,8 @@ export const TableOfContents = ({
     const boundaryEl = document.querySelector("[data-toc-boundary]");
     const observeHeadings = () => {
       boundaryEl?.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach((heading) => {
-        if (!heading.id || observedHeadingIds.has(heading.id)) return;
-        observedHeadingIds.add(heading.id);
+        if (!heading.id || observedHeadingElements.has(heading)) return;
+        observedHeadingElements.add(heading);
         headingObserver.observe(heading);
       });
     };
@@ -175,7 +206,7 @@ export const TableOfContents = ({
       mutationObserver?.disconnect();
       headingObserver.disconnect();
     };
-  }, [content, isMobile, postTitle]);
+  }, [isMobile, toc]);
 
   useEffect(() => {
     if (isMobile || !activeId) return;
@@ -200,7 +231,7 @@ export const TableOfContents = ({
       const target = itemOffset - viewportHeight * 0.35;
       viewport.scrollTo({
         top: Math.max(0, target),
-        behavior: "smooth",
+        behavior: getScrollBehavior(),
       });
     }
   }, [activeId, isMobile]);
@@ -214,7 +245,7 @@ export const TableOfContents = ({
         (STICKY_TOP_PX + 12);
       window.scrollTo({
         top: Math.max(0, targetY),
-        behavior: "smooth",
+        behavior: getScrollBehavior(),
       });
       closePanel?.();
       onClose?.();
@@ -233,12 +264,12 @@ export const TableOfContents = ({
       role="region"
       aria-label={safeLabel}
       title={safeTitle}
-      className={cn("w-full", sticky && "sticky top-24")}
+      className={cn("ui-toc-panel", sticky && "ui-toc-sticky")}
     >
       <div
         className={cn(
-          "flex flex-col rounded-[24px] border border-zinc-200/70 bg-white/90 px-6 py-7 shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[hsl(var(--card-blog)/0.9)]",
-          sticky && "min-h-[calc(100vh-8rem)] max-h-[calc(100vh-7rem)]",
+          "ui-toc-body",
+          sticky && "ui-toc-scroll-boundary",
           isTerminal &&
             "bg-[hsl(var(--terminal-code-bg))] border-border rounded-lg",
         )}
@@ -252,32 +283,21 @@ export const TableOfContents = ({
           </div>
         )}
 
-        <h3
-          className={cn(
-            "mb-6 flex items-center gap-3 px-2 text-base font-bold text-foreground",
-            isTerminal && "font-mono text-primary text-sm",
-          )}
-        >
-          {isTerminal ? (
-            <>
-              <span className="text-muted-foreground mr-2">$</span>
-              cat {safeHeadingLabel}
-            </>
-          ) : (
-            <>
-              <Menu className="h-5 w-5" aria-hidden="true" />
-              {safeHeadingLabel}
-            </>
-          )}
+        <h3 className="ui-toc-heading">
+          <Menu aria-hidden="true" />
+          <span>{isTerminal ? `$ cat ${safeHeadingLabel}` : safeHeadingLabel}</span>
+          <span className="ui-toc-count" aria-label={`${toc.length}개 항목`}>{String(toc.length).padStart(2, '0')}</span>
         </h3>
         <ScrollArea
           ref={scrollAreaRef}
+          type="auto"
+          viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': `${safeLabel} 스크롤 영역` }}
           className={cn(
             "min-h-0",
-            sticky ? "h-[calc(100vh-15rem)]" : "max-h-[calc(100vh-12rem)]",
+            sticky ? "ui-toc-scroll" : "ui-toc-drawer-scroll",
           )}
         >
-          <nav className="space-y-3 pr-2" aria-label={safeLabel}>
+          <nav className="ui-toc-list" aria-label={safeLabel}>
             {toc.map((item, index) => (
               <button
                 key={`${item.id}-${index}`}
@@ -288,25 +308,13 @@ export const TableOfContents = ({
                     delete itemRefs.current[item.id];
                   }
                 }}
+                type="button"
                 title={item.title}
                 onClick={() => scrollToHeading(item.id)}
                 aria-label={`${safeItemLabel} ${index + 1}: ${item.title}`}
                 aria-current={activeId === item.id ? "location" : undefined}
-                className={cn(
-                  "block w-full rounded-lg border-l-2 border-transparent py-3 pr-3 text-left text-sm transition-colors duration-200",
-                  "text-muted-foreground hover:bg-primary/10 hover:text-foreground",
-                  activeId === item.id &&
-                    "border-primary bg-primary/15 font-semibold text-primary",
-                  item.level <= 2 && "pl-4",
-                  item.level === 3 && "pl-7",
-                  item.level === 4 && "pl-10",
-                  item.level === 5 && "pl-12",
-                  item.level === 6 && "pl-14",
-                  isTerminal && "font-mono text-xs rounded hover:bg-primary/20",
-                  isTerminal &&
-                    activeId === item.id &&
-                    "bg-primary/20 border-l-2 border-primary",
-                )}
+                className="ui-toc-item"
+                style={{ paddingInlineStart: `${10 + Math.max(0, item.level - 2) * 12}px` }}
               >
                 <span className="block break-words leading-snug">
                   {isTerminal && (
@@ -416,7 +424,7 @@ export const TocDrawer = ({
             isFloatingTrigger
               ? [
                   "fixed z-[var(--z-fab-bar)] print:hidden",
-                  "flex h-12 w-12 items-center justify-center rounded-full shadow-lg",
+                  "flex h-12 w-12 items-center justify-center rounded-full",
                   "right-4 bottom-[calc(224px+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(156px+env(safe-area-inset-bottom,0px))] md:right-6 md:bottom-44 lg:right-8 lg:bottom-[calc(172px+env(safe-area-inset-bottom,0px))]",
                   "bg-primary text-primary-foreground",
                   "hover:bg-primary/90 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
@@ -438,14 +446,15 @@ export const TocDrawer = ({
       </SheetTrigger>
       <SheetContent
         side="right"
+        hideClose
         aria-label={safeLabel}
         title={safeTitle}
-        className={cn(
-          "w-80 p-0 overflow-y-auto",
+        className={["ui-sheet", (cn(
+          "ui-toc-drawer",
           isTerminal && "bg-[hsl(var(--terminal-code-bg))] border-primary/20",
-        )}
+        ))].filter(Boolean).join(' ')}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="ui-toc-drawer__header">
           <SheetTitle
             className={cn(
               "font-bold text-base",
@@ -457,13 +466,14 @@ export const TocDrawer = ({
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="flex items-center justify-center h-8 w-8 rounded-full hover:bg-muted transition-colors"
+            className="ui-toc-drawer__close"
             aria-label={safeCloseLabel}
           >
             <X aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
-        <div className="p-4">
+        <SheetDescription className="sr-only">항목을 선택하면 본문의 해당 위치로 이동합니다.</SheetDescription>
+        <div className="ui-toc-drawer__content">
           <TableOfContents
             content={content}
             postTitle={postTitle}

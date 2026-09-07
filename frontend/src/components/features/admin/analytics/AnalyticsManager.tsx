@@ -390,11 +390,11 @@ export function RealtimeVisitorsSection() {
   }, [fetchVisitors]);
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
-          <Users className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-xs font-semibold text-zinc-700">
+          <Users className="h-3.5 w-3.5 text-ui-muted" />
+          <span className="text-xs font-semibold text-ui-text">
             Realtime Visitors
           </span>
         </div>
@@ -402,14 +402,14 @@ export function RealtimeVisitorsSection() {
           type="button"
           onClick={() => void fetchVisitors("refresh")}
           disabled={loading || refreshing}
-          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
           aria-label="Refresh realtime visitors"
           title="Refresh realtime visitors"
         >
           <RefreshCw
             className={`h-3 w-3 ${
               loading || refreshing ? "animate-spin" : ""
-            }`}
+            }  `}
             aria-hidden="true"
           />
         </button>
@@ -421,7 +421,7 @@ export function RealtimeVisitorsSection() {
       )}
       <div className="px-4 py-3 space-y-2">
         {loading ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <div className="flex items-center gap-2 text-xs text-ui-muted">
             <RefreshCw className="h-3 w-3 animate-spin" />
             Loading...
           </div>
@@ -430,26 +430,26 @@ export function RealtimeVisitorsSection() {
             <div className="flex items-end gap-2">
               <span
                 className={`font-mono text-2xl font-semibold ${
-                  degradedMessage ? "text-zinc-500" : "text-zinc-900"
-                }`}
+                  degradedMessage ? "text-ui-muted" : "text-ui-text"
+                }  `}
               >
                 {degradedMessage
                   ? "Unavailable"
                   : activeVisitors.toLocaleString()}
               </span>
-              <span className="pb-0.5 text-xs text-zinc-400">
+              <span className="pb-0.5 text-xs text-ui-muted">
                 {degradedMessage
                   ? "visitor count unavailable"
                   : "active within 60s"}
               </span>
             </div>
             {!degradedMessage && (
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-ui-muted">
                 Best-effort signal backed by heartbeat writes and KV-based reads.
               </p>
             )}
             {!degradedMessage && lastUpdated && (
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-ui-muted">
                 Last updated:{" "}
                 <span className="font-mono">
                   {new Date(lastUpdated).toLocaleString()}
@@ -582,11 +582,11 @@ export function EditorPicksSection() {
   };
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
-          <Star className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-xs font-semibold text-zinc-700">
+          <Star className="h-3.5 w-3.5 text-ui-muted" />
+          <span className="text-xs font-semibold text-ui-text">
             Editor Picks
           </span>
         </div>
@@ -597,7 +597,7 @@ export function EditorPicksSection() {
               setShowAddForm((v) => !v);
               setFormError(null);
             }}
-            className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
+            className="h-7 px-2 text-xs rounded-md border border-ui-line text-ui-muted hover:bg-ui-soft"
           >
             Add Pick
           </button>
@@ -607,10 +607,10 @@ export function EditorPicksSection() {
             disabled={loading}
             aria-label="Refresh editor picks"
             title="Refresh editor picks"
-            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
           >
             <RefreshCw
-              className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+              className={`h-3 w-3 ${loading ? "animate-spin" : ""}  `}
               aria-hidden="true"
             />
           </button>
@@ -619,7 +619,7 @@ export function EditorPicksSection() {
       {showAddForm && (
         <form
           onSubmit={handleAddSubmit}
-          className="px-4 py-3 border-b border-zinc-100 space-y-2"
+          className="px-4 py-3 border-b border-ui-line space-y-2"
         >
           <div className="flex flex-wrap gap-2">
             <input
@@ -628,7 +628,7 @@ export function EditorPicksSection() {
               onChange={(e) => setFormSlug(e.target.value)}
               placeholder="post-slug"
               required
-              className="flex-1 min-w-0 h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+              className="flex-1 min-w-0 h-7 px-2 text-xs rounded-md border border-ui-line text-ui-text placeholder-zinc-400 focus:outline-none focus:border-ui-line"
             />
             <input
               type="text"
@@ -636,7 +636,7 @@ export function EditorPicksSection() {
               onChange={(e) => setFormYear(e.target.value)}
               placeholder="2025"
               required
-              className="w-20 h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+              className="w-20 h-7 px-2 text-xs rounded-md border border-ui-line text-ui-text placeholder-zinc-400 focus:outline-none focus:border-ui-line"
             />
             <input
               type="number"
@@ -645,7 +645,7 @@ export function EditorPicksSection() {
               placeholder="1"
               min={1}
               max={99}
-              className="w-16 h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+              className="w-16 h-7 px-2 text-xs rounded-md border border-ui-line text-ui-text placeholder-zinc-400 focus:outline-none focus:border-ui-line"
             />
           </div>
           <input
@@ -653,7 +653,7 @@ export function EditorPicksSection() {
             value={formReason}
             onChange={(e) => setFormReason(e.target.value)}
             placeholder="Reason..."
-            className="w-full h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-700 placeholder-zinc-400 focus:outline-none focus:border-zinc-400"
+            className="w-full h-7 px-2 text-xs rounded-md border border-ui-line text-ui-text placeholder-zinc-400 focus:outline-none focus:border-ui-line"
           />
           {formError && (
             <p className="text-xs text-red-500">{formError}</p>
@@ -662,7 +662,7 @@ export function EditorPicksSection() {
             <button
               type="submit"
               disabled={formSubmitting}
-              className="h-7 px-2 text-xs rounded-md bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="h-7 px-2 text-xs rounded-md bg-ui-text text-white hover:bg-ui-text disabled:opacity-50"
             >
               {formSubmitting ? "Saving..." : "Submit"}
             </button>
@@ -672,7 +672,7 @@ export function EditorPicksSection() {
                 setShowAddForm(false);
                 setFormError(null);
               }}
-              className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50"
+              className="h-7 px-2 text-xs rounded-md border border-ui-line text-ui-muted hover:bg-ui-soft"
             >
               Cancel
             </button>
@@ -683,7 +683,7 @@ export function EditorPicksSection() {
         <p className="px-4 py-2 text-xs text-red-500">{removeError}</p>
       )}
       {loading ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
+        <div className="flex items-center gap-2 px-4 py-3 text-xs text-ui-muted">
           <RefreshCw className="h-3 w-3 animate-spin" />
           Loading...
         </div>
@@ -700,7 +700,7 @@ export function EditorPicksSection() {
                 type="button"
                 aria-label="Retry editor picks"
                 onClick={fetchPicks}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-ui-surface px-2.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Retry
@@ -709,16 +709,16 @@ export function EditorPicksSection() {
           </div>
         </div>
       ) : picks.length === 0 ? (
-        <p className="px-4 py-3 text-xs text-zinc-400">
+        <p className="px-4 py-3 text-xs text-ui-muted">
           No editor picks configured.
         </p>
       ) : (
         <div className="divide-y divide-zinc-100">
-          <div className="grid grid-cols-12 px-4 py-2 bg-zinc-50 border-b border-zinc-100">
-            <span className="col-span-1 text-xs text-zinc-400">#</span>
-            <span className="col-span-6 text-xs text-zinc-400">Post</span>
-            <span className="col-span-2 text-xs text-zinc-400">Category</span>
-            <span className="col-span-2 text-xs text-zinc-400 text-right">
+          <div className="grid grid-cols-12 px-4 py-2 bg-ui-soft border-b border-ui-line">
+            <span className="col-span-1 text-xs text-ui-muted">#</span>
+            <span className="col-span-6 text-xs text-ui-muted">Post</span>
+            <span className="col-span-2 text-xs text-ui-muted">Category</span>
+            <span className="col-span-2 text-xs text-ui-muted text-right">
               Score
             </span>
             <span className="col-span-1" />
@@ -732,30 +732,30 @@ export function EditorPicksSection() {
             return (
             <div
               key={pickKey}
-              className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-zinc-50"
+              className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-ui-soft"
             >
-              <span className="col-span-1 font-mono text-xs text-zinc-400">
+              <span className="col-span-1 font-mono text-xs text-ui-muted">
                 {pick.rank}
               </span>
               <div className="col-span-6">
                 <a
                   href={buildAnalyticsBlogHref(safeYear, safeSlug) ?? "/#/blog"}
-                  className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
+                  className="text-xs font-medium text-ui-text hover:text-ui-muted hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   {normalizeDisplayText(pick.title, safeSlug)}
                 </a>
                 {pick.reason && (
-                  <p className="text-xs text-zinc-400 mt-0.5 truncate">
+                  <p className="text-xs text-ui-muted mt-0.5 truncate">
                     {normalizeDisplayText(pick.reason, "")}
                   </p>
                 )}
               </div>
-              <span className="col-span-2 font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded w-fit">
+              <span className="col-span-2 font-mono text-xs text-ui-muted bg-ui-soft px-1 py-0.5 rounded w-fit">
                 {normalizeAnalyticsSelector(pick.category) || "-"}
               </span>
-              <span className="col-span-2 text-xs font-medium text-zinc-700 text-right">
+              <span className="col-span-2 text-xs font-medium text-ui-text text-right">
                 {pick.score}
               </span>
               <div className="col-span-1 flex justify-end">
@@ -803,16 +803,16 @@ export function TrendingPostsSection() {
   const offset = page * PAGE_SIZE;
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-xs font-semibold text-zinc-700">
+          <TrendingUp className="h-3.5 w-3.5 text-ui-muted" />
+          <span className="text-xs font-semibold text-ui-text">
             Trending Posts
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="flex border border-zinc-200 rounded-md overflow-hidden">
+          <div className="flex border border-ui-line rounded-md overflow-hidden">
             {[7, 14, 30].map((d) => (
               <button
                 type="button"
@@ -823,9 +823,9 @@ export function TrendingPostsSection() {
                 }}
                 className={`px-2 py-1 text-xs transition-colors ${
                   days === d
-                    ? "bg-zinc-900 text-white"
-                    : "bg-white text-zinc-500 hover:bg-zinc-50"
-                }`}
+                    ? "bg-ui-text text-white"
+                    : "bg-ui-surface text-ui-muted hover:bg-ui-soft"
+                }  `}
               >
                 {d}d
               </button>
@@ -837,10 +837,10 @@ export function TrendingPostsSection() {
             disabled={loading}
             aria-label="Refresh trending posts"
             title="Refresh trending posts"
-            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
           >
             <RefreshCw
-              className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+              className={`h-3 w-3 ${loading ? "animate-spin" : ""}  `}
               aria-hidden="true"
             />
           </button>
@@ -852,12 +852,12 @@ export function TrendingPostsSection() {
         </div>
       )}
       {loading ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
+        <div className="flex items-center gap-2 px-4 py-3 text-xs text-ui-muted">
           <RefreshCw className="h-3 w-3 animate-spin" />
           Loading...
         </div>
       ) : degradedMessage ? null : trending.length === 0 ? (
-        <p className="px-4 py-3 text-xs text-zinc-400">
+        <p className="px-4 py-3 text-xs text-ui-muted">
           No trending data for this period.
         </p>
       ) : (
@@ -871,30 +871,30 @@ export function TrendingPostsSection() {
               return (
               <div
                 key={`${safeYear}/${safeSlug}`}
-                className="flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50"
+                className="flex items-center justify-between px-4 py-2.5 hover:bg-ui-soft"
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs text-zinc-400 w-4">
+                  <span className="font-mono text-xs text-ui-muted w-4">
                     {offset + idx + 1}
                   </span>
                   <div>
                     <a
                       href={buildAnalyticsBlogHref(safeYear, safeSlug) ?? "/#/blog"}
-                      className="text-xs font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
+                      className="text-xs font-medium text-ui-text hover:text-ui-muted hover:underline"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {safeSlug}
                     </a>
-                    <p className="text-xs text-zinc-400">{safeYear}</p>
+                    <p className="text-xs text-ui-muted">{safeYear}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="flex items-center gap-1 text-xs font-medium text-zinc-700">
-                    <Eye className="h-3 w-3 text-zinc-400" />
+                  <div className="flex items-center gap-1 text-xs font-medium text-ui-text">
+                    <Eye className="h-3 w-3 text-ui-muted" />
                     {post.recent_views.toLocaleString()}
                   </div>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-ui-muted">
                     total: {post.total_views.toLocaleString()}
                   </p>
                 </div>
@@ -903,8 +903,8 @@ export function TrendingPostsSection() {
             })}
           </div>
           {total > PAGE_SIZE && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100">
-              <span className="text-xs text-zinc-400">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-ui-line">
+              <span className="text-xs text-ui-muted">
                 Page {page + 1} of {totalPages}
               </span>
               <div className="flex gap-1">
@@ -912,7 +912,7 @@ export function TrendingPostsSection() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-40"
+                  className="h-7 px-2 text-xs rounded-md border border-ui-line text-ui-muted hover:bg-ui-soft disabled:opacity-40"
                 >
                   Prev
                 </button>
@@ -922,7 +922,7 @@ export function TrendingPostsSection() {
                     setPage((p) => Math.min(totalPages - 1, p + 1))
                   }
                   disabled={page >= totalPages - 1}
-                  className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-40"
+                  className="h-7 px-2 text-xs rounded-md border border-ui-line text-ui-muted hover:bg-ui-soft disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -953,37 +953,37 @@ export function StatsRefreshSection() {
   };
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100">
-        <BarChart3 className="h-3.5 w-3.5 text-zinc-500" />
-        <span className="text-xs font-semibold text-zinc-700">
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-ui-line">
+        <BarChart3 className="h-3.5 w-3.5 text-ui-muted" />
+        <span className="text-xs font-semibold text-ui-text">
           Stats Refresh
         </span>
       </div>
       <div className="px-4 py-3 space-y-3">
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-ui-muted">
           Manually trigger 7-day and 30-day view count aggregation.
         </p>
         <button
           type="button"
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-ui-text hover:bg-ui-text text-white transition-colors disabled:opacity-50"
         >
           <RefreshCw
-            className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`}
+            className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}  `}
           />
           {refreshing ? "Refreshing..." : "Run Refresh"}
         </button>
         {result && (
           <p
-            className={`text-xs ${result.success ? "text-emerald-600" : "text-red-600"}`}
+            className={`text-xs ${result.success ? "text-emerald-600" : "text-red-600"}  `}
           >
             {result.message}
           </p>
         )}
         {lastRefresh && (
-          <p className="text-xs text-zinc-400">
+          <p className="text-xs text-ui-muted">
             Last refresh:{" "}
             <span className="font-mono">{lastRefresh.toLocaleString()}</span>
           </p>
@@ -1076,7 +1076,7 @@ export function AllPostsSection() {
         setSortBy(field);
         setPage(0);
       }}
-      className="flex items-center gap-0.5 hover:text-zinc-700 transition-colors"
+      className="flex items-center gap-0.5 hover:text-ui-text transition-colors"
     >
       {label}
       {sortBy === field ? (
@@ -1088,12 +1088,12 @@ export function AllPostsSection() {
   );
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
-          <Table className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-xs font-semibold text-zinc-700">All Posts</span>
-          <span className="font-mono text-xs text-zinc-400">
+          <Table className="ui-data-table h-3.5 w-3.5 text-ui-muted" />
+          <span className="text-xs font-semibold text-ui-text">All Posts</span>
+          <span className="font-mono text-xs text-ui-muted">
             ({safeStats.length})
           </span>
         </div>
@@ -1103,16 +1103,16 @@ export function AllPostsSection() {
           disabled={loading}
           aria-label="Refresh post stats"
           title="Refresh post stats"
-          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
         >
           <RefreshCw
-            className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+            className={`h-3 w-3 ${loading ? "animate-spin" : ""}  `}
             aria-hidden="true"
           />
         </button>
       </div>
       {loading ? (
-        <div className="flex items-center gap-2 px-4 py-3 text-xs text-zinc-400">
+        <div className="flex items-center gap-2 px-4 py-3 text-xs text-ui-muted">
           <RefreshCw className="h-3 w-3 animate-spin" />
           Loading...
         </div>
@@ -1129,7 +1129,7 @@ export function AllPostsSection() {
                 type="button"
                 aria-label="Retry post stats"
                 onClick={fetchStats}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-ui-surface px-2.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Retry
@@ -1138,12 +1138,12 @@ export function AllPostsSection() {
           </div>
         </div>
       ) : safeStats.length === 0 ? (
-        <p className="px-4 py-3 text-xs text-zinc-400">
+        <p className="px-4 py-3 text-xs text-ui-muted">
           No post stats recorded yet.
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-12 px-4 py-2 bg-zinc-50 border-b border-zinc-100 text-xs text-zinc-400">
+          <div className="grid grid-cols-12 px-4 py-2 bg-ui-soft border-b border-ui-line text-xs text-ui-muted">
             <span className="col-span-5">Post</span>
             <span className="col-span-2 text-right">
               <SortButton field="total_views" label="Total" />
@@ -1165,27 +1165,27 @@ export function AllPostsSection() {
               return (
               <div
                 key={`${safeYear}/${safeSlug}`}
-                className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-zinc-50 text-xs"
+                className="grid grid-cols-12 px-4 py-2.5 items-center hover:bg-ui-soft text-xs"
               >
                 <div className="col-span-5">
                   <a
                     href={buildAnalyticsBlogHref(safeYear, safeSlug) ?? "/#/blog"}
-                    className="font-medium text-zinc-800 hover:text-zinc-600 hover:underline"
+                    className="font-medium text-ui-text hover:text-ui-muted hover:underline"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     {safeSlug}
                   </a>
-                  <p className="text-zinc-400 font-mono">{safeYear}</p>
+                  <p className="text-ui-muted font-mono">{safeYear}</p>
                 </div>
-                <div className="col-span-2 text-right font-mono text-zinc-700 flex items-center justify-end gap-1">
-                  <Eye className="h-3 w-3 text-zinc-400" />
+                <div className="col-span-2 text-right font-mono text-ui-text flex items-center justify-end gap-1">
+                  <Eye className="h-3 w-3 text-ui-muted" />
                   {Number(s.total_views).toLocaleString()}
                 </div>
-                <span className="col-span-2 text-right font-mono text-zinc-500">
+                <span className="col-span-2 text-right font-mono text-ui-muted">
                   {Number(s.views_7d).toLocaleString()}
                 </span>
-                <span className="col-span-2 text-right font-mono text-zinc-500">
+                <span className="col-span-2 text-right font-mono text-ui-muted">
                   {Number(s.views_30d).toLocaleString()}
                 </span>
                 <div className="col-span-1 flex justify-end">
@@ -1194,7 +1194,7 @@ export function AllPostsSection() {
                     onClick={() =>
                       setSelected({ slug: safeSlug, year: safeYear })
                     }
-                    className="text-xs text-zinc-400 hover:text-zinc-700 hover:underline"
+                    className="text-xs text-ui-muted hover:text-ui-text hover:underline"
                   >
                     Details
                   </button>
@@ -1204,8 +1204,8 @@ export function AllPostsSection() {
             })}
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100">
-              <span className="text-xs text-zinc-400">
+            <div className="flex items-center justify-between px-4 py-3 border-t border-ui-line">
+              <span className="text-xs text-ui-muted">
                 Page {page + 1} of {totalPages}
               </span>
               <div className="flex gap-1">
@@ -1213,7 +1213,7 @@ export function AllPostsSection() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-40"
+                  className="h-7 px-2 text-xs rounded-md border border-ui-line text-ui-muted hover:bg-ui-soft disabled:opacity-40"
                 >
                   Prev
                 </button>
@@ -1223,7 +1223,7 @@ export function AllPostsSection() {
                     setPage((p) => Math.min(totalPages - 1, p + 1))
                   }
                   disabled={page >= totalPages - 1}
-                  className="h-7 px-2 text-xs rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 disabled:opacity-40"
+                  className="h-7 px-2 text-xs rounded-md border border-ui-line text-ui-muted hover:bg-ui-soft disabled:opacity-40"
                 >
                   Next
                 </button>
@@ -1238,7 +1238,7 @@ export function AllPostsSection() {
 
 export function AnalyticsManager() {
   return (
-    <div className="space-y-4">
+    <div className={["ui-admin-section ui-admin-analyticsmanager", ("space-y-4")].filter(Boolean).join(' ')}>
       <div className="grid gap-4 md:grid-cols-2">
         <TrendingPostsSection />
         <div className="space-y-4">

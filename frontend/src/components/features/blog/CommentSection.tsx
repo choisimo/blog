@@ -13,11 +13,10 @@ import {
   Users,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import CommentInputModal from './CommentInputModal';
+import CommentMarkdown from './CommentMarkdown';
 import CommentReactions from './CommentReactions';
 import { streamChatEvents } from '@/services/chat';
 import { getCachedAdvancedVisitorId } from '@/services/session/fingerprint';
@@ -549,7 +548,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
     <section
       aria-label={safeSectionLabel}
       title={safeSectionTitle}
-      className='space-y-6'
+      className='ui-comment-section space-y-6'
     >
       <div
         className={cn(
@@ -879,20 +878,10 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                               : 'prose prose-sm dark:prose-invert prose-p:my-2 prose-p:text-foreground/90 dark:prose-p:text-white/85'
                           )}
                         >
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={
-                              isTerminal
-                                ? {
-                                    p: ({ children }) => (
-                                      <span className='inline'>{children}</span>
-                                    ),
-                                  }
-                                : undefined
-                            }
-                          >
-                            {safeContent}
-                          </ReactMarkdown>
+                          <CommentMarkdown
+                            content={safeContent}
+                            isTerminal={isTerminal}
+                          />
                         </div>
 
                         {website && (
@@ -1010,9 +999,12 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                   isTerminal && 'font-mono'
                 )}
               >
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {normalizeDiscussionMarkdown(aiStreamingText)}
-                </ReactMarkdown>
+                <CommentMarkdown
+                  content={normalizeDiscussionMarkdown(aiStreamingText)}
+                  isTerminal={isTerminal}
+                  isStreaming
+                  label='AI 댓글 응답'
+                />
                 <span aria-hidden='true' className='ml-0.5 inline-block h-4 w-2 animate-pulse bg-violet-500 align-middle' />
               </div>
             </div>
@@ -1111,6 +1103,15 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
       </div>
 
       <CommentInputModal
+        key={safePostId}
+        draftKey={`${safePostId}:${composerContext.mode}:${composerContextLabel}:${composerContextPreview}`}
+        title={composerContext.mode === 'reply' ? '답글 작성' : composerContext.mode === 'quote' ? '인용하여 댓글 작성' : '댓글 작성'}
+        cancelLabel="취소" submitLabel="댓글 게시" submittingLabel="게시 중"
+        authorLabel="이름" authorPlaceholder="표시할 이름"
+        contentLabel="댓글" contentPlaceholder="이 글에 대한 의견이나 질문을 남겨 주세요."
+        replyPlaceholder="답글을 작성해 주세요." quotePlaceholder="인용한 내용에 대한 의견을 남겨 주세요."
+        websiteShowLabel="웹사이트 추가 · 선택" websiteHideLabel="웹사이트 접기"
+        footerHint="Markdown을 사용할 수 있습니다. Ctrl / ⌘ + Enter로 게시합니다."
         isOpen={isModalOpen}
         onClose={closeComposer}
         onSubmit={handleCommentSubmit}

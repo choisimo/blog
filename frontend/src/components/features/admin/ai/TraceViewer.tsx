@@ -225,7 +225,7 @@ function TraceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto overscroll-contain">
+      <DialogContent className="ui-dialog max-w-3xl max-h-[80vh] overflow-auto overscroll-contain">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
@@ -359,8 +359,8 @@ function TraceStatsCard() {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-6">
+      <Card className="ui-panel">
+        <CardContent className="ui-panel-body flex items-center justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin" />
         </CardContent>
       </Card>
@@ -369,8 +369,8 @@ function TraceStatsCard() {
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="flex items-center gap-2 py-4 text-sm text-red-500">
+      <Card className="ui-panel">
+        <CardContent className="ui-panel-body flex items-center gap-2 py-4 text-sm text-red-500">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </CardContent>
@@ -384,11 +384,11 @@ function TraceStatsCard() {
     stats.total_traces > 0 ? ((stats.success_count / stats.total_traces) * 100).toFixed(1) : '0';
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Last 24 Hours</CardTitle>
+    <Card className="ui-panel">
+      <CardHeader className="ui-panel-header pb-2">
+        <CardTitle className="ui-panel-title text-sm font-medium">Last 24 Hours</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="ui-panel-body">
         <div className="grid grid-cols-4 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold">{stats.total_traces}</div>
@@ -452,23 +452,23 @@ export function TraceViewer() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="space-y-6">
+    <div className={["ui-admin-section ui-admin-traceviewer", ("space-y-6")].filter(Boolean).join(' ')}>
       <TraceStatsCard />
 
-      <Card>
-        <CardHeader>
+      <Card className="ui-panel">
+        <CardHeader className="ui-panel-header">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="ui-panel-title flex items-center gap-2">
               <Clock className="h-5 w-5" />
               Request Traces
             </CardTitle>
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <Button className="ui-control" data-ui-variant="outline" variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
               <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
               Refresh
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="ui-panel-body">
           <div className="flex gap-4 mb-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -479,7 +479,7 @@ export function TraceViewer() {
                 setSearchTerm(e.target.value);
                 setPage(0);
                 }}
-                className="pl-9"
+                className="ui-input pl-9"
               />
             </div>
             <Select
@@ -508,7 +508,7 @@ export function TraceViewer() {
             </div>
           )}
 
-          <Table>
+          <Table className="ui-data-table">
             <TableHeader>
               <TableRow>
                 <TableHead>Trace ID</TableHead>
@@ -542,7 +542,7 @@ export function TraceViewer() {
                     {formatDate(trace.created_at)}
                   </TableCell>
                   <TableCell>
-                    <Button
+                    <Button className="ui-control" data-ui-variant="ghost"
                       variant="ghost"
                       size="sm"
                       aria-label={`View trace ${traceLabel}`}
@@ -571,7 +571,7 @@ export function TraceViewer() {
                 Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)} of {total}
               </div>
               <div className="flex gap-2">
-                <Button
+                <Button className="ui-control" data-ui-variant="outline"
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -579,7 +579,7 @@ export function TraceViewer() {
                 >
                   Previous
                 </Button>
-                <Button
+                <Button className="ui-control" data-ui-variant="outline"
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}

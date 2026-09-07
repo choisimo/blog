@@ -1,29 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Code2, Eye, ExternalLink, LayoutGrid, List } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { LayoutGrid, List, Search, X } from 'lucide-react';
 import { ProjectCard, ProjectCardSkeleton, ProjectModal, TagFilter } from '@/components/features/projects';
 import { getProjects, getProjectTags, type ProjectItem } from '@/data/content/projects';
-import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 
 type ViewMode = 'card' | 'list';
-
-function getStatusClassName(status: ProjectItem['status']): string {
-  const normalized = status.toLowerCase();
-  if (normalized === 'live') {
-    return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-  }
-  if (normalized === 'archive') {
-    return 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30';
-  }
-  return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-}
 
 export function normalizeProjectsPageUrl(
   value?: string | null
@@ -57,6 +40,8 @@ const Projects = () => {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [selectedTag, setSelectedTag] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'source' | 'title'>('source');
   const [activeProject, setActiveProject] = useState<ProjectItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -83,17 +68,14 @@ const Projects = () => {
     void loadProjects();
   }, [loadProjects]);
 
-  const featuredProject = useMemo(
-    () => projects.find(project => project.featured) ?? projects[0] ?? null,
-    [projects]
-  );
-
   const projectTags = useMemo(() => getProjectTags(projects), [projects]);
 
   const filteredProjects = useMemo(() => {
-    if (selectedTag === 'All') return projects;
-    return projects.filter(project => project.tags.includes(selectedTag));
-  }, [projects, selectedTag]);
+    const term = searchQuery.trim().toLocaleLowerCase();
+    const matches = projects.filter(project => (selectedTag === 'All' || project.tags.includes(selectedTag))
+      && (!term || [project.title, project.description, project.category, ...project.tags].some(value => String(value ?? '').toLocaleLowerCase().includes(term))));
+    return sortMode === 'title' ? [...matches].sort((a, b) => a.title.localeCompare(b.title, 'ko')) : matches;
+  }, [projects, selectedTag, searchQuery, sortMode]);
 
   useEffect(() => {
     if (selectedTag === 'All') return;
@@ -125,265 +107,37 @@ const Projects = () => {
     setModalOpen(true);
   };
 
-  return (
-    <div className='container mx-auto max-w-7xl px-4 py-10'>
-      <section className='space-y-4'>
-        <Badge variant='outline' className='inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs'>
-          ✨ New
-          <span>Project Hub</span>
-        </Badge>
-        <h1 className='text-3xl font-bold tracking-tight md:text-4xl'>Projects</h1>
-        <p className='max-w-3xl text-base text-muted-foreground md:text-lg'>
-          markdown 파일 기반 manifest에서 프로젝트를 동적으로 로드합니다.
-          가능한 서비스는 페이지 내 Preview로 즉시 체험할 수 있습니다.
-        </p>
+
+  const resetFilters = () => { setSearchQuery(''); setSelectedTag('All'); };
+  return <div className="ui-page ui-projects-page ui-page-container" data-ui-page="projects">
+    <header className="ui-projects-heading"><div><p className="ui-eyebrow">PROJECTS</p><h1>프로젝트</h1>
+      <p>프로젝트의 목적과 사용한 기술을 살펴보고, 공개된 서비스와 소스 코드를 확인할 수 있습니다.</p></div>
+      {!loading && !error && <div className="ui-projects-total"><strong>{projects.length}</strong><span>공개 프로젝트</span></div>}
+    </header>
+    {error ? <div className="ui-inline-error" role="alert"><h2>프로젝트를 불러오지 못했습니다</h2><p>{error}</p>
+      <button type="button" className="ui-control" data-ui-variant="outline" onClick={() => void loadProjects()}>다시 불러오기</button></div>
+    : <>
+      <section className="ui-projects-catalog" aria-labelledby="project-catalog-title" aria-busy={loading}>
+        <div className="ui-projects-catalog-header"><h2 id="project-catalog-title">프로젝트 둘러보기</h2>
+          <div className="ui-projects-view-switch" role="group" aria-label="프로젝트 표시 방식">
+            <button type="button" aria-pressed={viewMode === 'card'} onClick={() => setViewMode('card')}><LayoutGrid size={16} aria-hidden="true" />갤러리</button>
+            <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}><List size={16} aria-hidden="true" />목록</button>
+          </div>
+        </div>
+        <div className="ui-projects-discovery"><div className="ui-projects-search"><Search size={18} aria-hidden="true" />
+          <label htmlFor="project-search" className="sr-only">프로젝트 검색</label><input id="project-search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} maxLength={200} placeholder="이름, 설명, 기술로 검색" />
+          {searchQuery && <button type="button" onClick={() => setSearchQuery('')} aria-label="검색어 지우기"><X size={16} aria-hidden="true" /></button>}
+        </div><label className="ui-projects-sort">정렬<select value={sortMode} onChange={event => setSortMode(event.target.value === 'title' ? 'title' : 'source')}><option value="source">기본 순서</option><option value="title">이름순</option></select></label></div>
+        <TagFilter tags={projectTags} selectedTag={selectedTag} onSelect={setSelectedTag} allLabel="전체" label="프로젝트 주제 필터" />
+        <div className="ui-projects-results-summary"><p role="status" aria-live="polite">{loading ? '프로젝트를 불러오는 중입니다.' : `${filteredProjects.length}개 프로젝트${selectedTag !== 'All' ? ` · ${selectedTag}` : ''}`}</p>
+          {(searchQuery || selectedTag !== 'All') && <button type="button" onClick={resetFilters}>검색·필터 초기화</button>}</div>
+        {loading ? <div className="ui-project-gallery" aria-label="프로젝트 로딩">{Array.from({ length: 4 }, (_, index) => <ProjectCardSkeleton key={index} />)}</div>
+        : !filteredProjects.length ? <div className="ui-projects-empty"><h3>{projects.length ? '조건에 맞는 프로젝트가 없습니다' : '공개된 프로젝트가 없습니다'}</h3><p>{projects.length ? '검색어를 바꾸거나 주제 필터를 해제해 주세요.' : '새 프로젝트가 공개되면 이곳에서 확인할 수 있습니다.'}</p>
+          {!!projects.length && <button type="button" onClick={resetFilters} className="ui-control" data-ui-variant="outline">전체 프로젝트 보기</button>}</div>
+        : <div className={viewMode === 'card' ? 'ui-project-gallery' : 'ui-project-directory'}>{filteredProjects.map(project => <ProjectCard key={project.id} project={project} onPreview={handlePreview} presentation={viewMode} emphasized={project.featured === true} visitLabel="서비스 열기" codeLabel="소스 코드" />)}</div>}
       </section>
-
-      {loading && (
-        <>
-          <section className='mt-8'>
-            <Card className='overflow-hidden border-border/60'>
-              <CardHeader className='space-y-4 pb-3'>
-                <Skeleton className='h-6 w-36 rounded-full' />
-                <Skeleton className='h-8 w-2/3' />
-                <div className='space-y-2 max-w-3xl'>
-                  <Skeleton className='h-4 w-full' />
-                  <Skeleton className='h-4 w-5/6' />
-                </div>
-              </CardHeader>
-              <CardContent className='flex flex-wrap gap-2 pb-6'>
-                <Skeleton className='h-10 w-28 rounded-md' />
-                <Skeleton className='h-10 w-28 rounded-md' />
-                <Skeleton className='h-10 w-24 rounded-md' />
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className='mt-10 space-y-5'>
-            <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
-              <div className='flex flex-wrap gap-2'>
-                <Skeleton className='h-9 w-16 rounded-full' />
-                <Skeleton className='h-9 w-20 rounded-full' />
-                <Skeleton className='h-9 w-24 rounded-full' />
-              </div>
-              <Skeleton className='h-11 w-36 rounded-xl' />
-            </div>
-            <div className='grid gap-5 md:grid-cols-2 xl:grid-cols-3'>
-              {Array.from({ length: 6 }).map((_, index) => (
-                <ProjectCardSkeleton key={index} />
-              ))}
-            </div>
-          </section>
-        </>
-      )}
-
-      {!loading && error && (
-        <section className='mt-8'>
-          <Card className='border-destructive/40'>
-            <CardHeader>
-              <CardTitle>Failed to load projects</CardTitle>
-              <CardDescription>{error}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => void loadProjects()}>Retry</Button>
-            </CardContent>
-          </Card>
-        </section>
-      )}
-
-      {!loading && !error && projects.length === 0 && (
-        <section className='mt-8'>
-          <Card>
-            <CardHeader>
-              <CardTitle>No projects found</CardTitle>
-              <CardDescription>
-                <code>public/project-data/*.md</code> 파일과{' '}
-                <code>projects-manifest.json</code> 생성 상태를 확인해주세요.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </section>
-      )}
-
-      {!loading && !error && projects.length > 0 && featuredProject && (
-        <>
-          {(() => {
-            const featuredProjectUrl = normalizeProjectsPageUrl(featuredProject.url);
-            const featuredCodeUrl = normalizeProjectsPageUrl(featuredProject.codeUrl);
-
-            return (
-          <section className='mt-8'>
-            <Card className='overflow-hidden border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card'>
-              <CardHeader className='pb-3'>
-                <Badge variant='secondary' className='w-fit text-xs'>
-                  Featured Project
-                </Badge>
-                <CardTitle className='text-2xl'>{featuredProject.title}</CardTitle>
-                <CardDescription className='max-w-3xl text-sm md:text-base'>
-                  {featuredProject.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='flex flex-wrap gap-2 pb-6'>
-                <Button
-                  disabled={!featuredProjectUrl}
-                  onClick={() => openProjectInNewTab(featuredProject)}
-                >
-                  <ExternalLink className='h-4 w-4' />
-                  Visit
-                </Button>
-                <Button variant='outline' onClick={() => handlePreview(featuredProject)}>
-                  <Eye className='h-4 w-4' />
-                  Preview
-                </Button>
-                {featuredCodeUrl && (
-                  <Button variant='ghost' asChild>
-                    <a href={featuredCodeUrl} target='_blank' rel='noopener noreferrer'>
-                      <Code2 className='h-4 w-4' />
-                      Code
-                    </a>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          </section>
-            );
-          })()}
-
-          <section className='mt-10 space-y-5'>
-            <div className='flex flex-col gap-3 md:flex-row md:items-center md:justify-between'>
-              <TagFilter tags={projectTags} selectedTag={selectedTag} onSelect={setSelectedTag} />
-              <div className='inline-flex rounded-xl border border-border/70 bg-card p-1'>
-                <Button
-                  type='button'
-                  variant={viewMode === 'card' ? 'default' : 'ghost'}
-                  size='sm'
-                  className='rounded-lg'
-                  onClick={() => setViewMode('card')}
-                >
-                  <LayoutGrid className='h-4 w-4' />
-                  Card
-                </Button>
-                <Button
-                  type='button'
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size='sm'
-                  className='rounded-lg'
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className='h-4 w-4' />
-                  List
-                </Button>
-              </div>
-            </div>
-
-            {viewMode === 'card' ? (
-              <div className='grid gap-5 md:grid-cols-2 xl:grid-cols-3'>
-                {filteredProjects.map(project => (
-                  <ProjectCard key={project.id} project={project} onPreview={handlePreview} />
-                ))}
-              </div>
-            ) : (
-              <Card className='overflow-hidden border-border/60'>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Stack</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className='text-right'>Links</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProjects.map(project => {
-                      const projectUrl = normalizeProjectsPageUrl(project.url);
-
-                      return (
-                        <TableRow key={project.id}>
-                          <TableCell className='whitespace-nowrap text-xs text-muted-foreground'>
-                            {project.date}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant='secondary'>{project.category}</Badge>
-                          </TableCell>
-                          <TableCell className='font-medium'>{project.title}</TableCell>
-                          <TableCell className='text-xs text-muted-foreground'>
-                            {project.stack.length ? project.stack.join(' / ') : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant='outline'
-                              className={cn('border', getStatusClassName(project.status))}
-                            >
-                              {project.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className='text-right'>
-                            <div className='inline-flex items-center gap-2'>
-                              {projectUrl ? (
-                                <Button variant='ghost' size='sm' asChild>
-                                  <a href={projectUrl} target='_blank' rel='noopener noreferrer'>
-                                    <ExternalLink className='h-4 w-4' />
-                                    Visit
-                                  </a>
-                                </Button>
-                              ) : (
-                                <Button variant='ghost' size='sm' disabled>
-                                  <ExternalLink className='h-4 w-4' />
-                                  Visit
-                                </Button>
-                              )}
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                onClick={() => handlePreview(project)}
-                              >
-                                <Eye className='h-4 w-4' />
-                                Preview
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </Card>
-            )}
-          </section>
-
-          <section className='mt-10 grid gap-4 md:grid-cols-2'>
-            <Card className='border-border/60'>
-              <CardHeader>
-                <CardTitle className='text-base'>Type A: Iframe Embed</CardTitle>
-                <CardDescription>
-                  홈랩/내부 서비스처럼 보안 헤더를 제어 가능한 프로젝트는 LightBox Modal에서 iframe으로 미리보기를 제공합니다.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card className='border-border/60'>
-              <CardHeader>
-                <CardTitle className='text-base'>Type B: Direct Link</CardTitle>
-                <CardDescription>
-                  외부 서비스 또는 보안 정책상 frame-ancestors 제한이 있는 프로젝트는 새 탭에서 열리도록 처리합니다.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </section>
-        </>
-      )}
-
-      <ProjectModal
-        open={modalOpen}
-        project={activeProject}
-        onOpenChange={next => {
-          setModalOpen(next);
-          if (!next) setActiveProject(null);
-        }}
-      />
-    </div>
-  );
+    </>}
+    <ProjectModal open={modalOpen} project={activeProject} onOpenChange={setModalOpen} openLabel="새 탭에서 열기" fullscreenLabel="전체 화면" closeLabel="미리보기 닫기" />
+  </div>;
 };
-
 export default Projects;

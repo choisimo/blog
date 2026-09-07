@@ -125,19 +125,20 @@ export function resolvePostMediaSrc(src: string, postPath = ''): string {
 export function shouldUseThumb(src: string): boolean {
   const raw = trimMediaSrc(src);
   if (!raw) return false;
-  if (NON_FILE_PROTOCOL_RE.test(raw)) return false;
+  if (NON_FILE_PROTOCOL_RE.test(raw) || isExternalMedia(raw)) return false;
   if (isVideoMedia(raw) || isAnimatedImageMedia(raw)) return false;
   if (raw.includes('.thumb.')) return false;
 
   const pathname = getMediaPathname(raw);
-  return !!pathname;
+  // Only assets covered by scripts/optimize-images.js have a thumbnail contract.
+  return /^\/(?:images|posts)\//.test(pathname) && /\.(?:png|jpe?g|webp)$/.test(pathname);
 }
 
 export function getThumbSrc(src: string): string {
   if (!shouldUseThumb(src)) return src;
 
-  const lastDot = src.lastIndexOf('.');
-  if (lastDot === -1) return src;
-
-  return `${src.substring(0, lastDot)}.thumb.webp`;
+  const suffixIndex = src.search(/[?#]/);
+  const pathname = suffixIndex < 0 ? src : src.slice(0, suffixIndex);
+  const suffix = suffixIndex < 0 ? '' : src.slice(suffixIndex);
+  return `${pathname.replace(/\.[^./]+$/, '.thumb.webp')}${suffix}`;
 }

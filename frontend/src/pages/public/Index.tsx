@@ -1,7 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, BookOpen } from 'lucide-react';
 import { PostCard } from '@/components';
 import {
   getTags,
@@ -13,8 +11,9 @@ import {
 import type { BlogPost, BlogTag } from '@/types/blog';
 import { SearchBar } from '@/components/features/search/SearchBar';
 import { site } from '@/config/site';
+import { PageContainer, PageHeader } from '@/components/organisms/layout';
+import { ContentStatus } from '@/components/molecules/ContentStatus';
 import { useTheme } from '@/contexts/ThemeContext';
-import { cn } from '@/lib/utils';
 import { getEditorPicks } from '@/services/content/analytics';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
@@ -320,173 +319,40 @@ const Index = () => {
   }, [searchResults]);
 
   return (
-    <div className='bg-[hsl(var(--blog-page))]'>
-      <div className='mx-auto w-full max-w-6xl px-4 pb-24 pt-10 sm:px-6 lg:px-8'>
-        {/* ============================================
-          Hero Section - Split Layout with Featured Post
-          ============================================ */}
-        <section className='mb-16 pt-4 sm:pt-8'>
-          <div className='mx-auto max-w-2xl space-y-6 text-center'>
-            <div className='space-y-3'>
-              <p
-                className={cn(
-                  'my-0 text-xs font-semibold uppercase tracking-[0.22em] animate-hero-fade-up sm:text-sm',
-                  isTerminal
-                    ? 'text-primary font-mono'
-                    : 'text-muted-foreground'
-                )}
-                style={{ '--anim-delay': '0ms' } as React.CSSProperties}
-              >
-                {isTerminal ? '> WELCOME_TO' : 'Welcome to'}
-              </p>
-              <h1
-                className={cn(
-                  'my-0 text-5xl font-extrabold leading-[0.98] tracking-tight animate-hero-fade-up sm:text-6xl lg:text-7xl',
-                  isTerminal && 'font-mono'
-                )}
-                style={{ '--anim-delay': '80ms' } as React.CSSProperties}
-              >
-                <span
-                  className={cn(
-                    isTerminal
-                      ? 'text-foreground'
-                      : 'bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent'
-                  )}
-                >
-                  Architecting
-                </span>
-                <br />
-                <span
-                  className={cn(
-                    isTerminal
-                      ? 'text-primary terminal-glow'
-                      : 'bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent'
-                  )}
-                >
-                  Intelligence
-                </span>
-              </h1>
-            </div>
-            <p
-              className={cn(
-                'mx-auto max-w-xl text-base leading-7 animate-hero-fade-up sm:text-lg',
-                isTerminal ? 'text-muted-foreground' : 'text-muted-foreground'
-              )}
-              style={{ '--anim-delay': '160ms' } as React.CSSProperties}
-            >
-              AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그
-            </p>
-
-            {/* Search Bar */}
-            <div
-              className='mx-auto max-w-[31rem] animate-hero-fade-up'
-              style={{ '--anim-delay': '240ms' } as React.CSSProperties}
-            >
-              <SearchBar
-                posts={allPosts}
-                onSearchResults={results => {
-                  setSearchResults(results);
-                  setSearchActive(results !== allPosts);
-                }}
-                onFocus={handleSearchFocus}
-                placeholder='Search posts, tags, categories...'
-              />
-            </div>
-
-            {/* CTA Buttons */}
-            <div
-              className='flex flex-wrap gap-3 justify-center pt-2 animate-hero-fade-up'
-              style={{ '--anim-delay': '320ms' } as React.CSSProperties}
-            >
-              <Button
-                asChild
-                size='lg'
-                variant={isTerminal ? 'terminal-active' : 'default'}
-                className={cn(
-                  'h-11 rounded-lg px-6 shadow-[var(--blog-shadow-soft)] transition-transform duration-200 ease-spring active:scale-[0.98]',
-                  isTerminal &&
-                    'shadow-[0_0_16px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_20px_hsl(var(--primary)/0.5)]'
-                )}
-              >
-                <Link to='/blog'>
-                  <BookOpen className='mr-2 h-5 w-5' />
-                  Explore Posts
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant='outline'
-                size='lg'
-                className={cn(
-                  'h-11 rounded-lg border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] px-6 shadow-none transition-transform duration-200 ease-spring active:scale-[0.98]',
-                  isTerminal &&
-                    'font-mono border-border text-foreground hover:border-primary hover:text-primary'
-                )}
-              >
-                <Link to='/about'>
-                  About Me
-                  <ArrowRight className='ml-2 h-5 w-5' />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* ============================================
-          Search Results Section
-          ============================================ */}
+    <div className="ui-home">
+      <PageContainer className="ui-home__container">
+        <PageHeader
+          eyebrow="Nodove Blog"
+          title={isTerminal ? '> engineering_notes' : '코드와 시스템의 기록'}
+          description="AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그"
+          actions={<Link to="/blog" className="ui-action">모든 글 보기</Link>}
+        />
+        <div className="ui-home__search" role="search" aria-label="블로그 글 검색">
+          <SearchBar posts={allPosts}
+            onSearchResults={results => { setSearchResults(results); setSearchActive(results !== allPosts); }}
+            onFocus={handleSearchFocus} placeholder="Search posts, tags, categories..." />
+        </div>
         {searchActive && visibleSearchResults && (
-          <section className='mb-16'>
-            <div className='flex items-center justify-between mb-6'>
-              <h2
-                className={cn('text-2xl font-bold', isTerminal && 'font-mono')}
-              >
-                {isTerminal ? '> search_results' : 'Search Results'}
-              </h2>
-              <div className='text-sm text-muted-foreground'>
-                {visibleSearchResults.length} match
-                {visibleSearchResults.length === 1 ? '' : 'es'}
+          <section className="ui-home__section" aria-labelledby="home-search-title">
+            <PageHeader level={2} id="home-search-title"
+              title={isTerminal ? '> search_results' : 'Search Results'}
+              actions={<span className="ui-result-count">{visibleSearchResults.length} match{visibleSearchResults.length === 1 ? '' : 'es'}</span>} />
+            {visibleSearchResults.length === 0 ? (
+              <ContentStatus kind="empty">검색 결과가 없습니다. 검색어를 바꾸거나 지워 다시 확인하세요.</ContentStatus>
+            ) : (
+              <div className="ui-home__search-results">
+                {visibleSearchResults.map(post => (
+                  <PostCard key={`${post.year}/${post.slug}`} post={post} variant="grid" />
+                ))}
               </div>
-            </div>
-            <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-              {visibleSearchResults.map(post => (
-                <PostCard
-                  key={`${post.year}/${post.slug}`}
-                  post={post}
-                  variant='grid'
-                />
-              ))}
-            </div>
+            )}
           </section>
         )}
-
-        <HomeEditorPicksSection
-          posts={featuredPosts}
-          state={featuredLoading ? 'loading' : 'ready'}
-          notice={featuredNotice}
-          isTerminal={isTerminal}
-        />
-
-        <HomeCategoryStrip
-          categories={categories}
-          state={categoryCountsState}
-          isTerminal={isTerminal}
-        />
-
-        <HomeLatestPostsSection
-          posts={latestPosts}
-          tags={popularTags}
-          state={error ? 'error' : loading ? 'loading' : 'ready'}
-          error={error}
-          isTerminal={isTerminal}
-        />
-
-        <HomeMarkdownCta
-          block={homeCtaBlock}
-          state={homeCtaState}
-          isTerminal={isTerminal}
-        />
-      </div>
+        <HomeEditorPicksSection posts={featuredPosts} state={featuredLoading ? 'loading' : 'ready'} notice={featuredNotice} isTerminal={isTerminal} />
+        <HomeLatestPostsSection posts={latestPosts} tags={popularTags} state={error ? 'error' : loading ? 'loading' : 'ready'} error={error} isTerminal={isTerminal} />
+        <HomeCategoryStrip categories={categories} state={categoryCountsState} isTerminal={isTerminal} />
+        <HomeMarkdownCta block={homeCtaBlock} state={homeCtaState} isTerminal={isTerminal} />
+      </PageContainer>
     </div>
   );
 };

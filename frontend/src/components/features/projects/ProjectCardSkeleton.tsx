@@ -1,6 +1,3 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-
 interface ProjectCardSkeletonProps {
   label?: string;
   title?: string;
@@ -34,41 +31,7 @@ export function ProjectCardSkeleton({
   const safeLabel = normalizeProjectSkeletonText(label, DEFAULT_PROJECT_SKELETON_LABEL);
   const safeTitle = normalizeOptionalProjectSkeletonText(title);
 
-  return (
-    <Card
-      role='status'
-      aria-busy='true'
-      aria-label={safeLabel}
-      title={safeTitle}
-      className='flex h-full flex-col overflow-hidden border-border/60 bg-card/70 backdrop-blur'
-    >
-      <div className='relative aspect-[16/9] overflow-hidden border-b border-border/60'>
-        <Skeleton aria-hidden='true' className='h-full w-full rounded-none' />
-      </div>
-
-      <CardHeader className='space-y-2 pb-3'>
-        <div className='flex items-center justify-between gap-3'>
-          <Skeleton aria-hidden='true' className='h-6 w-20 rounded-full' />
-          <Skeleton aria-hidden='true' className='h-5 w-14 rounded-full' />
-        </div>
-        <Skeleton aria-hidden='true' className='h-6 w-3/4' />
-        <Skeleton aria-hidden='true' className='h-4 w-full' />
-        <Skeleton aria-hidden='true' className='h-4 w-5/6' />
-      </CardHeader>
-
-      <CardContent className='mt-auto space-y-4'>
-        <div className='flex flex-wrap gap-1.5'>
-          <Skeleton aria-hidden='true' className='h-6 w-16 rounded-full' />
-          <Skeleton aria-hidden='true' className='h-6 w-20 rounded-full' />
-          <Skeleton aria-hidden='true' className='h-6 w-14 rounded-full' />
-        </div>
-
-        <div className='grid grid-cols-2 gap-2'>
-          <Skeleton aria-hidden='true' className='h-9 w-full' />
-          <Skeleton aria-hidden='true' className='h-9 w-full' />
-        </div>
-        <Skeleton aria-hidden='true' className='h-9 w-full' />
-      </CardContent>
-    </Card>
-  );
+  return <div role="status" aria-busy="true" aria-label={safeLabel} title={safeTitle} className="ui-project-item ui-project-item--skeleton">
+    <div className="ui-project-item-content" aria-hidden="true"><span /><span /><span /><span /></div>
+  </div>;
 }

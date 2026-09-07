@@ -109,11 +109,11 @@ function RAGHealthSection() {
   }, [fetchHealth]);
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
-      <span className="text-xs font-semibold text-zinc-700">RAG Service Health</span>
+    <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
+      <span className="text-xs font-semibold text-ui-text">RAG Service Health</span>
       <div className="flex items-center gap-4">
         {loading ? (
-          <RefreshCw className="h-3 w-3 animate-spin text-zinc-400" />
+          <RefreshCw className="h-3 w-3 animate-spin text-ui-muted" />
         ) : health ? (
           <>
             <span className="flex items-center gap-1 text-xs">
@@ -154,10 +154,10 @@ function RAGHealthSection() {
           disabled={loading}
           aria-label="Refresh RAG health"
           title="Refresh RAG health"
-          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
         >
           <RefreshCw
-            className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`}
+            className={`h-3 w-3 ${loading ? 'animate-spin' : ''}  `}
             aria-hidden="true"
           />
         </button>
@@ -211,11 +211,11 @@ function CollectionsSection() {
   };
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
-          <Database className="h-3.5 w-3.5 text-zinc-500" />
-          <span className="text-xs font-semibold text-zinc-700">Collections</span>
+          <Database className="h-3.5 w-3.5 text-ui-muted" />
+          <span className="text-xs font-semibold text-ui-text">Collections</span>
         </div>
         <button
           type="button"
@@ -223,24 +223,24 @@ function CollectionsSection() {
           disabled={loading}
           aria-label="Refresh RAG collections"
           title="Refresh RAG collections"
-          className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+          className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
         >
           <RefreshCw
-            className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`}
+            className={`h-3 w-3 ${loading ? 'animate-spin' : ''}  `}
             aria-hidden="true"
           />
         </button>
       </div>
       <div className="px-4 py-3">
         {loading ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <div className="flex items-center gap-2 text-xs text-ui-muted">
             <RefreshCw className="h-3 w-3 animate-spin" />
             Loading...
           </div>
         ) : error ? (
           <p className="text-xs text-red-600">{error}</p>
         ) : collections.length === 0 ? (
-          <p className="text-xs text-zinc-400">No collections found.</p>
+          <p className="text-xs text-ui-muted">No collections found.</p>
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-1.5">
@@ -251,18 +251,18 @@ function CollectionsSection() {
                   onClick={() => handleSelectCollection(col.name)}
                   className={`font-mono text-xs px-2 py-0.5 rounded border transition-colors ${
                     selectedCollection === col.name
-                      ? 'bg-zinc-900 text-white border-zinc-900'
-                      : 'bg-zinc-100 text-zinc-600 border-zinc-200 hover:border-zinc-400'
-                  }`}
+                      ? "bg-ui-text text-white border-ui-line"
+                      : "bg-ui-soft text-ui-muted border-ui-line hover:border-ui-line"
+                  }  `}
                 >
                   {col.name}
                 </button>
               ))}
             </div>
             {selectedCollection && collectionStats && (
-              <div className="flex items-center gap-4 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-md">
-                <span className="font-mono text-xs text-zinc-600">{selectedCollection}</span>
-                <span className="text-xs text-zinc-400">
+              <div className="flex items-center gap-4 px-3 py-2 bg-ui-soft border border-ui-line rounded-md">
+                <span className="font-mono text-xs text-ui-muted">{selectedCollection}</span>
+                <span className="text-xs text-ui-muted">
                   {collectionStats.count.toLocaleString()} documents
                 </span>
               </div>
@@ -306,14 +306,14 @@ function IndexStatusSection() {
   }, [fetchStatus]);
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100">
-        <FileText className="h-3.5 w-3.5 text-zinc-500" />
-        <span className="text-xs font-semibold text-zinc-700">Index Status</span>
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-ui-line">
+        <FileText className="h-3.5 w-3.5 text-ui-muted" />
+        <span className="text-xs font-semibold text-ui-text">Index Status</span>
       </div>
       <div className="px-4 py-3">
         {loading ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <div className="flex items-center gap-2 text-xs text-ui-muted">
             <RefreshCw className="h-3 w-3 animate-spin" />
             Loading...
           </div>
@@ -321,25 +321,25 @@ function IndexStatusSection() {
           <p className="text-xs text-red-600">{error}</p>
         ) : status ? (
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-px border border-zinc-100 rounded-md overflow-hidden">
-              <div className="px-3 py-2 bg-zinc-50">
-                <p className="text-xs text-zinc-400">Documents</p>
-                <p className="text-sm font-semibold text-zinc-800">{status.count.toLocaleString()}</p>
+            <div className="grid grid-cols-2 gap-px border border-ui-line rounded-md overflow-hidden">
+              <div className="px-3 py-2 bg-ui-soft">
+                <p className="text-xs text-ui-muted">Documents</p>
+                <p className="text-sm font-semibold text-ui-text">{status.count.toLocaleString()}</p>
               </div>
-              <div className="px-3 py-2 bg-zinc-50">
-                <p className="text-xs text-zinc-400">Collection</p>
-                <p className="font-mono text-xs text-zinc-600 truncate">{status.collection}</p>
+              <div className="px-3 py-2 bg-ui-soft">
+                <p className="text-xs text-ui-muted">Collection</p>
+                <p className="font-mono text-xs text-ui-muted truncate">{status.collection}</p>
               </div>
             </div>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-ui-muted">
               Re-indexing via{' '}
-              <span className="font-mono text-zinc-600 bg-zinc-100 px-1 py-0.5 rounded">
+              <span className="font-mono text-ui-muted bg-ui-soft px-1 py-0.5 rounded">
                 scripts/rag/index_posts.py
               </span>
             </p>
           </div>
         ) : (
-          <p className="text-xs text-zinc-400">Unable to fetch index status.</p>
+          <p className="text-xs text-ui-muted">Unable to fetch index status.</p>
         )}
       </div>
     </div>
@@ -374,10 +374,10 @@ function SearchTesterSection() {
   };
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-100">
-        <Search className="h-3.5 w-3.5 text-zinc-500" />
-        <span className="text-xs font-semibold text-zinc-700">Semantic Search Tester</span>
+    <div className="bg-ui-surface border border-ui-line rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-ui-line">
+        <Search className="h-3.5 w-3.5 text-ui-muted" />
+        <span className="text-xs font-semibold text-ui-text">Semantic Search Tester</span>
       </div>
       <div className="px-4 py-3 space-y-3">
         <div className="flex gap-2">
@@ -388,13 +388,13 @@ function SearchTesterSection() {
             onKeyDown={(e) => {
               if (e.key === 'Enter') void handleSearch();
             }}
-            className="h-8 text-sm rounded-md border-zinc-200 flex-1"
+            className="ui-input h-8 text-sm rounded-md border-ui-line flex-1"
           />
           <button
             type="button"
             onClick={handleSearch}
             disabled={loading || !query.trim()}
-            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-zinc-900 hover:bg-zinc-800 text-white transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-md bg-ui-text hover:bg-ui-text text-white transition-colors disabled:opacity-50"
           >
             {loading ? (
               <RefreshCw className="h-3 w-3 animate-spin" />
@@ -410,35 +410,35 @@ function SearchTesterSection() {
         )}
 
         {results.length > 0 && (
-          <div className="border border-zinc-200 rounded-md overflow-hidden">
-            <div className="grid grid-cols-12 px-3 py-2 bg-zinc-50 border-b border-zinc-100">
-              <span className="col-span-2 text-xs text-zinc-400">Score</span>
-              <span className="col-span-7 text-xs text-zinc-400">Document</span>
-              <span className="col-span-3 text-xs text-zinc-400">Category</span>
+          <div className="border border-ui-line rounded-md overflow-hidden">
+            <div className="grid grid-cols-12 px-3 py-2 bg-ui-soft border-b border-ui-line">
+              <span className="col-span-2 text-xs text-ui-muted">Score</span>
+              <span className="col-span-7 text-xs text-ui-muted">Document</span>
+              <span className="col-span-3 text-xs text-ui-muted">Category</span>
             </div>
             <div className="divide-y divide-zinc-100">
               {results.map((result, idx) => (
-                <div key={`${result.metadata.title ?? ''}-${idx}`} className="grid grid-cols-12 px-3 py-2.5 items-start hover:bg-zinc-50">
+                <div key={`${result.metadata.title ?? ''}-${idx}`} className="grid grid-cols-12 px-3 py-2.5 items-start hover:bg-ui-soft">
                   <div className="col-span-2">
                     <span
                       className={`font-mono text-xs px-1 py-0.5 rounded ${
                         result.score > 0.7
                           ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-zinc-100 text-zinc-500'
-                      }`}
+                          : "bg-ui-soft text-ui-muted"
+                      }  `}
                     >
                       {(result.score * 100).toFixed(0)}%
                     </span>
                   </div>
                   <div className="col-span-7">
-                    <p className="text-xs font-medium text-zinc-800">
+                    <p className="text-xs font-medium text-ui-text">
                       {normalizeDisplayText(result.metadata.title, 'Untitled')}
                     </p>
-                    <p className="text-xs text-zinc-400 line-clamp-2 mt-0.5">
+                    <p className="text-xs text-ui-muted line-clamp-2 mt-0.5">
                       {result.content.slice(0, 150)}...
                     </p>
                   </div>
-                  <span className="col-span-3 font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded w-fit">
+                  <span className="col-span-3 font-mono text-xs text-ui-muted bg-ui-soft px-1 py-0.5 rounded w-fit">
                     {normalizeRAGSelector(result.metadata.category) || '-'}
                   </span>
                 </div>
@@ -453,7 +453,7 @@ function SearchTesterSection() {
 
 export function RAGManager() {
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+    <div className={["ui-admin-section ui-admin-ragmanager", ("bg-ui-surface border border-ui-line rounded-lg overflow-hidden")].filter(Boolean).join(' ')}>
       <RAGHealthSection />
       <div className="p-4 space-y-4">
         <div className="grid gap-4 md:grid-cols-2">

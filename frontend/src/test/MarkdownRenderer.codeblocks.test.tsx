@@ -1,13 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import MarkdownRenderer from '@/components/features/blog/MarkdownRenderer';
-
-const indexCss = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
 
 const K8S_PROBE_INDENTED_EXCERPT = [
   '    startupProbe: 무거운 Spring Boot나 JVM 앱이 기지개를 켤 때, livenessProbe가 이를 장애로 오진하여 성급하게 목을 치는 참사를 막는 **유예 기간의 방패**다. 이 방패가 걷히기 전까지 다른 메스는 모두 잠잠하다.',
@@ -80,7 +76,9 @@ describe('MarkdownRenderer code blocks', () => {
     expect(screen.queryByTestId('markdown-text-panel')).not.toBeInTheDocument();
     expect(screen.getByTestId('code-copy-btn')).toBeInTheDocument();
     expect(screen.getByText(/shell/i)).toBeInTheDocument();
-    expect(screen.getByText('pvecm qdevice remove')).toBeInTheDocument();
+    expect(container.querySelector('.article-code-highlighter')).toHaveTextContent(
+      'pvecm qdevice remove'
+    );
   });
 
   it('renders unlabeled code-like snippets as full code blocks', () => {
@@ -125,7 +123,7 @@ describe('MarkdownRenderer code blocks', () => {
     expect(highlighterStyle.overflowX).not.toBe('scroll');
   });
 
-  it('keeps article readable text on the same desktop grid span as wide media', () => {
+  it('keeps readable text and wide media as consecutive article flow children', () => {
     const { container } = renderMarkdown(
       [
         'Readable paragraph with body copy.',
@@ -146,22 +144,13 @@ describe('MarkdownRenderer code blocks', () => {
       '.article-flow > .article-media-frame[data-layout="wide"]'
     );
     const codeCard = getRequiredElement(container, '.article-flow > .article-code-card');
-    const articleReadableDesktopGrid = indexCss.match(
-      /@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*?\.article-flow[\s\S]*?>\s*:where\([\s\S]*?\.article-readable[\s\S]*?\)\s*\{[\s\S]*?grid-column:\s*([^;]+);/
-    );
-    const wideMediaDesktopGrid = indexCss.match(
-      /@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*?\.article-flow\s*>\s*\.article-media-frame\[data-layout='wide'\],[\s\S]*?grid-column:\s*([^;]+);/
-    );
-
     expect(paragraph.matches('.article-flow > .article-readable')).toBe(true);
     expect(mediaFrame.matches('.article-flow > .article-media-frame')).toBe(true);
     expect(codeCard.matches('.article-flow > .article-code-card')).toBe(true);
-    expect(articleReadableDesktopGrid?.[1]?.replace(/\s+/g, ' ').trim()).toBe(
-      '1 / -1'
-    );
-    expect(wideMediaDesktopGrid?.[1]?.replace(/\s+/g, ' ').trim()).toBe(
-      '1 / -1'
-    );
+    expect(paragraph.nextElementSibling).toBe(mediaFrame);
+    expect(mediaFrame.nextElementSibling).toBe(codeCard);
+    // Responsive widths and alignment are checked in reading-design.spec.ts
+    // against the built app, where Tailwind and the CSS cascade actually run.
   });
 
   it('renders explicit text fences as readable preformatted article panels', () => {

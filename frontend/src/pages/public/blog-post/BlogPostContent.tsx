@@ -49,10 +49,11 @@ export function BlogPostContent({
 
   return (
     <section
+      data-reading-content
       data-toc-boundary
       data-ai-block-scope='article'
       className={cn(
-        '-mx-2 rounded-[28px] border border-white/50 bg-card/80 p-4 shadow-soft backdrop-blur-sm dark:border-white/5 dark:bg-[hsl(var(--card-blog)/0.9)] sm:mx-0 sm:p-7 lg:p-9',
+        'ui-article-body',
         isTerminal &&
           'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
       )}
@@ -66,18 +67,19 @@ export function BlogPostContent({
       >
         <Suspense
           fallback={
-            <div className='space-y-3' aria-label='Loading article content'>
-              <Skeleton className='h-6 w-3/4' />
-              <Skeleton className='h-4 w-full' />
-              <Skeleton className='h-4 w-11/12' />
-              <Skeleton className='h-4 w-10/12' />
-              <Skeleton className='h-4 w-9/12' />
-              <Skeleton className='h-4 w-1/2' />
+            <div className="space-y-3" aria-label='Loading article content'>
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-11/12" />
+              <Skeleton className="h-4 w-10/12" />
+              <Skeleton className="h-4 w-9/12" />
+              <Skeleton className="h-4 w-1/2" />
             </div>
           }
         >
           <MarkdownRenderer
             content={content}
+            profile='article'
             inlineEnabled={inlineEnabled}
             postTitle={safePostTitle}
             postPath={safePostPath}

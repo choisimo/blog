@@ -116,8 +116,8 @@ function StatCard({
   trend?: 'up' | 'down' | 'neutral';
 }) {
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="ui-panel">
+      <CardContent className="ui-panel-body p-4">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{title}</p>
@@ -131,7 +131,7 @@ function StatCard({
                 : trend === 'down'
                 ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400'
                 : 'bg-muted text-muted-foreground'
-            }`}
+            }  `}
           >
             <Icon className="h-5 w-5" />
           </div>
@@ -161,7 +161,7 @@ function UsageBar({
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all ${color || 'bg-primary'}`}
+          className={`h-full rounded-full transition-all ${color || 'bg-primary'}  `}
           style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
@@ -218,14 +218,14 @@ export function UsageMonitor() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={["ui-admin-section ui-admin-usagemonitor", ("space-y-6")].filter(Boolean).join(' ')}>
       {/* Header */}
-      <Card>
-        <CardHeader>
+      <Card className="ui-panel">
+        <CardHeader className="ui-panel-header">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Usage & Monitoring</CardTitle>
-              <CardDescription>Track AI usage, costs, and performance</CardDescription>
+              <CardTitle className="ui-panel-title">Usage & Monitoring</CardTitle>
+              <CardDescription className="ui-description">Track AI usage, costs, and performance</CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Select
@@ -253,7 +253,7 @@ export function UsageMonitor() {
                   <SelectItem value="model">By Model</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
+              <Button className="ui-control" data-ui-variant="outline"
                 variant="outline"
                 size="icon"
                 onClick={() => fetchUsage()}
@@ -310,8 +310,8 @@ export function UsageMonitor() {
 
           {/* Success/Error Stats */}
           <div className="grid grid-cols-2 gap-4">
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
+            <Card className="ui-panel">
+              <CardContent className="ui-panel-body p-4 flex items-center gap-4">
                 <CheckCircle className="h-8 w-8 text-green-500" />
                 <div>
                   <p className="text-2xl font-bold">{usage.summary.successCount}</p>
@@ -319,8 +319,8 @@ export function UsageMonitor() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
+            <Card className="ui-panel">
+              <CardContent className="ui-panel-body p-4 flex items-center gap-4">
                 <XCircle className="h-8 w-8 text-red-500" />
                 <div>
                   <p className="text-2xl font-bold">{usage.summary.errorCount}</p>
@@ -331,13 +331,13 @@ export function UsageMonitor() {
           </div>
 
           {showBreakdown && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
+            <Card className="ui-panel">
+              <CardHeader className="ui-panel-header">
+                <CardTitle className="ui-panel-title text-lg">
                   {groupBy === 'day' ? 'Daily Usage' : 'Usage by Model'}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="ui-panel-body">
                 {chartData.length > 0 ? (
                   groupBy === 'model' ? (
                     <div className="space-y-4">
@@ -361,7 +361,7 @@ export function UsageMonitor() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="ui-data-table w-full text-sm">
                         <thead>
                           <tr className="border-b">
                             <th className="text-left p-2">Date</th>
@@ -395,13 +395,13 @@ export function UsageMonitor() {
           )}
 
           {/* Config Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Configuration Actions</CardTitle>
-              <CardDescription>Export current configuration</CardDescription>
+          <Card className="ui-panel">
+            <CardHeader className="ui-panel-header">
+              <CardTitle className="ui-panel-title text-lg">Configuration Actions</CardTitle>
+              <CardDescription className="ui-description">Export current configuration</CardDescription>
             </CardHeader>
-            <CardContent className="flex gap-4">
-              <Button variant="outline" onClick={handleExport}>
+            <CardContent className="ui-panel-body flex gap-4">
+              <Button className="ui-control" data-ui-variant="outline" variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Config
               </Button>

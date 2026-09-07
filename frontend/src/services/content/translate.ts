@@ -532,11 +532,13 @@ export async function getCachedTranslation(
   year: string,
   slug: string,
   targetLang: string,
+  options?: { signal?: AbortSignal },
 ): Promise<PublicTranslationLookupResult> {
   const path = getTranslationPathSegments({ year, slug, targetLang });
   const baseUrl = getApiBaseUrl();
   const response = await fetch(
     `${baseUrl}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}`,
+    { signal: options?.signal },
   );
   const retryAfterSeconds = parseRetryAfterSeconds(
     response.headers.get("Retry-After"),

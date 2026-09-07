@@ -253,3 +253,12 @@ export const loadPostBySlug = async (
     return null;
   }
 };
+
+export const hasNativeTranslationContent = (
+  post: BlogPost,
+  language: SupportedLanguage,
+): boolean => {
+  const defaultLang = post.defaultLanguage || post.language || "ko";
+  if (language === defaultLang) return true;
+  return Boolean(post.translations?.[language]);
+};

@@ -1,7 +1,7 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ExternalLink, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { AIConsole } from '@/components/molecules/AIConsole';
 import type { ProjectItem } from '@/types/project';
 
@@ -89,6 +89,7 @@ export function ProjectModal({
   closeLabel = DEFAULT_CLOSE_LABEL,
   unavailableMessage = DEFAULT_UNAVAILABLE_MESSAGE,
 }: ProjectModalProps) {
+  const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const projectUrl = normalizeProjectPreviewUrl(project?.url);
   const safeDefaultTitle = normalizeProjectModalText(defaultTitle, DEFAULT_PREVIEW_TITLE);
@@ -108,74 +109,77 @@ export function ProjectModal({
     DEFAULT_UNAVAILABLE_MESSAGE
   );
 
-  const handleFullscreen = () => {
+  const handleFullscreen = async () => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
-    if (iframe.requestFullscreen) {
-      void iframe.requestFullscreen();
+    setFullscreenError(null);
+    if (!iframe?.requestFullscreen) {
+      setFullscreenError('이 환경에서는 전체 화면을 지원하지 않습니다. 새 탭에서 열기를 이용해 주세요.');
+      return;
     }
+    try { await iframe.requestFullscreen(); }
+    catch { setFullscreenError('전체 화면을 열지 못했습니다. 새 탭에서 열기를 이용해 주세요.'); }
   };
 
-  const close = () => onOpenChange(false);
+  const close = () => { setFullscreenError(null); onOpenChange(false); };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={next => { if (!next) setFullscreenError(null); onOpenChange(next); }}>
       <DialogContent
         hideClose
         aria-label={safeDialogLabel}
         title={safeDialogTitle}
-        className='h-[88vh] w-[96vw] max-w-6xl overflow-hidden border-border/60 bg-background p-0'
+        className="ui-dialog ui-project-modal"
       >
-        <div className='flex items-center justify-between border-b border-border/60 px-4 py-3'>
-          <DialogTitle className='truncate text-base font-semibold'>
-            {safeProjectTitle}
-          </DialogTitle>
-          <div className='flex items-center gap-2'>
+        <div className="ui-project-modal-heading">
+<div className="ui-project-modal-copy"><DialogTitle className="ui-project-modal-title">{safeProjectTitle}</DialogTitle>
+          <DialogDescription className="ui-project-modal-description">{normalizeProjectModalText(project?.description) || '프로젝트 미리보기'}</DialogDescription></div>
+          <div className="flex items-center gap-2">
             {projectUrl && (
-              <Button variant='outline' size='sm' asChild>
+              <Button className="ui-control" data-ui-variant='outline' variant='outline' size='sm' asChild>
                 <a
                   href={projectUrl}
                   target='_blank'
                   rel='noopener noreferrer'
                   aria-label={`${safeOpenLabel}: ${safeProjectTitle}`}
                 >
-                  <ExternalLink aria-hidden='true' className='h-4 w-4' />
+                  <ExternalLink aria-hidden='true' className="h-4 w-4" />
                   {safeOpenLabel}
                 </a>
               </Button>
             )}
             {project?.type === 'embed' && projectUrl && (
-              <Button
+              <Button className="ui-control" data-ui-variant='outline'
                 variant='outline'
                 size='sm'
                 onClick={handleFullscreen}
                 aria-label={`${safeFullscreenLabel}: ${safeProjectTitle}`}
               >
-                <Maximize2 aria-hidden='true' className='h-4 w-4' />
+                <Maximize2 aria-hidden='true' className="h-4 w-4" />
                 {safeFullscreenLabel}
               </Button>
             )}
-            <Button variant='ghost' size='icon' onClick={close} aria-label={safeCloseLabel}>
-              <X aria-hidden='true' className='h-4 w-4' />
+            <Button className="ui-control" data-ui-variant='ghost' variant='ghost' size='icon' onClick={close} aria-label={safeCloseLabel}>
+              <X aria-hidden='true' className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <div className='h-[calc(88vh-57px)]'>
+        {fullscreenError && <p className="ui-inline-error" role="alert">{fullscreenError}</p>}
+        <div className="ui-project-modal-body">
           {project?.type === 'console' ? (
-            <AIConsole className='h-full rounded-none border-0 shadow-none' onClose={close} />
+            <AIConsole className="h-full rounded-none border-0 shadow-none" onClose={close} />
           ) : project?.type === 'embed' && projectUrl ? (
             <iframe
               ref={iframeRef}
               src={projectUrl}
               title={`${safeProjectTitle} preview`}
-              className='h-full w-full border-0'
+              className="h-full w-full border-0"
               loading='lazy'
               allow='clipboard-read; clipboard-write; fullscreen'
               allowFullScreen
             />
           ) : (
-            <div className='flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground'>
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
               {safeUnavailableMessage}
             </div>
           )}

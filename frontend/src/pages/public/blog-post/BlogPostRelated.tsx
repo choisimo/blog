@@ -89,7 +89,7 @@ export function BlogPostRelated({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-white/10 dark:text-white",
+            "rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-ui-surface/10 dark:text-white",
             isTerminal && "rounded bg-[hsl(var(--terminal-code-bg))]",
           )}
         >
@@ -124,7 +124,7 @@ export function BlogPostRelated({
             }}
             state={preservedFrom ? { from: preservedFrom } : undefined}
             className={cn(
-              "group rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-[hsl(var(--card-blog))]",
+              "group rounded-lg border border-border/60 bg-card/70 p-5 transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/40 dark:border-ui-line dark:bg-[hsl(var(--card-blog))]",
               isTerminal &&
                 "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary",
             )}
@@ -136,7 +136,7 @@ export function BlogPostRelated({
             <Badge
               variant="secondary"
               className={cn(
-                "mb-3 rounded-full px-3 py-1 text-xs dark:bg-white/10 dark:text-white",
+                "mb-3 rounded-full px-3 py-1 text-xs dark:bg-ui-surface/10 dark:text-white",
                 isTerminal &&
                   "rounded font-mono text-primary bg-transparent border border-primary/40",
               )}

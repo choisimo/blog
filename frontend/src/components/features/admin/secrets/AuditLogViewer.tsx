@@ -119,12 +119,12 @@ export function AuditLogViewer() {
   const totalPages = Math.ceil(pagination.total / pageSize);
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={["ui-admin-section ui-admin-auditlogviewer", ("ui-panel")].filter(Boolean).join(' ')}>
+      <CardHeader className="ui-panel-header">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Audit Log</CardTitle>
-            <CardDescription>History of all secret changes and access</CardDescription>
+            <CardTitle className="ui-panel-title">Audit Log</CardTitle>
+            <CardDescription className="ui-description">History of all secret changes and access</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Select value={actionFilter} onValueChange={handleActionFilterChange}>
@@ -140,7 +140,7 @@ export function AuditLogViewer() {
                 <SelectItem value="accessed">Accessed</SelectItem>
               </SelectContent>
             </Select>
-            <Button
+            <Button className="ui-control" data-ui-variant="outline"
               variant="outline"
               size="icon"
               aria-label="Refresh audit log"
@@ -153,12 +153,12 @@ export function AuditLogViewer() {
                 })
               }
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}  `} aria-hidden="true" />
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="ui-panel-body">
         {safeError && (
           <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm mb-4">
             {safeError}
@@ -200,7 +200,7 @@ export function AuditLogViewer() {
               {pagination.total}
             </span>
             <div className="flex items-center gap-2">
-              <Button
+              <Button className="ui-control" data-ui-variant="outline"
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p - 1)}
@@ -212,7 +212,7 @@ export function AuditLogViewer() {
               <span className="text-sm">
                 Page {page + 1} of {totalPages}
               </span>
-              <Button
+              <Button className="ui-control" data-ui-variant="outline"
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}

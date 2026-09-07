@@ -36,7 +36,10 @@
     "korean:scan": "node scripts/korean-normalize.js",
     "korean:fix": "node scripts/korean-normalize.js --fix --remove-zero-width",
     "korean:scan:ci": "node scripts/korean-normalize.js --ci --silent",
-    "optimize-images": "node scripts/optimize-images.js"
+    "optimize-images": "node scripts/optimize-images.js",
+    "verify:reading": "node scripts/reading-verification/check-sources.mjs && node --test scripts/reading-verification/core.test.mjs",
+    "test:reading": "vitest run --config config/vite.config.ts src/test/reading src/test/ImageLightbox.test.tsx src/components/features/blog/ImageLightbox.test.tsx src/test/MarkdownRenderer.codeblocks.test.tsx",
+    "test:e2e:reading": "playwright test e2e/reading-design.spec.ts"
   },
   "dependencies": {
     "@blog/shared": "file:../shared",

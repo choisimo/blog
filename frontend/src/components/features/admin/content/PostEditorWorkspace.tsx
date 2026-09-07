@@ -8,26 +8,25 @@ import {
 } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
-  Bold,
   CheckCircle2,
-  Code2,
   Copy,
   FilePlus2,
-  Heading2,
   Image as ImageIcon,
-  Italic,
-  Link,
-  List,
   Loader2,
   LogOut,
   PanelRight,
-  Quote,
   RotateCcw,
   Save,
   Send,
   Sparkles,
   UploadCloud,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionButton } from '@/components/ui/action-button';
+import { ActionToolbar } from '@/components/ui/action-toolbar';
+import type { ActionIdOfKind } from '@/components/ui/action-definitions';
+import { PaneSwitcher, WorkspacePanel } from '@/components/organisms/layout';
+import { editorReviewSignature, isEditorReviewCurrent } from './editorReview';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -235,9 +234,17 @@ export function PostEditorWorkspace() {
   const [editorMode, setEditorMode] = useState<'write' | 'preview' | 'split'>(
     'split',
   );
+  const [mobilePane, setMobilePane] = useState<'write' | 'preview' | 'tools'>('write');
+  const [submitReview, setSubmitReview] = useState<{ mode: SubmitMode; snapshot: DraftState; signature: string } | null>(null);
+  const [submitFeedback, setSubmitFeedback] = useState('');
+  const [submitOutcome, setSubmitOutcome] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [clearDraftOpen, setClearDraftOpen] = useState(false);
+  const submitInFlight = useRef(false);
+  const draftReadBlocked = useRef(false);
   const [draftReady, setDraftReady] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
-  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved'>(
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
     'idle',
   );
 
@@ -269,13 +276,9 @@ export function PostEditorWorkspace() {
       return;
     }
 
-    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
-    if (!raw) {
-      setDraftReady(true);
-      return;
-    }
-
     try {
+      const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) return;
       const draft = JSON.parse(raw) as Partial<DraftState>;
       const restoredSlug = draft.slug ? normalizeSlug(draft.slug) : '';
       setTitle(draft.title || '');
@@ -295,7 +298,9 @@ export function PostEditorWorkspace() {
         });
       }
     } catch {
-      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      draftReadBlocked.current = true;
+      setDraftError('로컬 저장본을 읽지 못해 자동 저장을 멈췄습니다. 저장본은 삭제하지 않았습니다. 수동으로 저장하면 현재 입력으로 로컬 저장본을 바꿉니다.');
+      setDraftStatus('error');
     } finally {
       setDraftReady(true);
     }
@@ -318,17 +323,24 @@ export function PostEditorWorkspace() {
 
   const saveDraft = useCallback(
     (showToast: boolean) => {
-      if (typeof window === 'undefined') return;
+      if (typeof window === 'undefined' || (draftReadBlocked.current && !showToast)) return;
 
       setDraftStatus('saving');
       const nextDraft = {
         ...currentDraft,
         updatedAt: new Date().toISOString(),
       };
-      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
+      try {
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
+      } catch {
+        setDraftStatus('error');
+        setDraftError('브라우저 로컬 저장에 실패했습니다. 입력은 이 화면에 남아 있습니다. 창을 닫기 전에 본문을 복사하거나 저장을 다시 시도하세요.');
+        return;
+      }
+      draftReadBlocked.current = false;
+      setDraftError(null);
       setDraftSavedAt(nextDraft.updatedAt);
       setDraftStatus('saved');
-      window.setTimeout(() => setDraftStatus('idle'), 1200);
 
       if (showToast) {
         toast({
@@ -364,8 +376,16 @@ export function PostEditorWorkspace() {
   const clearDraft = () => {
     if (typeof window !== 'undefined') {
       cancelPendingDraftAutosave();
-      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      try {
+        window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        setDraftError('로컬 저장본을 삭제하지 못했습니다. 현재 편집 내용과 저장본을 유지합니다.');
+        setDraftStatus('error');
+        return;
+      }
     }
+    setDraftError(null);
+    setClearDraftOpen(false);
     setDraftSavedAt(null);
     setDraftStatus('idle');
     toast({ title: '임시 저장 삭제', description: '로컬 저장본을 삭제했습니다.' });
@@ -437,6 +457,13 @@ export function PostEditorWorkspace() {
     return [lines.join('\n'), content].filter(Boolean).join('\n');
   }, [category, content, coverImage, published, tags, title]);
 
+  const previewPostPath = useMemo(() => {
+    const previewYear = normalizePostYear(year);
+    if (!previewYear) return '';
+    const previewSlug = normalizeSlug(slug || title) || 'preview';
+    return `${previewYear}/${previewSlug}`;
+  }, [slug, title, year]);
+
   const stats = useMemo(() => {
     const words = content.trim() ? content.trim().split(/\s+/).length : 0;
     const imageCount = (content.match(/!\[[^\]]*]\([^)]+\)/g) || []).length;
@@ -449,7 +476,9 @@ export function PostEditorWorkspace() {
   }, [content]);
 
   const createPr = useMutation({
-    mutationFn: async (mode: SubmitMode) => {
+    mutationFn: async (submission: { mode: SubmitMode; snapshot: DraftState }) => {
+      const { mode, snapshot } = submission;
+      const { title, slug, year, category, tags, published, coverImage, content } = snapshot;
       const publishNow = mode === 'publish' && published;
       const normalizedSlug = normalizeSlug(slug);
       const normalizedYear = normalizePostYear(year);
@@ -474,6 +503,7 @@ export function PostEditorWorkspace() {
       return createPostPR(payload);
     },
     onSuccess: data => {
+      setSubmitOutcome(data.prUrl ? `PR 생성 확인: ${data.prUrl}` : data.outboxId ? `Outbox 등록 확인: ${data.outboxId}` : `작업 등록 확인: ${data.path || '응답에 경로 없음'}`);
       if (data.prUrl) {
         toast({ title: 'PR 생성됨', description: data.prUrl });
         try {
@@ -490,13 +520,36 @@ export function PostEditorWorkspace() {
       });
     },
     onError: error => {
+      setSubmitOutcome('제출 결과를 확인하지 못했습니다. 중복 제출 전에 PR 또는 Outbox를 확인하세요. 입력은 그대로 남아 있습니다.');
       toast({
         title: 'PR 생성 실패',
         description: getErrorMessage(error, '오류'),
         variant: 'destructive',
       });
     },
+    onSettled: () => { submitInFlight.current = false; },
   });
+
+  const openSubmitReview = (mode: SubmitMode) => {
+    if (createPr.isPending || submitInFlight.current) return;
+    setSubmitFeedback('');
+    setSubmitReview({ mode, snapshot: { ...currentDraft }, signature: editorReviewSignature(currentDraft) });
+  };
+  const submitReviewed = () => {
+    if (!submitReview || createPr.isPending || submitInFlight.current) return;
+    if (!isEditorReviewCurrent(submitReview.signature, currentDraft)) {
+      setSubmitFeedback('검토 후 문서가 바뀌었습니다. 창을 닫고 변경된 내용으로 다시 검토하세요.');
+      return;
+    }
+    if (!normalizePostYear(submitReview.snapshot.year)) {
+      setSubmitFeedback('연도는 YYYY 형식으로 입력해야 합니다. 문서 정보에서 수정하세요.');
+      return;
+    }
+    submitInFlight.current = true;
+    const submission = { mode: submitReview.mode, snapshot: { ...submitReview.snapshot } };
+    setSubmitReview(null);
+    createPr.mutate(submission);
+  };
 
   const logout = async () => {
     await storeLogout();
@@ -686,102 +739,100 @@ export function PostEditorWorkspace() {
     wrapSelection('[', `](${url})`);
   };
 
-  const editorToolbar = [
-    {
-      label: 'Heading',
-      icon: Heading2,
-      action: () => insertAtCursor('## 섹션 제목\n\n'),
-    },
-    { label: 'Bold', icon: Bold, action: () => wrapSelection('**') },
-    { label: 'Italic', icon: Italic, action: () => wrapSelection('*') },
-    { label: 'Quote', icon: Quote, action: () => insertAtCursor('> 인용문\n') },
-    { label: 'List', icon: List, action: () => insertAtCursor('- 항목\n') },
-    {
-      label: 'Code block',
-      icon: Code2,
-      action: () => insertAtCursor('```ts\n// code\n```\n'),
-    },
-    { label: 'Link', icon: Link, action: insertLink },
+  const editorToolbar: { id: ActionIdOfKind<'command'>; run: () => void }[] = [
+    { id: 'heading', run: () => insertAtCursor('## 섹션 제목\n\n') },
+    { id: 'bold', run: () => wrapSelection('**') },
+    { id: 'italic', run: () => wrapSelection('*') },
+    { id: 'quote', run: () => insertAtCursor('> 인용문\n') },
+    { id: 'list', run: () => insertAtCursor('- 항목\n') },
+    { id: 'code', run: () => insertAtCursor('```ts\n// code\n```\n') },
+    { id: 'link', run: insertLink },
   ];
 
   return (
-    <div className='mx-auto max-w-screen-2xl space-y-4'>
-      <section className='rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'>
-        <div className='flex flex-col gap-3 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800 lg:flex-row lg:items-center lg:justify-between'>
-          <div className='min-w-0'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <h1 className='text-sm font-semibold text-zinc-900 dark:text-zinc-100'>
+    <div className="ui-editor" data-ui-page='post-editor' data-editor-mode={editorMode} data-active-pane={mobilePane}>
+      <section className="ui-editor-document">
+        <header className="ui-editor-commandbar">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="ui-editor-title">
                 게시글 작성
-              </h1>
-              <Badge variant='secondary' className='rounded-md'>
+              </h2>
+              <Badge variant='secondary' className="rounded-md">
                 {published ? 'public' : 'draft'}
               </Badge>
-              <Badge variant='outline' className='rounded-md font-mono'>
+              <Badge variant='outline' className="rounded-md font-mono">
                 {year || 'YYYY'}/{slug || 'slug'}
               </Badge>
             </div>
-            <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400'>
-              드래그 앤 드랍 이미지 첨부, 임시 저장, AI 작성 지원, 이미지 생성 후 즉시 삽입을 한 화면에서 처리합니다.
+            <p className="mt-1 text-xs text-ui-muted dark:text-ui-muted">
+              드래그 앤 드랍 이미지 첨부, 임시 저장, AI 작성 지원, 이미지 검토와 삽입을 한 화면에서 처리합니다.
             </p>
           </div>
 
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className='rounded-md border border-zinc-200 px-2 py-1 font-mono text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400'>
-              draft {draftStatus === 'saving' ? 'saving...' : formatDraftTime(draftSavedAt)}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="ui-draft-status" role='status' aria-live='polite'>
+              {draftStatus === 'error' ? '로컬 저장 확인 필요' : draftStatus === 'saving' ? '로컬 저장 중' : draftSavedAt ? `마지막 로컬 저장 · ${formatDraftTime(draftSavedAt)}` : '아직 로컬 저장되지 않음'}
             </span>
-            <Button
+            <Button data-ui-variant='outline'
               type='button'
               variant='outline'
               size='sm'
               onClick={() => saveDraft(true)}
-              className='min-h-9 rounded-lg'
+              className="ui-control min-h-9 rounded-lg"
             >
-              <Save className='h-4 w-4' aria-hidden='true' />
+              <Save className="h-4 w-4" aria-hidden='true' />
               임시 저장
             </Button>
-            <Button
+            <Button data-ui-variant='secondary'
               type='button'
               variant='secondary'
               size='sm'
-              onClick={() => createPr.mutate('draft')}
+              onClick={() => openSubmitReview('draft')}
               disabled={createPr.isPending}
-              className='min-h-9 rounded-lg'
+              className="ui-control min-h-9 rounded-lg"
             >
               {createPr.isPending ? (
-                <Loader2 className='h-4 w-4 animate-spin motion-reduce:animate-none' />
+                <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
               ) : (
-                <FilePlus2 className='h-4 w-4' />
+                <FilePlus2 className="h-4 w-4" />
               )}
               Draft PR
             </Button>
-            <Button
+            <Button data-ui-variant="default"
               type='button'
               size='sm'
-              onClick={() => createPr.mutate('publish')}
+              onClick={() => openSubmitReview('publish')}
               disabled={createPr.isPending}
-              className='min-h-9 rounded-lg'
+              className="ui-control min-h-9 rounded-lg"
             >
-              <Send className='h-4 w-4' aria-hidden='true' />
-              게시 PR
+              <Send className="h-4 w-4" aria-hidden='true' />
+              제출 검토
             </Button>
-            <Button
+            <Button data-ui-variant='ghost'
               type='button'
               variant='ghost'
               size='sm'
               onClick={() => void logout()}
-              className='min-h-9 rounded-lg text-zinc-500 hover:text-red-600'
+              className="ui-control min-h-9 rounded-lg text-ui-muted hover:text-red-600"
             >
-              <LogOut className='h-4 w-4' aria-hidden='true' />
+              <LogOut className="h-4 w-4" aria-hidden='true' />
               로그아웃
             </Button>
           </div>
-        </div>
-
-        <div className='grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_390px]'>
-          <main className='min-w-0 space-y-4'>
-            <section className='grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/40 md:grid-cols-2 xl:grid-cols-4'>
-              <div className='space-y-1.5 md:col-span-2'>
-                <Label htmlFor='post-editor-title' className='text-xs'>
+        </header>
+        {draftError && <p className="ui-inline-error" role='alert'>{draftError}</p>}
+        {(createPr.isPending || submitOutcome) && <p className="ui-inline-status" role='status' aria-live='polite'>
+          {createPr.isPending ? '검토한 스냅샷을 제출하는 중입니다. 창을 닫아도 요청이 취소되지는 않습니다.' : submitOutcome}
+        </p>}
+        <PaneSwitcher label='글 편집 작업 영역' value={mobilePane} onChange={setMobilePane}
+          options={[{id:'write',label:'작성',controls:'post-editor-write-pane'},
+            {id:'preview',label:'미리보기',controls:'post-editor-preview-pane'},
+            {id:'tools',label:'도구',controls:'post-editor-tools-pane'}]} />
+        <div className="ui-editor-layout">
+          <div className="ui-editor-main">
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor='post-editor-title' className="ui-label text-xs">
                   제목
                 </Label>
                 <Input
@@ -789,14 +840,17 @@ export function PostEditorWorkspace() {
                   value={title}
                   onChange={event => setTitle(event.target.value)}
                   placeholder='글 제목'
-                  className='h-10 rounded-lg bg-white text-sm dark:bg-zinc-900'
+                  className="ui-input h-10 rounded-lg bg-ui-surface text-sm dark:bg-ui-surface"
                 />
               </div>
-              <div className='space-y-1.5'>
-                <Label htmlFor='post-editor-slug' className='text-xs'>
+            <details className="ui-editor-metadata">
+              <summary>문서 정보 <span>{year || 'YYYY'}/{slug || 'slug'} · {published ? '공개 의도' : '비공개 의도'}</span></summary>
+              <div className="ui-metadata-fields">
+              <div className="space-y-1.5">
+                <Label htmlFor='post-editor-slug' className="ui-label text-xs">
                   슬러그
                 </Label>
-                <div className='flex gap-2'>
+                <div className="flex gap-2">
                   <Input
                     id='post-editor-slug'
                     value={slug}
@@ -805,9 +859,9 @@ export function PostEditorWorkspace() {
                       setSlug(normalizeSlug(event.target.value));
                     }}
                     placeholder='my-new-post'
-                    className='h-10 rounded-lg bg-white font-mono text-sm dark:bg-zinc-900'
+                    className="ui-input h-10 rounded-lg bg-ui-surface font-mono text-sm dark:bg-ui-surface"
                   />
-                  <Button
+                  <Button data-ui-variant='outline'
                     type='button'
                     variant='outline'
                     size='icon'
@@ -817,14 +871,14 @@ export function PostEditorWorkspace() {
                     }}
                     aria-label='제목으로 슬러그 생성'
                     title='제목으로 슬러그 생성'
-                    className='h-10 w-10 rounded-lg'
+                    className="ui-control h-10 w-10 rounded-lg"
                   >
-                    <RotateCcw className='h-4 w-4' aria-hidden='true' />
+                    <RotateCcw className="h-4 w-4" aria-hidden='true' />
                   </Button>
                 </div>
               </div>
-              <div className='space-y-1.5'>
-                <Label htmlFor='post-editor-year' className='text-xs'>
+              <div className="space-y-1.5">
+                <Label htmlFor='post-editor-year' className="ui-label text-xs">
                   연도
                 </Label>
                 <Input
@@ -832,11 +886,11 @@ export function PostEditorWorkspace() {
                   value={year}
                   onChange={event => setYear(event.target.value)}
                   placeholder='2026'
-                  className='h-10 rounded-lg bg-white font-mono text-sm dark:bg-zinc-900'
+                  className="ui-input h-10 rounded-lg bg-ui-surface font-mono text-sm dark:bg-ui-surface"
                 />
               </div>
-              <div className='space-y-1.5'>
-                <Label htmlFor='post-editor-category' className='text-xs'>
+              <div className="space-y-1.5">
+                <Label htmlFor='post-editor-category' className="ui-label text-xs">
                   카테고리
                 </Label>
                 <Input
@@ -844,11 +898,11 @@ export function PostEditorWorkspace() {
                   value={category}
                   onChange={event => setCategory(event.target.value)}
                   placeholder='General'
-                  className='h-10 rounded-lg bg-white text-sm dark:bg-zinc-900'
+                  className="ui-input h-10 rounded-lg bg-ui-surface text-sm dark:bg-ui-surface"
                 />
               </div>
-              <div className='space-y-1.5 md:col-span-2'>
-                <Label htmlFor='post-editor-tags' className='text-xs'>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor='post-editor-tags' className="ui-label text-xs">
                   태그
                 </Label>
                 <Input
@@ -856,11 +910,11 @@ export function PostEditorWorkspace() {
                   value={tags}
                   onChange={event => setTags(event.target.value)}
                   placeholder='react, typescript'
-                  className='h-10 rounded-lg bg-white text-sm dark:bg-zinc-900'
+                  className="ui-input h-10 rounded-lg bg-ui-surface text-sm dark:bg-ui-surface"
                 />
               </div>
-              <div className='space-y-1.5 md:col-span-2'>
-                <Label htmlFor='post-editor-cover' className='text-xs'>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor='post-editor-cover' className="ui-label text-xs">
                   커버 이미지 URL
                 </Label>
                 <Input
@@ -868,34 +922,36 @@ export function PostEditorWorkspace() {
                   value={coverImage}
                   onChange={event => setCoverImage(event.target.value)}
                   placeholder='/images/cover.png'
-                  className='h-10 rounded-lg bg-white font-mono text-sm dark:bg-zinc-900'
+                  className="ui-input h-10 rounded-lg bg-ui-surface font-mono text-sm dark:bg-ui-surface"
                 />
               </div>
-              <div className='flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900 md:col-span-2 xl:col-span-4'>
+              <div className="flex items-center justify-between rounded-lg border border-ui-line bg-ui-surface px-3 py-2 dark:border-ui-line dark:bg-ui-surface md:col-span-2 xl:col-span-4">
                 <div>
-                  <Label htmlFor='post-editor-published' className='text-xs'>
+                  <Label htmlFor='post-editor-published' className="ui-label text-xs">
                     공개 상태
                   </Label>
-                  <p className='text-xs text-zinc-400'>
+                  <p className="text-xs text-ui-muted">
                     Draft PR은 이 값과 관계없이 draft로 생성됩니다.
                   </p>
                 </div>
-                <label className='inline-flex min-h-10 items-center gap-2 text-sm'>
+                <label className="inline-flex min-h-10 items-center gap-2 text-sm">
                   <input
                     id='post-editor-published'
                     type='checkbox'
                     checked={published}
                     onChange={event => setPublished(event.target.checked)}
-                    className='h-4 w-4 rounded border-zinc-300'
+                    className="h-4 w-4 rounded border-ui-line"
                   />
                   공개
                 </label>
               </div>
-            </section>
+
+              </div>
+            </details>
 
             <section
               className={cn(
-                'relative rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900',
+                "relative rounded-lg border border-ui-line bg-ui-surface dark:border-ui-line dark:bg-ui-surface",
                 dragActive && 'border-blue-400 ring-2 ring-blue-200 dark:ring-blue-900/60',
               )}
               data-testid='post-editor-dropzone'
@@ -910,73 +966,40 @@ export function PostEditorWorkspace() {
               }}
             >
               {dragActive && (
-                <div className='pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-blue-50/90 text-sm font-semibold text-blue-700 dark:bg-blue-950/80 dark:text-blue-200'>
-                  <UploadCloud className='mr-2 h-5 w-5' aria-hidden='true' />
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-blue-50/90 text-sm font-semibold text-blue-700 dark:bg-blue-950/80 dark:text-blue-200">
+                  <UploadCloud className="mr-2 h-5 w-5" aria-hidden='true' />
                   이미지를 놓으면 본문에 첨부됩니다.
                 </div>
               )}
 
-              <div className='flex flex-col gap-3 border-b border-zinc-100 px-3 py-2 dark:border-zinc-800 md:flex-row md:items-center md:justify-between'>
-                <div className='flex flex-wrap items-center gap-1'>
-                  {editorToolbar.map(item => {
-                    const Icon = item.icon;
-                    return (
-                      <Button
-                        key={item.label}
-                        type='button'
-                        variant='ghost'
-                        size='icon'
-                        onClick={item.action}
-                        aria-label={item.label}
-                        title={item.label}
-                        className='h-9 w-9 rounded-lg'
-                      >
-                        <Icon className='h-4 w-4' aria-hidden='true' />
-                      </Button>
-                    );
-                  })}
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className='ml-1 min-h-9 rounded-lg'
-                  >
-                    {isUploading ? (
-                      <Loader2 className='h-4 w-4 animate-spin motion-reduce:animate-none' />
-                    ) : (
-                      <ImageIcon className='h-4 w-4' />
-                    )}
-                    이미지 첨부
-                  </Button>
-                  <input
-                    ref={fileInputRef}
-                    type='file'
-                    accept='image/*'
-                    multiple
-                    className='sr-only'
-                    onChange={() => {
-                      void handleFileInputUpload();
-                    }}
-                  />
+              <div className="flex flex-col gap-3 border-b border-ui-line px-3 py-2 dark:border-ui-line md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <ActionToolbar label="본문 서식과 첨부" className="ui-editor-format-toolbar">
+                    {editorToolbar.map(item => (
+                      <ActionButton key={item.id} action={item.id} iconOnly onClick={item.run} />
+                    ))}
+                    <ActionButton action="attachImage" variant="outline"
+                      onClick={() => fileInputRef.current?.click()} busy={isUploading} />
+                  </ActionToolbar>
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
+                    aria-label="첨부할 이미지 선택" onChange={() => { void handleFileInputUpload(); }} />
                 </div>
 
-                <div className='flex items-center gap-2'>
+                <div className="ui-editor-desktop-modes">
                   <Tabs
                     value={editorMode}
                     onValueChange={value =>
                       setEditorMode(value as 'write' | 'preview' | 'split')
                     }
                   >
-                    <TabsList className='h-9 rounded-lg'>
-                      <TabsTrigger value='write' className='h-7 rounded-md text-xs'>
+                    <TabsList className="ui-subtabs h-9 rounded-lg">
+                      <TabsTrigger value='write' className="ui-subtab h-7 rounded-md text-xs">
                         Write
                       </TabsTrigger>
-                      <TabsTrigger value='split' className='h-7 rounded-md text-xs'>
+                      <TabsTrigger value='split' className="ui-subtab h-7 rounded-md text-xs">
                         Split
                       </TabsTrigger>
-                      <TabsTrigger value='preview' className='h-7 rounded-md text-xs'>
+                      <TabsTrigger value='preview' className="ui-subtab h-7 rounded-md text-xs">
                         Preview
                       </TabsTrigger>
                     </TabsList>
@@ -985,14 +1008,14 @@ export function PostEditorWorkspace() {
               </div>
 
               {failedUploadAttempt && (
-                <div className='m-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300'>
-                  <div className='font-medium'>업로드가 중단되었습니다.</div>
-                  <div className='mt-1 text-xs'>{failedUploadAttempt.message}</div>
-                  <Button
+                <div className="m-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                  <div className="font-medium">업로드가 중단되었습니다.</div>
+                  <div className="mt-1 text-xs">{failedUploadAttempt.message}</div>
+                  <Button data-ui-variant='outline'
                     type='button'
                     size='sm'
                     variant='outline'
-                    className='mt-2 min-h-9 rounded-lg'
+                    className="ui-control mt-2 min-h-9 rounded-lg"
                     disabled={isUploading}
                     onClick={() => {
                       void handleImageUploads(failedUploadAttempt.files);
@@ -1005,12 +1028,11 @@ export function PostEditorWorkspace() {
 
               <div
                 className={cn(
-                  'grid min-h-[560px]',
+                  'ui-editor-canvas',
                   editorMode === 'split' && 'lg:grid-cols-2',
                 )}
               >
-                {editorMode !== 'preview' && (
-                  <div className='min-w-0 border-zinc-100 dark:border-zinc-800 lg:border-r'>
+                <div className="ui-editor-write-pane" id='post-editor-write-pane' role='region' aria-label='본문 작성'>
                     <Textarea
                       ref={textareaRef}
                       aria-label='Markdown content editor'
@@ -1019,68 +1041,71 @@ export function PostEditorWorkspace() {
                       onPaste={event => {
                         void handlePaste(event);
                       }}
-                      className='min-h-[560px] resize-y rounded-none border-0 bg-white font-mono text-sm leading-6 shadow-none focus-visible:ring-0 dark:bg-zinc-900'
+                      className="ui-textarea min-h-[560px] resize-y rounded-none border-0 bg-ui-surface font-mono text-sm leading-6 shadow-none focus-visible:ring-0 dark:bg-ui-surface"
                       placeholder='Markdown으로 본문을 작성하세요.'
                     />
                   </div>
-                )}
-                {editorMode !== 'write' && (
-                  <ScrollArea className='min-h-[560px] bg-zinc-50/70 dark:bg-zinc-950/40'>
-                    <div className='prose prose-zinc max-w-none p-5 dark:prose-invert'>
-                      <MarkdownRenderer content={previewContent} />
+                  <div className="ui-editor-preview-pane" id='post-editor-preview-pane' role='region' aria-label='본문 미리보기'>
+                  <ScrollArea className="ui-editor-preview-scroll">
+                    <div className="prose prose-zinc max-w-none p-5 dark:prose-invert">
+                      <MarkdownRenderer
+                        content={previewContent}
+                        profile='preview'
+                        postPath={previewPostPath}
+                      />
                     </div>
                   </ScrollArea>
-                )}
+                  </div>
               </div>
 
-              <div className='flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400'>
-                <div className='flex flex-wrap items-center gap-2'>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ui-line px-3 py-2 text-xs text-ui-muted dark:border-ui-line dark:text-ui-muted">
+                <div className="flex flex-wrap items-center gap-2">
                   <span>{stats.words} words</span>
                   <span>{stats.chars} chars</span>
                   <span>{stats.minutes} min</span>
                   <span>{stats.imageCount} images</span>
                 </div>
-                <div className='flex items-center gap-2'>
+                <div className="flex items-center gap-2">
                   {draftStatus === 'saved' && (
-                    <span className='inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400'>
-                      <CheckCircle2 className='h-3.5 w-3.5' aria-hidden='true' />
+                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden='true' />
                       saved
                     </span>
                   )}
-                  <Button
+                  <Button data-ui-variant='ghost'
                     type='button'
                     variant='ghost'
                     size='sm'
-                    onClick={clearDraft}
-                    className='h-8 rounded-lg px-2 text-xs'
+                    onClick={() => setClearDraftOpen(true)}
+                    className="ui-control h-8 rounded-lg px-2 text-xs"
                   >
                     임시 저장 삭제
                   </Button>
                 </div>
               </div>
             </section>
-          </main>
+          </div>
 
-          <aside className='min-w-0 space-y-4'>
-            <Tabs defaultValue='assistant' className='rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'>
-              <div className='flex items-center justify-between border-b border-zinc-100 px-3 py-2 dark:border-zinc-800'>
-                <TabsList className='h-9 rounded-lg'>
-                  <TabsTrigger value='assistant' className='h-7 rounded-md text-xs'>
-                    <Sparkles className='mr-1 h-3.5 w-3.5' aria-hidden='true' />
+          <WorkspacePanel as="aside" className="ui-editor-tools" id="post-editor-tools-pane" title="작성 도구" headingLevel={3}>
+            <Tabs defaultValue='assistant' className="ui-editor-tool-tabs rounded-lg border border-ui-line bg-ui-surface dark:border-ui-line dark:bg-ui-surface">
+              <div className="flex items-center justify-between border-b border-ui-line px-3 py-2 dark:border-ui-line">
+                <TabsList className="ui-subtabs h-9 rounded-lg">
+                  <TabsTrigger value='assistant' className="ui-subtab h-7 rounded-md text-xs">
+                    <Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden='true' />
                     Assistant
                   </TabsTrigger>
-                  <TabsTrigger value='images' className='h-7 rounded-md text-xs'>
-                    <ImageIcon className='mr-1 h-3.5 w-3.5' aria-hidden='true' />
+                  <TabsTrigger value='images' className="ui-subtab h-7 rounded-md text-xs">
+                    <ImageIcon className="mr-1 h-3.5 w-3.5" aria-hidden='true' />
                     Images
                   </TabsTrigger>
-                  <TabsTrigger value='assets' className='h-7 rounded-md text-xs'>
-                    <PanelRight className='mr-1 h-3.5 w-3.5' aria-hidden='true' />
+                  <TabsTrigger value='assets' className="ui-subtab h-7 rounded-md text-xs">
+                    <PanelRight className="mr-1 h-3.5 w-3.5" aria-hidden='true' />
                     Assets
                   </TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value='assistant' className='m-0 h-[640px]'>
+              <TabsContent forceMount value='assistant' className="ui-editor-assistant-tab">
                 <BotChatPanel
                   title={title}
                   slug={slug}
@@ -1102,7 +1127,7 @@ export function PostEditorWorkspace() {
                 />
               </TabsContent>
 
-              <TabsContent value='images' className='m-0 p-3'>
+              <TabsContent forceMount value='images' className="m-0 p-3">
                 <AiImageGeneratorPanel
                   title={title}
                   category={category}
@@ -1115,71 +1140,71 @@ export function PostEditorWorkspace() {
                 />
               </TabsContent>
 
-              <TabsContent value='assets' className='m-0'>
-                <div className='space-y-3 p-3'>
-                  <div className='flex items-center justify-between'>
-                    <h2 className='text-sm font-semibold text-zinc-900 dark:text-zinc-100'>
+              <TabsContent forceMount value='assets' className="m-0">
+                <div className="space-y-3 p-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-ui-text dark:text-ui-text">
                       첨부 이미지
                     </h2>
-                    <Badge variant='outline' className='rounded-md'>
+                    <Badge variant='outline' className="rounded-md">
                       {attachedImages.length}
                     </Badge>
                   </div>
                   {attachedImages.length === 0 ? (
-                    <div className='flex min-h-44 items-center justify-center rounded-lg border border-dashed border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/40'>
-                      <ImageIcon className='h-8 w-8' aria-hidden='true' />
+                    <div className="flex min-h-44 items-center justify-center rounded-lg border border-dashed border-ui-line bg-ui-soft text-ui-muted dark:border-ui-line dark:bg-ui-canvas/40">
+                      <ImageIcon className="h-8 w-8" aria-hidden='true' />
                     </div>
                   ) : (
-                    <div className='space-y-2'>
+                    <div className="space-y-2">
                       {attachedImages.map(item => (
                         <div
                           key={item.id}
-                          className='grid grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg border border-zinc-200 p-2 dark:border-zinc-800'
+                          className="grid grid-cols-[72px_minmax(0,1fr)] gap-3 rounded-lg border border-ui-line p-2 dark:border-ui-line"
                         >
                           <img
                             src={item.url}
                             alt=''
                             loading='lazy'
-                            className='h-16 w-16 rounded-md border border-zinc-200 object-cover dark:border-zinc-800'
+                            className="h-16 w-16 rounded-md border border-ui-line object-cover dark:border-ui-line"
                           />
-                          <div className='min-w-0 space-y-2'>
-                            <div className='flex items-center gap-2'>
-                              <span className='truncate text-xs font-medium text-zinc-700 dark:text-zinc-300'>
+                          <div className="min-w-0 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-xs font-medium text-ui-text dark:text-ui-text">
                                 {item.name}
                               </span>
-                              <Badge variant='secondary' className='rounded-md text-[10px]'>
+                              <Badge variant='secondary' className="rounded-md text-[10px]">
                                 {item.source}
                               </Badge>
                             </div>
-                            <div className='flex gap-2'>
-                              <Button
+                            <div className="flex gap-2">
+                              <Button data-ui-variant='secondary'
                                 type='button'
                                 size='sm'
                                 variant='secondary'
-                                className='h-8 rounded-lg px-2 text-xs'
+                                className="ui-control h-8 rounded-lg px-2 text-xs"
                                 onClick={() => insertAtCursor(item.markdown)}
                               >
                                 삽입
                               </Button>
-                              <Button
+                              <Button data-ui-variant='outline'
                                 type='button'
                                 size='sm'
                                 variant='outline'
-                                className='h-8 rounded-lg px-2 text-xs'
+                                className="ui-control h-8 rounded-lg px-2 text-xs"
                                 onClick={() => setCoverImage(item.url)}
                               >
                                 커버
                               </Button>
-                              <Button
+                              <Button data-ui-variant='ghost'
                                 type='button'
                                 size='sm'
                                 variant='ghost'
-                                className='h-8 rounded-lg px-2 text-xs'
+                                className="ui-control h-8 rounded-lg px-2 text-xs"
                                 aria-label={`${item.name} URL 복사`}
                                 title={`${item.name} URL 복사`}
                                 onClick={() => void copyText(item.url)}
                               >
-                                <Copy className='h-3.5 w-3.5' aria-hidden='true' />
+                                <Copy className="h-3.5 w-3.5" aria-hidden='true' />
                               </Button>
                             </div>
                           </div>
@@ -1190,9 +1215,36 @@ export function PostEditorWorkspace() {
                 </div>
               </TabsContent>
             </Tabs>
-          </aside>
+          </WorkspacePanel>
         </div>
       </section>
+      <Dialog open={submitReview !== null} onOpenChange={open => { if (!open) setSubmitReview(null); }}>
+        <DialogContent className="ui-dialog ui-submit-review">
+          <DialogHeader><DialogTitle>제출 전 검토</DialogTitle>
+            <DialogDescription>브라우저 로컬 저장과 PR 생성은 다른 작업입니다. 아래 내용으로 요청하며, PR 생성만으로 게시가 완료되지는 않습니다.</DialogDescription></DialogHeader>
+          {submitReview && <>
+            <dl className="ui-review-fields">
+              <dt>제목</dt><dd>{submitReview.snapshot.title || '(제목 없음)'}</dd>
+              <dt>파일 경로</dt><dd>{submitReview.snapshot.year}/{normalizeSlug(submitReview.snapshot.slug) || '(자동 결정)'}</dd>
+              <dt>공개 의도</dt><dd>{submitReview.mode === 'publish' && submitReview.snapshot.published ? '공개 PR' : '초안 PR'}</dd>
+              <dt>카테고리 · 태그</dt><dd>{submitReview.snapshot.category} · {submitReview.snapshot.tags || '없음'}</dd>
+              <dt>커버 이미지</dt><dd>{submitReview.snapshot.coverImage || '없음'}</dd>
+            </dl>
+            <details><summary>제출할 본문 확인 · {submitReview.snapshot.content.length}자</summary><pre className="ui-review-source">{submitReview.snapshot.content}</pre></details>
+            {!isEditorReviewCurrent(submitReview.signature, currentDraft) && <p role='alert' className="ui-inline-error">검토 후 내용이 변경되어 제출을 보류했습니다. 다시 검토하세요.</p>}
+          </>}
+          {submitFeedback && <p className="ui-inline-error" role='alert'>{submitFeedback}</p>}
+          <DialogFooter><Button className="ui-control" data-ui-variant='outline' type='button' variant='outline' onClick={() => setSubmitReview(null)}>편집으로 돌아가기</Button>
+            <Button className="ui-control" data-ui-variant="default" type='button' onClick={submitReviewed} disabled={!submitReview || createPr.isPending || !isEditorReviewCurrent(submitReview.signature, currentDraft)}>확인한 내용으로 PR 요청</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={clearDraftOpen} onOpenChange={setClearDraftOpen}>
+        <DialogContent className="ui-dialog"><DialogHeader><DialogTitle>로컬 저장본을 삭제할까요?</DialogTitle>
+          <DialogDescription>브라우저에 저장된 임시 저장본만 삭제합니다. 현재 편집 중인 내용과 서버의 게시글은 삭제하지 않습니다. 이후 편집하면 자동 저장이 다시 동작합니다.</DialogDescription></DialogHeader>
+          {draftError && <p className="ui-inline-error" role="alert">{draftError}</p>}
+          <DialogFooter><Button className="ui-control" data-ui-variant='outline' type='button' variant='outline' onClick={() => setClearDraftOpen(false)}>취소</Button><Button className="ui-control" data-ui-variant='destructive' type='button' variant='destructive' onClick={clearDraft}>로컬 저장본 삭제</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

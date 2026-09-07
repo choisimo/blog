@@ -1,0 +1,82 @@
+/* One palette per existing theme. Explicit terminal values avoid inherited custom-property cycles. */
+:root {
+  --ui-canvas: 220.000 23.077% 97.451%; /* #f7f8fa */
+  --ui-surface: 0.000 0.000% 100.000%; /* #ffffff */
+  --ui-soft: 214.286 25.926% 94.706%; /* #eef1f5 */
+  --ui-text: 216.923 16.883% 15.098%; /* #20252d */
+  --ui-muted: 216.522 11.443% 39.412%; /* #596270 */
+  --ui-subtle: 216.522 10.502% 42.941%; /* #626b79 */
+  --ui-line: 216.000 23.810% 87.647%; /* #d8dee7 */
+  --ui-line-strong: 214.286 13.861% 60.392%; /* #8c98a8 */
+  --ui-accent: 220.263 67.857% 43.922%; /* #2456bc */
+  --ui-accent-soft: 220.000 100.000% 96.471%; /* #edf3ff */
+  --ui-danger: 352.742 57.944% 41.961%; /* #a92d3c */
+  --ui-danger-soft: 355.714 100.000% 97.255%; /* #fff1f2 */
+  --ui-success: 151.000 42.857% 27.451%; /* #286447 */
+  --ui-warn-soft: 42 100% 95%;
+  --ui-warn: 36.226 70.667% 29.412%; /* #805616 */
+  --ui-code-bg: 214.286 25.926% 94.706%; /* #eef1f5 */
+  --ui-on-accent: 0.000 0.000% 100.000%; /* #ffffff */
+  --ui-header-height: 64px;
+  --ui-sidebar-width: 222px;
+  --ui-inspector-width: 360px;
+  --ui-content-width: 1280px;
+  --ui-wide-width: 1600px;
+  --ui-reading-width: 780px;
+  --ui-radius-control: 6px;
+  --ui-radius-panel: 8px;
+  --ui-control-height: 44px;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-6: 24px;
+  --ui-space-8: 32px;
+  --ui-space-12: 48px;
+  --ui-space-16: 64px;
+  --ui-font: "Pretendard", "Noto Sans KR", "Noto Sans CJK KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  --ui-page-gutter: clamp(16px, 2.5vw, 40px);
+  --ui-workspace-width: 1920px;
+  --ui-body-size: 16px;
+}
+.dark {
+  --ui-canvas: 216.000 22.727% 8.627%; /* #11151b */
+  --ui-surface: 216.000 22.388% 13.137%; /* #1a2029 */
+  --ui-soft: 213.913 24.731% 18.235%; /* #232d3a */
+  --ui-text: 216.000 38.462% 94.902%; /* #edf1f7 */
+  --ui-muted: 214.286 21.875% 74.902%; /* #b1bdcd */
+  --ui-subtle: 214.839 20.530% 70.392%; /* #a4b1c3 */
+  --ui-line: 214.545 22.449% 28.824%; /* #39475a */
+  --ui-line-strong: 214.667 19.481% 54.706%; /* #7588a2 */
+  --ui-accent: 220.500 100.000% 84.314%; /* #afc9ff */
+  --ui-accent-soft: 215.000 39.344% 23.922%; /* #253955 */
+  --ui-danger: 352.800 100.000% 85.294%; /* #ffb4bd */
+  --ui-danger-soft: 337.895 20.000% 18.627%; /* #39262d */
+  --ui-success: 146.316 43.511% 74.314%; /* #a1daba */
+  --ui-warn-soft: 36 30% 17%;
+  --ui-warn: 36.364 75.573% 74.314%; /* #efc88c */
+  --ui-code-bg: 213.333 34.615% 10.196%; /* #111923 */
+  --ui-on-accent: 218.049 50.617% 15.882%; /* #14233d */
+}
+.terminal {
+  --ui-canvas: 157.500 20.000% 7.843%; /* #101815 */
+  --ui-surface: 150.000 20.690% 11.373%; /* #17231d */
+  --ui-soft: 148.421 22.892% 16.275%; /* #203329 */
+  --ui-text: 140.000 30.000% 92.157%; /* #e5f1e9 */
+  --ui-muted: 145.000 17.647% 73.333%; /* #afc7b9 */
+  --ui-subtle: 146.400 15.528% 68.431%; /* #a2bbad */
+  --ui-line: 146.667 18.367% 28.824%; /* #3c5748 */
+  --ui-line-strong: 146.667 14.400% 50.980%; /* #709480 */
+  --ui-accent: 145.412 59.441% 71.961%; /* #8de2b1 */
+  --ui-accent-soft: 147.500 25.532% 18.431%; /* #233b2e */
+  --ui-danger: 3.117 100.000% 84.902%; /* #ffb6b2 */
+  --ui-danger-soft: 2.857 20.792% 19.804%; /* #3d2928 */
+  --ui-success: 140.625 54.237% 76.863%; /* #a4e4ba */
+  --ui-warn-soft: 38 24% 16%;
+  --ui-warn: 37.174 74.194% 75.686%; /* #efcc93 */
+  --ui-code-bg: 152.727 25.581% 8.431%; /* #101b16 */
+  --ui-on-accent: 148.571 39.623% 10.392%; /* #10251a */
+}
+
+.terminal { --ui-font: var(--ui-mono); }

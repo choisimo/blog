@@ -1,0 +1,45 @@
+/* Bridge both legacy/shadcn and migrated surfaces to the same root palette, including body portals. */
+:root:not(.dark):not(.terminal),:root.dark:not(.terminal),:root.terminal {
+  color-scheme: light;
+  --background:var(--ui-canvas); --foreground:var(--ui-text);
+  --card:var(--ui-surface); --card-foreground:var(--ui-text);
+  --popover:var(--ui-surface); --popover-foreground:var(--ui-text);
+  --primary:var(--ui-accent); --primary-foreground:var(--ui-on-accent);
+  --secondary:var(--ui-soft); --secondary-foreground:var(--ui-text);
+  --muted:var(--ui-soft); --muted-foreground:var(--ui-muted);
+  --accent:var(--ui-accent-soft); --accent-foreground:var(--ui-text);
+  --border:var(--ui-line); --border-strong:var(--ui-line-strong); --input:var(--ui-line-strong); --ring:var(--ui-accent);
+  --destructive:var(--ui-danger); --destructive-foreground:var(--ui-on-accent);
+  --success:var(--ui-success); --warning:var(--ui-warn);
+  --text-strong:var(--ui-text); --text:var(--ui-text); --text-muted:var(--ui-muted); --text-subtle:var(--ui-subtle);
+  --blog-page:var(--ui-canvas); --blog-surface:var(--ui-surface); --blog-surface-muted:var(--ui-soft);
+  --blog-border:var(--ui-line); --blog-border-strong:var(--ui-line-strong); --blog-title:var(--ui-text); --blog-muted:var(--ui-muted);
+  --card-blog:var(--ui-surface);
+  --surface:var(--ui-surface); --surface-2:var(--ui-soft); --surface-elevated:var(--ui-surface);
+  --tag:var(--ui-soft); --tag-foreground:var(--ui-muted); --tag-border:var(--ui-line);
+  --divider:var(--ui-line); --selection:var(--ui-accent) / .16;
+  --sidebar-background:var(--ui-surface); --sidebar-foreground:var(--ui-text);
+  --sidebar-primary:var(--ui-accent); --sidebar-primary-foreground:var(--ui-on-accent);
+  --sidebar-accent:var(--ui-soft); --sidebar-accent-foreground:var(--ui-text);
+  --sidebar-border:var(--ui-line); --sidebar-ring:var(--ui-accent);
+}
+:root.dark,:root.terminal { color-scheme:dark; }
+body { background:hsl(var(--ui-canvas)); color:hsl(var(--ui-text)); }
+.ui-public-shell { background:hsl(var(--ui-canvas)); color:hsl(var(--ui-text)); }
+.ui-container,.ui-page-container,.ui-debate-page { box-sizing:border-box; width:100%; max-width:calc(var(--ui-content-width) + 2 * var(--ui-page-gutter)); padding-inline:var(--ui-page-gutter); margin-inline:auto; }
+.ui-container--wide { max-width:calc(var(--ui-wide-width) + 2 * var(--ui-page-gutter)); }
+.ui-container--article { max-width:calc(var(--ui-reading-width) + 2 * var(--ui-page-gutter)); }
+.ui-header__inner { padding-inline:var(--ui-page-gutter); max-width:calc(var(--ui-wide-width) + 2 * var(--ui-page-gutter)); }
+.ui-workspace-with-nav { max-width:var(--ui-workspace-width); }
+.ui-insight-container { max-width:var(--ui-workspace-width); padding:24px var(--ui-page-gutter) 32px; }
+.ui-page :is(p,li),.ui-workspace :is(p,li),.ui-dialog :is(p,li) { text-wrap:pretty; }
+:where(.ui-page,.ui-workspace,.ui-dialog,.ui-sheet) :is(button,input,select,textarea,summary) { touch-action:manipulation; }
+:where(.ui-page,.ui-workspace,.ui-dialog,.ui-sheet) :is(input,textarea,select) { caret-color:hsl(var(--ui-accent)); }
+:where(.ui-page,.ui-workspace,.ui-dialog,.ui-sheet) input::placeholder,
+:where(.ui-page,.ui-workspace,.ui-dialog,.ui-sheet) textarea::placeholder { color:hsl(var(--ui-muted)); opacity:1; }
+:where(.ui-page,.ui-workspace,.ui-dialog,.ui-sheet) :is(a,button,input,select,textarea,summary,[tabindex]):focus-visible { outline:2px solid hsl(var(--ui-accent)); outline-offset:3px; }
+@media(max-width:599px) { .ui-page-heading h1 { font-size:26px; } }
+@media(prefers-reduced-motion:reduce) { .ui-page *, .ui-workspace *, .ui-dialog * { scroll-behavior:auto; } }
+
+/* Long Korean passages must not inherit legacy justified word spacing. */
+:is(.ui-page,.ui-workspace,.ui-dialog) :is(p,li,blockquote) { text-align:start; word-spacing:normal; }

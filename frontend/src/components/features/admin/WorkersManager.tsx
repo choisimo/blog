@@ -619,7 +619,7 @@ export function WorkersManager({
 
   if (workersLoading) {
     return (
-      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 flex items-center gap-3 text-sm text-zinc-400">
+      <div className="rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface p-8 flex items-center gap-3 text-sm text-ui-muted">
         <RefreshCw
           className="h-4 w-4 animate-spin shrink-0"
           aria-hidden="true"
@@ -648,7 +648,7 @@ export function WorkersManager({
           <button
             type="button"
             onClick={() => void refetchWorkers()}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-ui-surface px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
             Retry
@@ -665,8 +665,8 @@ export function WorkersManager({
   const gitOpsManifests = "k3s/ + ArgoCD overlays";
 
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden">
-      <AdminSubtabs
+    <div className={["ui-admin-section ui-admin-workersmanager", ("rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface overflow-hidden")].filter(Boolean).join(' ')}>
+      <AdminSubtabs className="ui-admin-subtabs"
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={(id) => onSubtabChange?.(id)}
@@ -682,7 +682,7 @@ export function WorkersManager({
       {activeTab === "workers" && (
         <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
           {workers.length === 0 && (
-            <p className="px-4 py-6 text-sm text-zinc-400 dark:text-zinc-500">
+            <p className="px-4 py-6 text-sm text-ui-muted dark:text-ui-muted">
               No workers found
             </p>
           )}
@@ -706,20 +706,20 @@ export function WorkersManager({
                   onClick={() =>
                     worker.exists && toggleWorkerExpanded(worker.id)
                   }
-                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors disabled:cursor-default text-left group"
+                  className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-ui-soft dark:hover:bg-ui-surface/30 transition-colors disabled:cursor-default text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800 shrink-0">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-ui-soft dark:bg-ui-surface shrink-0">
                       <Cloud
-                        className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400"
+                        className="h-3.5 w-3.5 text-ui-muted dark:text-ui-muted"
                         aria-hidden="true"
                       />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                      <p className="text-sm font-medium text-ui-text dark:text-ui-text">
                         {worker.name}
                       </p>
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500">
+                      <p className="text-xs text-ui-muted dark:text-ui-muted">
                         {worker.description}
                       </p>
                     </div>
@@ -737,19 +737,19 @@ export function WorkersManager({
                       </span>
                     )}
                     {worker.hasProduction && (
-                      <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700">
+                      <span className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded-md border border-ui-line dark:border-ui-line">
                         prod
                       </span>
                     )}
                     {worker.exists &&
                       (expanded ? (
                         <ChevronDown
-                          className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 rotate-180"
+                          className="h-3.5 w-3.5 text-ui-muted transition-transform duration-200 rotate-180"
                           aria-hidden="true"
                         />
                       ) : (
                         <ChevronDown
-                          className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
+                          className="h-3.5 w-3.5 text-ui-muted transition-transform duration-200"
                           aria-hidden="true"
                         />
                       ))}
@@ -757,18 +757,18 @@ export function WorkersManager({
                 </button>
 
                 {expanded && worker.config && (
-                  <div className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/20">
-                    <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 bg-amber-50/50 dark:bg-amber-950/10 text-xs text-amber-700 dark:text-amber-300">
+                  <div className="border-t border-ui-line dark:border-ui-line bg-ui-soft/50 dark:bg-ui-surface/20">
+                    <div className="px-4 py-3 border-b border-ui-line dark:border-ui-line bg-amber-50/50 dark:bg-amber-950/10 text-xs text-amber-700 dark:text-amber-300">
                       이 화면은 저장소에 선언된 Wrangler 설정과 관리 인벤토리를
                       보여줍니다. 실제 배포, health, route 연결 상태는 여기서
                       검증하지 않습니다.
                     </div>
 
-                    <div className="grid gap-2 px-4 py-3 md:grid-cols-5 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="grid gap-2 px-4 py-3 md:grid-cols-5 border-b border-ui-line dark:border-ui-line">
                       {signals.map((signal) => (
                         <div
                           key={signal.label}
-                          className={`rounded-lg border px-3 py-2 ${getWorkerSignalClasses(signal.tone)}`}
+                          className={`rounded-lg border px-3 py-2 ${getWorkerSignalClasses(signal.tone)}  `}
                         >
                           <p className="text-[11px] uppercase tracking-[0.12em] opacity-70">
                             {signal.label}
@@ -780,7 +780,7 @@ export function WorkersManager({
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-px border-b border-zinc-100 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-px border-b border-ui-line dark:border-ui-line bg-ui-soft dark:bg-ui-surface">
                       {[
                         { label: "Name", value: worker.config.name },
                         { label: "Entry", value: worker.config.main },
@@ -796,13 +796,13 @@ export function WorkersManager({
                       ].map(({ label, value, copyValue }) => (
                         <div
                           key={label}
-                          className="px-4 py-2.5 bg-white dark:bg-zinc-900"
+                          className="px-4 py-2.5 bg-ui-surface dark:bg-ui-surface"
                         >
-                          <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-0.5">
+                          <p className="text-xs text-ui-muted dark:text-ui-muted mb-0.5">
                             {label}
                           </p>
                           <div className="flex items-center gap-1">
-                            <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded truncate max-w-[120px]">
+                            <span className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded truncate max-w-[120px]">
                               {value}
                             </span>
                             {copyValue && (
@@ -814,10 +814,10 @@ export function WorkersManager({
                                 }}
                                 aria-label={`Copy ${label}`}
                                 title={`Copy ${label}`}
-                                className="h-5 w-5 flex items-center justify-center rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
+                                className="h-5 w-5 flex items-center justify-center rounded hover:bg-ui-soft dark:hover:bg-ui-soft transition-colors focus-visible:ring-1 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
                               >
                                 <Copy
-                                  className="h-3 w-3 text-zinc-400"
+                                  className="h-3 w-3 text-ui-muted"
                                   aria-hidden="true"
                                 />
                               </button>
@@ -840,7 +840,7 @@ export function WorkersManager({
                             <button
                               type="button"
                               onClick={() => toggleSection(worker.id, section)}
-                              className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400"
+                              className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-ui-muted dark:text-ui-muted hover:bg-ui-soft dark:hover:bg-ui-surface/50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400"
                             >
                               <span>
                                 {section === "vars"
@@ -848,22 +848,22 @@ export function WorkersManager({
                                   : "Resource Bindings"}
                               </span>
                               <ChevronDown
-                                className={`h-3.5 w-3.5 text-zinc-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                                className={`h-3.5 w-3.5 text-ui-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}  `}
                                 aria-hidden="true"
                               />
                             </button>
 
                             {isOpen && section === "vars" && (
                               <div className="px-4 pb-4 space-y-3">
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                <p className="text-xs text-ui-muted dark:text-ui-muted">
                                   Values are hidden in the admin UI. Inspect
                                   Wrangler config or secret sources to verify
                                   exact runtime values.
                                 </p>
                                 <div>
-                                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                                  <p className="text-xs font-medium text-ui-muted dark:text-ui-muted mb-1.5 flex items-center gap-1.5">
                                     <span
-                                      className="inline-block h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600"
+                                      className="inline-block h-1.5 w-1.5 rounded-full bg-ui-text dark:bg-ui-soft"
                                       aria-hidden="true"
                                     />
                                     Development
@@ -874,16 +874,16 @@ export function WorkersManager({
                                         key={key}
                                         className="flex items-center gap-2 text-xs"
                                       >
-                                        <span className="font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded min-w-[160px] border border-zinc-200 dark:border-zinc-700">
+                                        <span className="font-mono text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded min-w-[160px] border border-ui-line dark:border-ui-line">
                                           {key}
                                         </span>
-                                        <span className="text-zinc-400 dark:text-zinc-500">
+                                        <span className="text-ui-muted dark:text-ui-muted">
                                           Defined in development manifest
                                         </span>
                                       </div>
                                     ))}
                                     {developmentVarKeys.length === 0 && (
-                                      <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
+                                      <p className="text-xs text-ui-muted dark:text-ui-muted italic">
                                         No development variables declared
                                       </p>
                                     )}
@@ -892,7 +892,7 @@ export function WorkersManager({
                                 {worker.hasProduction &&
                                   productionVarKeys.length > 0 && (
                                     <div>
-                                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1.5">
+                                      <p className="text-xs font-medium text-ui-muted dark:text-ui-muted mb-1.5 flex items-center gap-1.5">
                                         <span
                                           className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"
                                           aria-hidden="true"
@@ -905,10 +905,10 @@ export function WorkersManager({
                                             key={key}
                                             className="flex items-center gap-2 text-xs"
                                           >
-                                            <span className="font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded min-w-[160px] border border-zinc-200 dark:border-zinc-700">
+                                            <span className="font-mono text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded min-w-[160px] border border-ui-line dark:border-ui-line">
                                               {key}
                                             </span>
-                                            <span className="text-zinc-400 dark:text-zinc-500">
+                                            <span className="text-ui-muted dark:text-ui-muted">
                                               Defined in production manifest
                                             </span>
                                           </div>
@@ -929,16 +929,16 @@ export function WorkersManager({
                                     <span className="font-mono text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/50 px-1.5 py-0.5 rounded shrink-0">
                                       D1
                                     </span>
-                                    <span className="font-mono text-zinc-600 dark:text-zinc-400">
+                                    <span className="font-mono text-ui-muted dark:text-ui-muted">
                                       {db.binding}
                                     </span>
                                     <span
-                                      className="text-zinc-300 dark:text-zinc-600"
+                                      className="text-ui-muted dark:text-ui-muted"
                                       aria-hidden="true"
                                     >
                                       →
                                     </span>
-                                    <span className="font-mono text-zinc-500 dark:text-zinc-400">
+                                    <span className="font-mono text-ui-muted dark:text-ui-muted">
                                       {db.database_name}
                                     </span>
                                   </div>
@@ -951,16 +951,16 @@ export function WorkersManager({
                                     <span className="font-mono text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50 px-1.5 py-0.5 rounded shrink-0">
                                       R2
                                     </span>
-                                    <span className="font-mono text-zinc-600 dark:text-zinc-400">
+                                    <span className="font-mono text-ui-muted dark:text-ui-muted">
                                       {bucket.binding}
                                     </span>
                                     <span
-                                      className="text-zinc-300 dark:text-zinc-600"
+                                      className="text-ui-muted dark:text-ui-muted"
                                       aria-hidden="true"
                                     >
                                       →
                                     </span>
-                                    <span className="font-mono text-zinc-500 dark:text-zinc-400">
+                                    <span className="font-mono text-ui-muted dark:text-ui-muted">
                                       {bucket.bucket_name}
                                     </span>
                                   </div>
@@ -973,16 +973,16 @@ export function WorkersManager({
                                     <span className="font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded shrink-0">
                                       KV
                                     </span>
-                                    <span className="font-mono text-zinc-600 dark:text-zinc-400">
+                                    <span className="font-mono text-ui-muted dark:text-ui-muted">
                                       {kv.binding}
                                     </span>
                                     <span
-                                      className="text-zinc-300 dark:text-zinc-600"
+                                      className="text-ui-muted dark:text-ui-muted"
                                       aria-hidden="true"
                                     >
                                       →
                                     </span>
-                                    <span className="font-mono text-zinc-400 dark:text-zinc-500">
+                                    <span className="font-mono text-ui-muted dark:text-ui-muted">
                                       {kv.id.slice(0, 16)}…
                                     </span>
                                   </div>
@@ -990,7 +990,7 @@ export function WorkersManager({
                                 {resourceConfig.d1_databases.length === 0 &&
                                   resourceConfig.r2_buckets.length === 0 &&
                                   resourceConfig.kv_namespaces.length === 0 && (
-                                    <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
+                                    <p className="text-xs text-ui-muted dark:text-ui-muted italic">
                                       No resource bindings
                                     </p>
                                   )}
@@ -1002,7 +1002,7 @@ export function WorkersManager({
                     </div>
 
                     {mutationsEnabled ? (
-                      <div className="flex items-center gap-2 px-4 py-3 border-t border-zinc-100 dark:border-zinc-800">
+                      <div className="flex items-center gap-2 px-4 py-3 border-t border-ui-line dark:border-ui-line">
                         <Select
                           value={deployEnv}
                           onValueChange={(v) => {
@@ -1010,7 +1010,7 @@ export function WorkersManager({
                             if (normalizedEnv) setDeployEnv(normalizedEnv);
                           }}
                         >
-                          <SelectTrigger className="h-9 text-xs w-[140px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg">
+                          <SelectTrigger className="h-9 text-xs w-[140px] border-ui-line dark:border-ui-line dark:bg-ui-surface rounded-lg">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1037,7 +1037,7 @@ export function WorkersManager({
                             })
                           }
                           disabled={deployMutation.isPending}
-                          className="flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400"
+                          className="flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-ui-line dark:border-ui-line text-ui-muted dark:text-ui-muted hover:bg-ui-soft dark:hover:bg-ui-surface transition-colors disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400"
                         >
                           <Terminal className="h-3 w-3" aria-hidden="true" />
                           Dry Run
@@ -1052,23 +1052,23 @@ export function WorkersManager({
                             })
                           }
                           disabled={deployMutation.isPending}
-                          className="flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400"
+                          className="flex items-center gap-1.5 h-9 px-3 text-xs font-semibold rounded-lg bg-ui-text hover:bg-ui-text dark:bg-ui-soft dark:text-ui-muted dark:hover:bg-ui-soft text-white transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400"
                         >
                           <Rocket className="h-3 w-3" aria-hidden="true" />
                           {deployMutation.isPending ? "Deploying…" : "Deploy"}
                         </button>
                       </div>
                     ) : (
-                      <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/20 text-xs text-zinc-600 dark:text-zinc-400 space-y-2">
+                      <div className="px-4 py-3 border-t border-ui-line dark:border-ui-line bg-ui-soft/60 dark:bg-ui-surface/20 text-xs text-ui-muted dark:text-ui-muted space-y-2">
                         <p>
                           Production deploys are read-only here. Use the
                           operational path below instead.
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          <span className="font-mono rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1">
+                          <span className="font-mono rounded-md border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface px-2 py-1">
                             {deploymentRunbook}
                           </span>
-                          <span className="font-mono rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-1">
+                          <span className="font-mono rounded-md border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface px-2 py-1">
                             {gitOpsManifests}
                           </span>
                         </div>
@@ -1108,7 +1108,7 @@ export function WorkersManager({
                 <button
                   type="button"
                   onClick={() => void refetchSecrets()}
-                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-ui-surface px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
                 >
                   <RefreshCw className="h-3 w-3" aria-hidden="true" />
                   Retry
@@ -1116,7 +1116,7 @@ export function WorkersManager({
               </div>
             </div>
           ) : secrets.length === 0 && (
-            <p className="px-4 py-6 text-sm text-zinc-400 dark:text-zinc-500">
+            <p className="px-4 py-6 text-sm text-ui-muted dark:text-ui-muted">
               No secrets defined
             </p>
           )}
@@ -1131,10 +1131,10 @@ export function WorkersManager({
                 <div key={secret.key} className="px-4 py-3.5 space-y-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <span className="font-mono text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded">
+                      <span className="font-mono text-xs text-ui-text dark:text-ui-text bg-ui-soft dark:bg-ui-surface border border-ui-line dark:border-ui-line px-1.5 py-0.5 rounded">
                         {secret.key}
                       </span>
-                      <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
+                      <p className="text-xs text-ui-muted dark:text-ui-muted mt-1">
                         {secret.description}
                       </p>
                     </div>
@@ -1142,7 +1142,7 @@ export function WorkersManager({
                       {secret.workers.map((w) => (
                         <span
                           key={w}
-                          className="font-mono text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-1.5 py-0.5 rounded"
+                          className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface border border-ui-line dark:border-ui-line px-1.5 py-0.5 rounded"
                         >
                           {w}
                         </span>
@@ -1163,7 +1163,7 @@ export function WorkersManager({
                             [secret.key]: e.target.value,
                           }))
                         }
-                        className="h-9 text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 flex-1"
+                        className="ui-input h-9 text-sm rounded-lg border-ui-line dark:border-ui-line dark:bg-ui-surface/50 dark:text-ui-text focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 flex-1"
                       />
                       <button
                         type="button"
@@ -1178,7 +1178,7 @@ export function WorkersManager({
                             ? `Hide ${secret.key} secret`
                             : `Show ${secret.key} secret`
                         }
-                        className="h-9 w-9 flex items-center justify-center rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
+                        className="h-9 w-9 flex items-center justify-center rounded-lg border border-ui-line dark:border-ui-line text-ui-muted dark:text-ui-muted hover:text-ui-text dark:hover:text-ui-text hover:bg-ui-soft dark:hover:bg-ui-surface transition-colors outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
                       >
                         {visibleSecrets.has(secret.key) ? (
                           <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1204,7 +1204,7 @@ export function WorkersManager({
                           }));
                         }}
                       >
-                        <SelectTrigger className="h-9 text-xs w-[150px] border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800 rounded-lg">
+                        <SelectTrigger className="h-9 text-xs w-[150px] border-ui-line dark:border-ui-line dark:bg-ui-surface rounded-lg">
                           <SelectValue placeholder="Select worker" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1233,13 +1233,13 @@ export function WorkersManager({
                           !selectedWorker ||
                           secretMutation.isPending
                         }
-                        className="h-9 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
+                        className="h-9 px-3 text-xs font-semibold rounded-lg bg-ui-text hover:bg-ui-text dark:bg-ui-soft dark:text-ui-muted dark:hover:bg-ui-soft text-white transition-all active:scale-95 disabled:opacity-40 outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 shrink-0"
                       >
                         Set
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs text-ui-muted dark:text-ui-muted">
                       Update this secret through GitHub Actions/GitOps secret
                       management. UI writes are disabled in this environment.
                     </p>
@@ -1269,10 +1269,10 @@ export function WorkersManager({
                   key={db.uuid}
                   className="flex items-center justify-between gap-2"
                 >
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
+                  <span className="text-sm text-ui-text dark:text-ui-text truncate">
                     {db.name}
                   </span>
-                  <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded shrink-0">
+                  <span className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded shrink-0">
                     {db.uuid?.slice(0, 8)}
                   </span>
                 </div>
@@ -1295,10 +1295,10 @@ export function WorkersManager({
                   key={kv.id}
                   className="flex items-center justify-between gap-2"
                 >
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
+                  <span className="text-sm text-ui-text dark:text-ui-text truncate">
                     {kv.title}
                   </span>
-                  <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded shrink-0">
+                  <span className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded shrink-0">
                     {kv.id?.slice(0, 8)}
                   </span>
                 </div>
@@ -1321,10 +1321,10 @@ export function WorkersManager({
                   key={bucket.name}
                   className="flex items-center justify-between gap-2"
                 >
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
+                  <span className="text-sm text-ui-text dark:text-ui-text truncate">
                     {bucket.name}
                   </span>
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500 shrink-0">
+                  <span className="text-xs text-ui-muted dark:text-ui-muted shrink-0">
                     {new Date(bucket.creation_date).toLocaleDateString()}
                   </span>
                 </div>
@@ -1335,15 +1335,15 @@ export function WorkersManager({
             <div key={section.label} className="p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <span
-                  className={`font-mono text-xs px-1.5 py-0.5 rounded border ${section.badgeClass}`}
+                  className={`font-mono text-xs px-1.5 py-0.5 rounded border ${section.badgeClass}  `}
                 >
                   {section.badge}
                 </span>
-                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <span className="text-xs font-semibold text-ui-text dark:text-ui-text">
                   {section.label}
                 </span>
                 {section.count > 0 && (
-                  <span className="ml-auto font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
+                  <span className="ml-auto font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded">
                     {section.count}
                   </span>
                 )}
@@ -1369,7 +1369,7 @@ export function WorkersManager({
                         type="button"
                         aria-label={`Retry ${section.label}`}
                         onClick={() => void section.retry()}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-900/40"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-ui-surface px-2.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-900/40"
                       >
                         <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                         Retry
@@ -1378,7 +1378,7 @@ export function WorkersManager({
                   </div>
                 </div>
               ) : section.count === 0 ? (
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">
+                <p className="text-xs text-ui-muted dark:text-ui-muted italic">
                   {section.empty}
                 </p>
               ) : (
