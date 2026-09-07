@@ -399,7 +399,10 @@ export function setPersistEnabled(enabled: boolean): void {
 /**
  * 백엔드에 새 세션 생성 요청
  */
-export async function createBackendSession(title?: string): Promise<string> {
+export async function createBackendSession(
+  title?: string,
+  options?: { signal?: AbortSignal },
+): Promise<string> {
   const normalizedTitle = normalizeBackendSessionTitle(title);
   const url = buildChatUrl('/session');
   const headers = buildChatHeaders('json');
@@ -412,6 +415,7 @@ export async function createBackendSession(title?: string): Promise<string> {
       ...bearerAuth(token),
     },
     body: JSON.stringify({ title: normalizedTitle }),
+    signal: options?.signal,
   });
 
   if (!res.ok) {

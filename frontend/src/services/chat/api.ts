@@ -376,7 +376,7 @@ export async function invokeThoughtFeed(
 export async function* streamChatEvents(
   input: StreamChatInput,
 ): AsyncGenerator<ChatStreamEvent, void, void> {
-  const sessionID = await ensureSession();
+  const sessionID = input.sessionId ?? await ensureSession();
   const { page, parts, enableRag } = buildStreamPayload(input);
 
   const url = buildChatUrl("/message", sessionID);
@@ -430,7 +430,7 @@ export async function* streamChatEvents(
 
       const events = parser.processChunk(chunk);
       for (const event of events) {
-        if (event.type === "session") {
+        if (event.type === "session" && input.sessionId === undefined) {
           storeSessionId(event.sessionId);
         }
         if (event.type === "error") {
@@ -444,7 +444,7 @@ export async function* streamChatEvents(
     // 남은 버퍼 처리
     const finalEvents = parser.flush();
     for (const event of finalEvents) {
-      if (event.type === "session") {
+      if (event.type === "session" && input.sessionId === undefined) {
         storeSessionId(event.sessionId);
       }
       if (event.type === "error") {

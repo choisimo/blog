@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import type { LensCard as LensCardData } from '@/services/chat';
 import './sentio.css';
+import { useCardExploration } from './hooks/useCardExploration';
 import LensCard from './LensCard';
 import { useLensDeck, type LensDeckSource } from './hooks/useLensDeck';
 import AsyncArtifactStatusChip from './AsyncArtifactStatusChip';
@@ -52,6 +53,12 @@ export default function PrismDeck({
   enabled,
   onReady,
 }: PrismDeckProps) {
+  const exploration = useCardExploration({
+    scopeKey: `${cacheKey}::${paragraph}`,
+    paragraph,
+    postTitle,
+    enabled,
+  });
   const safePostTitle = normalizePrismDeckText(postTitle);
   const safeCacheKey = normalizeCacheKey(cacheKey);
   const {
@@ -108,7 +115,7 @@ export default function PrismDeck({
   }, []);
 
   const handlePointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
+    (event: React.PointerEvent<HTMLElement>) => {
       dragStartXRef.current = event.clientX;
       dragStartYRef.current = event.clientY;
       dragMovedRef.current = false;
@@ -117,7 +124,7 @@ export default function PrismDeck({
   );
 
   const handlePointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
+    (event: React.PointerEvent<HTMLElement>) => {
       if (dragStartXRef.current == null || dragStartYRef.current == null)
         return;
       const deltaX = event.clientX - dragStartXRef.current;
@@ -130,7 +137,7 @@ export default function PrismDeck({
   );
 
   const handlePointerUp = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
+    (event: React.PointerEvent<HTMLElement>) => {
       if (dragStartXRef.current == null || dragStartYRef.current == null)
         return;
       const deltaX = event.clientX - dragStartXRef.current;
@@ -203,7 +210,9 @@ export default function PrismDeck({
           <div>
             <span className='sentio-result-label'>관점 탐색</span>
             <h4>하나의 문단, 서로 다른 시선</h4>
-            <p>카드를 눌러 근거를 확인하고, 화살표로 다음 관점을 살펴보세요.</p>
+            <p>
+              이어지는 질문을 누르면 이 카드에서 AI와 더 깊게 탐구할 수 있어요.
+            </p>
           </div>
           <AsyncArtifactStatusChip
             status={status}
@@ -226,6 +235,32 @@ export default function PrismDeck({
                 <LensCard
                   key={card.id}
                   card={card}
+                  exploration={{
+                    state: exploration.states[card.id],
+                    questions: [
+                      '이 관점을 실제 사례에 적용하면?',
+                      '이 관점의 한계와 반례는 무엇일까?',
+                    ],
+                    available: exploration.available && isActive,
+                    onExplore: question => {
+                      void exploration.explore(
+                        {
+                          id: card.id,
+                          title: card.title,
+                          body: [
+                            card.summary,
+                            card.detail,
+                            ...card.bullets,
+                          ].join('\n'),
+                          persona: card.personaId,
+                        },
+                        question
+                      );
+                    },
+                    onStop: () => exploration.stop(card.id),
+                    onBack: () => exploration.back(card.id),
+                    onReset: () => exploration.reset(card.id),
+                  }}
                   stacked={!isActive}
                   depth={depth}
                   active={isActive}
