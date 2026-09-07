@@ -1,0 +1,248 @@
+
+> vite_react_shadcn_ts@0.0.0 verify:reading
+> node scripts/reading-verification/check-sources.mjs && node --test scripts/reading-verification/core.test.mjs
+
+{
+  "compiler": "5.8.3",
+  "syntaxCheckedFiles": 21,
+  "strictCheckedPureModules": 3,
+  "applicationBuild": "NOT_RUN"
+}
+TAP version 13
+# Subtest: image dimensions: 1200 -> 1200
+ok 1 - image dimensions: 1200 -> 1200
+  ---
+  duration_ms: 3.053285
+  type: 'test'
+  ...
+# Subtest: image dimensions: 900 -> 900
+ok 2 - image dimensions: 900 -> 900
+  ---
+  duration_ms: 0.57344
+  type: 'test'
+  ...
+# Subtest: image dimensions:  640.5  -> 640.5
+ok 3 - image dimensions:  640.5  -> 640.5
+  ---
+  duration_ms: 0.372897
+  type: 'test'
+  ...
+# Subtest: image dimensions: 0 -> undefined
+ok 4 - image dimensions: 0 -> undefined
+  ---
+  duration_ms: 0.350266
+  type: 'test'
+  ...
+# Subtest: image dimensions: -1 -> undefined
+ok 5 - image dimensions: -1 -> undefined
+  ---
+  duration_ms: 0.252375
+  type: 'test'
+  ...
+# Subtest: image dimensions: NaN -> undefined
+ok 6 - image dimensions: NaN -> undefined
+  ---
+  duration_ms: 0.289108
+  type: 'test'
+  ...
+# Subtest: image dimensions: Infinity -> undefined
+ok 7 - image dimensions: Infinity -> undefined
+  ---
+  duration_ms: 0.208151
+  type: 'test'
+  ...
+# Subtest: image dimensions: 100% -> undefined
+ok 8 - image dimensions: 100% -> undefined
+  ---
+  duration_ms: 0.161004
+  type: 'test'
+  ...
+# Subtest: image dimensions: 120px -> undefined
+ok 9 - image dimensions: 120px -> undefined
+  ---
+  duration_ms: 1.090744
+  type: 'test'
+  ...
+# Subtest: image dimensions:  -> undefined
+ok 10 - image dimensions:  -> undefined
+  ---
+  duration_ms: 1.075662
+  type: 'test'
+  ...
+# Subtest: image dimensions: null -> undefined
+ok 11 - image dimensions: null -> undefined
+  ---
+  duration_ms: 0.865517
+  type: 'test'
+  ...
+# Subtest: image dimensions: 100001 -> undefined
+ok 12 - image dimensions: 100001 -> undefined
+  ---
+  duration_ms: 0.322022
+  type: 'test'
+  ...
+# Subtest: landscape image is fitted without cropping
+ok 13 - landscape image is fitted without cropping
+  ---
+  duration_ms: 1.657254
+  type: 'test'
+  ...
+# Subtest: quarter-turn rotation fits the rotated bounds
+ok 14 - quarter-turn rotation fits the rotated bounds
+  ---
+  duration_ms: 0.372973
+  type: 'test'
+  ...
+# Subtest: small images are not upscaled at fit
+ok 15 - small images are not upscaled at fit
+  ---
+  duration_ms: 0.433528
+  type: 'test'
+  ...
+# Subtest: unknown or invalid dimensions never produce NaN
+ok 16 - unknown or invalid dimensions never produce NaN
+  ---
+  duration_ms: 0.403645
+  type: 'test'
+  ...
+# Subtest: zoom bounds and rotation are normalized
+ok 17 - zoom bounds and rotation are normalized
+  ---
+  duration_ms: 0.341139
+  type: 'test'
+  ...
+# Subtest: panning cannot lose the image outside the viewing area
+ok 18 - panning cannot lose the image outside the viewing area
+  ---
+  duration_ms: 0.354785
+  type: 'test'
+  ...
+# Subtest: invalid transform and viewport recover to finite values
+ok 19 - invalid transform and viewport recover to finite values
+  ---
+  duration_ms: 0.161984
+  type: 'test'
+  ...
+# Subtest: resize/rotation/zoom combinations keep the transform bounded and idempotent
+ok 20 - resize/rotation/zoom combinations keep the transform bounded and idempotent
+  ---
+  duration_ms: 6.351481
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for https://images.example.org/a.png
+ok 21 - no speculative thumbnail for https://images.example.org/a.png
+  ---
+  duration_ms: 0.819885
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for /media/a.png
+ok 22 - no speculative thumbnail for /media/a.png
+  ---
+  duration_ms: 0.49985
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for /images/a.svg
+ok 23 - no speculative thumbnail for /images/a.svg
+  ---
+  duration_ms: 0.25371
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for /images/a.gif
+ok 24 - no speculative thumbnail for /images/a.gif
+  ---
+  duration_ms: 0.287744
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for /posts/2026/a.mp4
+ok 25 - no speculative thumbnail for /posts/2026/a.mp4
+  ---
+  duration_ms: 8.073536
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for /images/a.thumb.webp
+ok 26 - no speculative thumbnail for /images/a.thumb.webp
+  ---
+  duration_ms: 0.150693
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for data:image/png;base64,a
+ok 27 - no speculative thumbnail for data:image/png;base64,a
+  ---
+  duration_ms: 0.066181
+  type: 'test'
+  ...
+# Subtest: no speculative thumbnail for blob:sample
+ok 28 - no speculative thumbnail for blob:sample
+  ---
+  duration_ms: 0.05815
+  type: 'test'
+  ...
+# Subtest: generated thumbnail contract remains available for local raster assets
+ok 29 - generated thumbnail contract remains available for local raster assets
+  ---
+  duration_ms: 0.30062
+  type: 'test'
+  ...
+# Subtest: thumbnail rewriting preserves query parameters and fragments byte-for-byte
+ok 30 - thumbnail rewriting preserves query parameters and fragments byte-for-byte
+  ---
+  duration_ms: 0.433105
+  type: 'test'
+  ...
+# Subtest: media path normalization still blocks traversal
+ok 31 - media path normalization still blocks traversal
+  ---
+  duration_ms: 0.586081
+  type: 'test'
+  ...
+# Subtest: long document progress retains the existing midpoint
+ok 32 - long document progress retains the existing midpoint
+  ---
+  duration_ms: 0.215893
+  type: 'test'
+  ...
+# Subtest: article progress starts after the article header, not page decorations
+ok 33 - article progress starts after the article header, not page decorations
+  ---
+  duration_ms: 0.091792
+  type: 'test'
+  ...
+# Subtest: article progress completes at its end even when comments remain below
+ok 34 - article progress completes at its end even when comments remain below
+  ---
+  duration_ms: 0.080129
+  type: 'test'
+  ...
+# Subtest: short, fully visible articles count as read without division by zero
+ok 35 - short, fully visible articles count as read without division by zero
+  ---
+  duration_ms: 0.077873
+  type: 'test'
+  ...
+# Subtest: short articles below the viewport are not marked read
+ok 36 - short articles below the viewport are not marked read
+  ---
+  duration_ms: 0.123187
+  type: 'test'
+  ...
+# Subtest: overscroll clamps the reading value to its valid range
+ok 37 - overscroll clamps the reading value to its valid range
+  ---
+  duration_ms: 0.125462
+  type: 'test'
+  ...
+# Subtest: invalid or empty reading geometry has a deterministic zero state
+ok 38 - invalid or empty reading geometry has a deterministic zero state
+  ---
+  duration_ms: 0.272518
+  type: 'test'
+  ...
+1..38
+# tests 38
+# suites 0
+# pass 38
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1182.21331

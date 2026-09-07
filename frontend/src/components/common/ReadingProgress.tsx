@@ -1,87 +1,51 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { throttle, cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { calculateReadingProgress } from '@/utils/content/readingProgress';
 
-type ReadingProgressProps = {
-  label?: string;
-};
-
+type ReadingProgressProps = { label?: string; targetSelector?: string };
 const DEFAULT_READING_PROGRESS_LABEL = 'Reading progress';
-const ANSI_ESCAPE_PATTERN =
-  /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
+const ANSI_ESCAPE_PATTERN = /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
 const CONTROL_TEXT_PATTERN = /[\u0000-\u001f\u007f-\u009f]/g;
 
-const sanitizeReadingProgressLabel = (value: string): string =>
-  value.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim();
-
-export const ReadingProgress = ({
-  label = DEFAULT_READING_PROGRESS_LABEL,
-}: ReadingProgressProps = {}) => {
+export const ReadingProgress = ({ label = DEFAULT_READING_PROGRESS_LABEL, targetSelector }: ReadingProgressProps = {}) => {
   const [progress, setProgress] = useState(0);
   const { isTerminal } = useTheme();
-  const sanitizedLabel =
-    sanitizeReadingProgressLabel(label) || DEFAULT_READING_PROGRESS_LABEL;
-
-  const updateProgress = useCallback(() => {
-    const scrollTop = window.scrollY;
-    const docHeight =
-      document.documentElement.scrollHeight - window.innerHeight;
-    const scrollPercent = (scrollTop / docHeight) * 100;
-    setProgress(Math.min(100, Math.max(0, scrollPercent)));
-  }, []);
-
-  const throttledUpdate = useMemo(
-    () => throttle(updateProgress, 16),
-    [updateProgress]
-  );
+  const sanitizedLabel = label.replace(ANSI_ESCAPE_PATTERN, '').replace(CONTROL_TEXT_PATTERN, '').trim() || DEFAULT_READING_PROGRESS_LABEL;
 
   useEffect(() => {
-    window.addEventListener('scroll', throttledUpdate);
-    updateProgress();
-
-    return () => window.removeEventListener('scroll', throttledUpdate);
-  }, [throttledUpdate, updateProgress]);
+    let frame: number | null = null;
+    let target: Element | null = null;
+    try { target = targetSelector ? document.querySelector(targetSelector) : null; } catch { /* Invalid optional selector falls back to document progress. */ }
+    const update = () => {
+      frame = null;
+      const scrollY = window.scrollY;
+      const rect = target?.getBoundingClientRect();
+      const offset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-header-height')) || 64;
+      setProgress(calculateReadingProgress(scrollY, rect ? rect.top + scrollY : 0,
+        rect ? rect.height : document.documentElement.scrollHeight, window.innerHeight, rect ? offset : 0));
+    };
+    const schedule = () => { if (frame === null) frame = window.requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    observer?.observe(target || document.documentElement);
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      observer?.disconnect();
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [targetSelector]);
 
   return (
-    <div
-      className={cn(
-        'fixed top-0 left-0 right-0 z-[var(--z-fab-bar)]',
-        'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
-        'border-b border-border/40'
-      )}
-    >
-      <div
-        className={cn(
-          'h-1 sm:h-0.5 w-full bg-muted/30',
-          isTerminal && 'bg-[hsl(var(--terminal-code-bg))]'
-        )}
-        role='progressbar'
-        aria-label={sanitizedLabel}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(progress)}
-      >
-        <div
-          className={cn(
-            'h-full transition-all duration-75 ease-out',
-            isTerminal
-              ? 'bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]'
-              : 'bg-gradient-to-r from-primary via-primary to-primary/80'
-          )}
-          style={{ width: `${progress}%` }}
-        />
+    <div className='ui-reading-progress' data-reading-progress>
+      <div className={cn('ui-reading-progress__track', isTerminal && 'bg-[hsl(var(--terminal-code-bg))]')}
+        role='progressbar' aria-label={sanitizedLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
+        <div className='ui-reading-progress__fill' style={{ transform: `scaleX(${progress / 100})` }} />
       </div>
-      {progress > 0 && progress < 100 && (
-        <div
-          className={cn(
-            'absolute right-2 top-1/2 -translate-y-1/2 sm:hidden',
-            'text-[10px] font-medium text-muted-foreground/70 tabular-nums',
-            isTerminal && 'font-mono text-primary/60'
-          )}
-        >
-          {Math.round(progress)}%
-        </div>
-      )}
+      {progress > 0 && progress < 100 && <span className={cn('sr-only', isTerminal && 'font-mono')}>{Math.round(progress)}%</span>}
     </div>
   );
 };

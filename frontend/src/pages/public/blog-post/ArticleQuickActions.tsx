@@ -71,7 +71,7 @@ export function ArticleQuickActions({
   return (
     <div
       className={cn(
-        "fixed z-[var(--z-fab-bar)] flex flex-col gap-1 rounded-2xl border p-1 shadow-sm backdrop-blur-md print:hidden",
+        "fixed z-[var(--z-fab-bar)] flex flex-col gap-1 rounded-lg border p-1 print:hidden",
         "transition-opacity duration-200 pointer-events-none",
         showTop ? "opacity-90" : "opacity-75",
         isTerminal

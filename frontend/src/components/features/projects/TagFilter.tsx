@@ -1,5 +1,3 @@
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface TagFilterProps {
   tags: string[];
@@ -66,27 +64,11 @@ export function TagFilter({
   const safeTitle = normalizeOptionalProjectFilterText(title);
 
   return (
-    <div
-      role='group'
-      aria-label={safeLabel}
-      title={safeTitle}
-      className='flex flex-wrap gap-2'
-    >
-      {allTags.map(tag => {
-        const active = normalizedSelectedTag === tag;
-        return (
-          <Button
-            key={tag}
-            type='button'
-            variant={active ? 'default' : 'outline'}
-            size='sm'
-            className={cn('rounded-full px-3', !active && 'text-foreground/80')}
-            onClick={() => onSelect(tag)}
-            aria-pressed={active}
-          >
-            {tag}
-          </Button>
-        );
+    <div className="ui-project-filters" role="group" aria-label={safeLabel} title={safeTitle}>
+      {allTags.map((tag, index) => {
+        const value = index === 0 ? 'All' : tag;
+        const active = index === 0 ? normalizedSelectedTag === 'All' || normalizedSelectedTag === safeAllLabel : normalizedSelectedTag === tag;
+        return <button key={value} type="button" aria-pressed={active} onClick={() => onSelect(value)}>{tag}</button>;
       })}
     </div>
   );

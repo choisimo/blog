@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/session/useAuthStore';
@@ -116,17 +117,20 @@ export default function AdminAuthCallback() {
     };
   }, [navigate, setTokens, setTokensFromOAuth]);
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] p-4">
-        <p className="text-destructive text-center">{error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+    <div className="ui-page ui-auth-page" data-ui-page="admin-auth-callback">
+      <section className="ui-auth-card" aria-labelledby="callback-title">
+        <Link className="ui-auth-brand" to="/">noblog</Link>
+        <h1 id="callback-title">{error ? '인증을 완료하지 못했습니다' : '로그인 확인 중'}</h1>
+        {error ? <>
+          <p role="alert" className="ui-inline-error">인증 응답을 확인하지 못했습니다. 로그인을 다시 시작해 주세요.</p>
+          <p className="ui-description">일회성 인증 정보를 다시 전송하지 않습니다.</p>
+          <Link className="ui-text-action" to="/admin/login">관리자 로그인으로 돌아가기</Link>
+        </> : <div role="status" aria-live="polite" className="ui-status-line">
+          <span className="ui-spinner" aria-hidden="true" />
+          <p>인증 응답을 확인하고 있습니다. 확인이 끝나면 관리자 화면으로 이동합니다.</p>
+        </div>}
+      </section>
     </div>
   );
 }

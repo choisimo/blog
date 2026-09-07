@@ -142,8 +142,8 @@ function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFor
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Name *</Label>
-          <Input
+          <Label className="ui-label" htmlFor="name">Name *</Label>
+          <Input className="ui-input"
             id="name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -154,8 +154,8 @@ function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFor
           <p className="text-xs text-muted-foreground">Identifier (lowercase, no spaces)</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="displayName">Display Name *</Label>
-          <Input
+          <Label className="ui-label" htmlFor="displayName">Display Name *</Label>
+          <Input className="ui-input"
             id="displayName"
             value={formData.displayName}
             onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
@@ -166,8 +166,8 @@ function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFor
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="apiBaseUrl">API Base URL</Label>
-        <Input
+        <Label className="ui-label" htmlFor="apiBaseUrl">API Base URL</Label>
+        <Input className="ui-input"
           id="apiBaseUrl"
           value={formData.apiBaseUrl || ''}
           onChange={(e) => setFormData({ ...formData, apiBaseUrl: e.target.value })}
@@ -177,8 +177,8 @@ function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFor
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="apiKeyEnv">API Key Environment Variable</Label>
-        <Input
+        <Label className="ui-label" htmlFor="apiKeyEnv">API Key Environment Variable</Label>
+        <Input className="ui-input"
           id="apiKeyEnv"
           value={formData.apiKeyEnv || ''}
           onChange={(e) => setFormData({ ...formData, apiKeyEnv: e.target.value })}
@@ -190,10 +190,10 @@ function ProviderForm({ provider, initialData, onSubmit, onCancel }: ProviderFor
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button className="ui-control" data-ui-variant="outline" type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button className="ui-control" data-ui-variant="default" type="submit" disabled={submitting}>
           {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           {provider ? 'Update' : 'Create'} Provider
         </Button>
@@ -348,17 +348,17 @@ export function ProvidersManager() {
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={["ui-admin-section ui-admin-providersmanager", ("ui-panel")].filter(Boolean).join(' ')}>
+      <CardHeader className="ui-panel-header">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>AI Providers</CardTitle>
-            <CardDescription>Manage AI service providers and their API configurations</CardDescription>
+            <CardTitle className="ui-panel-title">AI Providers</CardTitle>
+            <CardDescription className="ui-description">Manage AI service providers and their API configurations</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button className="ui-control" data-ui-variant="outline" variant="outline">
                   <BookOpen className="h-4 w-4 mr-2" />
                   From Catalog
                 </Button>
@@ -385,14 +385,14 @@ export function ProvidersManager() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => { setCatalogFormData(undefined); setShowForm(true); }}>
+            <Button className="ui-control" data-ui-variant="default" onClick={() => { setCatalogFormData(undefined); setShowForm(true); }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Provider
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="ui-panel-body space-y-4">
         {error && (
           <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
@@ -413,7 +413,7 @@ export function ProvidersManager() {
                   provider.isEnabled
                     ? 'border-border'
                     : 'border-dashed border-muted-foreground/30 opacity-60'
-                }`}
+                }  `}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -437,7 +437,7 @@ export function ProvidersManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
+                    <Button className="ui-control" data-ui-variant="outline"
                       variant="outline"
                       size="sm"
                       onClick={() => handleCheckHealth(provider)}
@@ -451,7 +451,7 @@ export function ProvidersManager() {
                       <span className="ml-1">Health</span>
                     </Button>
                     {provider.isEnabled ? (
-                      <Button
+                      <Button className="ui-control" data-ui-variant="destructive"
                         variant="destructive"
                         size="sm"
                         onClick={() => {
@@ -469,12 +469,12 @@ export function ProvidersManager() {
                         <span className="ml-1">Kill</span>
                       </Button>
                     ) : (
-                      <Button
+                      <Button data-ui-variant="default"
                         variant="default"
                         size="sm"
                         onClick={() => handleEnable(provider)}
                         disabled={killingProvider === provider.id}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="ui-control bg-green-600 hover:bg-green-700"
                       >
                         {killingProvider === provider.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -486,7 +486,7 @@ export function ProvidersManager() {
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
+                        <Button className="ui-control" data-ui-variant="ghost"
                           variant="ghost"
                           size="icon"
                           aria-label={`Open provider actions for ${provider.displayName}`}
@@ -529,7 +529,7 @@ export function ProvidersManager() {
 
       {/* Create Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { setShowForm(open); if (!open) setCatalogFormData(undefined); }}>
-        <DialogContent>
+        <DialogContent className="ui-dialog">
           <DialogHeader>
             <DialogTitle>Add New Provider</DialogTitle>
             <DialogDescription>Configure a new AI service provider</DialogDescription>
@@ -540,7 +540,7 @@ export function ProvidersManager() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingProvider} onOpenChange={() => setEditingProvider(null)}>
-        <DialogContent>
+        <DialogContent className="ui-dialog">
           <DialogHeader>
             <DialogTitle>Edit Provider</DialogTitle>
             <DialogDescription>Update provider configuration</DialogDescription>
@@ -564,7 +564,7 @@ export function ProvidersManager() {
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Provider</AlertDialogTitle>
             <AlertDialogDescription>
@@ -593,7 +593,7 @@ export function ProvidersManager() {
       </AlertDialog>
 
       <AlertDialog open={!!killSwitchTarget} onOpenChange={() => setKillSwitchTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600">
               <PowerOff className="h-5 w-5" />

@@ -1,0 +1,24 @@
+{
+  "inputArchive": "blog--snapshot--source-repro--refactor_rich-03-ui--fec03b91989d--20260908T003126+0900--dirty.tar.gz",
+  "inputSha256": "fd06082b6d1a0244ab0fc58ddb9d34af171f229592eee340db7a517c71be2808",
+  "originalFileCount": 1706,
+  "modifiedOriginalFiles": [
+    "frontend/package.json",
+    "frontend/src/components/common/PostImage.tsx",
+    "frontend/src/components/common/ReadingProgress.tsx",
+    "frontend/src/components/features/blog/ImageLightbox.tsx",
+    "frontend/src/components/features/blog/MarkdownRenderer.tsx",
+    "frontend/src/components/features/blog/TableOfContents.tsx",
+    "frontend/src/components/molecules/MarkdownTable.tsx",
+    "frontend/src/components/ui/scroll-area.tsx",
+    "frontend/src/index.css",
+    "frontend/src/pages/public/BlogPost.tsx",
+    "frontend/src/pages/public/blog-post/BlogPostContent.tsx",
+    "frontend/src/pages/public/blog-post/BlogPostHeader.tsx",
+    "frontend/src/styles/ui-adaptive.css",
+    "frontend/src/styles/ui-pages.css",
+    "frontend/src/utils/content/postMedia.ts"
+  ],
+  "missingOriginalFiles": [],
+  "unmodifiedOriginalFileCount": 1691
+}

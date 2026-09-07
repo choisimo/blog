@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "changes": [
+    {
+      "file": "frontend/src/App.tsx",
+      "index": 0,
+      "before": "33989a009588b0989b12128efc11082599a63c0f0dfcb6f6d71c3628541fa35d",
+      "after": "15e7a72eb5ae355f94539638f08aaad37d454a0f2cb4f89ebc34b52a823432a7",
+      "reason": "Suppress/remove global floating assistants on admin routes while leaving Insight memo bridge mounted."
+    }
+  ]
+}

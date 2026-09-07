@@ -29,6 +29,25 @@ module.exports = {
         mono: ['JetBrains Mono', ...require('tailwindcss/defaultTheme').fontFamily.mono],
       },
       colors: {
+        // Namespaced tokens: legacy accent/surface variables retain their HSL semantics.
+        ui: {
+          'canvas': 'hsl(var(--ui-canvas) / <alpha-value>)',
+          'surface': 'hsl(var(--ui-surface) / <alpha-value>)',
+          'soft': 'hsl(var(--ui-soft) / <alpha-value>)',
+          'text': 'hsl(var(--ui-text) / <alpha-value>)',
+          'muted': 'hsl(var(--ui-muted) / <alpha-value>)',
+          'subtle': 'hsl(var(--ui-subtle) / <alpha-value>)',
+          'line': 'hsl(var(--ui-line) / <alpha-value>)',
+          'line-strong': 'hsl(var(--ui-line-strong) / <alpha-value>)',
+          'accent': 'hsl(var(--ui-accent) / <alpha-value>)',
+          'accent-soft': 'hsl(var(--ui-accent-soft) / <alpha-value>)',
+          'danger': 'hsl(var(--ui-danger) / <alpha-value>)',
+          'danger-soft': 'hsl(var(--ui-danger-soft) / <alpha-value>)',
+          'success': 'hsl(var(--ui-success) / <alpha-value>)',
+          'warn': 'hsl(var(--ui-warn) / <alpha-value>)',
+          'code-bg': 'hsl(var(--ui-code-bg) / <alpha-value>)',
+        },
+
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

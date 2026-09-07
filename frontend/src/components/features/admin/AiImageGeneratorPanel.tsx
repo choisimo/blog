@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   Check,
   Copy,
@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,6 +136,8 @@ export default function AiImageGeneratorPanel({
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
+  const generationInFlight = useRef(false);
 
   const suggestedPrompt = useMemo(
     () => buildSuggestedPrompt({ title, category, tags, content }),
@@ -156,6 +159,8 @@ export default function AiImageGeneratorPanel({
   const canGenerate = !generateBlockReason && !isGenerating;
 
   const handleGenerate = async () => {
+    if (generationInFlight.current) return;
+    generationInFlight.current = true;
     try {
       const trimmedSlug = slug.trim();
       if (!/^[0-9]{4}$/.test(year)) throw new Error('연도(YYYY)를 입력하세요');
@@ -192,6 +197,7 @@ export default function AiImageGeneratorPanel({
         variant: 'destructive',
       });
     } finally {
+      generationInFlight.current = false;
       setIsGenerating(false);
     }
   };
@@ -211,7 +217,7 @@ export default function AiImageGeneratorPanel({
   };
 
   return (
-    <section className="rounded-md border border-border bg-card/60 p-4 shadow-sm">
+    <section className={["ui-admin-section ui-admin-aiimagegeneratorpanel", ("rounded-md border border-border bg-card/60 p-4")].filter(Boolean).join(' ')}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -225,12 +231,12 @@ export default function AiImageGeneratorPanel({
             제목, 카테고리, 태그, 본문을 바탕으로 게시글 이미지를 생성합니다.
           </p>
         </div>
-        <Button
+        <Button data-ui-variant="outline"
           type="button"
           variant="outline"
           size="sm"
           onClick={() => setPrompt(suggestedPrompt)}
-          className="min-h-9 shrink-0"
+          className="ui-control min-h-9 shrink-0"
         >
           <RefreshCw className="h-4 w-4" aria-hidden="true" />
           프롬프트 채우기
@@ -240,20 +246,20 @@ export default function AiImageGeneratorPanel({
       <div className="mt-4 grid grid-cols-1 gap-4">
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="ai-image-prompt">프롬프트</Label>
+            <Label className="ui-label" htmlFor="ai-image-prompt">프롬프트</Label>
             <Textarea
               id="ai-image-prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              className="min-h-28 resize-y"
+              className="ui-textarea min-h-28 resize-y"
               maxLength={4000}
               placeholder={suggestedPrompt}
             />
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="ai-image-alt">대체 텍스트</Label>
-              <Input
+              <Label className="ui-label" htmlFor="ai-image-alt">대체 텍스트</Label>
+              <Input className="ui-input"
                 id="ai-image-alt"
                 value={alt}
                 onChange={(event) => setAlt(event.target.value)}
@@ -263,7 +269,7 @@ export default function AiImageGeneratorPanel({
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-2">
-                <Label>개수</Label>
+                <Label className="ui-label">개수</Label>
                 <Select value={count} onValueChange={setCount}>
                   <SelectTrigger aria-label="생성 개수">
                     <SelectValue />
@@ -278,7 +284,7 @@ export default function AiImageGeneratorPanel({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>크기</Label>
+                <Label className="ui-label">크기</Label>
                 <Select
                   value={size}
                   onValueChange={(value) => setSize(value as AdminAiImageSize)}
@@ -296,7 +302,7 @@ export default function AiImageGeneratorPanel({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>품질</Label>
+                <Label className="ui-label">품질</Label>
                 <Select
                   value={quality}
                   onValueChange={(value) => setQuality(value as AdminAiImageQuality)}
@@ -328,7 +334,7 @@ export default function AiImageGeneratorPanel({
               {generateBlockReason}
             </div>
           )}
-          <Button
+          <Button data-ui-variant="default"
             type="button"
             onClick={() => void handleGenerate()}
             disabled={!canGenerate}
@@ -337,7 +343,7 @@ export default function AiImageGeneratorPanel({
                 ? 'ai-image-generate-disabled-reason'
                 : undefined
             }
-            className="min-h-11 w-full sm:w-auto"
+            className="ui-control min-h-11 w-full sm:w-auto"
           >
             {isGenerating ? (
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -353,7 +359,7 @@ export default function AiImageGeneratorPanel({
             <span className="text-sm font-medium">생성 결과</span>
             <span className="text-xs text-muted-foreground">{items.length}개</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
+          <div className="ui-generated-results">
             {isGenerating && (
               <div className="aspect-square animate-pulse rounded-md border border-dashed bg-muted motion-reduce:animate-none" />
             )}
@@ -373,47 +379,47 @@ export default function AiImageGeneratorPanel({
                   <button
                     type="button"
                     className={cn(
-                      'group relative block aspect-square w-full overflow-hidden rounded-md border bg-muted text-left',
-                      'transition-transform duration-200 ease-spring hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100',
+                      'ui-image-preview-trigger group relative block w-full overflow-hidden rounded-md border bg-muted text-left',
+                      "transition-transform duration-200 ease-spring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:active:scale-100",
                     )}
-                    onClick={() => onInsertMarkdown(markdown, imageUrl)}
-                    aria-label={`본문에 ${imageAlt} 삽입`}
-                    title={`본문에 ${imageAlt} 삽입`}
+                    onClick={() => setPreviewImage({ url: imageUrl, alt: imageAlt })}
+                    aria-label={`${imageAlt} 미리보기`}
+                    title={`${imageAlt} 미리보기`}
                   >
                     <img
                       src={imageUrl}
                       alt={imageAlt}
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className="ui-generated-image"
                     />
-                    <span className="absolute inset-x-0 bottom-0 bg-background/90 px-2 py-1 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">
-                      본문에 삽입
+                    <span className="ui-image-preview-caption">
+                      미리보기
                     </span>
                   </button>
                   <div className="grid grid-cols-3 gap-2">
-                    <Button
+                    <Button data-ui-variant="secondary"
                       type="button"
                       size="sm"
                       variant="secondary"
-                      className="min-h-9 px-2 text-xs"
+                      className="ui-control min-h-9 px-2 text-xs"
                       onClick={() => onInsertMarkdown(markdown, imageUrl)}
                     >
                       삽입
                     </Button>
-                    <Button
+                    <Button data-ui-variant="outline"
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="min-h-9 px-2 text-xs"
+                      className="ui-control min-h-9 px-2 text-xs"
                       onClick={() => onSetCoverImage(imageUrl)}
                     >
                       커버
                     </Button>
-                    <Button
+                    <Button data-ui-variant="ghost"
                       type="button"
                       size="sm"
                       variant="ghost"
-                      className="min-h-9 px-2 text-xs"
+                      className="ui-control min-h-9 px-2 text-xs"
                       onClick={() => void copyUrl(imageUrl)}
                       aria-label={`${item.alt} URL 복사`}
                       title={`${item.alt} URL 복사`}
@@ -431,6 +437,13 @@ export default function AiImageGeneratorPanel({
           </div>
         </div>
       </div>
+      <Dialog open={previewImage !== null} onOpenChange={open => { if (!open) setPreviewImage(null); }}>
+        <DialogContent className="ui-dialog ui-image-preview-dialog">
+          <DialogTitle>생성 이미지 미리보기</DialogTitle>
+          <DialogDescription>원본 비율로 확인합니다. 닫아도 본문이나 커버는 변경되지 않습니다.</DialogDescription>
+          {previewImage && <img src={previewImage.url} alt={previewImage.alt} className="ui-generated-image" />}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

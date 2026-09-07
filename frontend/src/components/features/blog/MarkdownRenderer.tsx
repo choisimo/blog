@@ -4,7 +4,7 @@ import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
-import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp, WrapText } from 'lucide-react';
 import {
   Children,
   Fragment,
@@ -12,6 +12,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -21,8 +22,9 @@ import {
 import type { Element as HastElement, ElementContent } from 'hast';
 import { Button } from '@/components/ui/button';
 import MarkdownRenderBoundary from '@/components/molecules/MarkdownRenderBoundary';
+import { MarkdownTable } from '@/components/molecules/MarkdownTable';
 import SparkInline from '@/components/molecules/SparkInline';
-import { blogMarkdownSanitizeSchema } from './markdownSanitizeSchema';
+import { getMarkdownSanitizeSchema } from './markdownSanitizeSchema';
 import {
   ClickableImage,
   EmbeddedVideo,
@@ -30,6 +32,14 @@ import {
   type ArticleMediaLayout,
 } from './ImageLightbox';
 import { useTheme } from '@/contexts/ThemeContext';
+import { writeTextToClipboard } from '@/lib/markdown/clipboard';
+import {
+  getMarkdownLinkPresentation,
+  normalizeMarkdownHrefForProfile,
+  normalizeMarkdownSource,
+  resolveMarkdownMediaPath,
+  type MarkdownRenderProfileName,
+} from '@/lib/markdown/markdownPolicy';
 import { cn } from '@/lib/utils';
 import {
   createHeadingSlug,
@@ -79,20 +89,22 @@ const LANGUAGE_ALIASES: Record<string, string> = {
 
 const registeredLanguages = new Set<string>();
 
-async function ensureLanguageRegistered(lang: string): Promise<void> {
+async function ensureLanguageRegistered(lang: string): Promise<boolean> {
   const canonical = LANGUAGE_ALIASES[lang] ?? lang;
-  if (registeredLanguages.has(canonical)) return;
+  if (registeredLanguages.has(canonical)) return true;
   const loader = LANGUAGE_LOADERS[canonical];
-  if (!loader) return;
+  if (!loader) return false;
   try {
     const mod = await loader();
-    SyntaxHighlighter.registerLanguage(
-      canonical,
-      (mod as { default: unknown }).default
-    );
+    const definition = mod.default as Parameters<
+      typeof SyntaxHighlighter.registerLanguage
+    >[1];
+    SyntaxHighlighter.registerLanguage(canonical, definition);
     registeredLanguages.add(canonical);
+    return true;
   } catch {
-    // silently ignore — code block will still render without highlighting
+    // A failed optional highlighter must not hide the original code.
+    return false;
   }
 }
 
@@ -125,6 +137,7 @@ interface MarkdownRendererProps {
   inlineEnabled?: boolean;
   postTitle?: string;
   postPath?: string; // e.g., "2025/future-tech-six-insights" for resolving relative image paths
+  profile?: Extract<MarkdownRenderProfileName, 'article' | 'preview'>;
 }
 
 const IFRAME_AUTO_HEIGHT_MESSAGE_TYPE = 'blog-iframe-auto-height';
@@ -133,12 +146,6 @@ const IFRAME_AUTO_HEIGHT_SOURCE = 'nodove-blog-embed';
 const DEFAULT_EMBED_HEIGHT = 760;
 const MIN_EMBED_HEIGHT = 320;
 const MAX_EMBED_HEIGHT = 6000;
-const MARKDOWN_HREF_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
-const MARKDOWN_HREF_ANSI_ESCAPE_PATTERN = /\u001b\[[0-?]*[ -/]*[@-~]/g;
-const MARKDOWN_HREF_WHITESPACE_PATTERN = /\s+/g;
-const MARKDOWN_HREF_MALFORMED_PERCENT_PATTERN = /%(?![0-9A-Fa-f]{2})/;
-const MARKDOWN_HREF_ENCODED_CONTROL_PATTERN = /%(?:0[0-9A-Fa-f]|1[0-9A-Fa-f]|7[Ff])/;
-const MARKDOWN_HREF_ENCODED_SEPARATOR_PATTERN = /%(?:2[Ff]|5[Cc])/;
 
 function clampEmbedHeight(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_EMBED_HEIGHT;
@@ -165,82 +172,13 @@ function normalizeIframeSrc(
   src: string | undefined,
   postPath: string
 ): string | undefined {
-  if (!src) return undefined;
-  const raw = src.trim();
-  if (!raw) return undefined;
-
-  if (
-    raw.startsWith('http://') ||
-    raw.startsWith('https://') ||
-    raw.startsWith('//') ||
-    raw.startsWith('data:') ||
-    raw.startsWith('blob:')
-  ) {
-    return raw;
-  }
-
-  if (raw.startsWith('/')) {
-    return raw;
-  }
-
-  if (raw.startsWith('posts/')) {
-    return `/${raw}`;
-  }
-
-  const year = postPath.split('/')[0] ?? '';
-  const normalizedRelative = raw.replace(/^\.?\//, '');
-  if (/^\d{4}$/.test(year)) {
-    return `/posts/${year}/${normalizedRelative}`;
-  }
-
-  return `/${normalizedRelative}`;
+  return resolveMarkdownMediaPath(src, postPath) ?? undefined;
 }
 
 export function normalizeMarkdownLinkHref(
   href: string | undefined
 ): string | undefined {
-  const raw = href
-    ?.replace(MARKDOWN_HREF_ANSI_ESCAPE_PATTERN, ' ')
-    .replace(MARKDOWN_HREF_CONTROL_PATTERN, ' ')
-    .replace(MARKDOWN_HREF_WHITESPACE_PATTERN, ' ')
-    .trim();
-  if (!raw) return undefined;
-  if (
-    raw.includes('\\') ||
-    MARKDOWN_HREF_MALFORMED_PERCENT_PATTERN.test(raw) ||
-    MARKDOWN_HREF_ENCODED_CONTROL_PATTERN.test(raw) ||
-    MARKDOWN_HREF_ENCODED_SEPARATOR_PATTERN.test(raw)
-  ) {
-    return undefined;
-  }
-
-  if (raw.startsWith('#')) {
-    return raw;
-  }
-
-  if (raw.startsWith('/') && !raw.startsWith('//')) {
-    return raw;
-  }
-
-  try {
-    const parsed = new URL(raw, 'https://nodove.local');
-    const safeProtocol =
-      parsed.protocol === 'http:' ||
-      parsed.protocol === 'https:' ||
-      parsed.protocol === 'mailto:';
-    if (!safeProtocol) return undefined;
-    if (
-      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
-      (parsed.username || parsed.password)
-    ) {
-      return undefined;
-    }
-    return safeProtocol
-      ? raw
-      : undefined;
-  } catch {
-    return undefined;
-  }
+  return normalizeMarkdownHrefForProfile(href, 'article') ?? undefined;
 }
 
 function extractEmbedHeightMessage(data: unknown): number | null {
@@ -259,6 +197,7 @@ function extractEmbedHeightMessage(data: unknown): number | null {
 interface EmbeddedIframeProps extends React.ComponentProps<'iframe'> {
   postPath: string;
   isTerminal: boolean;
+  profile: Extract<MarkdownRenderProfileName, 'article' | 'preview'>;
 }
 
 function EmbeddedIframe({
@@ -268,6 +207,7 @@ function EmbeddedIframe({
   className,
   postPath,
   isTerminal,
+  profile,
   loading,
   title,
   onLoad,
@@ -291,6 +231,8 @@ function EmbeddedIframe({
   }, [initialHeight, resolvedSrc]);
 
   useEffect(() => {
+    if (profile === 'preview') return undefined;
+
     const onMessage = (event: MessageEvent) => {
       const iframe = iframeRef.current;
       if (!iframe || event.source !== iframe.contentWindow) return;
@@ -305,10 +247,33 @@ function EmbeddedIframe({
 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [profile]);
 
   if (!resolvedSrc) {
     return null;
+  }
+
+  if (profile === 'preview') {
+    return (
+      <div
+        role='note'
+        data-preview-blocked-embed='true'
+        className={cn(
+          'article-readable my-8 rounded-2xl border border-dashed border-border/70 bg-muted/30 px-5 py-6 text-sm text-muted-foreground',
+          isTerminal &&
+            'rounded border-primary/30 bg-[hsl(var(--terminal-code-bg))] font-mono',
+          className
+        )}
+      >
+        <strong className='block text-foreground'>외부 임베드 미리보기 제한</strong>
+        <span className='mt-1 block'>
+          편집 중에는 외부 문서를 실행하지 않습니다. 공개 본문에서 허용된 경우에만 로드됩니다.
+        </span>
+        <code className='mt-3 block overflow-x-auto whitespace-nowrap rounded bg-background/70 px-3 py-2 text-xs'>
+          {resolvedSrc}
+        </code>
+      </div>
+    );
   }
 
   return (
@@ -631,6 +596,12 @@ const CODE_BLOCK_WRAPPING_STYLE = {
   wordBreak: 'break-word',
 } satisfies React.CSSProperties;
 
+const CODE_BLOCK_NO_WRAP_STYLE = {
+  whiteSpace: 'pre',
+  overflowWrap: 'normal',
+  wordBreak: 'normal',
+} satisfies React.CSSProperties;
+
 const ARTICLE_EMPHASIS_STYLES = {
   strong: 'article-emphasis-strong',
   em: 'article-emphasis-em',
@@ -845,16 +816,16 @@ function getMediaPresentation({
 }
 
 // ============================================================================
-// CodeBlock component — line numbers + collapsible
+// CodeBlock component — exact copy + wrapping + collapsible plain fallback
 // ============================================================================
 interface CodeBlockProps {
   codeString: string;
   syntaxLanguage?: string;
   displayLanguage: string;
   isTerminalTheme: boolean;
-  copiedCode: string | null;
-  onCopy: (code: string) => void;
 }
+
+type CodeCopyState = 'idle' | 'copied' | 'failed';
 
 const COLLAPSE_THRESHOLD = 25;
 const COLLAPSED_MAX_LINES = 480; // ~25 lines worth of height in px
@@ -864,73 +835,128 @@ function CodeBlock({
   syntaxLanguage,
   displayLanguage,
   isTerminalTheme,
-  copiedCode,
-  onCopy,
 }: CodeBlockProps) {
   const lineCount = codeString.split('\n').length;
   const isLong = lineCount > COLLAPSE_THRESHOLD;
   const [collapsed, setCollapsed] = useState(isLong);
+  const [wrapped, setWrapped] = useState(true);
+  const [copyState, setCopyState] = useState<CodeCopyState>('idle');
+  const [highlightReady, setHighlightReady] = useState(
+    Boolean(
+      syntaxLanguage &&
+        registeredLanguages.has(LANGUAGE_ALIASES[syntaxLanguage] ?? syntaxLanguage)
+    )
+  );
+  const copyResetTimerRef = useRef<number | null>(null);
+  const copyRequestRef = useRef(0);
+  const codeRegionId = useId();
   const label = displayLanguage || 'code';
   const showLineNumbers = lineCount > 1;
+  const canonicalLanguage = syntaxLanguage
+    ? (LANGUAGE_ALIASES[syntaxLanguage] ?? syntaxLanguage)
+    : undefined;
+  const wrappingStyle = wrapped
+    ? CODE_BLOCK_WRAPPING_STYLE
+    : CODE_BLOCK_NO_WRAP_STYLE;
 
-  // Lazily load the syntax-highlighting language module on first render.
-  const [, forceUpdate] = useState(0);
   useEffect(() => {
-    if (!syntaxLanguage) return;
+    if (!canonicalLanguage) {
+      setHighlightReady(false);
+      return;
+    }
+
     let live = true;
-    ensureLanguageRegistered(syntaxLanguage).then(() => {
-      if (live) forceUpdate(n => n + 1);
+    setHighlightReady(registeredLanguages.has(canonicalLanguage));
+    void ensureLanguageRegistered(canonicalLanguage).then(loaded => {
+      if (live) setHighlightReady(loaded);
     });
     return () => {
       live = false;
     };
-  }, [syntaxLanguage]);
+  }, [canonicalLanguage]);
+
+  useEffect(() => {
+    if (!isLong) setCollapsed(false);
+  }, [isLong]);
+
+  useEffect(() => {
+    copyRequestRef.current += 1;
+    setCopyState('idle');
+    if (copyResetTimerRef.current !== null) {
+      window.clearTimeout(copyResetTimerRef.current);
+      copyResetTimerRef.current = null;
+    }
+  }, [codeString]);
+
+  useEffect(
+    () => () => {
+      copyRequestRef.current += 1;
+      if (copyResetTimerRef.current !== null) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+    },
+    []
+  );
+
+  const copyCode = useCallback(async () => {
+    const request = ++copyRequestRef.current;
+    const copied = await writeTextToClipboard(codeString);
+    if (request !== copyRequestRef.current) return;
+    setCopyState(copied ? 'copied' : 'failed');
+    if (copyResetTimerRef.current !== null) {
+      window.clearTimeout(copyResetTimerRef.current);
+    }
+    copyResetTimerRef.current = window.setTimeout(() => {
+      setCopyState('idle');
+      copyResetTimerRef.current = null;
+    }, 2000);
+  }, [codeString]);
+
+  const copyLabel =
+    copyState === 'copied'
+      ? '코드 복사 완료'
+      : copyState === 'failed'
+        ? '코드 복사 실패'
+        : '코드 복사';
 
   return (
-    <div className='article-code-card relative group my-8'>
-      {/* Terminal-style header for code blocks */}
-      {isTerminalTheme && (
-        <div className='flex items-center gap-2 bg-[hsl(var(--terminal-titlebar))] px-4 py-2 rounded-t-xl border border-b-0 border-border font-mono text-xs text-muted-foreground'>
-          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-close))]' />
-          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-minimize))]' />
-          <span className='w-3 h-3 rounded-full bg-[hsl(var(--terminal-window-btn-maximize))]' />
-          <span className='ml-2 text-primary'>{label}</span>
+    <div
+      className='article-code-card group relative my-8'
+      data-wrapped={wrapped}
+      data-code-highlight-state={
+        canonicalLanguage
+          ? highlightReady
+            ? 'ready'
+            : 'plain-fallback'
+          : 'plain'
+      }
+    >
+      <div className='article-code-toolbar'>
+        <span className='article-code-toolbar__label'>{isTerminalTheme ? `$ ${label}` : label}</span>
+        <div className='article-code-toolbar__actions' role='group' aria-label='코드 도구'>
+          <Button size='icon' variant='ghost' type='button'
+            aria-label={wrapped ? '코드 줄 바꿈 끄기' : '코드 줄 바꿈 켜기'}
+            aria-pressed={wrapped} aria-controls={codeRegionId}
+            title={wrapped ? '줄 바꿈 끄기' : '줄 바꿈 켜기'}
+            onClick={() => setWrapped(current => !current)}>
+            <WrapText className='h-4 w-4' aria-hidden='true' />
+          </Button>
+          <Button size='icon' variant='ghost' type='button' data-testid='code-copy-btn'
+            aria-label={copyLabel} title={copyLabel} onClick={() => { void copyCode(); }}>
+            {copyState === 'copied' ? <Check className='h-4 w-4' aria-hidden='true' /> : <Copy className='h-4 w-4' aria-hidden='true' />}
+          </Button>
         </div>
-      )}
-      {/* Non-terminal language badge */}
-      {!isTerminalTheme && (
-        <div className='absolute left-4 top-3 z-10'>
-          <span className='rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-200 shadow-sm backdrop-blur'>
-            {label}
-          </span>
-        </div>
-      )}
+      </div>
 
-      {/* Copy button */}
-      <Button
-        size='icon'
-        variant='ghost'
-        data-testid='code-copy-btn'
-        className={cn(
-          'absolute right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10',
-          isTerminalTheme
-            ? 'top-12 text-primary hover:text-primary hover:bg-primary/10'
-            : 'top-2'
-        )}
-        onClick={() => onCopy(codeString)}
-      >
-        {copiedCode === codeString ? (
-          <Check className='h-4 w-4' />
-        ) : (
-          <Copy className='h-4 w-4' />
-        )}
-      </Button>
-
-      {/* Code area with collapsible */}
       <div className='relative overflow-hidden'>
         <div
+          id={codeRegionId}
+          role='region'
+          aria-label={`${label} 코드`}
+          tabIndex={0}
           className={cn(
-            'overflow-x-visible transition-[max-height] duration-500 ease-in-out',
+            'article-code-region ui-scroll-region transition-[max-height] motion-reduce:transition-none duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+            wrapped ? 'overflow-x-hidden' : 'overflow-x-auto',
             collapsed ? 'overflow-y-hidden' : 'overflow-y-visible'
           )}
           style={
@@ -939,62 +965,74 @@ function CodeBlock({
               : { maxHeight: 'none' }
           }
         >
-          <SyntaxHighlighter
-            style={isTerminalTheme ? terminalTheme : atomOneDark}
-            language={syntaxLanguage}
-            PreTag='div'
-            showLineNumbers={showLineNumbers}
-            lineNumberStyle={{
-              minWidth: '2.5em',
-              paddingRight: '1em',
-              color: isTerminalTheme
-                ? 'rgba(100,160,120,0.4)'
-                : 'rgba(148,163,184,0.55)',
-              userSelect: 'none',
-              fontSize: '0.78em',
-              paddingTop: '0.15rem',
-            }}
-            customStyle={{
-              margin: 0,
-              padding: isTerminalTheme
-                ? '1.2rem 1.25rem 1.15rem'
-                : '1.15rem 1.2rem',
-              borderRadius: isTerminalTheme ? '0 0 1rem 1rem' : '1rem',
-              background: isTerminalTheme ? 'hsl(200 50% 3%)' : '#0f172a',
-              border: isTerminalTheme
-                ? '1px solid hsl(200 30% 12%)'
-                : '1px solid rgba(15, 23, 42, 0.14)',
-              boxShadow: isTerminalTheme
-                ? '0 18px 40px rgba(0, 0, 0, 0.35)'
-                : '0 18px 36px rgba(15, 23, 42, 0.12)',
-              fontSize: '0.92rem',
-              lineHeight: 1.75,
-              overflowX: 'visible',
-              ...CODE_BLOCK_WRAPPING_STYLE,
-            }}
-            codeTagProps={{
-              style: {
-                fontFamily:
-                  "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
+          {canonicalLanguage && highlightReady ? (
+            <SyntaxHighlighter
+              style={isTerminalTheme ? terminalTheme : atomOneDark}
+              language={canonicalLanguage}
+              PreTag='div'
+              showLineNumbers={showLineNumbers}
+              lineNumberStyle={{
+                minWidth: '2.5em',
+                paddingRight: '1em',
+                color: isTerminalTheme
+                  ? 'rgba(100,160,120,0.4)'
+                  : 'rgba(148,163,184,0.55)',
+                userSelect: 'none',
+                fontSize: '0.78em',
+                paddingTop: '0.15rem',
+              }}
+              customStyle={{
+                margin: 0,
+                padding: isTerminalTheme
+                  ? '1.2rem 1.25rem 1.15rem'
+                  : '1.15rem 1.2rem',
+                borderRadius: 0,
+                background: isTerminalTheme ? 'hsl(200 50% 3%)' : '#0f172a',
+                border: 'none',
+                boxShadow: 'none',
                 fontSize: '0.92rem',
-                ...CODE_BLOCK_WRAPPING_STYLE,
-              },
-            }}
-            className={cn(
-              'article-code-highlighter rounded-xl shadow-lg !overflow-x-visible',
-              isTerminalTheme && 'rounded-t-none !rounded-b-xl',
-              !isTerminalTheme && '!pt-11'
-            )}
-            wrapLongLines
-          >
-            {codeString}
-          </SyntaxHighlighter>
+                lineHeight: 1.75,
+                overflowX: 'visible',
+                ...wrappingStyle,
+              }}
+              codeTagProps={{
+                style: {
+                  fontFamily:
+                    "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
+                  fontSize: '0.92rem',
+                  ...wrappingStyle,
+                },
+              }}
+              className={cn(
+                'article-code-highlighter !overflow-x-visible'
+              )}
+              wrapLongLines={wrapped}
+            >
+              {codeString}
+            </SyntaxHighlighter>
+          ) : (
+            <pre
+              data-testid='plain-code-fallback'
+              data-language={canonicalLanguage}
+              className={cn(
+                'article-code-highlighter !overflow-x-visible m-0 p-5 font-mono text-[0.92rem] leading-7',
+                wrapped
+                  ? 'whitespace-pre-wrap [overflow-wrap:anywhere]'
+                  : 'whitespace-pre',
+                isTerminalTheme
+                  ? 'rounded-t-none border-border bg-[hsl(var(--terminal-code-bg))] text-primary/90'
+                  : 'border-slate-900/15 bg-slate-900 text-slate-100'
+              )}
+              style={wrappingStyle}
+            >
+              <code>{codeString}</code>
+            </pre>
+          )}
         </div>
 
-        {/* Fade gradient overlay when collapsed */}
         {isLong && collapsed && (
           <div
-            className='absolute bottom-0 left-0 right-0 h-24 pointer-events-none'
+            className='pointer-events-none absolute bottom-0 left-0 right-0 h-24'
             style={{
               background: isTerminalTheme
                 ? 'linear-gradient(to bottom, transparent, hsl(200 50% 3%))'
@@ -1004,33 +1042,41 @@ function CodeBlock({
         )}
       </div>
 
-      {/* Expand/Collapse toggle button */}
       {isLong && (
         <button
           type='button'
           data-testid='code-collapse-toggle'
-          onClick={() => setCollapsed(v => !v)}
+          aria-expanded={!collapsed}
+          aria-controls={codeRegionId}
+          onClick={() => setCollapsed(current => !current)}
           className={cn(
-            'w-full flex items-center justify-center gap-2 py-2 text-xs font-medium transition-colors',
-            'border-t',
+            'flex min-h-10 w-full items-center justify-center gap-2 border-t py-2 text-xs font-medium transition-colors',
             isTerminalTheme
-              ? 'bg-[hsl(var(--terminal-titlebar))] border-border text-primary hover:bg-primary/10 rounded-b-xl'
-              : 'bg-[#282c34] border-[#3e4451] text-gray-400 hover:text-gray-200 rounded-b-xl'
+              ? 'rounded-b-xl border-border bg-[hsl(var(--terminal-titlebar))] text-primary hover:bg-primary/10'
+              : 'rounded-b-xl border-[#3e4451] bg-[#282c34] text-gray-400 hover:text-gray-200'
           )}
         >
           {collapsed ? (
             <>
-              <ChevronDown className='h-3.5 w-3.5' />
+              <ChevronDown className='h-3.5 w-3.5' aria-hidden='true' />
               <span>{lineCount - COLLAPSE_THRESHOLD}줄 더 보기</span>
             </>
           ) : (
             <>
-              <ChevronUp className='h-3.5 w-3.5' />
+              <ChevronUp className='h-3.5 w-3.5' aria-hidden='true' />
               <span>접기</span>
             </>
           )}
         </button>
       )}
+
+      <span className='sr-only' aria-live='polite'>
+        {copyState === 'copied'
+          ? '코드를 복사했습니다.'
+          : copyState === 'failed'
+            ? '코드를 복사하지 못했습니다.'
+            : ''}
+      </span>
     </div>
   );
 }
@@ -1041,15 +1087,22 @@ function MarkdownRendererInner({
   inlineEnabled = false,
   postTitle = '',
   postPath = '',
+  profile = 'article',
 }: MarkdownRendererProps) {
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const { isTerminal } = useTheme();
-  const copyResetTimerRef = useRef<number | null>(null);
+  const normalizedSource = useMemo(
+    () => normalizeMarkdownSource(content),
+    [content]
+  );
+  const sanitizeSchema = useMemo(
+    () => getMarkdownSanitizeSchema(profile),
+    [profile]
+  );
 
   const sanitizedContent = useMemo(() => {
-    if (!postTitle) return content;
+    if (!postTitle) return normalizedSource;
     const normalizedTitle = postTitle.trim().toLowerCase();
-    const lines = content.split(/\r?\n/);
+    const lines = normalizedSource.split(/\r?\n/);
     while (lines.length) {
       const first = lines[0].trim();
       const plain = first
@@ -1063,27 +1116,7 @@ function MarkdownRendererInner({
       break;
     }
     return lines.join('\n');
-  }, [content, postTitle]);
-
-  useEffect(() => {
-    return () => {
-      if (copyResetTimerRef.current !== null) {
-        window.clearTimeout(copyResetTimerRef.current);
-      }
-    };
-  }, []);
-
-  const copyToClipboard = useCallback((code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    if (copyResetTimerRef.current !== null) {
-      window.clearTimeout(copyResetTimerRef.current);
-    }
-    copyResetTimerRef.current = window.setTimeout(() => {
-      setCopiedCode(null);
-      copyResetTimerRef.current = null;
-    }, 2000);
-  }, []);
+  }, [normalizedSource, postTitle]);
 
   const markdownComponents = useMemo(() => {
     const headingSlugCounts = new Map<string, number>();
@@ -1102,7 +1135,7 @@ function MarkdownRendererInner({
           <h1
             id={id}
             className={cn(
-              'article-heading text-center text-4xl font-bold mt-12 mb-6 scroll-mt-24',
+              'article-heading text-left text-4xl font-bold mt-12 mb-6 scroll-mt-24',
               isTerminal && 'terminal-glow'
             )}
           >
@@ -1117,7 +1150,7 @@ function MarkdownRendererInner({
           <h2
             id={id}
             className={cn(
-              'article-heading text-center text-3xl font-semibold mt-10 mb-5 scroll-mt-24',
+              'article-heading text-left text-3xl font-semibold mt-10 mb-5 scroll-mt-24',
               isTerminal && 'terminal-glow'
             )}
           >
@@ -1132,7 +1165,7 @@ function MarkdownRendererInner({
           <h3
             id={id}
             className={cn(
-              'article-heading text-center text-2xl font-semibold mt-8 mb-4 scroll-mt-24',
+              'article-heading text-left text-2xl font-semibold mt-8 mb-4 scroll-mt-24',
               isTerminal && 'terminal-glow'
             )}
           >
@@ -1194,8 +1227,7 @@ function MarkdownRendererInner({
             <p
               key={key}
               className={cn(
-                'article-readable mb-6 text-pretty leading-8 text-foreground/90 [overflow-wrap:anywhere]',
-                isTerminal && 'border-l border-border/50 pl-4'
+                'article-readable mb-6 text-pretty leading-8 text-foreground/90 [overflow-wrap:anywhere]'
               )}
             >
               {inlineChildren}
@@ -1304,8 +1336,6 @@ function MarkdownRendererInner({
             syntaxLanguage={presentation.syntaxLanguage}
             displayLanguage={presentation.displayLanguage}
             isTerminalTheme={isTerminal}
-            copiedCode={copiedCode}
-            onCopy={copyToClipboard}
           />
         );
       },
@@ -1336,15 +1366,28 @@ function MarkdownRendererInner({
         );
       },
       a: ({ href, children }: { href?: string; children?: ReactNode }) => {
-        const safeHref = normalizeMarkdownLinkHref(href);
+        const link = getMarkdownLinkPresentation(href, profile);
+        if (!link.href) return <span>{children}</span>;
 
+        const isInertPreview = !link.interactive;
         return (
           <a
-            href={safeHref}
-            target={safeHref ? '_blank' : undefined}
-            rel={safeHref ? 'noopener noreferrer' : undefined}
+            href={link.href}
+            target={link.target}
+            rel={link.rel}
+            aria-disabled={isInertPreview || undefined}
+            tabIndex={isInertPreview ? -1 : undefined}
+            data-preview-inert-link={isInertPreview ? 'true' : undefined}
+            onClick={
+              isInertPreview
+                ? event => {
+                    event.preventDefault();
+                  }
+                : undefined
+            }
             className={cn(
               'font-medium text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:decoration-primary',
+              isInertPreview && 'cursor-not-allowed opacity-70',
               isTerminal &&
                 'underline decoration-dotted underline-offset-4 hover:decoration-solid'
             )}
@@ -1384,6 +1427,8 @@ function MarkdownRendererInner({
       video: ({
         src,
         children,
+        autoPlay,
+        loop,
         ...props
       }: React.ComponentProps<'video'> & { children?: ReactNode }) => (
         <EmbeddedVideo
@@ -1391,6 +1436,8 @@ function MarkdownRendererInner({
           src={typeof src === 'string' ? src : ''}
           postPath={postPath}
           isTerminal={isTerminal}
+          autoPlay={profile === 'preview' ? false : autoPlay}
+          loop={profile === 'preview' ? false : loop}
         >
           {children}
         </EmbeddedVideo>
@@ -1407,21 +1454,15 @@ function MarkdownRendererInner({
           {...props}
           postPath={postPath}
           isTerminal={isTerminal}
+          profile={profile}
         />
       ),
       cite: ({ children }: { children?: ReactNode }) => <cite>{children}</cite>,
       hr: () => <hr className='article-wide-block my-12 border-border/70' />,
       table: ({ children }: { children?: ReactNode }) => (
-        <div className='article-table-shell my-9 overflow-x-auto rounded-2xl border border-border/70 bg-card/80 shadow-sm'>
-          <table
-            className={cn(
-              'min-w-full divide-y divide-border',
-              isTerminal && 'font-mono text-sm'
-            )}
-          >
-            {children}
-          </table>
-        </div>
+        <MarkdownTable variant='article' isTerminal={isTerminal}>
+          {children}
+        </MarkdownTable>
       ),
       th: ({ children }: { children?: ReactNode }) => (
         <th
@@ -1439,16 +1480,17 @@ function MarkdownRendererInner({
       ),
     };
   }, [
-    copiedCode,
-    copyToClipboard,
     inlineEnabled,
     isTerminal,
     postPath,
     postTitle,
+    profile,
   ]);
 
   return (
     <div
+      data-markdown-profile={profile}
+      data-preserve-reading-position='true'
       className={cn(
         'article-flow prose prose-lg prose-neutral content max-w-none dark:prose-invert prose-headings:text-balance prose-p:text-pretty',
         isTerminal && 'prose-headings:font-mono prose-headings:tracking-wide',
@@ -1460,7 +1502,7 @@ function MarkdownRendererInner({
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[
             rehypeRaw,
-            [rehypeSanitize, blogMarkdownSanitizeSchema],
+            [rehypeSanitize, sanitizeSchema],
           ]}
           components={markdownComponents}
         >
@@ -1478,7 +1520,8 @@ const MarkdownRenderer = memo(
     prev.className === next.className &&
     prev.inlineEnabled === next.inlineEnabled &&
     prev.postTitle === next.postTitle &&
-    prev.postPath === next.postPath
+    prev.postPath === next.postPath &&
+    prev.profile === next.profile
 );
 
 export default MarkdownRenderer;

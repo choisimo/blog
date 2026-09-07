@@ -36,19 +36,26 @@ const sanitizeScrollAreaNode = (
   return children;
 };
 
+type ScrollAreaProps = React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
+  viewportProps?: React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Viewport>;
+};
+
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
+  ScrollAreaProps
 >(
-  ({ className, children, 'aria-label': ariaLabel, title, ...props }, ref) => (
+  ({ className, children, viewportProps, 'aria-label': ariaLabel, title, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
-    className={cn('relative overflow-hidden', className)}
+    className={cn('ui-scroll-area relative overflow-hidden', className)}
     aria-label={sanitizeScrollAreaOptionalText(ariaLabel)}
     title={sanitizeScrollAreaOptionalText(title)}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className='h-full w-full rounded-[inherit]'>
+    <ScrollAreaPrimitive.Viewport {...viewportProps}
+      className={cn('h-full w-full rounded-[inherit]', viewportProps?.className)}
+      aria-label={sanitizeScrollAreaOptionalText(viewportProps?.['aria-label'])}
+      title={sanitizeScrollAreaOptionalText(viewportProps?.title)}>
       {sanitizeScrollAreaNode(children)}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />
@@ -67,7 +74,7 @@ const ScrollBar = React.forwardRef<
     ref={ref}
     orientation={orientation}
     className={cn(
-      'flex touch-none select-none transition-colors',
+      'ui-scrollbar flex touch-none select-none transition-colors',
       orientation === 'vertical' &&
         'h-full w-2.5 border-l border-l-transparent p-[1px]',
       orientation === 'horizontal' &&
@@ -78,7 +85,7 @@ const ScrollBar = React.forwardRef<
     title={sanitizeScrollAreaOptionalText(title)}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className='relative flex-1 rounded-full bg-border hover:bg-border-strong transition-colors' />
+    <ScrollAreaPrimitive.ScrollAreaThumb className='ui-scrollbar-thumb relative flex-1 rounded-full transition-colors' />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
   )
 );

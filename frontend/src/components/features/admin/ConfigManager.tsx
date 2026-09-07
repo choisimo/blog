@@ -387,12 +387,12 @@ export function ConfigManager() {
       case 'select':
         return (
           <Select value={value} onValueChange={(v) => updateValue(variable.key, v)} disabled={!mutationsEnabled}>
-            <SelectTrigger className={`${baseInputClass} w-full`}>
+            <SelectTrigger className={` ${baseInputClass} w-full `}>
               <SelectValue placeholder={variable.default || 'Select...'} />
             </SelectTrigger>
             <SelectContent>
               {variable.options?.map((opt) => (
-                <SelectItem key={opt} value={opt} className='text-sm'>
+                <SelectItem key={opt} value={opt} className="text-sm">
                   {opt}
                 </SelectItem>
               ))}
@@ -402,14 +402,14 @@ export function ConfigManager() {
 
       case 'password':
         return (
-          <div className='flex gap-2'>
+          <div className="flex gap-2">
             <Input
               id={variable.key}
               type={isVisible ? 'text' : 'password'}
               value={value}
               onChange={(e) => updateValue(variable.key, e.target.value)}
               placeholder={configValues[variable.key]?.isSet ? '••••••••' : 'Not set'}
-              className={`${baseInputClass} flex-1`}
+              className={["ui-input", (` ${baseInputClass} flex-1 `)].filter(Boolean).join(' ')}
               readOnly={!mutationsEnabled}
               disabled={!mutationsEnabled}
             />
@@ -421,7 +421,7 @@ export function ConfigManager() {
               className={iconBtnClass}
               disabled={!mutationsEnabled}
             >
-              {isVisible ? <EyeOff className='h-3.5 w-3.5' aria-hidden='true' /> : <Eye className='h-3.5 w-3.5' aria-hidden='true' />}
+              {isVisible ? <EyeOff className="h-3.5 w-3.5" aria-hidden='true' /> : <Eye className="h-3.5 w-3.5" aria-hidden='true' />}
             </button>
           </div>
         );
@@ -434,7 +434,7 @@ export function ConfigManager() {
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || ''}
             rows={3}
-            className='text-sm rounded-lg border-zinc-200 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 transition-all resize-none'
+            className="ui-textarea text-sm rounded-lg border-ui-line dark:border-ui-line dark:bg-ui-surface/50 dark:text-ui-text focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 transition-all resize-none"
             readOnly={!mutationsEnabled}
             disabled={!mutationsEnabled}
           />
@@ -442,14 +442,14 @@ export function ConfigManager() {
 
       case 'url':
         return (
-          <div className='flex gap-2'>
+          <div className="flex gap-2">
             <Input
               id={variable.key}
               type='url'
               value={value}
               onChange={(e) => updateValue(variable.key, e.target.value)}
               placeholder={variable.default || 'https://…'}
-              className={`${baseInputClass} flex-1`}
+              className={["ui-input", (` ${baseInputClass} flex-1 `)].filter(Boolean).join(' ')}
               readOnly={!mutationsEnabled}
               disabled={!mutationsEnabled}
             />
@@ -461,7 +461,7 @@ export function ConfigManager() {
                 title={`Copy ${variable.key} URL`}
                 className={iconBtnClass}
               >
-                <Copy className='h-3.5 w-3.5' aria-hidden='true' />
+                <Copy className="h-3.5 w-3.5" aria-hidden='true' />
               </button>
             )}
           </div>
@@ -475,7 +475,7 @@ export function ConfigManager() {
             value={value}
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || '0'}
-            className={baseInputClass}
+            className={["ui-input", (baseInputClass)].filter(Boolean).join(' ')}
             readOnly={!mutationsEnabled}
             disabled={!mutationsEnabled}
           />
@@ -489,7 +489,7 @@ export function ConfigManager() {
             value={value}
             onChange={(e) => updateValue(variable.key, e.target.value)}
             placeholder={variable.default || ''}
-            className={baseInputClass}
+            className={["ui-input", (baseInputClass)].filter(Boolean).join(' ')}
             readOnly={!mutationsEnabled}
             disabled={!mutationsEnabled}
           />
@@ -499,8 +499,8 @@ export function ConfigManager() {
 
   if (categoriesLoading || configLoading) {
     return (
-      <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 flex items-center gap-3 text-sm text-zinc-400'>
-        <RefreshCw className='h-4 w-4 animate-spin shrink-0' aria-hidden='true' />
+      <div className="rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface p-8 flex items-center gap-3 text-sm text-ui-muted">
+        <RefreshCw className="h-4 w-4 animate-spin shrink-0" aria-hidden='true' />
         <span>Loading configuration…</span>
       </div>
     );
@@ -514,13 +514,13 @@ export function ConfigManager() {
         : 'Failed to load configuration';
 
     return (
-      <div className='rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300'>
-        <div className='flex items-start justify-between gap-3'>
-          <div className='flex min-w-0 items-start gap-2'>
-            <AlertCircle className='mt-0.5 h-4 w-4 shrink-0' aria-hidden='true' />
-            <div className='min-w-0'>
-              <p className='font-medium'>Unable to load configuration</p>
-              <p className='mt-1 text-xs'>{message}</p>
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden='true' />
+            <div className="min-w-0">
+              <p className="font-medium">Unable to load configuration</p>
+              <p className="mt-1 text-xs">{message}</p>
             </div>
           </div>
           <button
@@ -529,9 +529,9 @@ export function ConfigManager() {
               void refetchCategories();
               void refetchConfig();
             }}
-            className='inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30'
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-ui-surface px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
           >
-            <RefreshCw className='h-3 w-3' aria-hidden='true' />
+            <RefreshCw className="h-3 w-3" aria-hidden='true' />
             Retry
           </button>
         </div>
@@ -544,49 +544,49 @@ export function ConfigManager() {
   const configTabs: AdminSubtabsTab[] = categories.map(cat => ({ id: cat.id, label: cat.name }));
 
   return (
-    <div className='space-y-3'>
-      <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 flex items-center justify-between gap-3'>
-        <div className='flex items-center gap-2 min-w-0'>
+    <div className={["ui-admin-section ui-admin-configmanager", ("space-y-3")].filter(Boolean).join(' ')}>
+      <div className="rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
           {!mutationsEnabled ? (
             <>
-              <AlertCircle className='h-3.5 w-3.5 text-amber-500 shrink-0' aria-hidden='true' />
-              <span className='text-xs text-amber-600 dark:text-amber-400 font-medium'>Read-only runtime config</span>
+              <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-hidden='true' />
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Read-only runtime config</span>
             </>
           ) : hasChanges ? (
             <>
-              <AlertCircle className='h-3.5 w-3.5 text-amber-500 shrink-0' aria-hidden='true' />
-              <span className='text-xs text-amber-600 dark:text-amber-400 font-medium'>Unsaved changes</span>
+              <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-hidden='true' />
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Unsaved changes</span>
             </>
           ) : (
-            <span className='text-xs text-zinc-400 dark:text-zinc-500'>Environment config</span>
+            <span className="text-xs text-ui-muted dark:text-ui-muted">Environment config</span>
           )}
         </div>
-        <div className='flex flex-wrap items-center justify-end gap-1.5 shrink-0'>
+        <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
           <button
             type='button'
             onClick={() => exportMutation.mutate('env')}
             disabled={exportMutation.isPending}
-            className='flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-ui-line dark:border-ui-line text-ui-muted dark:text-ui-muted hover:bg-ui-soft dark:hover:bg-ui-surface transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
           >
-            <Download className='h-3 w-3' aria-hidden='true' />
+            <Download className="h-3 w-3" aria-hidden='true' />
             .env
           </button>
           <button
             type='button'
             onClick={() => exportMutation.mutate('docker-compose')}
             disabled={exportMutation.isPending}
-            className='flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-ui-line dark:border-ui-line text-ui-muted dark:text-ui-muted hover:bg-ui-soft dark:hover:bg-ui-surface transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
           >
-            <Download className='h-3 w-3' aria-hidden='true' />
+            <Download className="h-3 w-3" aria-hidden='true' />
             Docker
           </button>
           <button
             type='button'
             onClick={() => exportMutation.mutate('wrangler')}
             disabled={exportMutation.isPending}
-            className='flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
+            className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-ui-line dark:border-ui-line text-ui-muted dark:text-ui-muted hover:bg-ui-soft dark:hover:bg-ui-surface transition-colors disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
           >
-            <Download className='h-3 w-3' aria-hidden='true' />
+            <Download className="h-3 w-3" aria-hidden='true' />
             Wrangler
           </button>
           {mutationsEnabled ? (
@@ -594,13 +594,13 @@ export function ConfigManager() {
               type='button'
               onClick={handleSave}
               disabled={!hasChanges || saveMutation.isPending}
-              className='flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none'
+              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-ui-text hover:bg-ui-text dark:bg-ui-soft dark:text-ui-muted dark:hover:bg-ui-soft text-white transition-all active:scale-95 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 outline-none"
             >
-              <Save className='h-3 w-3' aria-hidden='true' />
+              <Save className="h-3 w-3" aria-hidden='true' />
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           ) : (
-            <span className='inline-flex h-8 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-medium text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-300'>
+            <span className="inline-flex h-8 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-medium text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-300">
               GitOps only
             </span>
           )}
@@ -608,13 +608,13 @@ export function ConfigManager() {
       </div>
 
       {!mutationsEnabled && (
-        <div className='rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-200'>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-200">
           {mutationGuidance}
         </div>
       )}
 
-        <div className='rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden'>
-          <AdminSubtabs
+        <div className="rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface overflow-hidden">
+          <AdminSubtabs className="ui-admin-subtabs"
             tabs={configTabs}
             activeTab={activeTab}
             onTabChange={nextTab => {
@@ -626,9 +626,9 @@ export function ConfigManager() {
                 {tab.label}
                 <span className={`font-mono text-xs px-1 py-0.5 rounded ${
                   isActive
-                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500'
-                }`}>
+                    ? "bg-ui-text dark:bg-ui-soft text-white dark:text-ui-muted"
+                    : "bg-ui-soft dark:bg-ui-surface text-ui-muted dark:text-ui-muted"
+                }  `}>
                   {categories.find(c => c.id === tab.id)?.variables.length ?? 0}
                 </span>
               </>
@@ -636,38 +636,38 @@ export function ConfigManager() {
           />
 
         {activeCategory && (
-          <div className='divide-y divide-zinc-50 dark:divide-zinc-800/50'>
+          <div className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
             {activeCategory.variables.map((variable) => {
               const configValue = configValues[variable.key];
               return (
-                <div key={variable.key} className='px-4 py-3.5 space-y-2 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 transition-colors'>
-                  <div className='flex items-center gap-2 flex-wrap'>
+                <div key={variable.key} className="px-4 py-3.5 space-y-2 hover:bg-ui-soft/50 dark:hover:bg-ui-surface/20 transition-colors">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Label
                       htmlFor={variable.key}
-                      className='font-mono text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded cursor-default border border-zinc-200/80 dark:border-zinc-700/80'
+                      className="ui-label font-mono text-xs text-ui-text dark:text-ui-text bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded cursor-default border border-ui-line/80 dark:border-ui-line/80"
                     >
                       {variable.key}
                     </Label>
                     {variable.isSecret && (
-                      <span className='text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded font-medium'>
+                      <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-1.5 py-0.5 rounded font-medium">
                         secret
                       </span>
                     )}
                     {configValue?.isSet && (
-                      <span className='flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400'>
-                        <CheckCircle2 className='h-3 w-3' aria-hidden='true' />
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3" aria-hidden='true' />
                         Set
                       </span>
                     )}
                   </div>
                   {variable.description && (
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500 leading-relaxed'>{variable.description}</p>
+                    <p className="text-xs text-ui-muted dark:text-ui-muted leading-relaxed">{variable.description}</p>
                   )}
                   {renderField(variable)}
                   {variable.default && !variable.isSecret && (
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                    <p className="text-xs text-ui-muted dark:text-ui-muted">
                       Default:{' '}
-                      <code className='font-mono text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded'>
+                      <code className="font-mono text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1 py-0.5 rounded">
                         {variable.default}
                       </code>
                     </p>

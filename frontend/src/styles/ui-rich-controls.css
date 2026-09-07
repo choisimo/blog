@@ -1,0 +1,71 @@
+/* RICH-01 is opt-in. Existing palette, global theme ownership and legacy buttons remain intact. */
+.ui-action-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:4px; min-width:0; }
+.ui-action-toolbar[aria-orientation='vertical'] { flex-direction:column; align-items:stretch; }
+.ui-action-button {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  box-sizing:border-box; min-width:var(--ui-control-height,44px); min-height:var(--ui-control-height,44px);
+  max-width:100%; padding:8px 12px; border:1px solid transparent; border-radius:var(--ui-radius-control);
+  color:hsl(var(--ui-text)); background:transparent; font:500 13px/1.5 var(--ui-font);
+  cursor:pointer; touch-action:manipulation; vertical-align:middle;
+}
+.ui-action-button > span { min-width:0; overflow-wrap:anywhere; }
+.ui-action-button[data-icon-only] { width:var(--ui-control-height,44px); padding:0; flex-shrink:0; }
+.ui-action-icon { width:18px; height:18px; flex-shrink:0; pointer-events:none; }
+.ui-action-button:hover:not(:disabled):not([aria-disabled='true']) { background:hsl(var(--ui-soft)); }
+.ui-action-button[data-variant='outline'] { border-color:hsl(var(--ui-line-strong)); }
+.ui-action-button[data-variant='danger'] { color:hsl(var(--ui-danger)); }
+.ui-action-button[data-variant='danger']:hover:not(:disabled) { background:hsl(var(--ui-danger-soft)); }
+.ui-action-button:is([aria-pressed='true'],[aria-expanded='true']) {
+  color:hsl(var(--ui-accent)); background:hsl(var(--ui-accent-soft)); border-color:hsl(var(--ui-accent));
+  box-shadow:inset 0 -2px 0 hsl(var(--ui-accent));
+}
+.ui-action-button:focus-visible,
+.ui-action-toolbar [data-toolbar-item]:focus-visible {
+  outline:2px solid hsl(var(--ui-accent)); outline-offset:2px;
+}
+.ui-action-button:is(:disabled,[aria-disabled='true']) { opacity:.55; cursor:not-allowed; }
+.ui-action-icon--busy { animation:ui-action-spin 1s linear infinite; }
+@keyframes ui-action-spin { to { transform:rotate(360deg); } }
+.ui-action-button[hidden], .ui-action-toolbar[hidden], .ui-workspace-panel[hidden] { display:none !important; }
+.ui-dialog-close { position:absolute; top:8px; right:8px; }
+.ui-workspace-panel {
+  min-width:0; color:hsl(var(--ui-text)); background:hsl(var(--ui-surface));
+  border:1px solid hsl(var(--ui-line)); border-radius:var(--ui-radius-panel);
+}
+.ui-workspace-panel__header { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:16px; border-bottom:1px solid hsl(var(--ui-line)); }
+.ui-workspace-panel__copy,.ui-workspace-panel__body { min-width:0; }
+.ui-workspace-panel__title { margin:0; font:600 15px/1.6 var(--ui-font); overflow-wrap:anywhere; }
+.ui-workspace-panel__description { margin:4px 0 0; color:hsl(var(--ui-muted)); font:400 12px/1.7 var(--ui-font); overflow-wrap:anywhere; }
+.ui-workspace-panel__actions { display:flex; align-items:center; flex-wrap:wrap; gap:4px; min-width:0; }
+.ui-workspace-panel__footer { padding:12px 16px; border-top:1px solid hsl(var(--ui-line)); }
+/* Do not let the toolbar base display override the existing mobile-only pane switcher. */
+.ui-pane-switcher.ui-action-toolbar { display:none; }
+@media(max-width:1023px) { .ui-pane-switcher.ui-action-toolbar { display:flex; } }
+.ui-editor-format-toolbar { gap:4px; padding:2px; }
+.ui-editor-tools.ui-workspace-panel { border:0; border-left:1px solid hsl(var(--ui-line)); border-radius:0; }
+.ui-editor-tools.ui-workspace-panel > .ui-workspace-panel__header { padding:12px 16px; }
+.ui-editor-tools.ui-workspace-panel > .ui-workspace-panel__body { border:0; padding:0; }
+.ui-editor-tools.ui-workspace-panel .ui-workspace-panel__body > .ui-editor-tool-tabs { border:0; border-radius:0; }
+.ui-editor-tools.ui-workspace-panel .ui-workspace-panel__body > .ui-editor-tool-tabs > :first-child { padding:0 12px; }
+.ui-insight-map-tools .ui-action-button { min-height:44px; min-width:44px; }
+.ui-insight-view-switch.ui-action-toolbar { padding:4px; }
+@media(max-width:1023px) {
+  .ui-editor-tools.ui-workspace-panel { border-left:0; border-top:1px solid hsl(var(--ui-line)); }
+}
+@media(prefers-reduced-motion:reduce) { .ui-action-icon--busy { animation:none; } }
+@media(forced-colors:active) {
+  .ui-action-button { border-color:ButtonText; }
+  .ui-action-button:is([aria-pressed='true'],[aria-expanded='true']) { outline:2px solid Highlight; outline-offset:-3px; }
+  .ui-action-button:focus-visible, .ui-action-toolbar [data-toolbar-item]:focus-visible { outline-color:Highlight; }
+  .ui-action-button:is(:disabled,[aria-disabled='true']) { color:GrayText; opacity:1; }
+}
+
+.ui-editor-tools.ui-workspace-panel .ui-workspace-panel__body > .ui-editor-tool-tabs { padding:0; }
+.ui-stack-filter-toolbar { margin-bottom:12px; }
+.ui-dialog-content:not(.ui-comment-dialog) {
+  max-height:calc(100vh - 32px);
+  max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  overflow-y:auto; overscroll-behavior:contain;
+}
+/* The close button must not obscure a long title in any theme. */
+.ui-dialog-content:not(.ui-comment-dialog) > :has(> h2) { padding-right:44px; }

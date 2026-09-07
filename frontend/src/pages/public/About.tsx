@@ -151,46 +151,46 @@ const About = () => {
   };
 
   return (
-    <div className='container mx-auto max-w-6xl px-4 py-10'>
-      <div className='mb-8 space-y-2'>
-        <h1 className='text-3xl font-bold tracking-tight md:text-4xl'>About</h1>
-        <p className='max-w-3xl text-muted-foreground'>
+    <div className="ui-page ui-about-page ui-page-container" data-ui-page='about'>
+      <div className="ui-page-heading">
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">About</h1>
+        <p className="max-w-3xl text-muted-foreground">
           개발자로서의 정체성과 연락 창구를 한 페이지로 통합했습니다.
           CS 전공 기반 위에서 AI와 시스템 아키텍처를 중심으로 실전형 프로젝트를 만들고 있습니다.
         </p>
       </div>
 
-      <div className='grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]'>
-        <Card className='border-border/60'>
-          <CardHeader className='space-y-4'>
-            <div className='flex items-center gap-4'>
-              <Avatar className='h-20 w-20 border border-border/60'>
-                <AvatarFallback className='text-lg font-semibold'>ND</AvatarFallback>
+      <div className="ui-about-layout">
+        <Card className="ui-panel ui-about-profile">
+          <CardHeader className="ui-panel-header space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-12 w-12 border border-border/60">
+                <AvatarFallback className="text-lg font-semibold">ND</AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className='text-2xl'>Nodove</CardTitle>
-                <CardDescription className='mt-1 text-sm'>
+                <CardTitle className="ui-panel-title text-2xl">Nodove</CardTitle>
+                <CardDescription className="ui-description mt-1 text-sm">
                   CS 전공, AI &amp; System Architecture에 관심 있는 개발자
                 </CardDescription>
               </div>
             </div>
-            <p className='text-sm leading-relaxed text-muted-foreground'>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               2026년 졸업 예정이며, 백엔드/인프라/AI 경계를 넘나드는 제품 지향 개발을 선호합니다.
               문제를 구조화하고, 자동화 가능한 시스템으로 바꾸는 과정을 즐깁니다.
             </p>
           </CardHeader>
-          <CardContent>
-            <div className='space-y-4'>
-              <h3 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
+          <CardContent className="ui-panel-body">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 History
               </h3>
-              <ol className='space-y-4'>
+              <ol className="space-y-4">
                 {historyTimeline.map(item => (
-                  <li key={item.period} className='relative pl-5'>
-                    <span className='absolute left-0 top-2 h-2 w-2 rounded-full bg-primary' />
-                    <div className='text-xs font-medium text-primary'>{item.period}</div>
-                    <div className='text-sm font-semibold'>{item.title}</div>
-                    <p className='text-sm text-muted-foreground'>{item.description}</p>
+                  <li key={item.period} className="relative pl-5">
+                    <span className="absolute left-0 top-2 h-2 w-2 rounded-full bg-primary" />
+                    <div className="text-xs font-medium text-primary">{item.period}</div>
+                    <div className="text-sm font-semibold">{item.title}</div>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
                   </li>
                 ))}
               </ol>
@@ -198,43 +198,43 @@ const About = () => {
           </CardContent>
         </Card>
 
-        <div className='space-y-6'>
-          <Card className='border-border/60'>
-            <CardHeader>
-              <CardTitle>Contact &amp; Skill</CardTitle>
-              <CardDescription>
+        <div className="space-y-6">
+          <Card className="ui-panel ui-about-contact" id='contact'>
+            <CardHeader className="ui-panel-header">
+              <CardTitle className="ui-panel-title">Contact &amp; Skill</CardTitle>
+              <CardDescription className="ui-description">
                 기술 스택과 소셜 링크, 그리고 페이지 이탈 없는 문의 폼을 함께 제공합니다.
               </CardDescription>
             </CardHeader>
-            <CardContent className='space-y-6'>
+            <CardContent className="ui-panel-body space-y-6">
               <div>
-                <h3 className='mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Tech Stack
                 </h3>
-                <div className='space-y-3'>
+                <div className="space-y-3">
                   {stackSections.map(({ title, icon: Icon, badges, details }) => (
-                    <div key={title} className='rounded-xl border border-border/70 bg-card/70 p-3'>
-                      <div className='flex items-start gap-3'>
-                        <div className='rounded-lg border border-border/70 bg-background/80 p-2'>
-                          <Icon className='h-4 w-4 text-primary' />
+                    <div key={title} className="rounded-xl border border-border/70 bg-card/70 p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg border border-border/70 bg-background/80 p-2">
+                          <Icon className="h-4 w-4 text-primary" />
                         </div>
-                        <div className='min-w-0'>
-                          <h4 className='text-sm font-semibold'>{title}</h4>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold">{title}</h4>
                         </div>
                       </div>
 
-                      <div className='mt-3 flex flex-wrap gap-1.5'>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
                         {badges.map(badge => (
-                          <Badge key={badge} variant='secondary' className='text-[11px]'>
+                          <Badge key={badge} variant='secondary' className="text-[11px]">
                             {badge}
                           </Badge>
                         ))}
                       </div>
 
-                      <ul className='mt-3 space-y-1.5 text-xs leading-relaxed text-muted-foreground'>
+                      <ul className="mt-3 space-y-1.5 text-xs leading-relaxed text-muted-foreground">
                         {details.map(detail => (
-                          <li key={detail} className='flex items-start gap-2'>
-                            <span className='mt-[2px] text-primary'>•</span>
+                          <li key={detail} className="flex items-start gap-2">
+                            <span className="mt-[2px] text-primary">•</span>
                             <span>{detail}</span>
                           </li>
                         ))}
@@ -245,30 +245,30 @@ const About = () => {
               </div>
 
               <div>
-                <h3 className='mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Social Links
                 </h3>
-                <div className='flex flex-wrap gap-2'>
+                <div className="flex flex-wrap gap-2">
                   {githubHref && (
-                    <Button variant='outline' size='sm' asChild>
+                    <Button className="ui-control" data-ui-variant='outline' variant='outline' size='sm' asChild>
                       <a href={githubHref} target='_blank' rel='noopener noreferrer'>
-                        <Github className='h-4 w-4' />
+                        <Github className="h-4 w-4" />
                         GitHub
                       </a>
                     </Button>
                   )}
                   {linkedinHref && (
-                    <Button variant='outline' size='sm' asChild>
+                    <Button className="ui-control" data-ui-variant='outline' variant='outline' size='sm' asChild>
                       <a href={linkedinHref} target='_blank' rel='noopener noreferrer'>
-                        <Linkedin className='h-4 w-4' />
+                        <Linkedin className="h-4 w-4" />
                         LinkedIn
                       </a>
                     </Button>
                   )}
                   {emailHref && (
-                    <Button variant='outline' size='sm' asChild>
+                    <Button className="ui-control" data-ui-variant='outline' variant='outline' size='sm' asChild>
                       <a href={emailHref}>
-                        <Mail className='h-4 w-4' />
+                        <Mail className="h-4 w-4" />
                         Email
                       </a>
                     </Button>
@@ -278,19 +278,19 @@ const About = () => {
             </CardContent>
           </Card>
 
-          <Card className='border-border/60'>
-            <CardHeader>
-              <CardTitle>Send a Message</CardTitle>
-              <CardDescription>
+          <Card className="ui-panel border-border/60">
+            <CardHeader className="ui-panel-header">
+              <CardTitle className="ui-panel-title">Send a Message</CardTitle>
+              <CardDescription className="ui-description">
                 EmailJS 또는 API(SendGrid 백엔드)로 연결되는 폼입니다.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form className='space-y-4' onSubmit={handleSubmit}>
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  <div className='space-y-2'>
-                    <Label htmlFor='name'>Name</Label>
-                    <Input
+            <CardContent className="ui-panel-body">
+              <form className="space-y-4" onSubmit={handleSubmit}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="ui-label" htmlFor='name'>Name</Label>
+                    <Input className="ui-input"
                       id='name'
                       name='name'
                       value={formData.name}
@@ -299,9 +299,9 @@ const About = () => {
                       required
                     />
                   </div>
-                  <div className='space-y-2'>
-                    <Label htmlFor='email'>Email</Label>
-                    <Input
+                  <div className="space-y-2">
+                    <Label className="ui-label" htmlFor='email'>Email</Label>
+                    <Input className="ui-input"
                       id='email'
                       name='email'
                       type='email'
@@ -313,9 +313,9 @@ const About = () => {
                   </div>
                 </div>
 
-                <div className='space-y-2'>
-                  <Label htmlFor='subject'>Subject</Label>
-                  <Input
+                <div className="space-y-2">
+                  <Label className="ui-label" htmlFor='subject'>Subject</Label>
+                  <Input className="ui-input"
                     id='subject'
                     name='subject'
                     value={formData.subject}
@@ -325,9 +325,9 @@ const About = () => {
                   />
                 </div>
 
-                <div className='space-y-2'>
-                  <Label htmlFor='message'>Message</Label>
-                  <Textarea
+                <div className="space-y-2">
+                  <Label className="ui-label" htmlFor='message'>Message</Label>
+                  <Textarea className="ui-textarea"
                     id='message'
                     name='message'
                     rows={5}
@@ -338,8 +338,8 @@ const About = () => {
                   />
                 </div>
 
-                <Button type='submit' disabled={isSubmitting} className='w-full sm:w-auto'>
-                  <Send className='h-4 w-4' />
+                <Button data-ui-variant="default" type='submit' disabled={isSubmitting} className="ui-control w-full sm:w-auto">
+                  <Send className="h-4 w-4" />
                   {isSubmitting ? 'Sending...' : 'Send Message'}
                 </Button>
               </form>

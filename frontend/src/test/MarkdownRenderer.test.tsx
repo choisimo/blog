@@ -65,10 +65,9 @@ describe('MarkdownRenderer link boundaries', () => {
       'https://example.com'
     );
 
-    const unsafeAnchor = screen.getByText('bad').closest('a');
-
-    expect(unsafeAnchor).not.toHaveAttribute('href');
-    expect(unsafeAnchor).not.toHaveAttribute('target');
+    expect(screen.getByText('bad')).toBeInTheDocument();
+    expect(screen.getByText('bad').closest('a')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'bad' })).not.toBeInTheDocument();
   });
 
   it('falls back to safe readable source when a custom renderer throws', () => {

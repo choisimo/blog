@@ -487,7 +487,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   };
 
   return (
-    <div className="space-y-4">
+    <div className={["ui-admin-section ui-admin-secretslistmanager", ("space-y-4")].filter(Boolean).join(' ')}>
       {/* Toolbar */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
@@ -496,7 +496,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             placeholder="Search secrets..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
+            className="ui-input pl-9"
           />
         </div>
         <Select
@@ -519,16 +519,16 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             ))}
           </SelectContent>
         </Select>
-        <Button
+        <Button className="ui-control" data-ui-variant="outline"
           onClick={() => fetchSecrets()}
           variant="outline"
           size="icon"
           aria-label="Refresh secrets list"
           title="Refresh secrets list"
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}  `} aria-hidden="true" />
         </Button>
-        <Button onClick={() => {
+        <Button className="ui-control" data-ui-variant="default" onClick={() => {
           resetForm();
           setIsCreateOpen(true);
         }}>
@@ -546,12 +546,12 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
       {/* Secrets List */}
       <div className="space-y-6">
         {Object.entries(groupedSecrets).map(([category, categorySecrets]) => (
-          <Card key={category}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{category}</CardTitle>
-              <CardDescription>{categorySecrets.length} secrets</CardDescription>
+          <Card className="ui-panel" key={category}>
+            <CardHeader className="ui-panel-header pb-3">
+              <CardTitle className="ui-panel-title text-base">{category}</CardTitle>
+              <CardDescription className="ui-description">{categorySecrets.length} secrets</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="ui-panel-body">
               <div className="space-y-2">
                 {categorySecrets.map((secret) => (
                   <div
@@ -594,7 +594,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                     <div className="flex items-center gap-1 ml-4">
                       {secret.has_value && (
                         <>
-                          <Button
+                          <Button className="ui-control" data-ui-variant="ghost"
                             variant="ghost"
                             size="icon"
                             onClick={() => handleReveal(secret)}
@@ -607,7 +607,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                               <Eye className="h-4 w-4" aria-hidden="true" />
                             )}
                           </Button>
-                          <Button
+                          <Button className="ui-control" data-ui-variant="ghost"
                             variant="ghost"
                             size="icon"
                             onClick={() => handleCopy(secret)}
@@ -622,7 +622,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                           </Button>
                         </>
                       )}
-                      <Button
+                      <Button className="ui-control" data-ui-variant="ghost"
                         variant="ghost"
                         size="icon"
                         onClick={() => openEdit(secret)}
@@ -631,7 +631,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                       >
                         <Edit className="h-4 w-4" aria-hidden="true" />
                       </Button>
-                      <Button
+                      <Button className="ui-control" data-ui-variant="ghost"
                         variant="ghost"
                         size="icon"
                         onClick={() => {
@@ -655,11 +655,11 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
         ))}
 
         {filteredSecrets.length === 0 && !loading && !error && (
-          <Card>
-            <CardContent className="py-12 text-center">
+          <Card className="ui-panel">
+            <CardContent className="ui-panel-body py-12 text-center">
               <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">No secrets found</p>
-              <Button className="mt-4" onClick={() => {
+              <Button data-ui-variant="default" className="ui-control mt-4" onClick={() => {
                 resetForm();
                 setIsCreateOpen(true);
               }}>
@@ -673,7 +673,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
 
       {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="ui-dialog max-w-lg">
           <DialogHeader>
             <DialogTitle>Add New Secret</DialogTitle>
             <DialogDescription>
@@ -683,7 +683,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label className="ui-label">Category</Label>
                 <Select
                   value={formData.categoryId}
                   onValueChange={(v) => {
@@ -709,7 +709,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Value Type</Label>
+                <Label className="ui-label">Value Type</Label>
                 <Select
                   value={formData.valueType}
                   onValueChange={(v) =>
@@ -733,7 +733,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Key Name</Label>
+              <Label className="ui-label">Key Name</Label>
               <Input
                 placeholder="OPENAI_API_KEY"
                 value={formData.keyName}
@@ -743,21 +743,21 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                     keyName: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'),
                   }))
                 }
-                className="font-mono"
+                className="ui-input font-mono"
               />
               <p className="text-xs text-muted-foreground">Uppercase with underscores</p>
             </div>
             <div className="space-y-2">
-              <Label>Display Name</Label>
-              <Input
+              <Label className="ui-label">Display Name</Label>
+              <Input className="ui-input"
                 placeholder="OpenAI API Key"
                 value={formData.displayName}
                 onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Description (optional)</Label>
-              <Textarea
+              <Label className="ui-label">Description (optional)</Label>
+              <Textarea className="ui-textarea"
                 placeholder="Used for AI chat completions..."
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
@@ -766,8 +766,8 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Value</Label>
-                <Button type="button" variant="outline" size="sm" onClick={handleGenerate}>
+                <Label className="ui-label">Value</Label>
+                <Button className="ui-control" data-ui-variant="outline" type="button" variant="outline" size="sm" onClick={handleGenerate}>
                   <Wand2 className="h-3 w-3 mr-1" />
                   Generate
                 </Button>
@@ -777,7 +777,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                 placeholder="Enter secret value..."
                 value={formData.value}
                 onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))}
-                className="font-mono"
+                className="ui-input font-mono"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -786,23 +786,23 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                   checked={formData.isRequired}
                   onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isRequired: v }))}
                 />
-                <Label>Required</Label>
+                <Label className="ui-label">Required</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isSensitive}
                   onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isSensitive: v }))}
                 />
-                <Label>Sensitive</Label>
+                <Label className="ui-label">Sensitive</Label>
               </div>
             </div>
             {formError && <p className="text-sm text-destructive">{formError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            <Button className="ui-control" data-ui-variant="outline" variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={formLoading || !formData.keyName}>
+            <Button className="ui-control" data-ui-variant="default" onClick={handleCreate} disabled={formLoading || !formData.keyName}>
               {formLoading ? 'Creating...' : 'Create Secret'}
             </Button>
           </DialogFooter>
@@ -811,7 +811,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="ui-dialog max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Secret</DialogTitle>
             <DialogDescription>
@@ -820,19 +820,19 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Key Name</Label>
-              <Input value={formData.keyName} disabled className="font-mono bg-muted" />
+              <Label className="ui-label">Key Name</Label>
+              <Input value={formData.keyName} disabled className="ui-input font-mono bg-muted" />
             </div>
             <div className="space-y-2">
-              <Label>Display Name</Label>
-              <Input
+              <Label className="ui-label">Display Name</Label>
+              <Input className="ui-input"
                 value={formData.displayName}
                 onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
+              <Label className="ui-label">Description</Label>
+              <Textarea className="ui-textarea"
                 value={formData.description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 rows={2}
@@ -840,8 +840,8 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>New Value (optional)</Label>
-                <Button type="button" variant="outline" size="sm" onClick={handleGenerate}>
+                <Label className="ui-label">New Value (optional)</Label>
+                <Button className="ui-control" data-ui-variant="outline" type="button" variant="outline" size="sm" onClick={handleGenerate}>
                   <Wand2 className="h-3 w-3 mr-1" />
                   Generate
                 </Button>
@@ -851,7 +851,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                 placeholder="Leave empty to keep current value..."
                 value={formData.value}
                 onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))}
-                className="font-mono"
+                className="ui-input font-mono"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -860,23 +860,23 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
                   checked={formData.isRequired}
                   onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isRequired: v }))}
                 />
-                <Label>Required</Label>
+                <Label className="ui-label">Required</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isSensitive}
                   onCheckedChange={(v) => setFormData((prev) => ({ ...prev, isSensitive: v }))}
                 />
-                <Label>Sensitive</Label>
+                <Label className="ui-label">Sensitive</Label>
               </div>
             </div>
             {formError && <p className="text-sm text-destructive">{formError}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+            <Button className="ui-control" data-ui-variant="outline" variant="outline" onClick={() => setIsEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={formLoading}>
+            <Button className="ui-control" data-ui-variant="default" onClick={handleUpdate} disabled={formLoading}>
               {formLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
@@ -890,7 +890,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
           if (!open) closePlaintextDialog();
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="ui-dialog max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-amber-500" />
@@ -902,8 +902,8 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-2">
-              <Label htmlFor="plaintext-reason">Reason</Label>
-              <Textarea
+              <Label className="ui-label" htmlFor="plaintext-reason">Reason</Label>
+              <Textarea className="ui-textarea"
                 id="plaintext-reason"
                 value={plaintextReason}
                 onChange={(e) => {
@@ -921,14 +921,14 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             )}
           </div>
           <DialogFooter>
-            <Button
+            <Button className="ui-control" data-ui-variant="outline"
               variant="outline"
               onClick={closePlaintextDialog}
               disabled={plaintextLoading}
             >
               Cancel
             </Button>
-            <Button
+            <Button className="ui-control" data-ui-variant="default"
               onClick={handlePlaintextReasonSubmit}
               disabled={plaintextLoading || plaintextReason.trim().length < 8}
             >
@@ -946,7 +946,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
           if (!open) setFormError('');
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Secret</AlertDialogTitle>
             <AlertDialogDescription>

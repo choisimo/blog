@@ -175,8 +175,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="modelName">Model Name *</Label>
-          <Input
+          <Label className="ui-label" htmlFor="modelName">Model Name *</Label>
+          <Input className="ui-input"
             id="modelName"
             value={formData.modelName}
             onChange={(e) => setFormData({ ...formData, modelName: e.target.value })}
@@ -187,8 +187,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           <p className="text-xs text-muted-foreground">Used in API calls</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="displayName">Display Name *</Label>
-          <Input
+          <Label className="ui-label" htmlFor="displayName">Display Name *</Label>
+          <Input className="ui-input"
             id="displayName"
             value={formData.displayName}
             onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
@@ -200,7 +200,7 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="providerId">Provider *</Label>
+          <Label className="ui-label" htmlFor="providerId">Provider *</Label>
           <Select
             value={formData.providerId}
             onValueChange={(v) => {
@@ -222,8 +222,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="modelIdentifier">Model Identifier *</Label>
-          <Input
+          <Label className="ui-label" htmlFor="modelIdentifier">Model Identifier *</Label>
+          <Input className="ui-input"
             id="modelIdentifier"
             value={formData.modelIdentifier}
             onChange={(e) => setFormData({ ...formData, modelIdentifier: e.target.value })}
@@ -235,8 +235,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Input
+        <Label className="ui-label" htmlFor="description">Description</Label>
+        <Input className="ui-input"
           id="description"
           value={formData.description || ''}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -246,8 +246,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
 
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="contextWindow">Context Window</Label>
-          <Input
+          <Label className="ui-label" htmlFor="contextWindow">Context Window</Label>
+          <Input className="ui-input"
             id="contextWindow"
             type="number"
             value={formData.contextWindow || ''}
@@ -258,8 +258,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="maxTokens">Max Tokens</Label>
-          <Input
+          <Label className="ui-label" htmlFor="maxTokens">Max Tokens</Label>
+          <Input className="ui-input"
             id="maxTokens"
             type="number"
             value={formData.maxTokens || ''}
@@ -270,8 +270,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="priority">Priority</Label>
-          <Input
+          <Label className="ui-label" htmlFor="priority">Priority</Label>
+          <Input className="ui-input"
             id="priority"
             type="number"
             value={formData.priority || ''}
@@ -285,8 +285,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="inputCost">Input Cost ($/1K tokens)</Label>
-          <Input
+          <Label className="ui-label" htmlFor="inputCost">Input Cost ($/1K tokens)</Label>
+          <Input className="ui-input"
             id="inputCost"
             type="number"
             step="0.0001"
@@ -298,8 +298,8 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="outputCost">Output Cost ($/1K tokens)</Label>
-          <Input
+          <Label className="ui-label" htmlFor="outputCost">Output Cost ($/1K tokens)</Label>
+          <Input className="ui-input"
             id="outputCost"
             type="number"
             step="0.0001"
@@ -319,7 +319,7 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
             checked={formData.supportsVision}
             onCheckedChange={(v) => setFormData({ ...formData, supportsVision: v })}
           />
-          <Label htmlFor="vision" className="flex items-center gap-1">
+          <Label htmlFor="vision" className="ui-label flex items-center gap-1">
             <Eye className="h-4 w-4" /> Vision
           </Label>
         </div>
@@ -329,7 +329,7 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
             checked={formData.supportsStreaming}
             onCheckedChange={(v) => setFormData({ ...formData, supportsStreaming: v })}
           />
-          <Label htmlFor="streaming" className="flex items-center gap-1">
+          <Label htmlFor="streaming" className="ui-label flex items-center gap-1">
             <Zap className="h-4 w-4" /> Streaming
           </Label>
         </div>
@@ -339,17 +339,17 @@ function ModelForm({ model, providers, onSubmit, onCancel }: ModelFormProps) {
             checked={formData.supportsFunctionCalling}
             onCheckedChange={(v) => setFormData({ ...formData, supportsFunctionCalling: v })}
           />
-          <Label htmlFor="functions" className="flex items-center gap-1">
+          <Label htmlFor="functions" className="ui-label flex items-center gap-1">
             <MessageSquare className="h-4 w-4" /> Functions
           </Label>
         </div>
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button className="ui-control" data-ui-variant="outline" type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button className="ui-control" data-ui-variant="default" type="submit" disabled={submitting}>
           {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           {model ? 'Update' : 'Create'} Model
         </Button>
@@ -508,27 +508,27 @@ export function ModelsManager() {
   });
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={["ui-admin-section ui-admin-modelsmanager", ("ui-panel")].filter(Boolean).join(' ')}>
+      <CardHeader className="ui-panel-header">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>AI Models</CardTitle>
-            <CardDescription>Manage available AI models and their configurations</CardDescription>
+            <CardTitle className="ui-panel-title">AI Models</CardTitle>
+            <CardDescription className="ui-description">Manage available AI models and their configurations</CardDescription>
           </div>
-          <Button onClick={() => setShowForm(true)}>
+          <Button className="ui-control" data-ui-variant="default" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Model
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="ui-panel-body space-y-4">
         {/* Filters */}
         <div className="flex gap-4 flex-wrap">
           <Input
             placeholder="Search models..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-xs"
+            className="ui-input max-w-xs"
           />
           <Select value={filterProvider} onValueChange={(value) => setFilterProvider(normalizeFilterProvider(value))}>
             <SelectTrigger className="w-[180px]">
@@ -575,7 +575,7 @@ export function ModelsManager() {
                   model.isEnabled
                     ? 'border-border'
                     : 'border-dashed border-muted-foreground/30 opacity-60'
-                }`}
+                }  `}
               >
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -618,7 +618,7 @@ export function ModelsManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
+                    <Button className="ui-control" data-ui-variant="outline"
                       variant="outline"
                       size="sm"
                       onClick={() => handleTest(model)}
@@ -633,7 +633,7 @@ export function ModelsManager() {
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
+                        <Button className="ui-control" data-ui-variant="ghost"
                           variant="ghost"
                           size="icon"
                           aria-label={`Open model actions for ${model.displayName}`}
@@ -675,7 +675,7 @@ export function ModelsManager() {
 
       {/* Create Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="ui-dialog max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Model</DialogTitle>
             <DialogDescription>Configure a new AI model for use in the system</DialogDescription>
@@ -690,7 +690,7 @@ export function ModelsManager() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingModel} onOpenChange={() => setEditingModel(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="ui-dialog max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Model</DialogTitle>
             <DialogDescription>Update model configuration</DialogDescription>
@@ -708,7 +708,7 @@ export function ModelsManager() {
 
       {/* Test Dialog */}
       <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
-        <DialogContent>
+        <DialogContent className="ui-dialog">
           <DialogHeader>
             <DialogTitle>Model Test</DialogTitle>
             <DialogDescription>Testing model connectivity and response</DialogDescription>
@@ -731,7 +731,7 @@ export function ModelsManager() {
           }
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Model</AlertDialogTitle>
             <AlertDialogDescription>

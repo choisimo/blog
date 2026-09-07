@@ -229,7 +229,7 @@ export function PromptsManager() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 px-4 py-8 text-sm text-zinc-400">
+      <div className="flex items-center gap-3 px-4 py-8 text-sm text-ui-muted">
         <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
         <span>Loading prompts…</span>
       </div>
@@ -250,7 +250,7 @@ export function PromptsManager() {
           <button
             type="button"
             onClick={() => void loadPrompts()}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-ui-surface px-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/30"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
             Retry
@@ -261,10 +261,10 @@ export function PromptsManager() {
   }
 
   return (
-    <div className="flex gap-0 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden min-h-[500px]">
-      <div className="w-44 shrink-0 border-r border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col">
-        <div className="px-3 py-2.5 border-b border-zinc-200 dark:border-zinc-700">
-          <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+    <div className={["ui-admin-section ui-admin-promptsmanager", ("flex gap-0 border border-ui-line dark:border-ui-line rounded-lg overflow-hidden min-h-[500px]")].filter(Boolean).join(' ')}>
+      <div className="w-44 shrink-0 border-r border-ui-line dark:border-ui-line bg-ui-soft dark:bg-ui-surface/50 flex flex-col">
+        <div className="px-3 py-2.5 border-b border-ui-line dark:border-ui-line">
+          <p className="text-xs font-semibold text-ui-muted dark:text-ui-muted uppercase tracking-wider">
             Modes
           </p>
         </div>
@@ -277,9 +277,9 @@ export function PromptsManager() {
               disabled={isBusy}
               className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 ${
                 selectedMode === p.mode
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium border-r-2 border-zinc-900 dark:border-zinc-100'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-white/60 dark:hover:bg-zinc-900/40'
-              }`}
+                  ? "bg-ui-surface dark:bg-ui-surface text-ui-text dark:text-ui-text font-medium border-r-2 border-ui-line dark:border-ui-line"
+                  : "text-ui-muted dark:text-ui-muted hover:text-ui-text dark:hover:text-ui-text hover:bg-ui-surface/60 dark:hover:bg-ui-surface/40"
+              }  `}
             >
               <span>{p.label}</span>
               {p.isOverridden && (
@@ -288,12 +288,12 @@ export function PromptsManager() {
             </button>
           ))}
         </div>
-        <div className="px-3 py-2.5 border-t border-zinc-200 dark:border-zinc-700">
+        <div className="px-3 py-2.5 border-t border-ui-line dark:border-ui-line">
           <button
             type="button"
             onClick={loadPrompts}
             disabled={loading || isBusy}
-            className="w-full flex items-center justify-center gap-1.5 h-7 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-1.5 h-7 text-xs font-medium text-ui-muted dark:text-ui-muted hover:text-ui-text dark:hover:text-ui-text rounded-md hover:bg-ui-soft dark:hover:bg-ui-soft transition-colors disabled:opacity-40"
           >
             <RefreshCw className="h-3 w-3" />
             Refresh
@@ -304,12 +304,12 @@ export function PromptsManager() {
       <div className="flex-1 flex flex-col min-w-0">
         {activePrompt ? (
           <>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shrink-0">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                <span className="text-sm font-medium text-ui-text dark:text-ui-text">
                   {activePrompt.label}
                 </span>
-                <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+                <span className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded border border-ui-line dark:border-ui-line">
                   {activePrompt.mode}
                 </span>
                 {activePrompt.isOverridden && (
@@ -318,7 +318,7 @@ export function PromptsManager() {
                   </span>
                 )}
                 {isDirty && (
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">
+                  <span className="text-xs text-ui-muted dark:text-ui-muted italic">
                     unsaved changes
                   </span>
                 )}
@@ -330,7 +330,7 @@ export function PromptsManager() {
                     onClick={handleReset}
                     disabled={isBusy}
                     title="Reset to default"
-                    className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-40"
+                    className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-ui-line dark:border-ui-line text-ui-muted dark:text-ui-muted hover:text-ui-text dark:hover:text-ui-text hover:bg-ui-soft dark:hover:bg-ui-surface transition-colors disabled:opacity-40"
                   >
                     <RotateCcw className="h-3 w-3" />
                     Reset
@@ -340,7 +340,7 @@ export function PromptsManager() {
                   type="button"
                   onClick={handleSave}
                   disabled={isBusy || !isDirty}
-                  className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-white shadow-sm transition-all active:scale-95 disabled:opacity-40"
+                  className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold rounded-md bg-ui-text hover:bg-ui-text dark:bg-ui-soft dark:text-ui-muted dark:hover:bg-ui-soft text-white transition-all active:scale-95 disabled:opacity-40"
                 >
                   <Save className="h-3 w-3" />
                   {saving ? 'Saving…' : 'Save'}
@@ -348,7 +348,7 @@ export function PromptsManager() {
               </div>
             </div>
 
-            <div className="flex-1 p-3 bg-white dark:bg-zinc-900">
+            <div className="flex-1 p-3 bg-ui-surface dark:bg-ui-surface">
               <textarea
                 value={editedText}
                 onChange={(e) => {
@@ -358,13 +358,13 @@ export function PromptsManager() {
                 disabled={isBusy}
                 rows={24}
                 spellCheck={false}
-                className="w-full h-full min-h-[400px] resize-none font-mono text-xs leading-relaxed text-zinc-800 dark:text-zinc-200 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full h-full min-h-[400px] resize-none font-mono text-xs leading-relaxed text-ui-text dark:text-ui-text bg-ui-soft dark:bg-ui-surface/50 border border-ui-line dark:border-ui-line rounded-lg px-3 py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 focus-visible:ring-offset-0 placeholder:text-ui-muted disabled:cursor-not-allowed disabled:opacity-70"
                 placeholder="Enter system prompt…"
               />
             </div>
 
-            <div className="px-4 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/20 shrink-0">
-              <p className="text-xs text-zinc-400 dark:text-zinc-500">
+            <div className="px-4 py-2 border-t border-ui-line dark:border-ui-line bg-ui-soft/50 dark:bg-ui-surface/20 shrink-0">
+              <p className="text-xs text-ui-muted dark:text-ui-muted">
                 {editedText.length.toLocaleString()} characters
                 {activePrompt.isOverridden
                   ? ' · Override active (resets on server restart)'
@@ -373,7 +373,7 @@ export function PromptsManager() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-sm text-zinc-400">
+          <div className="flex-1 flex items-center justify-center text-sm text-ui-muted">
             Select a mode to edit its prompt
           </div>
         )}

@@ -45,8 +45,8 @@ export function AIManager({ subtab, onSubtabChange }: AIManagerProps) {
   }, [hasInvalidSubtab, onSubtabChange, subtab]);
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <AdminSubtabs
+    <div className={["ui-admin-section ui-admin-aimanager", ("bg-ui-surface border border-ui-line rounded-lg overflow-hidden")].filter(Boolean).join(' ')}>
+      <AdminSubtabs className="ui-admin-subtabs"
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={(id) => {

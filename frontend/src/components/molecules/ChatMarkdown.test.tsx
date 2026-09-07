@@ -30,6 +30,7 @@ vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/javascript', () => ({ 
 vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/json', () => ({ default: {} }));
 vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/kotlin', () => ({ default: {} }));
 vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/markdown', () => ({ default: {} }));
+vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/plaintext', () => ({ default: {} }));
 vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/python', () => ({ default: {} }));
 vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/rust', () => ({ default: {} }));
 vi.mock('react-syntax-highlighter/dist/esm/languages/hljs/sql', () => ({ default: {} }));
@@ -64,7 +65,7 @@ describe('ChatMarkdown', () => {
     expect(container.textContent).not.toContain('\u0000');
   });
 
-  it('sanitizes streaming markdown before closing incomplete fences', () => {
+  it('preserves an incomplete fence while the lazy highlighter loads', async () => {
     render(
       <ChatMarkdown
         isStreaming
@@ -72,7 +73,10 @@ describe('ChatMarkdown', () => {
       />
     );
 
-    expect(screen.getByTestId('syntax-highlighter')).toHaveTextContent(
+    expect(screen.getByTestId('plain-code-fallback')).toHaveTextContent(
+      'const value = "\\u001b[31mred\\u001b[0m";'
+    );
+    expect(await screen.findByTestId('syntax-highlighter')).toHaveTextContent(
       'const value = "\\u001b[31mred\\u001b[0m";'
     );
     expect(screen.getByRole('button', { name: 'Copy code' })).toBeInTheDocument();

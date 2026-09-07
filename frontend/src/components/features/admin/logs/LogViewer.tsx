@@ -235,40 +235,40 @@ function LogRow({ entry }: { entry: LogEntry }) {
 
   return (
     <div
-      className={`border-b border-zinc-100 last:border-0 ${expanded ? "bg-zinc-50" : "hover:bg-zinc-50"}`}
+      className={`border-b border-ui-line last:border-0 ${expanded ? "bg-ui-soft" : "hover:bg-ui-soft"}  `}
     >
       <button
         type="button"
-        className={`w-full flex items-start gap-2 px-3 py-2 text-left ${hasContext ? "cursor-pointer" : "cursor-default"}`}
+        className={`w-full flex items-start gap-2 px-3 py-2 text-left ${hasContext ? "cursor-pointer" : "cursor-default"}  `}
         onClick={() => hasContext && setExpanded((v) => !v)}
         disabled={!hasContext}
       >
-        <span className="font-mono text-xs text-zinc-400 whitespace-nowrap pt-0.5 w-[160px] shrink-0">
+        <span className="font-mono text-xs text-ui-muted whitespace-nowrap pt-0.5 w-[160px] shrink-0">
           {new Date(timestamp).toLocaleTimeString("en-US", {
             hour12: false,
             hour: "2-digit",
             minute: "2-digit",
             second: "2-digit",
           })}
-          <span className="text-zinc-300">
+          <span className="text-ui-muted">
             .{String(new Date(timestamp).getMilliseconds()).padStart(3, "0")}
           </span>
         </span>
         <span
-          className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${LEVEL_BADGE[level] ?? LEVEL_BADGE.info}`}
+          className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded-sm shrink-0 ${LEVEL_BADGE[level] ?? LEVEL_BADGE.info}  `}
         >
           {level.toUpperCase()}
         </span>
         {service && (
-          <span className="text-xs font-mono text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded shrink-0">
+          <span className="text-xs font-mono text-ui-muted bg-ui-soft px-1 py-0.5 rounded shrink-0">
             {service}
           </span>
         )}
-        <span className="text-xs text-zinc-700 flex-1 break-all">
+        <span className="text-xs text-ui-text flex-1 break-all">
           {message}
         </span>
         {hasContext && (
-          <span className="text-zinc-400 shrink-0 mt-0.5">
+          <span className="text-ui-muted shrink-0 mt-0.5">
             {expanded ? (
               <ChevronDown className="h-3 w-3" />
             ) : (
@@ -278,7 +278,7 @@ function LogRow({ entry }: { entry: LogEntry }) {
         )}
       </button>
       {expanded && hasContext && (
-        <pre className="px-3 pb-2 pt-0 text-xs font-mono text-zinc-600 bg-zinc-50 overflow-x-auto border-t border-zinc-100">
+        <pre className="px-3 pb-2 pt-0 text-xs font-mono text-ui-muted bg-ui-soft overflow-x-auto border-t border-ui-line">
           {JSON.stringify(contextData, null, 2)}
         </pre>
       )}
@@ -359,21 +359,21 @@ export function LogViewer() {
   const pauseToggleLabel = paused ? "Resume log stream" : "Pause log stream";
 
   return (
-    <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+    <div className={["ui-admin-section ui-admin-logviewer", ("bg-ui-surface border border-ui-line rounded-lg overflow-hidden")].filter(Boolean).join(' ')}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
           <span
-            className={`h-2 w-2 rounded-full shrink-0 ${connected ? "bg-emerald-500" : "bg-zinc-300"}`}
+            className={`h-2 w-2 rounded-full shrink-0 ${connected ? "bg-emerald-500" : "bg-ui-text"}  `}
           />
-          <span className="text-xs font-semibold text-zinc-700">
+          <span className="text-xs font-semibold text-ui-text">
             Server Logs
           </span>
-          <span className="font-mono text-xs text-zinc-400">
+          <span className="font-mono text-xs text-ui-muted">
             ({filtered.length})
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex border border-zinc-200 rounded-md overflow-hidden">
+          <div className="flex border border-ui-line rounded-md overflow-hidden">
             {(["all", "error", "warn", "info", "debug"] as const).map((l) => (
               <button
                 key={l}
@@ -381,9 +381,9 @@ export function LogViewer() {
                 onClick={() => setLevelFilter(l)}
                 className={`px-2 py-1 text-xs transition-colors ${
                   levelFilter === l
-                    ? "bg-zinc-900 text-white"
-                    : "bg-white text-zinc-500 hover:bg-zinc-50"
-                }`}
+                    ? "bg-ui-text text-white"
+                    : "bg-ui-surface text-ui-muted hover:bg-ui-soft"
+                }  `}
               >
                 {l}
               </button>
@@ -394,14 +394,14 @@ export function LogViewer() {
             placeholder="service..."
             value={serviceFilter}
             onChange={(e) => setServiceFilter(e.target.value)}
-            className="h-7 px-2 text-xs border border-zinc-200 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            className="h-7 px-2 text-xs border border-ui-line rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-zinc-400"
           />
           <button
             type="button"
             onClick={() => setPaused((v) => !v)}
             aria-label={pauseToggleLabel}
             title={pauseToggleLabel}
-            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors"
           >
             {paused ? (
               <Play className="h-3 w-3" aria-hidden="true" />
@@ -414,7 +414,7 @@ export function LogViewer() {
             onClick={handleClear}
             aria-label="Clear logs"
             title="Clear logs"
-            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-red-600 hover:bg-red-50 transition-colors"
           >
             <Trash2 className="h-3 w-3" aria-hidden="true" />
           </button>
@@ -423,21 +423,21 @@ export function LogViewer() {
             onClick={connect}
             aria-label="Reconnect log stream"
             title="Reconnect log stream"
-            className="h-7 w-7 flex items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50 transition-colors"
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors"
           >
             <RefreshCw
-              className={`h-3 w-3 ${!connected ? "animate-spin" : ""}`}
+              className={`h-3 w-3 ${!connected ? "animate-spin" : ""}  `}
               aria-hidden="true"
             />
           </button>
         </div>
       </div>
-      <div className="h-[500px] overflow-y-auto font-mono bg-white">
+      <div className="h-[500px] overflow-y-auto font-mono bg-ui-surface">
         {filtered.length === 0 ? (
           <div
             className={`flex items-center justify-center h-full text-xs ${
-              connectionError ? "text-red-600" : "text-zinc-400"
-            }`}
+              connectionError ? "text-red-600" : "text-ui-muted"
+            }  `}
           >
             {connectionError || (connected ? "Waiting for logs..." : "Connecting...")}
           </div>

@@ -1,0 +1,191 @@
+{
+  "schema": 1,
+  "local_baseline_commit": "976d92f9fc207cac0e3d76ca0dd2644c71d564a2",
+  "remote_commit_verified": false,
+  "routeInventory": [
+    {
+      "path": "/",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/\\\"\",\"element\",\"=\",\"{\",\"<\",\"Index\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/blog",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/blog\\\"\",\"element\",\"=\",\"{\",\"<\",\"Blog\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/blog/:year/:slug",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/blog/:year/:slug\\\"\",\"element\",\"=\",\"{\",\"<\",\"BlogPost\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/post/:year/:slug",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/post/:year/:slug\\\"\",\"element\",\"=\",\"{\",\"<\",\"BlogPost\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/projects",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/projects\\\"\",\"element\",\"=\",\"{\",\"<\",\"Projects\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/about",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/about\\\"\",\"element\",\"=\",\"{\",\"<\",\"About\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/debate",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/debate\\\"\",\"element\",\"=\",\"{\",\"<\",\"Debate\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/contact",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/contact\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/about\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/insight",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/insight\\\"\",\"element\",\"=\",\"{\",\"<\",\"Insight\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/400",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/400\\\"\",\"element\",\"=\",\"{\",\"<\",\"BadRequest\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/401",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/401\\\"\",\"element\",\"=\",\"{\",\"<\",\"Unauthorized\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/403",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/403\\\"\",\"element\",\"=\",\"{\",\"<\",\"Forbidden\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/404",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/404\\\"\",\"element\",\"=\",\"{\",\"<\",\"NotFound\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/429",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/429\\\"\",\"element\",\"=\",\"{\",\"<\",\"TooManyRequests\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/500",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/500\\\"\",\"element\",\"=\",\"{\",\"<\",\"ServerError\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/503",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/503\\\"\",\"element\",\"=\",\"{\",\"<\",\"ServiceUnavailable\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/bad-request",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/bad-request\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/400\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/unauthorized",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/unauthorized\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/401\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/forbidden",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/forbidden\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/403\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/too-many-requests",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/too-many-requests\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/429\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/error",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/error\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/500\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/server-error",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/server-error\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/500\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/maintenance",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/maintenance\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"\\\"/503\\\"\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin\\\"\",\"element\",\"=\",\"{\",\"<\",\"Navigate\",\"to\",\"=\",\"{\",\"DEFAULT_ADMIN_PATH\",\"}\",\"replace\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin/login",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin/login\\\"\",\"element\",\"=\",\"{\",\"<\",\"AdminConfig\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin/new-post",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin/new-post\\\"\",\"element\",\"=\",\"{\",\"<\",\"AuthGuard\",\">\",\"<\",\"NewPost\",\"/\",\">\",\"</\",\"AuthGuard\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin/config",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin/config\\\"\",\"element\",\"=\",\"{\",\"<\",\"AuthGuard\",\">\",\"<\",\"AdminConfig\",\"/\",\">\",\"</\",\"AuthGuard\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin/config/:section",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin/config/:section\\\"\",\"element\",\"=\",\"{\",\"<\",\"AuthGuard\",\">\",\"<\",\"AdminConfig\",\"/\",\">\",\"</\",\"AuthGuard\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin/config/:section/:subtab",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin/config/:section/:subtab\\\"\",\"element\",\"=\",\"{\",\"<\",\"AuthGuard\",\">\",\"<\",\"AdminConfig\",\"/\",\">\",\"</\",\"AuthGuard\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "/admin/auth/callback",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"/admin/auth/callback\\\"\",\"element\",\"=\",\"{\",\"<\",\"AdminAuthCallback\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    },
+    {
+      "path": "*",
+      "contract": "[\"<\",\"Route\",\"path\",\"=\",\"\\\"*\\\"\",\"element\",\"=\",\"{\",\"<\",\"NotFound\",\"/\",\">\",\"}\",\"/\",\">\"]"
+    }
+  ],
+  "effects": {
+    "frontend/src/App.tsx": [
+      "33989a009588b0989b12128efc11082599a63c0f0dfcb6f6d71c3628541fa35d",
+      "533e8e3ff8db869bcb96c82e9957fed2bc430e52c0f2b7a91f601dd3b6b24f57",
+      "32077d5e1b854afeafe5f41185b3c293580721b603de25e1e28158640d3b57fc",
+      "8280bb964b5efbeb9def396d362bffd1a53690420b39ca0346720887ea0a7d50",
+      "12fca50b4f8142fff52cbed8ae63e1b3e01321a486f4306a98a387f49bd7fba9"
+    ],
+    "frontend/src/pages/public/Index.tsx": [
+      "e0c03bc0ef359f5c0024879564d43369082aaf3c167c74073debdcc77ce6e828"
+    ]
+  },
+  "declarations": {
+    "frontend/src/components/organisms/Header.tsx": {
+      "HEADER_LINK_CONTROL_PATTERN": "a1fdf12f134ff09595931b569f3f0e815284431e13e6100c1600335535158dcd",
+      "ENCODED_HEADER_LINK_CONTROL_PATTERN": "c6696752a045dc966fe22d85e4cc35ca98edbe42eb55851f8172dff53cbc0fc2",
+      "normalizeHeaderExploreHref": "309a821e7794bbd5bfad91be6a53d12ffcc95834f96a2d358a06917453af7f06",
+      "hasAdmin": "1106b7be012f2f88fedf415403f58018a8d540145fd95dca77ff6a2b5d85bafa"
+    },
+    "frontend/src/components/organisms/Footer.tsx": {
+      "FOOTER_CONTROL_PATTERN": "b0cfc35d4438ea4859164b7b7146a3679da5aaee2ce5ed03fa5783bbbc10c337",
+      "FOOTER_EMAIL_PATTERN": "eaa5418864edf5d914f9999852a42165f173109f2c535b717821bd2f7d9c9157",
+      "normalizeFooterExternalHref": "839250fea078f8fda28932651de57129b35cf0131ab67764c31f86b7621a9e35",
+      "buildFooterMailtoHref": "e043dc7d59ef880c8dd1ee7ea269a0b827c0baf1a450122b373ab26181659047",
+      "handleSubscribe": "335ddafc6fe43fd3916fdb9efab3e8b142f9f05c58cffb6644b824b827e3546f"
+    },
+    "frontend/src/pages/public/Index.tsx": {
+      "sanitizeDisplayText": "8fab0898445db1befde4018748dcc348ec521611dec041b22b2063b4e5982adb",
+      "normalizeBlogPathSegment": "3f1b976ca60eb5c8df20a171de9c1ccfc9f1e8015e66f246a5437411b818cb52",
+      "sanitizeSearchResultPost": "bea09a635ea0b7e5ac2d8c8d35706db0e2bcfac04207cff57652db2fac413014",
+      "handleSearchFocus": "96b408b3c3d44ae5a9a7ed5c37c8c5387644283031bc2fadb5ed439962ae35ca"
+    },
+    "frontend/src/components/features/home/HomeEditorPicksSection.tsx": {
+      "sanitizeDisplayText": "8fab0898445db1befde4018748dcc348ec521611dec041b22b2063b4e5982adb",
+      "normalizeBlogPathSegment": "3f1b976ca60eb5c8df20a171de9c1ccfc9f1e8015e66f246a5437411b818cb52",
+      "buildEditorPickItems": "529cb0e46a2bf8e0cab9d98158562f7c08d999db7057591565c482e8718fd61c"
+    },
+    "frontend/src/components/features/home/HomeLatestPostsSection.tsx": {
+      "normalizeHomeText": "b0472c934e75b8aff567665368c0fdce4c4dc02c19cb1a4e6740ccffa2283aa6",
+      "normalizeHomePathSegment": "c7ff891c9d477c7cbf480f0dd8aa7edf69c095da8019f8c27db703c18adba63b",
+      "normalizeHomeCount": "a07a148c3c011f076af29efb4979db4d14dc979177283018b753b957efbb7271"
+    },
+    "frontend/src/components/features/home/HomeCategoryStrip.tsx": {
+      "normalizeCategoryName": "d598af8b607f07a6288526e30df91f698061ed52822993b5366dd3d3b96950f9",
+      "normalizeCategoryCount": "669806d07eb280548c02a8a2733b7bc67b0b2b59dd332ba9eb1f2b6df3d1ada6"
+    },
+    "frontend/src/components/features/home/HomeMarkdownCta.tsx": {
+      "sanitizeDisplayText": "8fab0898445db1befde4018748dcc348ec521611dec041b22b2063b4e5982adb",
+      "sanitizeMarkdownText": "fca5379671a238265520fa171998c3c2a158e3214645ce80ca8eb094ca1cfba1",
+      "normalizeHrefInput": "c3981feb54f7becfc0cce4b6a9bad2f1a12c5f550b09668dc4f542000a4156ab",
+      "containsTraversalPathSegment": "cf6dd3435e4f75dff6a7a16dc5247b9f70e58b47e2dfad5be68ba90dc296bb94",
+      "normalizeCtaHref": "0b2d847ecb9472e8750c49ddc5f862770e960b98e69d152fdd32dcfd454f7ce5"
+    }
+  },
+  "legacyCssSha256": "7f74b287e2a4ad92f1a38bff335d1dca571c882839655253b51497974f67f7cc",
+  "packageHashes": {
+    "frontend/package.json": "13c28aca4d389102df8579edc79e5dcc7152a8623735df27b28dc3a03aa70a0b",
+    "frontend/package-lock.json": "f941723b67f482b6df5a3bf449a41b1eadaca8d1eed33e78ead9351817e9a380",
+    "frontend/pnpm-lock.yaml": "6c0114f5a21df5b9fd0dd8558433ae283940395e5d259cc5b78c86004043578b"
+  }
+}

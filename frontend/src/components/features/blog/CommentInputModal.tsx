@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { Globe2, Loader2, Quote, Reply, Send } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/ui/use-mobile';
+import { useEffect, useId, useRef, useState, useCallback } from 'react';
+import { Globe2, Loader2, Quote, Reply, Send, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 
 interface CommentInputModalProps {
   isOpen: boolean;
@@ -12,6 +11,8 @@ interface CommentInputModalProps {
     website: string;
   }) => Promise<void>;
   isTerminal: boolean;
+  /** Distinguishes post/reply contexts without persisting unpublished text. */
+  draftKey?: string;
   initialAuthor?: string;
   initialContent?: string;
   intent?: 'comment' | 'reply' | 'quote';
@@ -119,530 +120,229 @@ function getErrorMessage(error: unknown): string {
     || 'Failed to submit comment';
 }
 
+
+function commentDraftSignature(author: string, content: string, website: string): string {
+  return JSON.stringify([normalizeCommentSingleLine(author), normalizeCommentContent(content), normalizeCommentSingleLine(website)]);
+}
+
 export default function CommentInputModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  isTerminal,
-  initialAuthor = '',
-  initialContent = '',
-  intent = 'comment',
-  contextLabel,
-  contextPreview,
-  label = DEFAULT_COMMENT_MODAL_LABEL,
-  title,
-  cancelLabel,
-  submitLabel,
-  submittingLabel = DEFAULT_SUBMITTING_LABEL,
-  authorLabel,
-  authorPlaceholder,
-  websiteShowLabel,
-  websiteHideLabel,
-  websitePlaceholder = DEFAULT_WEBSITE_PLACEHOLDER,
-  contentLabel,
-  contentPlaceholder,
-  replyPlaceholder,
-  quotePlaceholder,
-  footerHint,
+  isOpen, onClose, onSubmit, isTerminal, draftKey = '', initialAuthor = '', initialContent = '',
+  intent = 'comment', contextLabel, contextPreview, label = DEFAULT_COMMENT_MODAL_LABEL,
+  title, cancelLabel, submitLabel, submittingLabel = DEFAULT_SUBMITTING_LABEL,
+  authorLabel, authorPlaceholder, websiteShowLabel, websiteHideLabel,
+  websitePlaceholder = DEFAULT_WEBSITE_PLACEHOLDER, contentLabel, contentPlaceholder,
+  replyPlaceholder, quotePlaceholder, footerHint,
 }: CommentInputModalProps) {
   const [author, setAuthor] = useState(() => normalizeCommentSingleLine(initialAuthor));
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(() => normalizeCommentContent(initialContent));
   const [website, setWebsite] = useState('');
   const [showWebsiteField, setShowWebsiteField] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const isMobile = useIsMobile();
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [dismissHint, setDismissHint] = useState('');
   const modalRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLTextAreaElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const keepWritingRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const submittingRef = useRef(false);
+  const sessionRef = useRef(0);
+  const wasOpenRef = useRef(false);
+  const mountedRef = useRef(false);
+  const initialSignatureRef = useRef(commentDraftSignature(initialAuthor, initialContent, ''));
+  const contextKeyRef = useRef(draftKey);
+  const id = useId();
+  const formId = `${id}-form`;
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const dirty = commentDraftSignature(author, content, website) !== initialSignatureRef.current;
 
   useEffect(() => {
-    if (isOpen) {
-      setAuthor(normalizeCommentSingleLine(initialAuthor));
-      setContent(normalizeCommentContent(initialContent));
-      setError(null);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; sessionRef.current += 1; };
+  }, []);
+
+  useEffect(() => {
+    // A parent rerender (theme, author update, SSE) must not replace an open draft.
+    if (isOpen && !wasOpenRef.current) {
+      sessionRef.current += 1;
+      submittingRef.current = false;
+      const nextAuthor = normalizeCommentSingleLine(initialAuthor);
+      const nextContent = normalizeCommentContent(initialContent);
+      setAuthor(nextAuthor); setContent(nextContent); setWebsite('');
+      setShowWebsiteField(false); setSubmitting(false); setError(null);
+      setConfirmDiscard(false); setDismissHint('');
+      initialSignatureRef.current = commentDraftSignature(nextAuthor, nextContent, '');
+      contextKeyRef.current = draftKey;
     }
-  }, [isOpen, initialAuthor, initialContent]);
+    if (!isOpen && wasOpenRef.current) sessionRef.current += 1;
+    wasOpenRef.current = isOpen;
+  }, [isOpen, initialAuthor, initialContent, draftKey]);
 
-  // Focus management - only run when modal opens, not on every author change
   useEffect(() => {
-    if (isOpen) {
-      // Small delay to ensure modal is rendered
-      const timer = setTimeout(() => {
-        // Use initialAuthor to determine focus, not the live author state
-        if (initialAuthor?.trim()) {
-          contentRef.current?.focus();
-        } else {
-          authorRef.current?.focus();
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [isOpen, initialAuthor]);
+    if (confirmDiscard) keepWritingRef.current?.focus();
+  }, [confirmDiscard]);
 
-  // Handle ESC key to close
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        e.preventDefault();
-        onClose();
-      }
+    if (!isOpen) return;
+    let frame = 0;
+    const viewport = window.visualViewport;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const panel = modalRef.current;
+        if (!panel) return;
+        panel.style.setProperty('--ui-visual-height', `${viewport?.height ?? window.innerHeight}px`);
+        panel.style.setProperty('--ui-visual-top', `${viewport?.offsetTop ?? 0}px`);
+      });
     };
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-    }
-
+    update();
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      cancelAnimationFrame(frame);
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
-  // Handle viewport resize (for mobile keyboard)
-  useEffect(() => {
-    if (!isOpen || !isMobile) return;
-
-    const handleResize = () => {
-      if (modalRef.current) {
-        // Use visualViewport if available for accurate mobile keyboard handling
-        const vh = window.visualViewport?.height || window.innerHeight;
-        modalRef.current.style.height = `${vh}px`;
-
-        // Scroll the focused element into view when keyboard opens
-        const activeEl = document.activeElement;
-        if (
-          activeEl &&
-          (activeEl === authorRef.current || activeEl === contentRef.current)
-        ) {
-          setTimeout(() => {
-            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 100);
-        }
-      }
-    };
-
-    // Initial setup
-    handleResize();
-
-    // Listen to both resize and visualViewport changes
-    window.addEventListener('resize', handleResize);
-    window.visualViewport?.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.visualViewport?.removeEventListener('resize', handleResize);
-    };
-  }, [isOpen, isMobile]);
+  const requestClose = useCallback(() => {
+    if (submittingRef.current) {
+      setDismissHint('전송 결과를 확인하는 중입니다. 완료 또는 오류가 표시될 때까지 입력을 유지합니다.');
+      return;
+    }
+    if (dirty) { setConfirmDiscard(true); return; }
+    onClose();
+  }, [dirty, onClose]);
 
   const submitComment = useCallback(async () => {
     const trimmedAuthor = normalizeCommentSingleLine(author);
     const trimmedContent = normalizeCommentContent(content);
-    const safeWebsite = normalizeCommentWebsite(website);
-
-    if (submittingRef.current || !trimmedAuthor || !trimmedContent) return;
-
+    if (submittingRef.current || !trimmedAuthor || !trimmedContent || confirmDiscard) return;
+    if (draftKey !== contextKeyRef.current) {
+      setError('댓글의 대상이 변경되었습니다. 작성 내용을 복사한 뒤 창을 닫고 다시 열어 주세요.');
+      return;
+    }
+    const session = sessionRef.current;
+    submittingRef.current = true;
+    setSubmitting(true); setError(null); setDismissHint('');
     try {
-      submittingRef.current = true;
-      setSubmitting(true);
-      setError(null);
-      await onSubmit({
-        author: trimmedAuthor,
-        content: trimmedContent,
-        website: safeWebsite,
-      });
-      // Clear form on success
-      setContent('');
-      setWebsite('');
-      setShowWebsiteField(false);
+      // Preserve the existing public payload and safe-URL normalization.
+      await onSubmit({ author: trimmedAuthor, content: trimmedContent, website: normalizeCommentWebsite(website) });
+      if (!mountedRef.current || session !== sessionRef.current) return;
+      initialSignatureRef.current = commentDraftSignature(trimmedAuthor, '', '');
+      setContent(''); setWebsite(''); setShowWebsiteField(false);
       onClose();
     } catch (err) {
-      setError(getErrorMessage(err));
+      if (mountedRef.current && session === sessionRef.current) setError(getErrorMessage(err));
     } finally {
-      submittingRef.current = false;
-      setSubmitting(false);
-    }
-  }, [author, content, website, onSubmit, onClose]);
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      await submitComment();
-    },
-    [submitComment]
-  );
-
-  // Handle Ctrl/Cmd + Enter to submit
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (
-          normalizeCommentSingleLine(author) &&
-          normalizeCommentContent(content) &&
-          !submitting
-        ) {
-          void submitComment();
-        }
+      if (mountedRef.current && session === sessionRef.current) {
+        submittingRef.current = false;
+        setSubmitting(false);
       }
-    },
-    [author, content, submitting, submitComment]
-  );
+    }
+  }, [author, content, website, confirmDiscard, draftKey, onSubmit, onClose]);
 
-  if (!isOpen) return null;
-
-  const modalTitle = isTerminal
-    ? '-- INSERT --'
-    : intent === 'reply'
-      ? 'Reply'
-      : intent === 'quote'
-        ? 'Quote'
-        : 'Add to discussion';
   const safeDialogLabel = normalizeCommentLabel(label, DEFAULT_COMMENT_MODAL_LABEL);
   const safeDialogTitle = normalizeOptionalCommentLabel(title);
-  const safeModalTitle = normalizeCommentLabel(modalTitle, 'Add to discussion');
-  const safeCancelLabel = normalizeCommentLabel(
-    cancelLabel,
-    isTerminal ? DEFAULT_TERMINAL_CANCEL_LABEL : DEFAULT_CANCEL_LABEL
-  );
-  const safeSubmitLabel = normalizeCommentLabel(
-    submitLabel,
-    isTerminal ? DEFAULT_TERMINAL_SUBMIT_LABEL : DEFAULT_SUBMIT_LABEL
-  );
+  const safeModalTitle = safeDialogTitle || (intent === 'reply' ? '답글 작성' : intent === 'quote' ? '인용하여 댓글 작성' : '댓글 작성');
+  const safeCancelLabel = normalizeCommentLabel(cancelLabel, isTerminal ? DEFAULT_TERMINAL_CANCEL_LABEL : DEFAULT_CANCEL_LABEL);
+  const safeSubmitLabel = normalizeCommentLabel(submitLabel, isTerminal ? DEFAULT_TERMINAL_SUBMIT_LABEL : DEFAULT_SUBMIT_LABEL);
   const safeSubmittingLabel = normalizeCommentLabel(submittingLabel, DEFAULT_SUBMITTING_LABEL);
-  const safeAuthorLabel = normalizeCommentLabel(
-    authorLabel,
-    isTerminal ? DEFAULT_TERMINAL_AUTHOR_LABEL : DEFAULT_AUTHOR_LABEL
-  );
-  const safeAuthorPlaceholder = normalizeCommentLabel(
-    authorPlaceholder,
-    isTerminal ? DEFAULT_TERMINAL_AUTHOR_PLACEHOLDER : DEFAULT_AUTHOR_PLACEHOLDER
-  );
-  const safeWebsiteShowLabel = normalizeCommentLabel(
-    websiteShowLabel,
-    isTerminal ? DEFAULT_TERMINAL_WEBSITE_SHOW_LABEL : DEFAULT_WEBSITE_SHOW_LABEL
-  );
-  const safeWebsiteHideLabel = normalizeCommentLabel(
-    websiteHideLabel,
-    isTerminal ? DEFAULT_TERMINAL_WEBSITE_HIDE_LABEL : DEFAULT_WEBSITE_HIDE_LABEL
-  );
-  const safeWebsitePlaceholder = normalizeCommentLabel(
-    websitePlaceholder,
-    DEFAULT_WEBSITE_PLACEHOLDER
-  );
-  const safeContentLabel = normalizeCommentLabel(
-    contentLabel,
-    isTerminal ? DEFAULT_TERMINAL_CONTENT_LABEL : DEFAULT_CONTENT_LABEL
-  );
+  const safeAuthorLabel = normalizeCommentLabel(authorLabel, isTerminal ? DEFAULT_TERMINAL_AUTHOR_LABEL : DEFAULT_AUTHOR_LABEL);
+  const safeAuthorPlaceholder = normalizeCommentLabel(authorPlaceholder, isTerminal ? DEFAULT_TERMINAL_AUTHOR_PLACEHOLDER : DEFAULT_AUTHOR_PLACEHOLDER);
+  const safeWebsiteShowLabel = normalizeCommentLabel(websiteShowLabel, isTerminal ? DEFAULT_TERMINAL_WEBSITE_SHOW_LABEL : DEFAULT_WEBSITE_SHOW_LABEL);
+  const safeWebsiteHideLabel = normalizeCommentLabel(websiteHideLabel, isTerminal ? DEFAULT_TERMINAL_WEBSITE_HIDE_LABEL : DEFAULT_WEBSITE_HIDE_LABEL);
+  const safeWebsitePlaceholder = normalizeCommentLabel(websitePlaceholder, DEFAULT_WEBSITE_PLACEHOLDER);
+  const safeContentLabel = normalizeCommentLabel(contentLabel, isTerminal ? DEFAULT_TERMINAL_CONTENT_LABEL : DEFAULT_CONTENT_LABEL);
   const safeContentPlaceholder = isTerminal
     ? normalizeCommentPlaceholder(contentPlaceholder, DEFAULT_TERMINAL_CONTENT_PLACEHOLDER)
-    : intent === 'reply'
-      ? normalizeCommentLabel(replyPlaceholder, DEFAULT_REPLY_PLACEHOLDER)
-      : intent === 'quote'
-        ? normalizeCommentLabel(quotePlaceholder, DEFAULT_QUOTE_PLACEHOLDER)
-        : normalizeCommentLabel(contentPlaceholder, DEFAULT_COMMENT_PLACEHOLDER);
-  const safeFooterHint = normalizeCommentLabel(
-    footerHint,
-    isTerminal ? DEFAULT_TERMINAL_FOOTER_HINT : DEFAULT_FOOTER_HINT
-  );
+    : intent === 'reply' ? normalizeCommentLabel(replyPlaceholder, DEFAULT_REPLY_PLACEHOLDER)
+    : intent === 'quote' ? normalizeCommentLabel(quotePlaceholder, DEFAULT_QUOTE_PLACEHOLDER)
+    : normalizeCommentPlaceholder(contentPlaceholder, DEFAULT_COMMENT_PLACEHOLDER);
+  const safeFooterHint = normalizeCommentLabel(footerHint, isTerminal ? DEFAULT_TERMINAL_FOOTER_HINT : DEFAULT_FOOTER_HINT);
   const safeContextLabel = normalizeOptionalCommentLabel(contextLabel);
   const safeContextPreview = normalizeCommentContent(contextPreview);
+  const canSubmit = !submitting && !confirmDiscard && !!normalizeCommentSingleLine(author) && !!normalizeCommentContent(content);
   const ContextIcon = intent === 'quote' ? Quote : Reply;
-  const canSubmit =
-    !submitting &&
-    !!normalizeCommentSingleLine(author) &&
-    !!normalizeCommentContent(content);
 
-  // PC: Center popup with dimmed background
-  // Mobile: Full screen modal
   return (
-    <div
-      className={cn(
-        'fixed inset-0 z-[var(--z-modal-overlay)] flex',
-        // PC: center alignment with dimmed overlay
-        !isMobile && 'items-center justify-center bg-black/50 backdrop-blur-sm',
-        // Mobile: full screen with background (prevents black screen issue)
-        isMobile && 'flex-col bg-background'
-      )}
-      role='dialog'
-      aria-modal='true'
-      aria-labelledby='comment-modal-title'
-      aria-label={safeDialogLabel}
-      title={safeDialogTitle}
-      onClick={
-        !isMobile
-          ? e => {
-              if (e.target === e.currentTarget) onClose();
-            }
-          : undefined
-      }
-    >
-      <div
-        ref={modalRef}
-        className={cn(
-          'flex flex-col overflow-hidden',
-          // PC styles: centered dialog
-          !isMobile && [
-            'w-full max-w-xl rounded-2xl shadow-2xl',
-            isTerminal
-              ? 'border border-primary/30 bg-[hsl(var(--background))]'
-              : 'border border-border bg-background',
-          ],
-          // Mobile styles: full screen
-          isMobile && [
-            'w-full',
-            isTerminal ? 'bg-[hsl(var(--background))]' : 'bg-background',
-          ]
-        )}
-        style={isMobile ? { height: '100dvh' } : { maxHeight: '85vh' }}
+    <Dialog open={isOpen} onOpenChange={open => { if (!open) requestClose(); }}>
+      <DialogContent
+        ref={modalRef} hideClose className="ui-dialog ui-comment-dialog"
+        data-terminal={isTerminal || undefined} aria-label={safeDialogLabel}
+        aria-labelledby={undefined} title={safeDialogTitle}
+        onOpenAutoFocus={event => {
+          event.preventDefault();
+          openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          (normalizeCommentSingleLine(initialAuthor) ? contentRef : authorRef).current?.focus();
+        }}
+        onCloseAutoFocus={event => {
+          if (openerRef.current?.isConnected) { event.preventDefault(); openerRef.current.focus(); }
+        }}
+        onEscapeKeyDown={event => { event.preventDefault(); requestClose(); }}
+        onPointerDownOutside={event => { event.preventDefault(); requestClose(); }}
+        onInteractOutside={event => event.preventDefault()}
       >
-        {/* Header - Vim/Nano style */}
-        <header
-          className={cn(
-            'flex items-center justify-between px-4 py-3 shrink-0',
-            isTerminal
-              ? 'bg-primary/20 border-b border-primary/30'
-              : 'bg-card border-b border-border',
-            // PC: rounded top corners
-            !isMobile && 'rounded-t-2xl'
-          )}
-        >
-          <span
-            id='comment-modal-title'
-            className={cn(
-              'text-sm font-bold tracking-wide',
-              isTerminal
-                ? 'font-mono text-primary terminal-glow'
-                : 'text-foreground'
-            )}
-          >
-            {safeModalTitle}
-          </span>
-
-          {/* Action Buttons */}
-          <div className='flex items-center gap-2'>
-            <button
-              type='button'
-              onClick={onClose}
-              disabled={submitting}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                isTerminal
-                  ? 'font-mono border border-border text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50'
-                  : 'border border-border text-muted-foreground hover:bg-muted disabled:opacity-50'
-              )}
-              aria-label={safeCancelLabel}
-            >
-              {safeCancelLabel}
-            </button>
-            <button
-              type='submit'
-              form='comment-form'
-              disabled={!canSubmit}
-              aria-label={submitting ? safeSubmittingLabel : safeSubmitLabel}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all disabled:opacity-50',
-                isTerminal
-                  ? 'font-mono border border-primary bg-primary/20 text-primary hover:bg-primary/30 disabled:hover:bg-primary/20'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
-              )}
-            >
-              {submitting ? (
-                <Loader2 aria-hidden='true' className='h-3.5 w-3.5 animate-spin' />
-              ) : (
-                <Send aria-hidden='true' className='h-3.5 w-3.5' />
-              )}
-              {submitting ? safeSubmittingLabel : safeSubmitLabel}
-            </button>
+        <header className="ui-comment-heading">
+          <div>
+            <p className="ui-eyebrow">DISCUSSION</p>
+            <DialogTitle className="ui-comment-title">{safeModalTitle}</DialogTitle>
+            <DialogDescription className="ui-comment-description">의견과 질문을 남겨 주세요. 이름과 댓글은 다른 방문자에게 공개됩니다.</DialogDescription>
           </div>
+          <button type="button" className="ui-comment-close" onClick={requestClose} disabled={submitting} aria-label="댓글 작성 창 닫기"><X aria-hidden="true" size={20} /></button>
         </header>
-
-        {/* Form Content */}
-        <form
-          id='comment-form'
-          onSubmit={handleSubmit}
-          onKeyDown={handleKeyDown}
-          className='flex-1 flex flex-col overflow-hidden'
-        >
-          <div className='flex-1 overflow-y-auto p-4 space-y-4'>
-            {/* Error display */}
-            {error && (
-              <div
-                className={cn(
-                  'px-3 py-2 rounded-lg text-sm',
-                  isTerminal
-                    ? 'bg-destructive/20 text-destructive border border-destructive/30 font-mono'
-                    : 'bg-destructive/10 text-destructive'
-                )}
-              >
-                {isTerminal ? `// Error: ${error}` : error}
-              </div>
-            )}
-
-            {safeContextLabel && (
-              <div
-                className={cn(
-                  'rounded-lg border px-3 py-2 text-sm',
-                  isTerminal
-                    ? 'border-primary/25 bg-primary/10 font-mono text-primary'
-                    : 'border-primary/20 bg-primary/5 text-foreground'
-                )}
-              >
-                <div className='flex items-center gap-2 font-medium'>
-                  <ContextIcon aria-hidden='true' className='h-4 w-4 shrink-0' />
-                  <span>{safeContextLabel}</span>
+        <form id={formId} className="ui-comment-form" onSubmit={event => { event.preventDefault(); void submitComment(); }}
+          onKeyDown={event => {
+            if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); void submitComment(); }
+          }}>
+          <div className="ui-comment-scroll">
+            {(safeContextLabel || safeContextPreview) && <div className="ui-comment-context">
+              <p><ContextIcon aria-hidden="true" size={16} /><strong>{safeContextLabel || '인용한 내용'}</strong></p>
+              {safeContextPreview && <blockquote>{safeContextPreview}</blockquote>}
+            </div>}
+            {error && <div id={errorId} className="ui-inline-error" role="alert"><p>{error}</p><p>작성 내용은 유지되어 있습니다. 전송 결과를 확인한 뒤 다시 시도해 주세요.</p></div>}
+            <fieldset disabled={submitting} className="ui-comment-fields">
+              <div className="ui-comment-author-row">
+                <div className="ui-comment-field"><label htmlFor={`${id}-author`}>{safeAuthorLabel}<span>필수</span></label>
+                  <input id={`${id}-author`} ref={authorRef} value={author} onChange={event => setAuthor(event.target.value)}
+                    placeholder={safeAuthorPlaceholder} autoComplete="nickname" required className="ui-input" />
                 </div>
-                {safeContextPreview && (
-                  <p
-                    className={cn(
-                      'mt-1 break-words text-xs leading-relaxed',
-                      isTerminal
-                        ? 'text-muted-foreground'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    {safeContextPreview}
-                  </p>
-                )}
+                <button type="button" className="ui-comment-website-toggle" aria-expanded={showWebsiteField} aria-controls={`${id}-website-area`}
+                  onClick={() => setShowWebsiteField(value => !value)}><Globe2 size={16} aria-hidden="true" />{showWebsiteField ? safeWebsiteHideLabel : safeWebsiteShowLabel}</button>
               </div>
-            )}
-
-            {/* Author field */}
-            <div className='space-y-2'>
-              <label
-                htmlFor='modal-author'
-                className={cn(
-                  'block text-sm font-medium',
-                  isTerminal ? 'font-mono text-primary' : 'text-foreground'
-                )}
-              >
-                {safeAuthorLabel}
-              </label>
-              <input
-                ref={authorRef}
-                id='modal-author'
-                type='text'
-                value={author}
-                onChange={e => setAuthor(e.target.value)}
-                placeholder={safeAuthorPlaceholder}
-                required
-                className={cn(
-                  'w-full px-4 py-3 text-base outline-none transition-all',
-                  isTerminal
-                    ? 'rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50'
-                    : 'rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20'
-                )}
-                aria-label={safeAuthorLabel}
-              />
-            </div>
-
-            {/* Website toggle & field */}
-            <div className='space-y-2'>
-              <button
-                type='button'
-                onClick={() => setShowWebsiteField(!showWebsiteField)}
-                className={cn(
-                  'inline-flex items-center gap-2 text-sm transition-colors',
-                  isTerminal
-                    ? 'font-mono text-muted-foreground hover:text-primary'
-                    : 'text-muted-foreground hover:text-primary'
-                )}
-                aria-label={showWebsiteField ? safeWebsiteHideLabel : safeWebsiteShowLabel}
-                aria-expanded={showWebsiteField}
-              >
-                <Globe2 aria-hidden='true' className='h-4 w-4' />
-                {showWebsiteField
-                  ? safeWebsiteHideLabel
-                  : safeWebsiteShowLabel}
-              </button>
-
-              {showWebsiteField && (
-                <input
-                  id='modal-website'
-                  type='url'
-                  value={website}
-                  onChange={e => setWebsite(e.target.value)}
-                  placeholder={safeWebsitePlaceholder}
-                  aria-label={safeWebsiteShowLabel}
-                  className={cn(
-                    'w-full px-4 py-3 text-base outline-none transition-all animate-in slide-in-from-top-2 duration-200',
-                    isTerminal
-                      ? 'rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50'
-                      : 'rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20'
-                  )}
-                />
-              )}
-            </div>
-
-            {/* Comment content */}
-            <div className='space-y-2 flex-1'>
-              <label
-                htmlFor='modal-content'
-                className={cn(
-                  'block text-sm font-medium',
-                  isTerminal ? 'font-mono text-primary' : 'text-foreground'
-                )}
-              >
-                {safeContentLabel}
-              </label>
-              <div className='relative'>
-                <textarea
-                  ref={contentRef}
-                  id='modal-content'
-                  value={content}
-                  onChange={e => setContent(e.target.value)}
-                  placeholder={safeContentPlaceholder}
-                  aria-label={safeContentLabel}
-                  required
-                  rows={6}
-                  className={cn(
-                    'w-full px-4 py-3 text-base leading-relaxed outline-none transition-all resize-none',
-                    isTerminal
-                      ? 'rounded-lg border border-border bg-[hsl(var(--terminal-code-bg))] font-mono text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/50'
-                      : 'rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20'
-                  )}
-                />
-                {/* Blinking cursor effect for terminal mode */}
-                {isTerminal && !content && (
-                  <span className='absolute left-4 top-3 font-mono text-primary animate-pulse pointer-events-none'>
-                    _
-                  </span>
-                )}
+              <div id={`${id}-website-area`} hidden={!showWebsiteField} className="ui-comment-field">
+                <label htmlFor={`${id}-website`}>{safeWebsiteShowLabel}</label>
+                <input id={`${id}-website`} value={website} onChange={event => setWebsite(event.target.value)} type="text" inputMode="url"
+                  autoComplete="url" placeholder={safeWebsitePlaceholder} className="ui-input" />
               </div>
-            </div>
+              <div className="ui-comment-field ui-comment-content-field">
+                <label htmlFor={`${id}-content`}>{safeContentLabel}<span>필수</span></label>
+                <textarea id={`${id}-content`} ref={contentRef} value={content} onChange={event => setContent(event.target.value)} required rows={8}
+                  className="ui-textarea ui-comment-textarea" placeholder={safeContentPlaceholder} aria-describedby={`${hintId}${error ? ` ${errorId}` : ''}`} />
+                <div className="ui-comment-writing-help"><span id={hintId}>{safeFooterHint}</span><span>{Array.from(content).length.toLocaleString()}자</span></div>
+              </div>
+            </fieldset>
           </div>
-
-          {/* Footer - explanatory text */}
-          <footer
-            className={cn(
-              'shrink-0 px-4 py-2 border-t',
-              isTerminal
-                ? 'bg-[hsl(var(--terminal-code-bg))] border-border'
-                : 'bg-muted/30 border-border',
-              // PC: rounded bottom corners
-              !isMobile && 'rounded-b-2xl',
-              // Mobile: safe area padding
-              isMobile && 'pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
-            )}
-          >
-            <span
-              className={cn(
-                'text-xs text-center block',
-                isTerminal
-                  ? 'font-mono text-muted-foreground'
-                  : 'text-muted-foreground'
-              )}
-            >
-              {safeFooterHint}
-            </span>
+          {confirmDiscard && <div className="ui-comment-discard" role="group" aria-label="작성 내용 폐기 확인">
+            <div><strong>작성 중인 내용을 버릴까요?</strong><p>아직 게시되지 않았습니다. 닫으면 이 창의 입력은 사라집니다.</p></div>
+            <div className="ui-actions"><button type="button" className="ui-control" data-ui-variant="outline" ref={keepWritingRef}
+              onClick={() => { setConfirmDiscard(false); contentRef.current?.focus(); }}>계속 작성</button>
+              <button type="button" className="ui-control" data-ui-variant="destructive" onClick={() => { setConfirmDiscard(false); onClose(); }}>버리고 닫기</button></div>
+          </div>}
+          <footer className="ui-comment-footer">
+            <p className="ui-comment-save-state" role="status" aria-live="polite">{submitting ? safeSubmittingLabel : dismissHint || '게시 전 · 이 창의 입력은 서버에 저장되지 않았습니다.'}</p>
+            <div className="ui-actions"><button type="button" onClick={requestClose} disabled={submitting || confirmDiscard} className="ui-control" data-ui-variant="outline">{safeCancelLabel}</button>
+              <button type="submit" disabled={!canSubmit} className="ui-control" data-ui-variant="default" aria-label={submitting ? safeSubmittingLabel : safeSubmitLabel}>
+                {submitting ? <Loader2 size={16} aria-hidden="true" className="animate-spin" /> : <Send size={16} aria-hidden="true" />}{submitting ? safeSubmittingLabel : safeSubmitLabel}
+              </button></div>
           </footer>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

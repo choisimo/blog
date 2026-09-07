@@ -176,8 +176,8 @@ function ResultCard({
   };
 
   return (
-    <Card className={cn(isComparing ? 'flex-1 min-w-[300px]' : 'w-full')}>
-      <CardHeader className="pb-2">
+    <Card className={["ui-panel", (cn(isComparing ? 'flex-1 min-w-[300px]' : 'w-full'))].filter(Boolean).join(' ')}>
+      <CardHeader className="ui-panel-header pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
@@ -193,7 +193,7 @@ function ResultCard({
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="ui-panel-body space-y-3">
         {result.status === 'error' ? (
           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-500">
             {result.error_message}
@@ -220,7 +220,7 @@ function ResultCard({
                   {formatCost(result.estimated_cost)}
                 </span>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleCopy}>
+              <Button className="ui-control" data-ui-variant="ghost" variant="ghost" size="sm" onClick={handleCopy}>
                 {copied ? (
                   <CheckCircle className="h-3 w-3 text-green-500" />
                 ) : (
@@ -250,7 +250,7 @@ function HistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto overscroll-contain">
+      <DialogContent className="ui-dialog max-w-3xl max-h-[80vh] overflow-auto overscroll-contain">
         <DialogHeader>
           <DialogTitle>{history.title || 'Execution Detail'}</DialogTitle>
         </DialogHeader>
@@ -258,26 +258,26 @@ function HistoryDialog({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <Label className="text-muted-foreground">Model</Label>
+              <Label className="ui-label text-muted-foreground">Model</Label>
               <div className="font-medium">{history.model_name}</div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Provider</Label>
+              <Label className="ui-label text-muted-foreground">Provider</Label>
               <div>{history.provider_name}</div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Temperature</Label>
+              <Label className="ui-label text-muted-foreground">Temperature</Label>
               <div>{history.temperature}</div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Max Tokens</Label>
+              <Label className="ui-label text-muted-foreground">Max Tokens</Label>
               <div>{history.max_tokens || 'Auto'}</div>
             </div>
           </div>
 
           {history.system_prompt && (
             <div>
-              <Label className="text-muted-foreground">System Prompt</Label>
+              <Label className="ui-label text-muted-foreground">System Prompt</Label>
               <div className="mt-1 p-3 bg-muted rounded text-sm whitespace-pre-wrap">
                 {history.system_prompt}
               </div>
@@ -285,7 +285,7 @@ function HistoryDialog({
           )}
 
           <div>
-            <Label className="text-muted-foreground">User Prompt</Label>
+            <Label className="ui-label text-muted-foreground">User Prompt</Label>
             <div className="mt-1 p-3 bg-muted rounded text-sm whitespace-pre-wrap">
               {history.user_prompt}
             </div>
@@ -293,7 +293,7 @@ function HistoryDialog({
 
           {history.status === 'success' && history.response && (
             <div>
-              <Label className="text-muted-foreground">Response</Label>
+              <Label className="ui-label text-muted-foreground">Response</Label>
               <ScrollArea className="mt-1 h-[200px]">
                 <div className="p-3 bg-muted rounded text-sm whitespace-pre-wrap">
                   {history.response}
@@ -317,10 +317,10 @@ function HistoryDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button className="ui-control" data-ui-variant="outline" variant="outline" onClick={onClose}>
             Close
           </Button>
-          <Button onClick={() => onRerun(history)}>
+          <Button className="ui-control" data-ui-variant="default" onClick={() => onRerun(history)}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Re-run
           </Button>
@@ -375,22 +375,22 @@ function SaveTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="ui-dialog">
         <DialogHeader>
           <DialogTitle>Save as Template</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label>Name *</Label>
-            <Input
+            <Label className="ui-label">Name *</Label>
+            <Input className="ui-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Code Review Assistant"
             />
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea
+            <Label className="ui-label">Description</Label>
+            <Textarea className="ui-textarea"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description..."
@@ -398,7 +398,7 @@ function SaveTemplateDialog({
             />
           </div>
           <div>
-            <Label>Category</Label>
+            <Label className="ui-label">Category</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
                 <SelectValue />
@@ -414,10 +414,10 @@ function SaveTemplateDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button className="ui-control" data-ui-variant="outline" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!name.trim()}>
+          <Button className="ui-control" data-ui-variant="default" onClick={handleSave} disabled={!name.trim()}>
             <Save className="h-4 w-4 mr-2" />
             Save
           </Button>
@@ -563,7 +563,7 @@ export function Playground() {
   const displayError = error || modelsError || templatesError;
 
   return (
-    <div className="space-y-6">
+    <div className={["ui-admin-section ui-admin-playground", ("space-y-6")].filter(Boolean).join(' ')}>
       {displayError && (
         <div className="p-3 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-md flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
@@ -572,12 +572,12 @@ export function Playground() {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="playground" className="flex items-center gap-2">
+        <TabsList className="ui-subtabs">
+          <TabsTrigger value="playground" className="ui-subtab flex items-center gap-2">
             <Play className="h-4 w-4" />
             Playground
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
+          <TabsTrigger value="history" className="ui-subtab flex items-center gap-2">
             <History className="h-4 w-4" />
             History
             {historyTotal > 0 && (
@@ -586,7 +586,7 @@ export function Playground() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="templates" className="flex items-center gap-2">
+          <TabsTrigger value="templates" className="ui-subtab flex items-center gap-2">
             <BookTemplate className="h-4 w-4" />
             Templates
           </TabsTrigger>
@@ -595,40 +595,40 @@ export function Playground() {
         <TabsContent value="playground" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Prompts</CardTitle>
+              <Card className="ui-panel">
+                <CardHeader className="ui-panel-header pb-3">
+                  <CardTitle className="ui-panel-title text-sm">Prompts</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="ui-panel-body space-y-4">
                   <div>
-                    <Label>System Prompt (Optional)</Label>
+                    <Label className="ui-label">System Prompt (Optional)</Label>
                     <Textarea
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       placeholder="You are a helpful assistant..."
                       rows={3}
-                      className="mt-1 font-mono text-sm"
+                      className="ui-textarea mt-1 font-mono text-sm"
                     />
                   </div>
                   <div>
-                    <Label>User Prompt *</Label>
+                    <Label className="ui-label">User Prompt *</Label>
                     <Textarea
                       value={userPrompt}
                       onChange={(e) => setUserPrompt(e.target.value)}
                       placeholder="Enter your prompt here..."
                       rows={6}
-                      className="mt-1 font-mono text-sm"
+                      className="ui-textarea mt-1 font-mono text-sm"
                     />
                   </div>
                 </CardContent>
               </Card>
 
               {results.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Results</CardTitle>
+                <Card className="ui-panel">
+                  <CardHeader className="ui-panel-header pb-3">
+                    <CardTitle className="ui-panel-title text-sm">Results</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="ui-panel-body">
                     <div className={cn('flex gap-4', isComparing ? 'flex-wrap' : 'flex-col')}>
                       {results.map((result) => (
                         <ResultCard
@@ -644,16 +644,16 @@ export function Playground() {
             </div>
 
             <div className="space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
+              <Card className="ui-panel">
+                <CardHeader className="ui-panel-header pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Models</CardTitle>
+                    <CardTitle className="ui-panel-title text-sm">Models</CardTitle>
                     <span className="text-xs text-muted-foreground">
                       {selectedModelIds.length}/5 selected
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="ui-panel-body">
                   <ScrollArea className="h-[200px]">
                     <div className="space-y-2">
                       {enabledModels.map((model) => (
@@ -681,14 +681,14 @@ export function Playground() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Parameters</CardTitle>
+              <Card className="ui-panel">
+                <CardHeader className="ui-panel-header pb-3">
+                  <CardTitle className="ui-panel-title text-sm">Parameters</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="ui-panel-body space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <Label>Temperature</Label>
+                      <Label className="ui-label">Temperature</Label>
                       <span className="text-sm text-muted-foreground">{temperature}</span>
                     </div>
                     <Slider
@@ -700,7 +700,7 @@ export function Playground() {
                     />
                   </div>
                   <div>
-                    <Label>Max Tokens (Optional)</Label>
+                    <Label className="ui-label">Max Tokens (Optional)</Label>
                     <Input
                       type="number"
                       value={maxTokens ?? ''}
@@ -708,15 +708,15 @@ export function Playground() {
                         setMaxTokens(parsePlaygroundMaxTokensInput(e.target.value))
                       }
                       placeholder="Auto"
-                      className="mt-1"
+                      className="ui-input mt-1"
                     />
                   </div>
                 </CardContent>
               </Card>
 
               <div className="flex gap-2">
-                <Button
-                  className="flex-1"
+                <Button data-ui-variant="default"
+                  className="ui-control flex-1"
                   onClick={handleRun}
                   disabled={running || !userPrompt.trim() || selectedModelIds.length === 0}
                 >
@@ -727,7 +727,7 @@ export function Playground() {
                   )}
                   {running ? 'Running...' : 'Run'}
                 </Button>
-                <Button
+                <Button className="ui-control" data-ui-variant="outline"
                   variant="outline"
                   onClick={() => setSaveTemplateOpen(true)}
                   disabled={!userPrompt.trim()}
@@ -740,14 +740,14 @@ export function Playground() {
         </TabsContent>
 
         <TabsContent value="history">
-          <Card>
-            <CardHeader>
+          <Card className="ui-panel">
+            <CardHeader className="ui-panel-header">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="ui-panel-title flex items-center gap-2">
                   <History className="h-5 w-5" />
                   Execution History
                 </CardTitle>
-                <Button
+                <Button className="ui-control" data-ui-variant="outline"
                   variant="outline"
                   size="sm"
                   onClick={() => setClearHistoryOpen(true)}
@@ -758,8 +758,8 @@ export function Playground() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="ui-panel-body">
+              <Table className="ui-data-table">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
@@ -809,7 +809,7 @@ export function Playground() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Button
+                          <Button className="ui-control" data-ui-variant="ghost"
                             variant="ghost"
                             size="sm"
                             aria-label={`View playground history ${historyLabel}`}
@@ -821,7 +821,7 @@ export function Playground() {
                           >
                             <ChevronRight className="h-4 w-4" aria-hidden="true" />
                           </Button>
-                          <Button
+                          <Button className="ui-control" data-ui-variant="ghost"
                             variant="ghost"
                             size="sm"
                             aria-label={`Delete playground history ${historyLabel}`}
@@ -851,14 +851,14 @@ export function Playground() {
         </TabsContent>
 
         <TabsContent value="templates">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="ui-panel">
+            <CardHeader className="ui-panel-header">
+              <CardTitle className="ui-panel-title flex items-center gap-2">
                 <BookTemplate className="h-5 w-5" />
                 Prompt Templates
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="ui-panel-body">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {visibleTemplates.map((template) => {
                   const templateId = normalizeAdminSelector(template.id);
@@ -872,13 +872,13 @@ export function Playground() {
                   return (
                   <Card
                     key={template.id}
-                    className="cursor-pointer hover:border-primary transition-colors"
+                    className="ui-panel cursor-pointer hover:border-primary transition-colors"
                     onClick={() => handleLoadTemplate(template)}
                   >
-                    <CardHeader className="pb-2">
+                    <CardHeader className="ui-panel-header pb-2">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm">{templateName}</CardTitle>
-                        <Button
+                        <CardTitle className="ui-panel-title text-sm">{templateName}</CardTitle>
+                        <Button className="ui-control" data-ui-variant="ghost"
                           variant="ghost"
                           size="sm"
                           aria-label={`Delete prompt template ${templateName}`}
@@ -892,7 +892,7 @@ export function Playground() {
                         </Button>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="ui-panel-body">
                       <p className="text-xs text-muted-foreground line-clamp-2">
                         {template.description || template.user_prompt_template.slice(0, 100)}
                       </p>
@@ -938,7 +938,7 @@ export function Playground() {
       />
 
       <AlertDialog open={clearHistoryOpen} onOpenChange={setClearHistoryOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Clear All History?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -955,7 +955,7 @@ export function Playground() {
       </AlertDialog>
 
       <AlertDialog open={!!deleteTemplateId} onOpenChange={() => setDeleteTemplateId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="ui-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Template?</AlertDialogTitle>
             <AlertDialogDescription>

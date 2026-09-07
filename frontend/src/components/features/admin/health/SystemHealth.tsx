@@ -310,7 +310,7 @@ function formatUptime(seconds?: number): string {
 
 function StatusDot({ status }: { status: ServiceStatus["status"] }) {
   if (status === "checking") {
-    return <RefreshCw className="h-3 w-3 text-zinc-400 animate-spin" />;
+    return <RefreshCw className="h-3 w-3 text-ui-muted animate-spin" />;
   }
   if (status === "healthy") {
     return <CheckCircle className="h-3 w-3 text-emerald-600" />;
@@ -318,7 +318,7 @@ function StatusDot({ status }: { status: ServiceStatus["status"] }) {
   if (status === "down") {
     return <XCircle className="h-3 w-3 text-red-600" />;
   }
-  return <AlertCircle className="h-3 w-3 text-zinc-400" />;
+  return <AlertCircle className="h-3 w-3 text-ui-muted" />;
 }
 
 const FEATURE_LABELS: Record<keyof FeatureFlags, string> = {
@@ -471,18 +471,18 @@ export function SystemHealth() {
     agentHealth?.status === "healthy";
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white border border-zinc-200 rounded-lg px-4 py-3 flex items-center justify-between">
+    <div className={["ui-admin-section ui-admin-systemhealth", ("space-y-4")].filter(Boolean).join(' ')}>
+      <div className="bg-ui-surface border border-ui-line rounded-lg px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {allHealthy ? (
             <CheckCircle className="h-4 w-4 text-emerald-600" />
           ) : (
             <AlertCircle className="h-4 w-4 text-amber-500" />
           )}
-          <span className="text-sm font-medium text-zinc-800">
+          <span className="text-sm font-medium text-ui-text">
             {allHealthy ? "All systems operational" : "Degraded — check below"}
           </span>
-          <span className="font-mono text-xs text-zinc-400 bg-zinc-100 px-1 py-0.5 rounded">
+          <span className="font-mono text-xs text-ui-muted bg-ui-soft px-1 py-0.5 rounded">
             {new Date().toLocaleTimeString()}
           </span>
         </div>
@@ -490,21 +490,21 @@ export function SystemHealth() {
           type="button"
           onClick={refreshAll}
           disabled={allLoading}
-          className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors disabled:opacity-50"
         >
           <RefreshCw
-            className={`h-3 w-3 ${allLoading ? "animate-spin" : ""}`}
+            className={`h-3 w-3 ${allLoading ? "animate-spin" : ""}  `}
           />
           Refresh all
         </button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <div className="bg-white border border-zinc-200 rounded-lg">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
+        <div className="bg-ui-surface border border-ui-line rounded-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line">
             <div className="flex items-center gap-1.5">
-              <Server className="h-3.5 w-3.5 text-zinc-500" />
-              <span className="text-xs font-semibold text-zinc-700">Core</span>
+              <Server className="h-3.5 w-3.5 text-ui-muted" />
+              <span className="text-xs font-semibold text-ui-text">Core</span>
             </div>
             <button
               type="button"
@@ -512,10 +512,10 @@ export function SystemHealth() {
               disabled={coreLoading}
               aria-label="Refresh core health"
               title="Refresh core health"
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-ui-soft transition-colors disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3 w-3 text-zinc-400 ${coreLoading ? "animate-spin" : ""}`}
+                className={`h-3 w-3 text-ui-muted ${coreLoading ? "animate-spin" : ""}  `}
                 aria-hidden="true"
               />
             </button>
@@ -526,10 +526,10 @@ export function SystemHealth() {
                 key={s.name}
                 className="flex items-center justify-between px-4 py-2.5"
               >
-                <span className="text-sm text-zinc-700">{s.displayName}</span>
+                <span className="text-sm text-ui-text">{s.displayName}</span>
                 <div className="flex items-center gap-2">
                   {s.latencyMs !== undefined && s.status === "healthy" && (
-                    <span className="font-mono text-xs text-zinc-400">
+                    <span className="font-mono text-xs text-ui-muted">
                       {s.latencyMs}ms
                     </span>
                   )}
@@ -545,11 +545,11 @@ export function SystemHealth() {
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 rounded-lg">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
+        <div className="bg-ui-surface border border-ui-line rounded-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line">
             <div className="flex items-center gap-1.5">
-              <Database className="h-3.5 w-3.5 text-zinc-500" />
-              <span className="text-xs font-semibold text-zinc-700">RAG</span>
+              <Database className="h-3.5 w-3.5 text-ui-muted" />
+              <span className="text-xs font-semibold text-ui-text">RAG</span>
             </div>
             <button
               type="button"
@@ -557,10 +557,10 @@ export function SystemHealth() {
               disabled={ragLoading}
               aria-label="Refresh RAG health"
               title="Refresh RAG health"
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-ui-soft transition-colors disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3 w-3 text-zinc-400 ${ragLoading ? "animate-spin" : ""}`}
+                className={`h-3 w-3 text-ui-muted ${ragLoading ? "animate-spin" : ""}  `}
                 aria-hidden="true"
               />
             </button>
@@ -571,10 +571,10 @@ export function SystemHealth() {
                 key={s.name}
                 className="flex items-center justify-between px-4 py-2.5"
               >
-                <span className="text-sm text-zinc-700">{s.displayName}</span>
+                <span className="text-sm text-ui-text">{s.displayName}</span>
                 <div className="flex items-center gap-2">
                   {s.latencyMs !== undefined && s.status === "healthy" && (
-                    <span className="font-mono text-xs text-zinc-400">
+                    <span className="font-mono text-xs text-ui-muted">
                       {s.latencyMs}ms
                     </span>
                   )}
@@ -590,11 +590,11 @@ export function SystemHealth() {
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 rounded-lg">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
+        <div className="bg-ui-surface border border-ui-line rounded-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line">
             <div className="flex items-center gap-1.5">
-              <Brain className="h-3.5 w-3.5 text-zinc-500" />
-              <span className="text-xs font-semibold text-zinc-700">
+              <Brain className="h-3.5 w-3.5 text-ui-muted" />
+              <span className="text-xs font-semibold text-ui-text">
                 AI Providers
               </span>
             </div>
@@ -604,10 +604,10 @@ export function SystemHealth() {
               disabled={providersLoading}
               aria-label="Refresh AI providers"
               title="Refresh AI providers"
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-ui-soft transition-colors disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3 w-3 text-zinc-400 ${providersLoading ? "animate-spin" : ""}`}
+                className={`h-3 w-3 text-ui-muted ${providersLoading ? "animate-spin" : ""}  `}
                 aria-hidden="true"
               />
             </button>
@@ -620,14 +620,14 @@ export function SystemHealth() {
                 <button
                   type="button"
                   onClick={fetchProviders}
-                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md border border-red-200 bg-white px-2 text-xs font-semibold text-red-700 hover:bg-red-100"
+                  className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md border border-red-200 bg-ui-surface px-2 text-xs font-semibold text-red-700 hover:bg-red-100"
                 >
                   <RefreshCw className="h-3 w-3" />
                   Retry
                 </button>
               </div>
             ) : providers.length === 0 ? (
-              <p className="px-4 py-2.5 text-xs text-zinc-400">
+              <p className="px-4 py-2.5 text-xs text-ui-muted">
                 {providersLoading ? "Loading..." : "No providers"}
               </p>
             ) : (
@@ -640,23 +640,23 @@ export function SystemHealth() {
                     type="button"
                     disabled={!p.isEnabled || isCheckingProvider}
                     onClick={() => p.isEnabled && handleCheckProviderHealth(p.id)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50 transition-colors disabled:cursor-default"
+                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-ui-soft transition-colors disabled:cursor-default"
                   >
                     <div className="text-left">
-                      <p className="text-sm text-zinc-700">{p.displayName}</p>
+                      <p className="text-sm text-ui-text">{p.displayName}</p>
                       <p
                         className={`font-mono text-xs max-w-[140px] truncate ${
-                          p.healthError ? "text-red-600" : "text-zinc-400"
-                        }`}
+                          p.healthError ? "text-red-600" : "text-ui-muted"
+                        }  `}
                       >
                         {p.healthError ?? `${p.enabledModelCount}/${p.modelCount} models`}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       {isCheckingProvider ? (
-                        <RefreshCw className="h-3 w-3 text-zinc-400 animate-spin" />
+                        <RefreshCw className="h-3 w-3 text-ui-muted animate-spin" />
                       ) : !p.isEnabled ? (
-                        <span className="font-mono text-xs text-zinc-400">
+                        <span className="font-mono text-xs text-ui-muted">
                           off
                         </span>
                       ) : p.healthStatus === "healthy" ? (
@@ -664,7 +664,7 @@ export function SystemHealth() {
                       ) : p.healthStatus === "down" ? (
                         <XCircle className="h-3 w-3 text-red-600" />
                       ) : (
-                        <AlertCircle className="h-3 w-3 text-zinc-400" />
+                        <AlertCircle className="h-3 w-3 text-ui-muted" />
                       )}
                     </div>
                   </button>
@@ -674,11 +674,11 @@ export function SystemHealth() {
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 rounded-lg">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
+        <div className="bg-ui-surface border border-ui-line rounded-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line">
             <div className="flex items-center gap-1.5">
-              <ToggleRight className="h-3.5 w-3.5 text-zinc-500" />
-              <span className="text-xs font-semibold text-zinc-700">
+              <ToggleRight className="h-3.5 w-3.5 text-ui-muted" />
+              <span className="text-xs font-semibold text-ui-text">
                 Feature Flags
               </span>
             </div>
@@ -688,10 +688,10 @@ export function SystemHealth() {
               disabled={flagsLoading}
               aria-label="Refresh feature flags"
               title="Refresh feature flags"
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-ui-soft transition-colors disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3 w-3 text-zinc-400 ${flagsLoading ? "animate-spin" : ""}`}
+                className={`h-3 w-3 text-ui-muted ${flagsLoading ? "animate-spin" : ""}  `}
                 aria-hidden="true"
               />
             </button>
@@ -703,13 +703,13 @@ export function SystemHealth() {
                   key={key}
                   className="flex items-center justify-between px-4 py-2.5"
                 >
-                  <span className="text-sm text-zinc-700">
+                  <span className="text-sm text-ui-text">
                     {FEATURE_LABELS[key]}
                   </span>
                   {enabled ? (
                     <ToggleRight className="h-3.5 w-3.5 text-emerald-600" />
                   ) : (
-                    <ToggleLeft className="h-3.5 w-3.5 text-zinc-400" />
+                    <ToggleLeft className="h-3.5 w-3.5 text-ui-muted" />
                   )}
                 </div>
               ),
@@ -717,11 +717,11 @@ export function SystemHealth() {
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 rounded-lg">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-100">
+        <div className="bg-ui-surface border border-ui-line rounded-lg">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line">
             <div className="flex items-center gap-1.5">
-              <Bot className="h-3.5 w-3.5 text-zinc-500" />
-              <span className="text-xs font-semibold text-zinc-700">Agent</span>
+              <Bot className="h-3.5 w-3.5 text-ui-muted" />
+              <span className="text-xs font-semibold text-ui-text">Agent</span>
             </div>
             <button
               type="button"
@@ -729,23 +729,23 @@ export function SystemHealth() {
               disabled={agentLoading}
               aria-label="Refresh agent health"
               title="Refresh agent health"
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-zinc-100 transition-colors disabled:opacity-50"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-ui-soft transition-colors disabled:opacity-50"
             >
               <RefreshCw
-                className={`h-3 w-3 text-zinc-400 ${agentLoading ? "animate-spin" : ""}`}
+                className={`h-3 w-3 text-ui-muted ${agentLoading ? "animate-spin" : ""}  `}
                 aria-hidden="true"
               />
             </button>
           </div>
           <div className="divide-y divide-zinc-100">
             {agentHealth == null ? (
-              <p className="px-4 py-2.5 text-xs text-zinc-400">
+              <p className="px-4 py-2.5 text-xs text-ui-muted">
                 {agentLoading ? "Checking…" : "Not checked"}
               </p>
             ) : (
               <>
                 <div className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-sm text-zinc-700">Status</span>
+                  <span className="text-sm text-ui-text">Status</span>
                   <div className="flex items-center gap-1.5">
                     {agentHealth.status === "healthy" ? (
                       <CheckCircle className="h-3 w-3 text-emerald-600" />
@@ -754,39 +754,39 @@ export function SystemHealth() {
                     ) : (
                       <AlertCircle className="h-3 w-3 text-amber-500" />
                     )}
-                    <span className="font-mono text-xs text-zinc-500 capitalize">
+                    <span className="font-mono text-xs text-ui-muted capitalize">
                       {agentHealth.status}
                     </span>
                   </div>
                 </div>
                 {agentHealth.error && (
                   <div className="flex items-start justify-between gap-3 px-4 py-2.5">
-                    <span className="text-sm text-zinc-700">Error</span>
+                    <span className="text-sm text-ui-text">Error</span>
                     <span className="max-w-[160px] text-right text-xs text-red-600">
                       {agentHealth.error}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-sm text-zinc-700">Uptime</span>
-                  <span className="font-mono text-xs text-zinc-400">
+                  <span className="text-sm text-ui-text">Uptime</span>
+                  <span className="font-mono text-xs text-ui-muted">
                     {formatUptime(agentHealth.uptime)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-sm text-zinc-700">Tools</span>
-                  <span className="font-mono text-xs text-zinc-400">
+                  <span className="text-sm text-ui-text">Tools</span>
+                  <span className="font-mono text-xs text-ui-muted">
                     {agentHealth.tools?.count ?? "—"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-2.5">
-                  <span className="text-sm text-zinc-700">LLM</span>
+                  <span className="text-sm text-ui-text">LLM</span>
                   {agentHealth.llm?.ok === true ? (
                     <CheckCircle className="h-3 w-3 text-emerald-600" />
                   ) : agentHealth.llm?.ok === false ? (
                     <XCircle className="h-3 w-3 text-red-600" />
                   ) : (
-                    <AlertCircle className="h-3 w-3 text-zinc-400" />
+                    <AlertCircle className="h-3 w-3 text-ui-muted" />
                   )}
                 </div>
               </>

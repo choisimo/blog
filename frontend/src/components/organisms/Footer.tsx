@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { site } from '@/config/site';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { PageContainer } from '@/components/organisms/layout';
 import { getApiBaseUrl } from '@/utils/network/apiBase';
 
 type SubscribeStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -92,260 +93,51 @@ export function Footer() {
   };
 
   return (
-    <footer className={cn(
-      'border-t bg-background',
-      isTerminal && 'border-primary/30'
-    )}>
-      <div className='mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8'>
-        <div className='py-10 md:py-14'>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4 md:gap-8'>
-            <div className='space-y-4'>
-              <h3 className={cn(
-                'text-lg font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
-                {isTerminal ? '>_ Nodove Blog' : 'Nodove Blog'}
-              </h3>
-              <p className='text-sm text-muted-foreground'>
-                최신 기술 트렌드를 놓치지 마세요!
-              </p>
-              <p className='text-sm text-muted-foreground'>
-                유용한 글을 메일로 보내드려요.
-              </p>
-              <div className='flex space-x-4'>
-                {githubHref && (
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    asChild
-                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                  >
-                    <a
-                      href={githubHref}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      <Github className='h-5 w-5' />
-                      <span className='sr-only'>GitHub</span>
-                    </a>
-                  </Button>
-                )}
-                {twitterHref && (
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    asChild
-                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                  >
-                    <a
-                      href={twitterHref}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      <Twitter className='h-5 w-5' />
-                      <span className='sr-only'>Twitter</span>
-                    </a>
-                  </Button>
-                )}
-                {linkedinHref && (
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    asChild
-                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                  >
-                    <a
-                      href={linkedinHref}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      <Linkedin className='h-5 w-5' />
-                      <span className='sr-only'>LinkedIn</span>
-                    </a>
-                  </Button>
-                )}
-                {emailHref && (
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    asChild
-                    className={cn(isTerminal && 'text-primary hover:text-primary hover:bg-primary/10')}
-                  >
-                    <a href={emailHref}>
-                      <Mail className='h-5 w-5' />
-                      <span className='sr-only'>Email</span>
-                    </a>
-                  </Button>
-                )}
-              </div>
+    <footer className={cn('ui-footer', isTerminal && 'font-mono')}>
+      <PageContainer>
+        <div className="ui-footer__top">
+          <div className="ui-footer__identity">
+            <h2 className="ui-footer__title">{isTerminal ? '>_ Nodove Blog' : 'Nodove Blog'}</h2>
+            <p className="ui-footer__description">AI, 시스템 설계, 그리고 코드에 관한 기록.</p>
+            <nav className="ui-footer__links" aria-label="Footer navigation">
+              <Link to="/">Home</Link><Link to="/blog">Blog</Link><Link to="/projects">Projects</Link><Link to="/about">About</Link>
+            </nav>
+            <nav className="ui-footer__links ui-footer__categories" aria-label="Categories">
+              <Link to="/blog?category=ai">AI &amp; Machine Learning</Link>
+              <Link to="/blog?category=web">Web Development</Link>
+              <Link to="/blog?category=devops">DevOps</Link>
+              <Link to="/blog?category=algorithms">Algorithms</Link>
+            </nav>
+            <div className="ui-footer__social">
+              {githubHref && <a href={githubHref} target="_blank" rel="noopener noreferrer"><Github aria-hidden="true" className="h-4 w-4" />GitHub<span className="sr-only"> (새 창)</span></a>}
+              {twitterHref && <a href={twitterHref} target="_blank" rel="noopener noreferrer"><Twitter aria-hidden="true" className="h-4 w-4" />Twitter<span className="sr-only"> (새 창)</span></a>}
+              {linkedinHref && <a href={linkedinHref} target="_blank" rel="noopener noreferrer"><Linkedin aria-hidden="true" className="h-4 w-4" />LinkedIn<span className="sr-only"> (새 창)</span></a>}
+              {emailHref && <a href={emailHref}><Mail aria-hidden="true" className="h-4 w-4" />Email</a>}
             </div>
-
-            <div className='space-y-4'>
-              <h4 className={cn(
-                'text-sm font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
-                {isTerminal ? '$ nav' : 'Navigation'}
-              </h4>
-              <ul className={cn(
-                'space-y-2 text-sm',
-                isTerminal && 'font-mono'
-              )}>
-                <li>
-                  <Link
-                    to='/'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/projects'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    Projects
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/blog'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/about'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    About
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div className='space-y-4'>
-              <h4 className={cn(
-                'text-sm font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
-                {isTerminal ? '$ categories' : 'Categories'}
-              </h4>
-              <ul className={cn(
-                'space-y-2 text-sm',
-                isTerminal && 'font-mono'
-              )}>
-                <li>
-                  <Link
-                    to='/blog?category=ai'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    AI & Machine Learning
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/blog?category=web'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    Web Development
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/blog?category=devops'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    DevOps
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to='/blog?category=algorithms'
-                    className='text-muted-foreground hover:text-primary transition-colors'
-                  >
-                    Algorithms
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div className='space-y-4'>
-              <h4 className={cn(
-                'text-sm font-semibold',
-                isTerminal && 'font-mono text-primary'
-              )}>
-                {isTerminal ? '$ subscribe' : 'Subscribe'}
-              </h4>
-              <p className={cn(
-                'text-sm text-muted-foreground',
-                isTerminal && 'font-mono'
-              )}>
-                최신 글을 메일로 받아보세요.
-              </p>
-              <form className='space-y-2' onSubmit={handleSubscribe}>
-                <input
-                  type='email'
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={isTerminal ? 'email@example.com' : 'Enter your email'}
-                  disabled={status === 'loading'}
-                  className={cn(
-                    'w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50',
-                    isTerminal && 'font-mono border-primary/40 bg-primary/5 text-primary placeholder:text-primary/50 focus:ring-primary/50 focus:border-primary/60'
-                  )}
-                />
-                <Button 
-                  type='submit' 
-                  disabled={status === 'loading'}
-                  className={cn(
-                    'w-full',
-                    isTerminal && 'font-mono bg-primary/20 text-primary border border-primary/40 hover:bg-primary/30 hover:shadow-[0_0_10px_rgba(0,255,65,0.3)]'
-                  )}
-                  variant={isTerminal ? 'outline' : 'default'}
-                >
-                  {status === 'loading' ? (
-                    <>
-                      <Loader2 className='h-4 w-4 mr-2 animate-spin' />
-                      {isTerminal ? '> Processing...' : 'Processing...'}
-                    </>
-                  ) : status === 'success' ? (
-                    <>
-                      <CheckCircle className='h-4 w-4 mr-2' />
-                      {isTerminal ? '> Subscribed!' : 'Subscribed!'}
-                    </>
-                  ) : (
-                    isTerminal ? '> Subscribe' : 'Subscribe'
-                  )}
+          </div>
+          <section className="ui-footer__subscribe" aria-labelledby="footer-subscribe-title">
+            <h2 id="footer-subscribe-title" className="ui-footer__title">Subscribe</h2>
+            <p id="footer-subscribe-help" className="ui-footer__description">최신 글을 메일로 받아보세요.</p>
+            <form onSubmit={handleSubscribe} aria-busy={status === 'loading'}>
+              <label htmlFor="footer-subscribe-email" className="ui-footer__label">이메일 주소</label>
+              <div className="ui-footer__form-row">
+                <input id="footer-subscribe-email" type="email" autoComplete="email" value={email}
+                  onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" disabled={status === 'loading'}
+                  aria-invalid={status === 'error' && (!email || !email.includes('@'))} aria-describedby="footer-subscribe-help footer-subscribe-status"
+                  className="ui-footer__input" />
+                <Button type="submit" disabled={status === 'loading'} variant="outline" className="ui-footer__submit">
+                  {status === 'loading' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />Processing...</>
+                    : status === 'success' ? <><CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />Subscribed!</>
+                      : 'Subscribe'}
                 </Button>
-                {message && (
-                  <p className={cn(
-                    'text-xs mt-1',
-                    status === 'error' ? 'text-destructive' : 'text-muted-foreground',
-                    isTerminal && status === 'success' && 'text-primary'
-                  )}>
-                    {message}
-                  </p>
-                )}
-              </form>
-            </div>
-          </div>
-
-          <div className={cn(
-            'mt-8 border-t pt-8',
-            isTerminal && 'border-primary/30'
-          )}>
-            <p className={cn(
-              'text-center text-sm text-muted-foreground',
-              isTerminal && 'font-mono'
-            )}>
-              © {currentYear} Nodove Blog. All rights reserved.
-            </p>
-          </div>
+              </div>
+              <p id="footer-subscribe-status" role={status === 'error' ? 'alert' : 'status'} aria-live={status === 'error' ? 'assertive' : 'polite'}
+                className={cn('ui-footer__feedback', status === 'error' && 'ui-footer__feedback--error')}>{message}</p>
+            </form>
+          </section>
         </div>
-      </div>
+        <p className="ui-footer__copyright">© {currentYear} Nodove Blog. All rights reserved.</p>
+      </PageContainer>
     </footer>
   );
 }

@@ -149,7 +149,7 @@ export function BlogPostHeader({
   };
 
   return (
-    <header className='space-y-6'>
+    <header className="ui-article-header">
       <Breadcrumb
         items={[
           { label: 'Blog', href: '/blog' },
@@ -161,50 +161,47 @@ export function BlogPostHeader({
         ]}
         className={cn(isTerminal && 'font-mono text-xs')}
       />
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <Button
+      <div className="ui-article-header__navigation">
+        <Button data-ui-variant='ghost'
           variant='ghost'
           onClick={handleBackToBlog}
-          className={cn(
+          className={["ui-control", (cn(
             'hover:bg-primary/10 dark:text-white',
             isTerminal && 'font-mono text-primary hover:text-primary'
-          )}
+          ))].filter(Boolean).join(' ')}
           size='sm'
         >
-          <ArrowLeft className='mr-2 h-4 w-4' />
+          <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" />
           {isTerminal ? `< ${backToBlogLabel}` : backToBlogLabel}
         </Button>
-        <Button
+        <Button data-ui-variant='outline'
           onClick={onShare}
           variant='outline'
           size='sm'
-          className={cn(
-            'gap-2 rounded-full border-border bg-white/70 text-foreground backdrop-blur hover:bg-primary/10 dark:border-white/10 dark:bg-white/5 dark:text-white',
+          className={["ui-control", (cn(
+            "gap-2 rounded-full border-border bg-ui-surface/70 text-foreground hover:bg-primary/10 dark:border-ui-line dark:bg-ui-surface/5 dark:text-white",
             isTerminal && 'font-mono border-border bg-transparent'
-          )}
+          ))].filter(Boolean).join(' ')}
         >
-          <Share2 className='h-4 w-4' />
+          <Share2 aria-hidden="true" className="h-4 w-4" />
           {shareLabel}
         </Button>
       </div>
 
       <div
-        className={cn(
-          'rounded-[32px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur dark:border-white/10 dark:bg-[hsl(var(--card-blog))] sm:p-8',
-          isTerminal && 'rounded-lg border-border bg-card'
-        )}
+        className="ui-article-header__intro"
       >
-        <div className='space-y-5'>
+        <div className="ui-article-header__copy">
           {/* Terminal-style path indicator */}
           {isTerminal && (
-            <div className='font-mono text-xs text-muted-foreground'>
-              <span className='text-primary'>cat</span> ~/blog/{safeYear}/{safeSlug}.md
+            <div className="font-mono text-xs text-muted-foreground">
+              <span className="text-primary">cat</span> ~/blog/{safeYear}/{safeSlug}.md
             </div>
           )}
 
           <div
             className={cn(
-              'inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary',
+              'ui-article-category',
               isTerminal && 'rounded font-mono tracking-wider'
             )}
           >
@@ -215,7 +212,7 @@ export function BlogPostHeader({
 
           <h1
             className={cn(
-              'text-3xl font-bold leading-tight tracking-tight text-foreground dark:text-white sm:text-4xl lg:text-5xl',
+              'ui-article-title',
               isTerminal && 'font-mono terminal-glow'
             )}
           >
@@ -227,7 +224,7 @@ export function BlogPostHeader({
             <SafeDescriptionMarkdown
               text={description}
               className={cn(
-                'text-base leading-relaxed text-foreground/85 dark:text-foreground/85 sm:text-lg',
+                'ui-article-description',
                 isTerminal && 'border-l-2 border-primary/30 pl-4'
               )}
             />
@@ -235,29 +232,23 @@ export function BlogPostHeader({
 
           <div
             className={cn(
-              'grid gap-3 text-sm text-muted-foreground sm:grid-cols-3',
+              'ui-article-meta',
               isTerminal && 'font-mono text-xs'
             )}
           >
             <div
-              className={cn(
-                'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
-                isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
-              )}
+              className="ui-article-meta__item"
             >
-              <Calendar className='h-4 w-4 text-foreground/70' />
+              <Calendar aria-hidden="true" className="h-4 w-4 text-foreground/70" />
               <span>
                 {isTerminal ? `date: ${formattedDate}` : formattedDate}
               </span>
             </div>
             {safeReadingTimeLabel && (
               <div
-                className={cn(
-                  'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
-                  isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
-                )}
+                className="ui-article-meta__item"
               >
-                <Clock className='h-4 w-4 text-foreground/70' />
+                <Clock aria-hidden="true" className="h-4 w-4 text-foreground/70" />
                 <span>
                   {isTerminal
                     ? `time: ${safeReadingTimeLabel}`
@@ -267,12 +258,9 @@ export function BlogPostHeader({
             )}
             {safeAuthor && (
               <div
-                className={cn(
-                  'flex items-center gap-2 rounded-2xl bg-white/70 px-3 py-2 shadow-sm dark:bg-[hsl(var(--card-blog))] dark:text-white',
-                  isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
-                )}
+                className="ui-article-meta__item"
               >
-                <User className='h-4 w-4 text-foreground/70' />
+                <User aria-hidden="true" className="h-4 w-4 text-foreground/70" />
                 <span>
                   {isTerminal ? `author: ${safeAuthor}` : safeAuthor}
                 </span>
@@ -282,31 +270,21 @@ export function BlogPostHeader({
 
           {/* Language Selection */}
           <div
-            className={cn(
-              'flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-4 py-3 text-xs font-medium text-muted-foreground dark:border-primary/40 dark:bg-primary/10 dark:text-white/80',
-              isTerminal && 'rounded-lg font-mono border-solid',
-              isTranslationWarming && 'animate-pulse'
-            )}
+            className="ui-article-language"
           >
-            <Languages className='h-4 w-4 text-primary' />
-            <span className='uppercase tracking-wide'>
+            <Languages aria-hidden="true" className="h-4 w-4 text-primary" />
+            <span className="uppercase tracking-wide">
               {readingLanguageLabel}
             </span>
-            <div className='flex flex-wrap gap-2'>
+            <div className="ui-article-language__options" role="group" aria-label={readingLanguageLabel}>
               {availableLanguages.map(code => (
                 <button
                   key={code}
                   type='button'
                   onClick={() => setLanguage(code)}
                   disabled={isTranslationWarming}
-                  className={cn(
-                    'rounded-full px-3 py-1 text-sm transition-colors',
-                    language === code
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-white/70 text-foreground/70 dark:bg-background/60 hover:bg-white dark:hover:bg-background/80',
-                    isTerminal && 'rounded font-mono',
-                    isTranslationWarming && 'opacity-50 cursor-not-allowed'
-                  )}
+                  aria-pressed={language === code}
+                  className="ui-article-language__option"
                 >
                   {resolveLanguageName(code)}
                 </button>
@@ -314,15 +292,15 @@ export function BlogPostHeader({
             </div>
             {/* Translation status indicators */}
             {isTranslationWarming && (
-              <div className='flex items-center gap-1.5 ml-2 text-primary'>
-                <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                <span className='text-xs'>{translatingLabel}</span>
+              <div className="flex items-center gap-1.5 ml-2 text-primary">
+                <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                <span className="text-xs">{translatingLabel}</span>
               </div>
             )}
             {hasAiTranslationReady && (
-              <div className='flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400'>
-                <Sparkles className='h-3.5 w-3.5' />
-                <span className='text-xs'>{aiTranslatedLabel}</span>
+              <div className="flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400">
+                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                <span className="text-xs">{aiTranslatedLabel}</span>
               </div>
             )}
           </div>
@@ -335,26 +313,26 @@ export function BlogPostHeader({
                 isTerminal && 'font-mono'
               )}
             >
-              <div className='flex items-start justify-between gap-3'>
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className='font-medium mb-1'>{translationFailedLabel}</p>
-                  <p className='text-xs opacity-80'>
+                  <p className="font-medium mb-1">{translationFailedLabel}</p>
+                  <p className="text-xs opacity-80">
                     {safeTranslationErrorMessage}
                   </p>
-                  <p className='text-xs mt-1 opacity-60'>
+                  <p className="text-xs mt-1 opacity-60">
                     {showingOriginalLabel}
                   </p>
                 </div>
                 {translationError.retryable && (
-                  <Button
+                  <Button data-ui-variant='outline'
                     size='sm'
                     variant='outline'
                     onClick={onRetryTranslation}
-                    className={cn(
+                    className={["ui-control", (cn(
                       'shrink-0 text-xs h-8',
                       isTerminal &&
                         'font-mono border-primary/40 text-primary hover:bg-primary/10'
-                    )}
+                    ))].filter(Boolean).join(' ')}
                   >
                     {retryLabel}
                   </Button>
@@ -370,8 +348,8 @@ export function BlogPostHeader({
                 isTerminal && 'font-mono text-xs'
               )}
             >
-              <Tag className='h-4 w-4 text-foreground/75 dark:text-foreground/75' />
-              {isTerminal && <span className='text-primary'>tags:</span>}
+              <Tag aria-hidden="true" className="h-4 w-4 text-foreground/75 dark:text-foreground/75" />
+              {isTerminal && <span className="text-primary">tags:</span>}
               {post.tags.flatMap((tag, index) => {
                 const safeTag = normalizeHeaderText(tag);
                 const safeTagQuery = normalizeHeaderQueryValue(tag);
@@ -385,7 +363,7 @@ export function BlogPostHeader({
                   key={`${safeTag}-${index}`}
                   variant='outline'
                   className={cn(
-                    'rounded-full px-3 py-1 text-xs dark:border-white/20 dark:text-white cursor-pointer hover:bg-primary/10 transition-colors',
+                    "rounded-full px-3 py-1 text-xs dark:border-ui-line dark:text-white cursor-pointer hover:bg-primary/10 transition-colors",
                     isTerminal &&
                       'rounded border-primary/40 text-primary hover:bg-primary/20'
                   )}
