@@ -1,0 +1,1026 @@
+{
+  "account": "choisimo",
+  "checkedAt": "2026-09-07T19:45:06.055365+00:00",
+  "source": "gh repo list choisimo --limit 1000 --json ...; gh api pinned default-branch README and root contents",
+  "scope": "All public repositories, including forks and empty repositories. Private repositories and other accounts are excluded.",
+  "counts": {
+    "public": 68,
+    "original": 59,
+    "forks": 9,
+    "empty": 2
+  },
+  "repositories": [
+    {
+      "repository": "choisimo/AgentVerse",
+      "url": "https://github.com/choisimo/AgentVerse",
+      "sourceUrl": "https://github.com/choisimo/AgentVerse/tree/f90c4bd9680fdd3bcff8c52c9170911a59b23478",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-09-09T05:47:44Z",
+      "checkedAt": "2026-09-07T19:44:24.102990+00:00",
+      "head": "f90c4bd9680fdd3bcff8c52c9170911a59b23478",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/AI-pair-programmer",
+      "url": "https://github.com/choisimo/AI-pair-programmer",
+      "sourceUrl": "https://github.com/choisimo/AI-pair-programmer/tree/1f9fd1f0d413ef862856f9aab43dc2aa47a3a54b",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-09-26T01:52:31Z",
+      "checkedAt": "2026-09-07T19:44:24.560216+00:00",
+      "head": "1f9fd1f0d413ef862856f9aab43dc2aa47a3a54b",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/AI_Agent_Arena",
+      "url": "https://github.com/choisimo/AI_Agent_Arena",
+      "sourceUrl": "https://github.com/choisimo/AI_Agent_Arena/tree/4e7b24ff1a21a6fde7703dfac73e0e6cc7297eca",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-02-19T06:35:11Z",
+      "checkedAt": "2026-09-07T19:44:25.627515+00:00",
+      "head": "4e7b24ff1a21a6fde7703dfac73e0e6cc7297eca",
+      "readmeStatus": "missing",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/AI_agent_dev-application",
+      "url": "https://github.com/choisimo/AI_agent_dev-application",
+      "sourceUrl": "https://github.com/choisimo/AI_agent_dev-application/tree/86e629dfc569ebd2cd8a55bf57bd6414ed79af76",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-07-28T06:31:43Z",
+      "checkedAt": "2026-09-07T19:44:24.202829+00:00",
+      "head": "86e629dfc569ebd2cd8a55bf57bd6414ed79af76",
+      "readmeStatus": "ok",
+      "languages": [
+        "Dart"
+      ]
+    },
+    {
+      "repository": "choisimo/AI_module",
+      "url": "https://github.com/choisimo/AI_module",
+      "sourceUrl": "https://github.com/choisimo/AI_module/tree/443b65276905eec43ac8e91bfbcc27008e498e02",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-29T16:24:32Z",
+      "checkedAt": "2026-09-07T19:44:24.389000+00:00",
+      "head": "443b65276905eec43ac8e91bfbcc27008e498e02",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/AIOSK",
+      "url": "https://github.com/choisimo/AIOSK",
+      "sourceUrl": "https://github.com/choisimo/AIOSK/tree/64e8b0a957803c546dda862e12f3c6e81c97acca",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-06-01T16:47:48Z",
+      "checkedAt": "2026-09-07T19:44:25.287941+00:00",
+      "head": "64e8b0a957803c546dda862e12f3c6e81c97acca",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/AISubtitleGenerator",
+      "url": "https://github.com/choisimo/AISubtitleGenerator",
+      "sourceUrl": "https://github.com/choisimo/AISubtitleGenerator/tree/5b8702f729efe9ef1ec35da4e70f6ce48b7b2162",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-01-19T17:29:29Z",
+      "checkedAt": "2026-09-07T19:44:24.369320+00:00",
+      "head": "5b8702f729efe9ef1ec35da4e70f6ce48b7b2162",
+      "readmeStatus": "missing",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/anime_heaven",
+      "url": "https://github.com/choisimo/anime_heaven",
+      "sourceUrl": "https://github.com/choisimo/anime_heaven/tree/0ca7978a530c2867627a95eea57df3342c3e3e09",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-07-23T06:26:30Z",
+      "checkedAt": "2026-09-07T19:44:24.238826+00:00",
+      "head": "0ca7978a530c2867627a95eea57df3342c3e3e09",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/AStarAlgorithm",
+      "url": "https://github.com/choisimo/AStarAlgorithm",
+      "sourceUrl": "https://github.com/choisimo/AStarAlgorithm/tree/1a01f076c6000c62440e7145c5ed321719ca50ff",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-09T17:08:38Z",
+      "checkedAt": "2026-09-07T19:44:28.042193+00:00",
+      "head": "1a01f076c6000c62440e7145c5ed321719ca50ff",
+      "readmeStatus": "missing",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/AudioNotes",
+      "url": "https://github.com/choisimo/AudioNotes",
+      "sourceUrl": "https://github.com/choisimo/AudioNotes/tree/0ead89566d4a7bea2df200822fcbc10cbf010edb",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-07-26T08:03:43Z",
+      "checkedAt": "2026-09-07T19:44:28.186130+00:00",
+      "head": "0ead89566d4a7bea2df200822fcbc10cbf010edb",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/awesome-llm-apps",
+      "url": "https://github.com/choisimo/awesome-llm-apps",
+      "sourceUrl": "https://github.com/choisimo/awesome-llm-apps/tree/f08e7b677e70cc40be3835b4094cdf21da0985ae",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-09-15T05:12:31Z",
+      "checkedAt": "2026-09-07T19:44:28.726898+00:00",
+      "head": "f08e7b677e70cc40be3835b4094cdf21da0985ae",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/backup_strategy",
+      "url": "https://github.com/choisimo/backup_strategy",
+      "sourceUrl": "https://github.com/choisimo/backup_strategy/tree/75615c5fbd4a9e256d9689f881a4accf182e3bea",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-04-23T04:34:29Z",
+      "checkedAt": "2026-09-07T19:44:28.931808+00:00",
+      "head": "75615c5fbd4a9e256d9689f881a4accf182e3bea",
+      "readmeStatus": "ok",
+      "languages": [
+        "Shell"
+      ]
+    },
+    {
+      "repository": "choisimo/blog",
+      "url": "https://github.com/choisimo/blog",
+      "sourceUrl": "https://github.com/choisimo/blog/tree/66a196bc0c729e1b9753824fdf6a4adfa2c01569",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-09-07T16:45:29Z",
+      "checkedAt": "2026-09-07T19:44:30.307433+00:00",
+      "head": "66a196bc0c729e1b9753824fdf6a4adfa2c01569",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/boardWeb",
+      "url": "https://github.com/choisimo/boardWeb",
+      "sourceUrl": "https://github.com/choisimo/boardWeb/tree/4e0aa9e5627294588d89b5d45687e8b6cd2743f4",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-10-10T15:27:34Z",
+      "checkedAt": "2026-09-07T19:44:31.352795+00:00",
+      "head": "4e0aa9e5627294588d89b5d45687e8b6cd2743f4",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/CBT-latest",
+      "url": "https://github.com/choisimo/CBT-latest",
+      "sourceUrl": "https://github.com/choisimo/CBT-latest/tree/83c34e4832b8a86d5f3577948b12d37b96aad046",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-06-01T16:49:21Z",
+      "checkedAt": "2026-09-07T19:44:33.661515+00:00",
+      "head": "83c34e4832b8a86d5f3577948b12d37b96aad046",
+      "readmeStatus": "ok",
+      "languages": [
+        "Java"
+      ]
+    },
+    {
+      "repository": "choisimo/choisimo.github.io",
+      "url": "https://github.com/choisimo/choisimo.github.io",
+      "sourceUrl": "https://github.com/choisimo/choisimo.github.io/tree/47f2867ce7a2b484517179ade6959c03e0b8279c",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-07-30T07:41:13Z",
+      "checkedAt": "2026-09-07T19:44:33.709830+00:00",
+      "head": "47f2867ce7a2b484517179ade6959c03e0b8279c",
+      "readmeStatus": "missing",
+      "languages": [
+        "SCSS"
+      ]
+    },
+    {
+      "repository": "choisimo/code-merger",
+      "url": "https://github.com/choisimo/code-merger",
+      "sourceUrl": "https://github.com/choisimo/code-merger/tree/6d0e8e15eaaa8a802bd8a57d4acf4b2904cc6fdb",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-26T13:53:22Z",
+      "checkedAt": "2026-09-07T19:44:33.568664+00:00",
+      "head": "6d0e8e15eaaa8a802bd8a57d4acf4b2904cc6fdb",
+      "readmeStatus": "missing",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/code-shorts",
+      "url": "https://github.com/choisimo/code-shorts",
+      "sourceUrl": "https://github.com/choisimo/code-shorts/tree/acb792f18389ea8ec68672ec8c9a1cd804fb0966",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-06-29T16:03:41Z",
+      "checkedAt": "2026-09-07T19:44:33.938389+00:00",
+      "head": "acb792f18389ea8ec68672ec8c9a1cd804fb0966",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/code_repository",
+      "url": "https://github.com/choisimo/code_repository",
+      "sourceUrl": "https://github.com/choisimo/code_repository/tree/380f385daf36c4bf0a963b8ef0a458f7dc699cf5",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-06-15T07:38:38Z",
+      "checkedAt": "2026-09-07T19:44:34.736617+00:00",
+      "head": "380f385daf36c4bf0a963b8ef0a458f7dc699cf5",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/compiler-study-program",
+      "url": "https://github.com/choisimo/compiler-study-program",
+      "sourceUrl": "https://github.com/choisimo/compiler-study-program/tree/2a4e45a7c741480e5bc7fedc47262b7bdb500858",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-27T14:35:23Z",
+      "checkedAt": "2026-09-07T19:44:37.153342+00:00",
+      "head": "2a4e45a7c741480e5bc7fedc47262b7bdb500858",
+      "readmeStatus": "missing",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/ConfigHub",
+      "url": "https://github.com/choisimo/ConfigHub",
+      "sourceUrl": "https://github.com/choisimo/ConfigHub/tree/55384b66a01755b9373cd30156c3d0ed5043ff75",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-31T15:40:24Z",
+      "checkedAt": "2026-09-07T19:44:37.656318+00:00",
+      "head": "55384b66a01755b9373cd30156c3d0ed5043ff75",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/CPP_LoadBalancing_algorithm",
+      "url": "https://github.com/choisimo/CPP_LoadBalancing_algorithm",
+      "sourceUrl": "https://github.com/choisimo/CPP_LoadBalancing_algorithm/tree/09b411f015f41df4c9e1cb2216ec0b24fc81323a",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-06T09:56:10Z",
+      "checkedAt": "2026-09-07T19:44:37.396210+00:00",
+      "head": "09b411f015f41df4c9e1cb2216ec0b24fc81323a",
+      "readmeStatus": "ok",
+      "languages": [
+        "Makefile"
+      ]
+    },
+    {
+      "repository": "choisimo/Crawler",
+      "url": "https://github.com/choisimo/Crawler",
+      "sourceUrl": "https://github.com/choisimo/Crawler/tree/109dcda4ad3ad1720e093a0bc277c0e8c93d3b3a",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-28T02:14:20Z",
+      "checkedAt": "2026-09-07T19:44:38.066379+00:00",
+      "head": "109dcda4ad3ad1720e093a0bc277c0e8c93d3b3a",
+      "readmeStatus": "ok",
+      "languages": [
+        "Shell"
+      ]
+    },
+    {
+      "repository": "choisimo/Crawler_supporter",
+      "url": "https://github.com/choisimo/Crawler_supporter",
+      "sourceUrl": "https://github.com/choisimo/Crawler_supporter",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": true,
+      "pushedAt": "2025-04-17T14:02:38Z",
+      "checkedAt": "2026-09-07T19:44:37.792743+00:00",
+      "head": null,
+      "readmeStatus": "not-collected",
+      "languages": []
+    },
+    {
+      "repository": "choisimo/custom-blog",
+      "url": "https://github.com/choisimo/custom-blog",
+      "sourceUrl": "https://github.com/choisimo/custom-blog/tree/e2348c383ffccfc02ac0a1a4738fb14fd3627224",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-04T18:39:41Z",
+      "checkedAt": "2026-09-07T19:44:38.118082+00:00",
+      "head": "e2348c383ffccfc02ac0a1a4738fb14fd3627224",
+      "readmeStatus": "ok",
+      "languages": [
+        "Dart"
+      ]
+    },
+    {
+      "repository": "choisimo/Deep-Dive",
+      "url": "https://github.com/choisimo/Deep-Dive",
+      "sourceUrl": "https://github.com/choisimo/Deep-Dive/tree/7bc13312b2be2c551a086a9b4bc3d2462b824c54",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-31T11:39:30Z",
+      "checkedAt": "2026-09-07T19:44:38.812419+00:00",
+      "head": "7bc13312b2be2c551a086a9b4bc3d2462b824c54",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/dev-web-server",
+      "url": "https://github.com/choisimo/dev-web-server",
+      "sourceUrl": "https://github.com/choisimo/dev-web-server/tree/51b135bc3cffb4ce3b2064cc70cb81f89709b13b",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-25T21:51:09Z",
+      "checkedAt": "2026-09-07T19:44:39.873134+00:00",
+      "head": "51b135bc3cffb4ce3b2064cc70cb81f89709b13b",
+      "readmeStatus": "missing",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/document",
+      "url": "https://github.com/choisimo/document",
+      "sourceUrl": "https://github.com/choisimo/document/tree/3f3b95d77124afbbfb94b01ad0ab844779692e7b",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-08-13T10:57:05Z",
+      "checkedAt": "2026-09-07T19:44:41.380598+00:00",
+      "head": "3f3b95d77124afbbfb94b01ad0ab844779692e7b",
+      "readmeStatus": "ok",
+      "languages": [
+        "HTML"
+      ]
+    },
+    {
+      "repository": "choisimo/dothechi.com",
+      "url": "https://github.com/choisimo/dothechi.com",
+      "sourceUrl": "https://github.com/choisimo/dothechi.com/tree/26956f6b4d9697149ca7a3e2bb4dec414c176806",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-02-22T02:30:52Z",
+      "checkedAt": "2026-09-07T19:44:40.895861+00:00",
+      "head": "26956f6b4d9697149ca7a3e2bb4dec414c176806",
+      "readmeStatus": "ok",
+      "languages": [
+        "Dart"
+      ]
+    },
+    {
+      "repository": "choisimo/env_variables_manager",
+      "url": "https://github.com/choisimo/env_variables_manager",
+      "sourceUrl": "https://github.com/choisimo/env_variables_manager/tree/a457c1b91a2d91d2478201a57fbdc4c38cc0e6a7",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-04T02:47:58Z",
+      "checkedAt": "2026-09-07T19:44:40.646096+00:00",
+      "head": "a457c1b91a2d91d2478201a57fbdc4c38cc0e6a7",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/ExamCollector",
+      "url": "https://github.com/choisimo/ExamCollector",
+      "sourceUrl": "https://github.com/choisimo/ExamCollector/tree/c7ea4f818b53cf5c60488b6503178f43bc3e5f45",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-16T06:30:08Z",
+      "checkedAt": "2026-09-07T19:44:41.053175+00:00",
+      "head": "c7ea4f818b53cf5c60488b6503178f43bc3e5f45",
+      "readmeStatus": "missing",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/Failure_Coach_AI",
+      "url": "https://github.com/choisimo/Failure_Coach_AI",
+      "sourceUrl": "https://github.com/choisimo/Failure_Coach_AI/tree/2644eff51ea93d2dd26f4896f9867d8a66baf6e2",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-02-22T02:55:59Z",
+      "checkedAt": "2026-09-07T19:44:41.087616+00:00",
+      "head": "2644eff51ea93d2dd26f4896f9867d8a66baf6e2",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/firstmate",
+      "url": "https://github.com/choisimo/firstmate",
+      "sourceUrl": "https://github.com/choisimo/firstmate/tree/f1a4af426d7199c1781bc91ccd143b8e1f732d10",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-08-15T04:32:25Z",
+      "checkedAt": "2026-09-07T19:44:43.743265+00:00",
+      "head": "f1a4af426d7199c1781bc91ccd143b8e1f732d10",
+      "readmeStatus": "ok",
+      "languages": [
+        "Shell"
+      ]
+    },
+    {
+      "repository": "choisimo/Game-Repository",
+      "url": "https://github.com/choisimo/Game-Repository",
+      "sourceUrl": "https://github.com/choisimo/Game-Repository/tree/6da0351d0fcfe665fa08ef99f6d580489a37ccf8",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-09-17T05:16:05Z",
+      "checkedAt": "2026-09-07T19:44:44.741921+00:00",
+      "head": "6da0351d0fcfe665fa08ef99f6d580489a37ccf8",
+      "readmeStatus": "missing",
+      "languages": [
+        "Dart"
+      ]
+    },
+    {
+      "repository": "choisimo/images",
+      "url": "https://github.com/choisimo/images",
+      "sourceUrl": "https://github.com/choisimo/images",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": true,
+      "pushedAt": "2026-06-07T18:10:38Z",
+      "checkedAt": "2026-09-07T19:44:44.067643+00:00",
+      "head": null,
+      "readmeStatus": "not-collected",
+      "languages": []
+    },
+    {
+      "repository": "choisimo/JB_Team_3people-tigers",
+      "url": "https://github.com/choisimo/JB_Team_3people-tigers",
+      "sourceUrl": "https://github.com/choisimo/JB_Team_3people-tigers/tree/75309efdf8fc32ab13ecdf4e852c2fdce34a6351",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-09-14T13:24:08Z",
+      "checkedAt": "2026-09-07T19:44:46.185170+00:00",
+      "head": "75309efdf8fc32ab13ecdf4e852c2fdce34a6351",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/kb-MoodFinancial_Diary",
+      "url": "https://github.com/choisimo/kb-MoodFinancial_Diary",
+      "sourceUrl": "https://github.com/choisimo/kb-MoodFinancial_Diary/tree/79f780f60119d0c04868237f84ae23f20abb995c",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-25T04:20:14Z",
+      "checkedAt": "2026-09-07T19:44:46.784550+00:00",
+      "head": "79f780f60119d0c04868237f84ae23f20abb995c",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/kb_financial_concierge",
+      "url": "https://github.com/choisimo/kb_financial_concierge",
+      "sourceUrl": "https://github.com/choisimo/kb_financial_concierge/tree/1491ca913a204e093a5e485a58f0ce07a568f35f",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-04T08:36:54Z",
+      "checkedAt": "2026-09-07T19:44:47.397898+00:00",
+      "head": "1491ca913a204e093a5e485a58f0ce07a568f35f",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/Kotlin_WebScrapper",
+      "url": "https://github.com/choisimo/Kotlin_WebScrapper",
+      "sourceUrl": "https://github.com/choisimo/Kotlin_WebScrapper/tree/3e9a58e39e03461c929a82175d33961f317ebc15",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-01-13T08:35:00Z",
+      "checkedAt": "2026-09-07T19:44:47.081741+00:00",
+      "head": "3e9a58e39e03461c929a82175d33961f317ebc15",
+      "readmeStatus": "ok",
+      "languages": [
+        "Kotlin"
+      ]
+    },
+    {
+      "repository": "choisimo/MAGI-Agent",
+      "url": "https://github.com/choisimo/MAGI-Agent",
+      "sourceUrl": "https://github.com/choisimo/MAGI-Agent/tree/45e84b5ca813d07d4e816d0834c27b31e8148391",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-10-02T04:18:58Z",
+      "checkedAt": "2026-09-07T19:44:49.054483+00:00",
+      "head": "45e84b5ca813d07d4e816d0834c27b31e8148391",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/medower",
+      "url": "https://github.com/choisimo/medower",
+      "sourceUrl": "https://github.com/choisimo/medower/tree/4b543af00eefe84d3d519c0d19b918d8ba0ee7da",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-04-03T05:59:12Z",
+      "checkedAt": "2026-09-07T19:44:49.607912+00:00",
+      "head": "4b543af00eefe84d3d519c0d19b918d8ba0ee7da",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/munder-difflin",
+      "url": "https://github.com/choisimo/munder-difflin",
+      "sourceUrl": "https://github.com/choisimo/munder-difflin/tree/00a6a73ce123f0f0aee2333424a22582815d8db4",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-08-15T07:08:55Z",
+      "checkedAt": "2026-09-07T19:44:49.704633+00:00",
+      "head": "00a6a73ce123f0f0aee2333424a22582815d8db4",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/NewsInsight",
+      "url": "https://github.com/choisimo/NewsInsight",
+      "sourceUrl": "https://github.com/choisimo/NewsInsight/tree/0aeca9a773050a3d4a0c30f0693f207ad78fdc98",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-06-01T16:37:01Z",
+      "checkedAt": "2026-09-07T19:44:50.274785+00:00",
+      "head": "0aeca9a773050a3d4a0c30f0693f207ad78fdc98",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/Nexus-Stream",
+      "url": "https://github.com/choisimo/Nexus-Stream",
+      "sourceUrl": "https://github.com/choisimo/Nexus-Stream/tree/147fb47f50d65517ba56b04a56b1c6235585f424",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-09-25T16:06:16Z",
+      "checkedAt": "2026-09-07T19:44:50.262568+00:00",
+      "head": "147fb47f50d65517ba56b04a56b1c6235585f424",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/nginx-admins-handbook",
+      "url": "https://github.com/choisimo/nginx-admins-handbook",
+      "sourceUrl": "https://github.com/choisimo/nginx-admins-handbook/tree/5aea1f81a2fd7bd505af82cfebbdb5ac8526ff2d",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-11-19T13:58:35Z",
+      "checkedAt": "2026-09-07T19:44:51.514285+00:00",
+      "head": "5aea1f81a2fd7bd505af82cfebbdb5ac8526ff2d",
+      "readmeStatus": "ok",
+      "languages": [
+        "Shell"
+      ]
+    },
+    {
+      "repository": "choisimo/nginx-file-browser",
+      "url": "https://github.com/choisimo/nginx-file-browser",
+      "sourceUrl": "https://github.com/choisimo/nginx-file-browser/tree/e8514eeff0c7ff9b09af87fedb24066224b048de",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-06-27T12:04:32Z",
+      "checkedAt": "2026-09-07T19:44:51.605714+00:00",
+      "head": "e8514eeff0c7ff9b09af87fedb24066224b048de",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/nodove_project_flutter",
+      "url": "https://github.com/choisimo/nodove_project_flutter",
+      "sourceUrl": "https://github.com/choisimo/nodove_project_flutter/tree/fc4dd2c82456c8555ec6e60e22260eb30913afe3",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-10T08:39:20Z",
+      "checkedAt": "2026-09-07T19:44:53.314125+00:00",
+      "head": "fc4dd2c82456c8555ec6e60e22260eb30913afe3",
+      "readmeStatus": "ok",
+      "languages": [
+        "Dart"
+      ]
+    },
+    {
+      "repository": "choisimo/ObjectDetectionApp",
+      "url": "https://github.com/choisimo/ObjectDetectionApp",
+      "sourceUrl": "https://github.com/choisimo/ObjectDetectionApp/tree/256a7fae662e3a8f72adef0dcf66ccafd7d8717e",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-06-21T05:37:36Z",
+      "checkedAt": "2026-09-07T19:44:55.151891+00:00",
+      "head": "256a7fae662e3a8f72adef0dcf66ccafd7d8717e",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/post-manager",
+      "url": "https://github.com/choisimo/post-manager",
+      "sourceUrl": "https://github.com/choisimo/post-manager/tree/ff4b5e372eaffa85f1f7b0be4327d710b8bac7ee",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-08-27T15:44:05Z",
+      "checkedAt": "2026-09-07T19:45:02.344239+00:00",
+      "head": "ff4b5e372eaffa85f1f7b0be4327d710b8bac7ee",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/Program_Updater",
+      "url": "https://github.com/choisimo/Program_Updater",
+      "sourceUrl": "https://github.com/choisimo/Program_Updater/tree/b44678c6b0d4e4b8c0ae7b57f9729bad5ca1899b",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-12-07T06:52:11Z",
+      "checkedAt": "2026-09-07T19:44:55.942973+00:00",
+      "head": "b44678c6b0d4e4b8c0ae7b57f9729bad5ca1899b",
+      "readmeStatus": "ok",
+      "languages": [
+        "Shell"
+      ]
+    },
+    {
+      "repository": "choisimo/saemangeum-insight-board",
+      "url": "https://github.com/choisimo/saemangeum-insight-board",
+      "sourceUrl": "https://github.com/choisimo/saemangeum-insight-board/tree/063553bc3f18d6d5542e59b6299a79388d3686b8",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-07-31T11:42:35Z",
+      "checkedAt": "2026-09-07T19:44:57.070043+00:00",
+      "head": "063553bc3f18d6d5542e59b6299a79388d3686b8",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/SE_Pair_Programming",
+      "url": "https://github.com/choisimo/SE_Pair_Programming",
+      "sourceUrl": "https://github.com/choisimo/SE_Pair_Programming/tree/97441709d975be74e48ffeebbef73ee6f46555d1",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-11-28T06:00:53Z",
+      "checkedAt": "2026-09-07T19:44:57.537635+00:00",
+      "head": "97441709d975be74e48ffeebbef73ee6f46555d1",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/SE_Team_J",
+      "url": "https://github.com/choisimo/SE_Team_J",
+      "sourceUrl": "https://github.com/choisimo/SE_Team_J/tree/0b11872235d9dec6cd8c893f9132449be317b520",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-11T10:03:09Z",
+      "checkedAt": "2026-09-07T19:44:57.664294+00:00",
+      "head": "0b11872235d9dec6cd8c893f9132449be317b520",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/sftp_file_tracker",
+      "url": "https://github.com/choisimo/sftp_file_tracker",
+      "sourceUrl": "https://github.com/choisimo/sftp_file_tracker/tree/abf6a91ccae8649ee280aca7579ec5823460e667",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-07-20T09:06:50Z",
+      "checkedAt": "2026-09-07T19:44:58.732593+00:00",
+      "head": "abf6a91ccae8649ee280aca7579ec5823460e667",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/shopping_web",
+      "url": "https://github.com/choisimo/shopping_web",
+      "sourceUrl": "https://github.com/choisimo/shopping_web/tree/f12cd3ba15212d986bf0b6d58426548c645dbe07",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-10-25T01:06:53Z",
+      "checkedAt": "2026-09-07T19:44:58.845953+00:00",
+      "head": "f12cd3ba15212d986bf0b6d58426548c645dbe07",
+      "readmeStatus": "ok",
+      "languages": [
+        "JavaScript"
+      ]
+    },
+    {
+      "repository": "choisimo/SlideCraft-ai",
+      "url": "https://github.com/choisimo/SlideCraft-ai",
+      "sourceUrl": "https://github.com/choisimo/SlideCraft-ai/tree/c65aceaa76e9ae3d1fb41e2f626cbaacee9f2b99",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-09-30T23:57:52Z",
+      "checkedAt": "2026-09-07T19:44:59.221760+00:00",
+      "head": "c65aceaa76e9ae3d1fb41e2f626cbaacee9f2b99",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/SpringSecurityReactAuthorization",
+      "url": "https://github.com/choisimo/SpringSecurityReactAuthorization",
+      "sourceUrl": "https://github.com/choisimo/SpringSecurityReactAuthorization/tree/a8c344176a309e40757c9677a11d9ff83cec3f19",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-03-07T13:15:40Z",
+      "checkedAt": "2026-09-07T19:45:00.215896+00:00",
+      "head": "a8c344176a309e40757c9677a11d9ff83cec3f19",
+      "readmeStatus": "missing",
+      "languages": [
+        "Java"
+      ]
+    },
+    {
+      "repository": "choisimo/system-design-primer",
+      "url": "https://github.com/choisimo/system-design-primer",
+      "sourceUrl": "https://github.com/choisimo/system-design-primer/tree/40d5d2edccd00b4a66fb0e24d887d8b1a0d7ea0e",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-02T01:10:39Z",
+      "checkedAt": "2026-09-07T19:45:02.254344+00:00",
+      "head": "40d5d2edccd00b4a66fb0e24d887d8b1a0d7ea0e",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/system-prompts-and-models-of-ai-tools",
+      "url": "https://github.com/choisimo/system-prompts-and-models-of-ai-tools",
+      "sourceUrl": "https://github.com/choisimo/system-prompts-and-models-of-ai-tools/tree/6b2157ca3eaa6e562cd457a88770dc307c0933f1",
+      "isFork": true,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-01-08T12:02:41Z",
+      "checkedAt": "2026-09-07T19:45:02.314299+00:00",
+      "head": "6b2157ca3eaa6e562cd457a88770dc307c0933f1",
+      "readmeStatus": "ok",
+      "languages": []
+    },
+    {
+      "repository": "choisimo/Tone-AI-Devops",
+      "url": "https://github.com/choisimo/Tone-AI-Devops",
+      "sourceUrl": "https://github.com/choisimo/Tone-AI-Devops/tree/d9da69f88b9c9d7197958fa362bdb46dcfe4c840",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-10-02T16:50:16Z",
+      "checkedAt": "2026-09-07T19:45:03.142678+00:00",
+      "head": "d9da69f88b9c9d7197958fa362bdb46dcfe4c840",
+      "readmeStatus": "ok",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/ToyProjects",
+      "url": "https://github.com/choisimo/ToyProjects",
+      "sourceUrl": "https://github.com/choisimo/ToyProjects/tree/df54f9abfa9847852cb563bdaec9a71f42fd90e2",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-29T20:06:31Z",
+      "checkedAt": "2026-09-07T19:45:02.951562+00:00",
+      "head": "df54f9abfa9847852cb563bdaec9a71f42fd90e2",
+      "readmeStatus": "missing",
+      "languages": [
+        "TypeScript"
+      ]
+    },
+    {
+      "repository": "choisimo/ubuntu_socket_programming",
+      "url": "https://github.com/choisimo/ubuntu_socket_programming",
+      "sourceUrl": "https://github.com/choisimo/ubuntu_socket_programming/tree/20a20c6fd8945728754d4c192acd70d8e4b7c5ff",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-10-10T15:36:41Z",
+      "checkedAt": "2026-09-07T19:45:02.855560+00:00",
+      "head": "20a20c6fd8945728754d4c192acd70d8e4b7c5ff",
+      "readmeStatus": "ok",
+      "languages": [
+        "C"
+      ]
+    },
+    {
+      "repository": "choisimo/unity_project_2405",
+      "url": "https://github.com/choisimo/unity_project_2405",
+      "sourceUrl": "https://github.com/choisimo/unity_project_2405/tree/beaf4b492b4fe18e7ea4ea2c629b3b522bb0df5d",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-06-21T22:56:04Z",
+      "checkedAt": "2026-09-07T19:45:03.549449+00:00",
+      "head": "beaf4b492b4fe18e7ea4ea2c629b3b522bb0df5d",
+      "readmeStatus": "ok",
+      "languages": [
+        "C#"
+      ]
+    },
+    {
+      "repository": "choisimo/vid_to_sub",
+      "url": "https://github.com/choisimo/vid_to_sub",
+      "sourceUrl": "https://github.com/choisimo/vid_to_sub/tree/6ad96ba2b8a6f4dc6f34128fe810ac0b817c39d0",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2026-06-01T16:49:19Z",
+      "checkedAt": "2026-09-07T19:45:04.467788+00:00",
+      "head": "6ad96ba2b8a6f4dc6f34128fe810ac0b817c39d0",
+      "readmeStatus": "ok",
+      "languages": [
+        "Python"
+      ]
+    },
+    {
+      "repository": "choisimo/WeatherApp",
+      "url": "https://github.com/choisimo/WeatherApp",
+      "sourceUrl": "https://github.com/choisimo/WeatherApp/tree/ac356ef9fee1ccfea0339ff303887588ecc05fe1",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-05-15T15:37:29Z",
+      "checkedAt": "2026-09-07T19:45:05.501531+00:00",
+      "head": "ac356ef9fee1ccfea0339ff303887588ecc05fe1",
+      "readmeStatus": "ok",
+      "languages": []
+    },
+    {
+      "repository": "choisimo/WSD-Assignment-03",
+      "url": "https://github.com/choisimo/WSD-Assignment-03",
+      "sourceUrl": "https://github.com/choisimo/WSD-Assignment-03/tree/18baa1be07cb5ca7fa4f829e8fb4655cca5084fe",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-23T14:49:08Z",
+      "checkedAt": "2026-09-07T19:45:05.799303+00:00",
+      "head": "18baa1be07cb5ca7fa4f829e8fb4655cca5084fe",
+      "readmeStatus": "ok",
+      "languages": [
+        "Java"
+      ]
+    },
+    {
+      "repository": "choisimo/WSD-movie",
+      "url": "https://github.com/choisimo/WSD-movie",
+      "sourceUrl": "https://github.com/choisimo/WSD-movie/tree/3fb7ee9e82647105df54df8d6e6b83377e9f37bb",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2024-12-26T13:55:29Z",
+      "checkedAt": "2026-09-07T19:45:06.021016+00:00",
+      "head": "3fb7ee9e82647105df54df8d6e6b83377e9f37bb",
+      "readmeStatus": "ok",
+      "languages": [
+        "CSS"
+      ]
+    },
+    {
+      "repository": "choisimo/Xiaoxin_pad_2024_settings",
+      "url": "https://github.com/choisimo/Xiaoxin_pad_2024_settings",
+      "sourceUrl": "https://github.com/choisimo/Xiaoxin_pad_2024_settings/tree/c471bd794f8422f59df885aa90f5c94941162c38",
+      "isFork": false,
+      "isArchived": false,
+      "isEmpty": false,
+      "pushedAt": "2025-02-28T10:38:55Z",
+      "checkedAt": "2026-09-07T19:45:06.055365+00:00",
+      "head": "c471bd794f8422f59df885aa90f5c94941162c38",
+      "readmeStatus": "ok",
+      "languages": [
+        "Batchfile"
+      ]
+    }
+  ]
+}

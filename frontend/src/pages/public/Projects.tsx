@@ -111,8 +111,8 @@ const Projects = () => {
   const resetFilters = () => { setSearchQuery(''); setSelectedTag('All'); };
   return <div className="ui-page ui-projects-page ui-page-container" data-ui-page="projects">
     <header className="ui-projects-heading"><div><p className="ui-eyebrow">PROJECTS</p><h1>프로젝트</h1>
-      <p>프로젝트의 목적과 사용한 기술을 살펴보고, 공개된 서비스와 소스 코드를 확인할 수 있습니다.</p></div>
-      {!loading && !error && <div className="ui-projects-total"><strong>{projects.length}</strong><span>공개 프로젝트</span></div>}
+      <p>GitHub choisimo의 공개 저장소를 2026년 9월 8일 기준으로 정리했습니다. 원본·포크·빈 저장소를 구분하며, 소개와 주요 언어는 공개 자료에서 확인한 내용입니다.</p></div>
+      {!loading && !error && <div className="ui-projects-total"><strong>{projects.length}</strong><span>공개 저장소</span></div>}
     </header>
     {error ? <div className="ui-inline-error" role="alert"><h2>프로젝트를 불러오지 못했습니다</h2><p>{error}</p>
       <button type="button" className="ui-control" data-ui-variant="outline" onClick={() => void loadProjects()}>다시 불러오기</button></div>
@@ -127,14 +127,14 @@ const Projects = () => {
         <div className="ui-projects-discovery"><div className="ui-projects-search"><Search size={18} aria-hidden="true" />
           <label htmlFor="project-search" className="sr-only">프로젝트 검색</label><input id="project-search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} maxLength={200} placeholder="이름, 설명, 기술로 검색" />
           {searchQuery && <button type="button" onClick={() => setSearchQuery('')} aria-label="검색어 지우기"><X size={16} aria-hidden="true" /></button>}
-        </div><label className="ui-projects-sort">정렬<select value={sortMode} onChange={event => setSortMode(event.target.value === 'title' ? 'title' : 'source')}><option value="source">기본 순서</option><option value="title">이름순</option></select></label></div>
+        </div><label className="ui-projects-sort">정렬<select value={sortMode} onChange={event => setSortMode(event.target.value === 'title' ? 'title' : 'source')}><option value="source">최근 푸시 날짜순</option><option value="title">이름순</option></select></label></div>
         <TagFilter tags={projectTags} selectedTag={selectedTag} onSelect={setSelectedTag} allLabel="전체" label="프로젝트 주제 필터" />
-        <div className="ui-projects-results-summary"><p role="status" aria-live="polite">{loading ? '프로젝트를 불러오는 중입니다.' : `${filteredProjects.length}개 프로젝트${selectedTag !== 'All' ? ` · ${selectedTag}` : ''}`}</p>
+        <div className="ui-projects-results-summary"><p role="status" aria-live="polite">{loading ? '프로젝트를 불러오는 중입니다.' : `${filteredProjects.length}개 저장소${selectedTag !== 'All' ? ` · ${selectedTag}` : ''}`}</p>
           {(searchQuery || selectedTag !== 'All') && <button type="button" onClick={resetFilters}>검색·필터 초기화</button>}</div>
         {loading ? <div className="ui-project-gallery" aria-label="프로젝트 로딩">{Array.from({ length: 4 }, (_, index) => <ProjectCardSkeleton key={index} />)}</div>
         : !filteredProjects.length ? <div className="ui-projects-empty"><h3>{projects.length ? '조건에 맞는 프로젝트가 없습니다' : '공개된 프로젝트가 없습니다'}</h3><p>{projects.length ? '검색어를 바꾸거나 주제 필터를 해제해 주세요.' : '새 프로젝트가 공개되면 이곳에서 확인할 수 있습니다.'}</p>
           {!!projects.length && <button type="button" onClick={resetFilters} className="ui-control" data-ui-variant="outline">전체 프로젝트 보기</button>}</div>
-        : <div className={viewMode === 'card' ? 'ui-project-gallery' : 'ui-project-directory'}>{filteredProjects.map(project => <ProjectCard key={project.id} project={project} onPreview={handlePreview} presentation={viewMode} emphasized={project.featured === true} visitLabel="서비스 열기" codeLabel="소스 코드" />)}</div>}
+        : <div className={viewMode === 'card' ? 'ui-project-gallery' : 'ui-project-directory'}>{filteredProjects.map(project => <ProjectCard key={project.id} project={project} title={`최근 푸시: ${project.date}`} onPreview={handlePreview} presentation={viewMode} emphasized={project.featured === true} visitLabel="저장소 열기" codeLabel="확인한 소스" />)}</div>}
       </section>
     </>}
     <ProjectModal open={modalOpen} project={activeProject} onOpenChange={setModalOpen} openLabel="새 탭에서 열기" fullscreenLabel="전체 화면" closeLabel="미리보기 닫기" />

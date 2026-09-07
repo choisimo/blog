@@ -95,7 +95,7 @@ export function ProjectCard({
   const safeVisitLabel = normalizeProjectCardText(visitLabel, DEFAULT_VISIT_LABEL);
   const safeCodeLabel = normalizeProjectCardText(codeLabel, DEFAULT_CODE_LABEL);
   const previewAllowed = project.type === 'console' || !!projectUrl;
-  const safePreviewLabel = previewLabel[project.type] ?? '미리보기';
+  const safePreviewLabel = project.type === 'link' ? safeVisitLabel : previewLabel[project.type] ?? '미리보기';
 
   return <article className={`ui-project-item ui-project-item--${presentation}${emphasized ? ' ui-project-item--featured' : ''}`}
     aria-label={`${safeLabel}: ${safeTitle}`} title={normalizeOptionalProjectCardText(title)}>
