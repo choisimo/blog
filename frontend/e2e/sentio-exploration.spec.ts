@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function setup(page: Page, theme: string) {
+async function setup(page: Page, theme: string, baseURL: string | undefined) {
+  if (!baseURL) throw new Error('A Playwright baseURL is required');
+  const appOrigin = new URL(baseURL).origin;
   await page.addInitScript(value => {
     localStorage.setItem('theme', value);
     localStorage.setItem('site.language', 'ko');
@@ -153,7 +155,7 @@ async function setup(page: Page, theme: string) {
   }, theme);
   // Fixture content and credentials must never reach external services.
   await page.route('**/*', route =>
-    new URL(route.request().url()).origin !== 'http://127.0.0.1:5175'
+    new URL(route.request().url()).origin !== appOrigin
       ? route.abort()
       : route.fallback()
   );
@@ -201,9 +203,10 @@ for (const mode of ['prism', 'chain'] as const) {
   for (const width of [1280, 390]) {
     test(`${mode} ${width}px: streams in the same card and follows the next direction`, async ({
       page,
+      baseURL,
     }) => {
       await page.setViewportSize({ width, height: 1000 });
-      await setup(page, width === 390 ? 'dark' : 'light');
+      await setup(page, width === 390 ? 'dark' : 'light', baseURL);
       const panel = page.locator('.sentio-panel:visible');
       await panel
         .getByRole('button', {
