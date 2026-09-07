@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import type { LensCard as LensCardData } from '@/services/chat';
-import { cn } from '@/lib/utils';
+import './sentio.css';
 import LensCard from './LensCard';
 import { useLensDeck, type LensDeckSource } from './hooks/useLensDeck';
 import AsyncArtifactStatusChip from './AsyncArtifactStatusChip';
@@ -148,16 +148,19 @@ export default function PrismDeck({
 
   if (loading) {
     return (
-      <div className='flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center'>
-        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm'>
-          <Loader2 className='h-6 w-6 animate-spin text-violet-500' />
+      <div
+        className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
+        role='status'
+      >
+        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
+          <Loader2 className='h-6 w-6 animate-spin text-ui-accent' />
         </div>
         <div>
           <p className='text-sm font-medium text-foreground'>
-            렌즈 카드를 불러오는 중입니다
+            다양한 관점을 살펴보고 있어요
           </p>
           <p className='text-xs text-muted-foreground'>
-            관점 스택을 구성하고 있어요.
+            문단의 주장과 근거를 정리하고 있습니다.
           </p>
         </div>
       </div>
@@ -167,16 +170,19 @@ export default function PrismDeck({
   if (!activeCard) {
     if (status === 'warming') {
       return (
-        <div className='flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-violet-200/60 bg-[linear-gradient(135deg,rgba(245,243,255,0.92),rgba(250,245,255,0.88))] px-6 py-10 text-center'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-white/80 shadow-sm'>
-            <Loader2 className='h-6 w-6 animate-spin text-violet-500' />
+        <div
+          className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
+          role='status'
+        >
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
+            <Loader2 className='h-6 w-6 animate-spin text-ui-accent' />
           </div>
           <div>
             <p className='text-sm font-medium text-foreground'>
-              렌즈 카드를 생성 중입니다
+              새로운 관점을 준비하고 있어요
             </p>
             <p className='text-xs text-muted-foreground'>
-              임시 스택을 보여주고 있고, 준비되면 자동으로 갱신합니다.
+              분석이 준비되면 여기에 표시됩니다.
             </p>
           </div>
         </div>
@@ -185,32 +191,31 @@ export default function PrismDeck({
 
     return (
       <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
-        아직 표시할 lens 카드가 없습니다.
+        아직 표시할 관점이 없습니다.
       </div>
     );
   }
 
   return (
     <>
-      <div className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
-        <div className='flex items-start justify-between gap-3'>
-          <div className='space-y-1'>
-            <div className='flex items-center gap-2'>
-              <span className='rounded-full bg-violet-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700'>
-                Prism Deck
-              </span>
-              <AsyncArtifactStatusChip status={status} />
-            </div>
-            <p className='text-sm font-medium text-foreground'>
-              Lens {currentIndex + 1} / {cards.length}
-            </p>
-            <p className='text-xs text-muted-foreground'>
-              하단 화살표나 스와이프로 다음 관점을 이어서 소비합니다.
-            </p>
+      <div className='sentio-results not-prose space-y-4'>
+        <div className='sentio-result-heading'>
+          <div>
+            <span className='sentio-result-label'>관점 탐색</span>
+            <h4>하나의 문단, 서로 다른 시선</h4>
+            <p>카드를 눌러 근거를 확인하고, 화살표로 다음 관점을 살펴보세요.</p>
           </div>
+          <AsyncArtifactStatusChip
+            status={status}
+            labels={{
+              warming: '분석 중',
+              'fallback-hard': '기본 분석',
+              error: '연결 오류',
+            }}
+          />
         </div>
 
-        <div className='relative h-[24rem]'>
+        <div className='sentio-deck-stage'>
           {visibleCards
             .slice()
             .reverse()
@@ -234,38 +239,35 @@ export default function PrismDeck({
             })}
         </div>
 
-        <div className='flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3'>
+        <div className='sentio-deck-nav'>
           <button
             type='button'
             onClick={handleGoPrev}
             disabled={!canGoPrev}
-            className={cn(
-              'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors',
-              canGoPrev
-                ? 'border-border/70 bg-background hover:bg-muted'
-                : 'cursor-not-allowed border-border/40 bg-muted/40 text-muted-foreground/40'
-            )}
+            className='sentio-icon-button'
             aria-label='이전 관점'
           >
             <ArrowLeft className='h-4 w-4' />
           </button>
 
-          <div className='flex min-w-0 flex-1 items-center justify-center gap-2 text-sm font-medium text-foreground'>
-            <span>Lens {currentIndex + 1}</span>
-            <span className='text-muted-foreground'>/</span>
-            <span className='text-muted-foreground'>{cards.length}</span>
+          <div className='sentio-deck-position'>
+            <span aria-live='polite'>
+              관점 {currentIndex + 1} <span aria-hidden='true'>/</span>{' '}
+              {cards.length}
+            </span>
+            <progress
+              className='sentio-deck-progress'
+              value={currentIndex + 1}
+              max={cards.length}
+              aria-label='관점 탐색 진행'
+            />
           </div>
 
           <button
             type='button'
             onClick={handleGoNext}
             disabled={!canGoNext}
-            className={cn(
-              'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-colors',
-              canGoNext
-                ? 'border-border/70 bg-background hover:bg-muted'
-                : 'cursor-not-allowed border-border/40 bg-muted/40 text-muted-foreground/40'
-            )}
+            className='sentio-icon-button'
             aria-label='다음 관점'
           >
             {(loadingMore || appendWarming) && !canGoNext ? (

@@ -4,6 +4,7 @@ import type { ThoughtCard as ThoughtCardData } from '@/services/chat';
 import ThoughtCard from './ThoughtCard';
 import { useThoughtFeed, type ThoughtFeedSource } from './hooks/useThoughtFeed';
 import AsyncArtifactStatusChip from './AsyncArtifactStatusChip';
+import './sentio.css';
 
 type ThoughtFeedProps = {
   paragraph: string;
@@ -92,44 +93,47 @@ export default function ThoughtFeed({
   const renderStatus = useCallback(() => {
     if (loadingMore || appendWarming) {
       return (
-        <div className='flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground'>
+        <div className='sentio-feed-status' role='status'>
           <Loader2 className='h-3.5 w-3.5 animate-spin' />
           {appendWarming
-            ? '다음 thought 카드를 생성 중입니다.'
-            : '다음 thought 카드를 붙이고 있습니다.'}
+            ? '다음 질문을 준비하고 있어요.'
+            : '이어지는 질문을 불러오고 있어요.'}
         </div>
       );
     }
 
     if (exhausted) {
       return (
-        <div className='flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground'>
+        <div className='sentio-feed-status' role='status'>
           <Sparkles className='h-3.5 w-3.5' />
-          현재 흐름에서 이어질 thought 카드를 모두 표시했습니다.
+          이어지는 질문을 모두 살펴봤어요.
         </div>
       );
     }
 
     return (
-      <div className='flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/25 px-4 py-3 text-xs text-muted-foreground'>
+      <div className='sentio-feed-status' role='status'>
         <Milestone className='h-3.5 w-3.5' />
-        리스트 끝 sentinel이 보이면 다음 thought 카드를 자동으로 가져옵니다.
+        아래로 내려 더 많은 질문을 살펴보세요.
       </div>
     );
   }, [appendWarming, exhausted, loadingMore]);
 
   if (loading) {
     return (
-      <div className='flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(240,253,244,0.86),rgba(255,255,255,0.96))] px-6 py-10 text-center'>
-        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-white/90 shadow-sm'>
-          <Loader2 className='h-6 w-6 animate-spin text-emerald-500' />
+      <div
+        className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
+        role='status'
+      >
+        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
+          <Loader2 className='h-6 w-6 animate-spin text-ui-success' />
         </div>
         <div>
           <p className='text-sm font-medium text-foreground'>
-            Thought feed를 구성하는 중입니다
+            생각을 넓힐 질문을 찾고 있어요
           </p>
           <p className='text-xs text-muted-foreground'>
-            세로 탐색 카드를 정리하고 있어요.
+            이 문단에서 이어지는 질문과 설명을 정리합니다.
           </p>
         </div>
       </div>
@@ -139,16 +143,19 @@ export default function ThoughtFeed({
   if (cards.length === 0) {
     if (status === 'warming') {
       return (
-        <div className='flex min-h-[24rem] flex-col items-center justify-center gap-3 rounded-[2rem] border border-emerald-200/60 bg-[linear-gradient(180deg,rgba(240,253,244,0.86),rgba(255,255,255,0.96))] px-6 py-10 text-center'>
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-white/90 shadow-sm'>
-            <Loader2 className='h-6 w-6 animate-spin text-emerald-500' />
+        <div
+          className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
+          role='status'
+        >
+          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
+            <Loader2 className='h-6 w-6 animate-spin text-ui-success' />
           </div>
           <div>
             <p className='text-sm font-medium text-foreground'>
-              Thought feed를 생성 중입니다
+              이어지는 질문을 준비하고 있어요
             </p>
             <p className='text-xs text-muted-foreground'>
-              준비되면 자동으로 실제 카드로 교체합니다.
+              질문이 준비되면 여기에 표시됩니다.
             </p>
           </div>
         </div>
@@ -157,23 +164,35 @@ export default function ThoughtFeed({
 
     return (
       <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
-        아직 표시할 thought 카드가 없습니다.
+        아직 표시할 질문이 없습니다.
       </div>
     );
   }
 
   return (
-    <div className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
-      <div className='flex items-center gap-2'>
-        <span className='rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700'>
-          Thought Feed
-        </span>
-        <AsyncArtifactStatusChip status={status} />
+    <div className='sentio-results not-prose space-y-4' data-mode='chain'>
+      <div className='sentio-result-heading'>
+        <div>
+          <span className='sentio-result-label'>생각의 흐름</span>
+          <h4>질문에서 다음 질문으로</h4>
+          <p>마음에 닿는 질문에 잠시 머물며, 나만의 답을 떠올려보세요.</p>
+        </div>
+        <AsyncArtifactStatusChip
+          status={status}
+          labels={{
+            warming: '질문 준비 중',
+            'fallback-hard': '기본 질문',
+            error: '연결 오류',
+          }}
+        />
       </div>
 
       <div
         ref={scrollRef}
-        className='max-h-[28rem] space-y-4 overflow-y-auto pr-1'
+        className='sentio-feed-scroll'
+        tabIndex={0}
+        role='region'
+        aria-label='이어지는 질문'
       >
         {cards.map((card, index) => (
           <ThoughtCard key={card.id} card={card} index={index} />
