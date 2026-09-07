@@ -38,6 +38,26 @@ async function openFixture(page: Page, theme = 'light') {
   await expect(page.locator('[data-reading-content] .article-flow')).toBeVisible();
 }
 
+for (const width of [390, 1440]) {
+  test(`${width}px: reading progress follows the visible header edge while scrolling`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openFixture(page);
+    for (const scrollY of [0, 32, 500, 1800, 0]) {
+      await page.evaluate(value => window.scrollTo(0, value), scrollY);
+      await expect.poll(async () => page.evaluate(() => {
+        const headerBottom = document.querySelector('.ui-header')!.getBoundingClientRect().bottom;
+        const bar = document.querySelector('[data-reading-progress]')!.getBoundingClientRect();
+        return Math.abs(bar.top - Math.max(0, headerBottom));
+      })).toBeLessThan(1);
+      const bar = await page.locator('[data-reading-progress]').boundingBox();
+      expect(bar!.x).toBe(0);
+      expect(bar!.height).toBe(3);
+      const header = await page.locator('.ui-header').boundingBox();
+      expect(bar!.width).toBe(header!.width);
+    }
+  });
+}
+
 for (const theme of ['light', 'dark', 'terminal']) {
   for (const width of [320, 390, 768, 1440]) {
     test(`${theme} / ${width}px: reading width, local scrolling and real image ratios`, async ({ page }) => {

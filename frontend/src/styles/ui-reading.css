@@ -797,7 +797,7 @@
 }
 .ui-reading-progress {
   position: fixed;
-  top: var(--ui-header-height);
+  top: 0;
   left: 0;
   right: 0;
   z-index: 45;
