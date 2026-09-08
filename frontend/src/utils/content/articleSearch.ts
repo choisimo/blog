@@ -8,7 +8,7 @@ export function findArticleRanges(root: HTMLElement, query: string, limit = 1000
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
-      return parent && !parent.closest('button,input,textarea,select,script,style,[hidden],[aria-hidden="true"],.linenumber,.react-syntax-highlighter-line-number,.sentio-trigger,.sentio-panel,.article-print-source,.article-code-toolbar,.article-table-toolbar')
+      return parent && !parent.closest('button,summary,input,textarea,select,script,style,[hidden],[aria-hidden="true"],.linenumber,.react-syntax-highlighter-line-number,.sentio-trigger,.sentio-panel,.article-print-source,.article-code-toolbar,.article-table-toolbar')
         ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
     },
   });

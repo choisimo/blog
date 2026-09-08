@@ -50,6 +50,10 @@ export function ArticleFindBar({ onClose, content }: { onClose: () => void; cont
       selection?.addRange(range);
     }
     const parent = range.startContainer.parentElement;
+    // A bibliography or authored disclosure must be open before measuring its hit.
+    for (let disclosure = parent?.closest('details'); disclosure; disclosure = disclosure.parentElement?.closest('details')) {
+      disclosure.open = true;
+    }
     // Reveal a match in a collapsed code region through its existing control.
     const card = parent?.closest('.article-code-card');
     card?.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')?.click();

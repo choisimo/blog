@@ -35,4 +35,10 @@ describe('searching rendered article text', () => {
     expect(findArticleRanges(root, '앞뒤').ranges).toHaveLength(0);
     expect(findArticleRanges(root, '중간').ranges[0].toString()).toBe('중간');
   });
+  it('indexes collapsed reference content without matching disclosure controls', () => {
+    const root = prose('<details><summary>참고 자료 펼치기</summary><p>참고 자료 원문</p></details>');
+    expect(findArticleRanges(root, '참고 자료').ranges.map(range => range.toString())).toEqual(['참고 자료']);
+    expect(findArticleRanges(root, '펼치기').ranges).toHaveLength(0);
+    expect(root.querySelector('details')?.open).toBe(false);
+  });
 });

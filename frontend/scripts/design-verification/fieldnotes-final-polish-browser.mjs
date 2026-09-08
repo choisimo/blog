@@ -63,6 +63,12 @@ try {
       await page.pdf({ path: `${directory}/${theme}-article.pdf`, format: 'A4', printBackground: true });
       await expect(references).not.toHaveAttribute('open', '');
     }
+    await page.getByRole('button', { name: '본문 검색', exact: true }).click();
+    await page.getByLabel('본문 검색어').fill('Competition in Artificial Intelligence Infrastructure');
+    await expect(page.getByLabel('검색 결과', { exact: true })).toHaveText('1/1');
+    await expect(references).toHaveAttribute('open', '');
+    await expect(references.locator('a', { hasText: 'https://www.oecd.org/en/publications/competition-in-artificial-intelligence-infrastructure' })).toBeInViewport();
+    await page.keyboard.press('Escape');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.goto(`${origin}/projects`);
     await expect(page.locator('main h1')).toBeVisible();
@@ -70,7 +76,7 @@ try {
     await page.screenshot({ path: `${directory}/${theme}-${width}-projects.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     expect(errors).toEqual([]);
-    results.push({ theme, width, tocWheelAndKeyboard: true, tocScrollbarHidden: true, referencesInitiallyClosed: true, sourceUrlsPreserved: actualUrls.length, keyboardToggle: true, printRestoresDisclosure: width === 1440, removedCopy: true, errors });
+    results.push({ theme, width, tocWheelAndKeyboard: true, tocScrollbarHidden: true, referencesInitiallyClosed: true, sourceUrlsPreserved: actualUrls.length, keyboardToggle: true, findRevealsCitation: true, printRestoresDisclosure: width === 1440, removedCopy: true, errors });
     await page.close();
     console.log(`${theme} ${width}: passed`);
   }
