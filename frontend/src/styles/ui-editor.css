@@ -3,7 +3,7 @@
 .ui-new-post-page > nav { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:13px; margin-bottom:12px; }
 .ui-new-post-page > nav a { min-height:44px; display:inline-flex; align-items:center; color:hsl(var(--ui-muted)); }
 .ui-new-post-title { font-size:26px; font-weight:650; margin:0 0 20px; }
-.ui-editor { min-width:0; width:100%; }
+.ui-editor { min-width:0; width:100%; container:post-editor / inline-size; }
 .ui-editor-document { border:1px solid hsl(var(--ui-line)); border-radius:8px; background:hsl(var(--ui-surface)); }
 .ui-editor-commandbar { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:16px 20px; border-bottom:1px solid hsl(var(--ui-line)); background:hsl(var(--ui-surface)); }
 .ui-editor-commandbar > div { min-width:0; }
@@ -76,6 +76,31 @@
   .ui-editor[data-active-pane='tools'] .ui-editor-main { display:none; }
   .ui-editor-write-pane { border-right:0; }
   .ui-editor-tools { border-left:0; border-top:1px solid hsl(var(--ui-line)); }
+  .ui-editor-assistant-tab { min-height:420px; }
+  .ui-metadata-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+/* The same editor also lives inside the admin sidebar. Use its available width,
+   so a narrow desktop workspace does not squeeze three panes into thin columns. */
+@container post-editor (max-width:1120px) {
+  .ui-editor-layout { display:block; }
+  .ui-editor .ui-pane-switcher.ui-action-toolbar { display:flex; align-items:stretch; gap:4px; padding:4px; margin:12px; border:1px solid hsl(var(--ui-line)); border-radius:8px; background:hsl(var(--ui-soft)); }
+  .ui-editor .ui-pane-switcher button { flex:1; padding:10px 12px; min-height:44px; border:0; border-radius:5px; font-size:14px; background:transparent; color:hsl(var(--ui-muted)); }
+  .ui-editor .ui-pane-switcher button[aria-pressed='true'] { background:hsl(var(--ui-surface)); color:hsl(var(--ui-accent)); font-weight:600; }
+  .ui-editor-commandbar > :last-child { justify-content:flex-start; }
+  .ui-editor-commandbar p { display:none; }
+  .ui-editor-canvas { display:block; min-height:400px; }
+  .ui-editor-write-pane .ui-textarea { min-height:420px; }
+  .ui-editor-preview-scroll { height:auto; min-height:420px; }
+  .ui-editor-desktop-modes { display:none; }
+  .ui-editor[data-active-pane] .ui-editor-write-pane,
+  .ui-editor[data-active-pane] .ui-editor-preview-pane { display:block; }
+  .ui-editor[data-active-pane='write'] .ui-editor-preview-pane,
+  .ui-editor[data-active-pane='write'] .ui-editor-tools,
+  .ui-editor[data-active-pane='preview'] .ui-editor-write-pane,
+  .ui-editor[data-active-pane='preview'] .ui-editor-tools,
+  .ui-editor[data-active-pane='tools'] .ui-editor-main { display:none; }
+  .ui-editor-write-pane { border-right:0; }
+  .ui-editor .ui-editor-tools.ui-workspace-panel { border-left:0; border-top:1px solid hsl(var(--ui-line)); }
   .ui-editor-assistant-tab { min-height:420px; }
   .ui-metadata-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }

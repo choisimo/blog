@@ -489,10 +489,11 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
   return (
     <div className={["ui-admin-section ui-admin-secretslistmanager", ("space-y-4")].filter(Boolean).join(' ')}>
       {/* Toolbar */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="relative min-w-0 flex-[1_1_240px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            aria-label="시크릿 검색"
             placeholder="Search secrets..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -507,7 +508,7 @@ export function SecretsListManager({ categories: initialCategories, initialCateg
             if (normalizedCategory) setCategoryFilter(normalizedCategory);
           }}
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 max-w-full" aria-label="시크릿 카테고리">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>

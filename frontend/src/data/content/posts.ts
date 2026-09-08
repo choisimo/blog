@@ -4,6 +4,9 @@ import type { BlogPost, BlogCategory, BlogTag, PostsPage } from "@/types/blog";
 const POST_PATH_SEGMENT_UNSAFE_PATTERN = /[\u0000-\u001F\u007F/\\]/;
 const LEGACY_POST_LOOKUP_UNSAFE_PATTERN = /[\u0000-\u001F\u007F\\]/;
 
+// Existing consumers retain their empty fallback unless they render a retry UI.
+export type PostLoadOptions = { throwOnError?: boolean };
+
 function normalizePostPathSegment(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed || POST_PATH_SEGMENT_UNSAFE_PATTERN.test(trimmed)) return null;
@@ -50,11 +53,12 @@ function normalizeLegacyPostLookupSlug(value: string): string | null {
 }
 
 // Main function to get all posts from markdown files
-export const getPosts = async (): Promise<BlogPost[]> => {
+export const getPosts = async (options?: PostLoadOptions): Promise<BlogPost[]> => {
   try {
     return await PostService.getAllPosts();
   } catch (error) {
     console.error("Error loading posts:", error);
+    if (options?.throwOnError) throw error;
     return [];
   }
 };
@@ -88,11 +92,13 @@ export type PostsQuery = {
 
 export const getPostsPage = async (
   q: PostsQuery,
+  options?: PostLoadOptions,
 ): Promise<PostsPage<BlogPost>> => {
   try {
     return await PostService.getPostsPage(q);
   } catch (error) {
     console.error("Error loading paginated posts:", error);
+    if (options?.throwOnError) throw error;
     return {
       items: [],
       page: q.page ?? 1,
@@ -189,19 +195,20 @@ export const getCategories = async (): Promise<BlogCategory[]> => {
   }
 };
 
-export const getPostCategoryCounts = async (): Promise<
+export const getPostCategoryCounts = async (options?: PostLoadOptions): Promise<
   Record<string, number>
 > => {
   try {
     return await PostService.getCategoryCounts();
   } catch (error) {
     console.error("Error loading category counts:", error);
+    if (options?.throwOnError) throw error;
     return {};
   }
 };
 
 // Get tags with post counts
-export const getTags = async (): Promise<BlogTag[]> => {
+export const getTags = async (options?: PostLoadOptions): Promise<BlogTag[]> => {
   try {
     const posts = await PostService.getAllPosts();
     const tagMap = new Map<string, number>();
@@ -220,30 +227,33 @@ export const getTags = async (): Promise<BlogTag[]> => {
     }));
   } catch (error) {
     console.error("Error loading tags:", error);
+    if (options?.throwOnError) throw error;
     return [];
   }
 };
 
 // Get all unique categories
-export const getAllCategories = async (): Promise<string[]> => {
+export const getAllCategories = async (options?: PostLoadOptions): Promise<string[]> => {
   try {
     const posts = await PostService.getAllPosts();
     const categories = new Set(posts.map((post) => post.category));
     return Array.from(categories);
   } catch (error) {
     console.error("Error loading categories:", error);
+    if (options?.throwOnError) throw error;
     return [];
   }
 };
 
 // Get all unique tags
-export const getAllTags = async (): Promise<string[]> => {
+export const getAllTags = async (options?: PostLoadOptions): Promise<string[]> => {
   try {
     const posts = await PostService.getAllPosts();
     const tags = new Set(posts.flatMap((post) => post.tags));
     return Array.from(tags);
   } catch (error) {
     console.error("Error loading tags:", error);
+    if (options?.throwOnError) throw error;
     return [];
   }
 };

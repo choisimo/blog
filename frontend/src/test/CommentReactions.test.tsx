@@ -62,9 +62,9 @@ describe('CommentReactions', () => {
 
     render(<CommentReactions commentId='comment-1' />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }));
 
-    const likeButton = screen.getByRole('button', { name: '👍' });
+    const likeButton = screen.getByRole('button', { name: 'Add reaction: 👍' });
     fireEvent.click(likeButton);
     fireEvent.click(likeButton);
 
@@ -83,8 +83,10 @@ describe('CommentReactions', () => {
 
     expect(reactionMocks.getUserReactions).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: '+' }));
-    fireEvent.click(screen.getByRole('button', { name: '👍' }));
+    const trigger = screen.getByRole('button', { name: 'Add reaction' });
+    expect(trigger).toBeDisabled();
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     expect(reactionMocks.addReaction).not.toHaveBeenCalled();
     expect(reactionMocks.removeReaction).not.toHaveBeenCalled();

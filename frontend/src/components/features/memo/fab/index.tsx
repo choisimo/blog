@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { NotebookPen, Sparkles, Layers, Map as MapIcon } from "lucide-react";
-import VisitedPostsMinimap from "@/components/molecules/VisitedPostsMinimap";
-import { useVisitedPostsState } from "@/components/molecules/useVisitedPostsState";
-import ChatWidget from "@/components/molecules/ChatWidget";
-import { useToast } from "@/components/ui/use-toast";
-import { useIsMobile } from "@/hooks/ui/use-mobile";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { cn } from "@/lib/utils";
-import { useUIStrings } from "@/utils/i18n";
-import { useFeatureFlags } from "@/stores/runtime/useFeatureFlagsStore";
-import { getArticleContext } from "@/services/chat/context";
-import type { SelectedBlockAttachment } from "@/services/chat";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NotebookPen, Sparkles, Layers, Map as MapIcon } from 'lucide-react';
+import VisitedPostsMinimap from '@/components/molecules/VisitedPostsMinimap';
+import { useVisitedPostsState } from '@/components/molecules/useVisitedPostsState';
+import ChatWidget from '@/components/molecules/ChatWidget';
+import { useToast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { cn } from '@/lib/utils';
+import { useUIStrings } from '@/utils/i18n';
+import { useFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
+import { getArticleContext } from '@/services/chat/context';
+import type { SelectedBlockAttachment } from '@/services/chat';
 
-import type { DockAction } from "./types";
+import type { DockAction } from './types';
 import {
   usePostsManifest,
   useVirtualFS,
@@ -29,9 +29,10 @@ import {
   ensureAIMemoElement,
   hideLegacyLaunchers,
   useFabAnalytics,
-} from "./hooks";
-import { useShellCommander } from "./hooks/useShellCommander";
-import { useSelectedBlockActions } from "./hooks/useSelectedBlockActions";
+} from './hooks';
+import { useShellCommander } from './hooks/useShellCommander';
+import { useSelectedBlockActions } from './hooks/useSelectedBlockActions';
+import { useOverlayFocusReturn } from './hooks/useOverlayFocusReturn';
 import {
   ShellModal,
   ShellOutputOverlay,
@@ -39,7 +40,7 @@ import {
   TerminalDock,
   DefaultDock,
   RealTerminalModal,
-} from "./components";
+} from './components';
 
 type MemoPadElement = HTMLElement & {
   openHistory?: () => void;
@@ -47,19 +48,21 @@ type MemoPadElement = HTMLElement & {
 };
 
 const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
-const FAB_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const FAB_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 function stripUnsafeFabControls(value: string): string {
   return value
-    .replace(ANSI_ESCAPE_PATTERN, "")
-    .replace(FAB_CONTROL_TEXT_PATTERN, "");
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(FAB_CONTROL_TEXT_PATTERN, '');
 }
 
-export function normalizeFabActionLabel(value: unknown, fallback = "Action"): string {
-  if (typeof value !== "string") return fallback;
-  const normalized = stripUnsafeFabControls(value)
-    .replace(/\s+/g, " ")
-    .trim();
+export function normalizeFabActionLabel(
+  value: unknown,
+  fallback = 'Action'
+): string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = stripUnsafeFabControls(value).replace(/\s+/g, ' ').trim();
   return normalized || fallback;
 }
 
@@ -69,7 +72,9 @@ function sanitizeDockAction(action: DockAction): DockAction {
     ...action,
     label,
     desktopLabel: normalizeFabActionLabel(action.desktopLabel, label),
-    title: action.title ? normalizeFabActionLabel(action.title, label) : undefined,
+    title: action.title
+      ? normalizeFabActionLabel(action.title, label)
+      : undefined,
   };
 }
 
@@ -82,10 +87,43 @@ export default function FloatingActionBar() {
   const [hasNew, clearBadge] = useHistoryBadge();
   const { items: visitedPosts, storageAvailable } = useVisitedPostsState();
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>(undefined);
+  const [shellOpen, setShellOpen] = useState(false);
+  const [realTerminalOpen, setRealTerminalOpen] = useState(false);
+  const { registerTrigger, rememberFocus, requestFocusReturn } =
+    useOverlayFocusReturn({
+      active: chatOpen || shellOpen || realTerminalOpen,
+      blocked: modalOpen || overlayOpen,
+    });
+  const chatTriggerRef = useCallback(
+    (node: HTMLButtonElement | null) => registerTrigger('chat', node),
+    [registerTrigger]
+  );
+  const shellTriggerRef = useCallback(
+    (node: HTMLButtonElement | null) => registerTrigger('shell', node),
+    [registerTrigger]
+  );
+  const shellPathRef = useCallback(
+    (node: HTMLDivElement | null) => registerTrigger('shell-path', node),
+    [registerTrigger]
+  );
+  const shellOutputRef = useCallback(
+    (node: HTMLButtonElement | null) => registerTrigger('shell-output', node),
+    [registerTrigger]
+  );
+  const openShell = useCallback(
+    (key: 'shell' | 'shell-path' | 'shell-output') => {
+      rememberFocus(key);
+      setShellOpen(true);
+    },
+    [rememberFocus]
+  );
+  const [chatInitialMessage, setChatInitialMessage] = useState<
+    string | undefined
+  >(undefined);
   const [chatSelectedBlockAttachments, setChatSelectedBlockAttachments] =
     useState<SelectedBlockAttachment[]>([]);
-  const [chatCurrentPost, setChatCurrentPost] = useState<ReturnType<typeof getArticleContext>>(null);
+  const [chatCurrentPost, setChatCurrentPost] =
+    useState<ReturnType<typeof getArticleContext>>(null);
   const scrollHidden = useScrollHide();
   const [fabPinned] = useFabPinned();
   const [fabPosition] = useFabPosition();
@@ -104,19 +142,22 @@ export default function FloatingActionBar() {
         | {
             initialMessage?: string;
             selectedBlockAttachments?: SelectedBlockAttachment[];
-          },
+          }
     ) => {
       const initialMessage =
-        typeof input === "string" ? input : input?.initialMessage;
+        typeof input === 'string' ? input : input?.initialMessage;
       const selectedBlockAttachments =
-        typeof input === "string" ? [] : (input?.selectedBlockAttachments ?? []);
+        typeof input === 'string'
+          ? []
+          : (input?.selectedBlockAttachments ?? []);
 
+      rememberFocus();
       setChatCurrentPost(getArticleContext());
       setChatInitialMessage(initialMessage);
       setChatSelectedBlockAttachments(selectedBlockAttachments);
       setChatOpen(true);
     },
-    [],
+    [rememberFocus]
   );
 
   const closeChat = useCallback(() => {
@@ -124,15 +165,10 @@ export default function FloatingActionBar() {
     setChatInitialMessage(undefined);
     setChatSelectedBlockAttachments([]);
     setChatCurrentPost(null);
-    send("fab_ai_chat_close");
+    send('fab_ai_chat_close');
   }, [send]);
 
   useSelectedBlockActions({ openChat, send });
-
-  // Shell Commander state (for terminal theme mobile)
-  const [shellOpen, setShellOpen] = useState(false);
-  // Real terminal mode (Linux container)
-  const [realTerminalOpen, setRealTerminalOpen] = useState(false);
 
   // Scroll to top button visibility (for mobile terminal shell bar)
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -140,9 +176,9 @@ export default function FloatingActionBar() {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 300);
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll(); // Initial check
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Ctrl+Alt+M shortcut: open live chat
@@ -158,30 +194,30 @@ export default function FloatingActionBar() {
   }, [openChat]);
 
   // Add viewport height management for mobile keyboard
-  const [viewportHeight, setViewportHeight] = useState("100dvh");
+  const [viewportHeight, setViewportHeight] = useState('100dvh');
 
   useEffect(() => {
     // Only lock scroll when shell is open AND on mobile AND terminal theme
     if (!isMobile || !shellOpen || !isTerminal) {
-      document.body.style.overflow = "";
+      document.body.style.overflow = '';
       return;
     }
 
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
 
     const handleResize = () => {
       const vh = window.visualViewport?.height || window.innerHeight;
       setViewportHeight(`${vh}px`);
     };
 
-    window.addEventListener("resize", handleResize);
-    window.visualViewport?.addEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
     handleResize();
 
     return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("resize", handleResize);
-      window.visualViewport?.removeEventListener("resize", handleResize);
+      document.body.style.overflow = '';
+      window.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
     };
   }, [isMobile, shellOpen, isTerminal]);
 
@@ -193,84 +229,82 @@ export default function FloatingActionBar() {
     (id: string) => {
       try {
         const memoEl = aiMemoEl?.isConnected ? aiMemoEl : ensureAIMemoElement();
-        const shadow = (memoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
+        const shadow =
+          (memoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
         const btn = shadow?.getElementById(id) as HTMLButtonElement | null;
         btn?.click();
       } catch {
         void 0;
       }
     },
-    [aiMemoEl],
+    [aiMemoEl]
   );
 
-  const toggleMemo = useCallback(
-    () => {
-      const dispatchToggle = () => {
-        window.dispatchEvent(
-          new CustomEvent("aiMemo:windowCommand", {
-            detail: { action: "toggle" },
-          }),
-        );
-      };
-
-      const memoEl = aiMemoEl?.isConnected ? aiMemoEl : ensureAIMemoElement();
-      const hasMemoPanel = Boolean(
-        (memoEl as MemoPadElement | null)?.shadowRoot?.getElementById("panel"),
+  const toggleMemo = useCallback(() => {
+    const dispatchToggle = () => {
+      window.dispatchEvent(
+        new CustomEvent('aiMemo:windowCommand', {
+          detail: { action: 'toggle' },
+        })
       );
+    };
 
-      if (hasMemoPanel) {
-        try {
-          dispatchToggle();
-          return;
-        } catch {
-          clickShadowBtn("launcher");
-          return;
-        }
-      }
+    const memoEl = aiMemoEl?.isConnected ? aiMemoEl : ensureAIMemoElement();
+    const hasMemoPanel = Boolean(
+      (memoEl as MemoPadElement | null)?.shadowRoot?.getElementById('panel')
+    );
 
-      if (typeof customElements !== "undefined") {
-        void customElements
-          .whenDefined("ai-memo-pad")
-          .then(() => {
-            const readyMemoEl = ensureAIMemoElement();
-            const readyPanel = Boolean(
-              (readyMemoEl as MemoPadElement | null)?.shadowRoot?.getElementById(
-                "panel",
-              ),
-            );
-            if (!readyPanel) {
-              clickShadowBtn("launcher");
-              return;
-            }
-            dispatchToggle();
-          })
-          .catch(() => clickShadowBtn("launcher"));
+    if (hasMemoPanel) {
+      try {
+        dispatchToggle();
+        return;
+      } catch {
+        clickShadowBtn('launcher');
         return;
       }
+    }
 
-      clickShadowBtn("launcher");
-    },
-    [aiMemoEl, clickShadowBtn],
-  );
+    if (typeof customElements !== 'undefined') {
+      void customElements
+        .whenDefined('ai-memo-pad')
+        .then(() => {
+          const readyMemoEl = ensureAIMemoElement();
+          const readyPanel = Boolean(
+            (readyMemoEl as MemoPadElement | null)?.shadowRoot?.getElementById(
+              'panel'
+            )
+          );
+          if (!readyPanel) {
+            clickShadowBtn('launcher');
+            return;
+          }
+          dispatchToggle();
+        })
+        .catch(() => clickShadowBtn('launcher'));
+      return;
+    }
+
+    clickShadowBtn('launcher');
+  }, [aiMemoEl, clickShadowBtn]);
 
   const openHistory = useCallback(() => {
     let opened = false;
     try {
       const memoEl = aiMemoEl as MemoPadElement | null;
-      if (typeof memoEl?.openHistory === "function") {
+      if (typeof memoEl?.openHistory === 'function') {
         memoEl.openHistory();
         opened = true;
       } else if (aiMemoEl) {
         const shadow = memoEl?.shadowRoot ?? undefined;
         const historyLauncher = shadow?.getElementById(
-          "historyLauncher",
+          'historyLauncher'
         ) as HTMLElement | null;
         if (historyLauncher) {
           const prevDisplay = historyLauncher.style.display;
-          historyLauncher.style.display = "flex";
+          historyLauncher.style.display = 'flex';
           historyLauncher.click();
           setTimeout(() => {
-            historyLauncher.style.display = prevDisplay || "none";
+            historyLauncher.style.display = prevDisplay || 'none';
           }, 50);
           opened = true;
         }
@@ -280,13 +314,13 @@ export default function FloatingActionBar() {
     }
     if (!opened) {
       try {
-        window.dispatchEvent(new CustomEvent("visitedposts:open"));
+        window.dispatchEvent(new CustomEvent('visitedposts:open'));
       } catch {
         void 0;
       }
     }
     clearBadge();
-    send("fab_history_click");
+    send('fab_history_click');
   }, [aiMemoEl, clearBadge, send]);
 
   // Suppress unused variable warning - openHistory is kept for future use
@@ -294,16 +328,15 @@ export default function FloatingActionBar() {
 
   const openStackView = useCallback(() => {
     try {
-      window.dispatchEvent(new CustomEvent("visitedposts:open"));
-      send("fab_stack_click");
+      window.dispatchEvent(new CustomEvent('visitedposts:open'));
+      send('fab_stack_click');
     } catch {
       void 0;
     }
   }, [send]);
 
   const stackDisabledReason = useMemo(() => {
-    if (!storageAvailable)
-      return str.stack.unavailable;
+    if (!storageAvailable) return str.stack.unavailable;
     if (!visitedPosts.length) return str.stack.noVisited;
     return null;
   }, [storageAvailable, visitedPosts.length, str.stack]);
@@ -319,15 +352,15 @@ export default function FloatingActionBar() {
   const openRealTerminal = useCallback(() => {
     if (!featureFlags.terminalEnabled) {
       toast({
-        title: "Terminal unavailable",
-        description: "The live terminal is currently disabled.",
+        title: 'Terminal unavailable',
+        description: 'The live terminal is currently disabled.',
       });
       return;
     }
 
     setShellOpen(false);
     setRealTerminalOpen(true);
-    send("fab_real_terminal_open");
+    send('fab_real_terminal_open');
   }, [featureFlags.terminalEnabled, send, toast]);
 
   // Shell Commander hook
@@ -374,9 +407,9 @@ export default function FloatingActionBar() {
   useEffect(() => {
     if (aiMemoEl) {
       const primaryColor = getComputedStyle(
-        document.documentElement,
-      ).getPropertyValue("--primary");
-      aiMemoEl.style.setProperty("--primary-color", primaryColor);
+        document.documentElement
+      ).getPropertyValue('--primary');
+      aiMemoEl.style.setProperty('--primary-color', primaryColor);
     }
   }, [aiMemoEl]);
 
@@ -396,75 +429,97 @@ export default function FloatingActionBar() {
   const isLeftFab = !isMobile && fabPosition === 'left';
 
   const containerClasses = cn(
-    "fixed z-[var(--z-fab-bar)] print:hidden",
+    'fixed z-[var(--z-fab-bar)] print:hidden',
     isLeftFab
-      ? "left-0 top-1/2 -translate-y-1/2 px-0 py-3"
+      ? 'left-0 top-1/2 -translate-y-1/2 px-0 py-3'
       : cn(
-          "inset-x-0 px-3 sm:px-4",
+          'inset-x-0 px-3 sm:px-4',
           isMobile
-            ? "bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden"
-            : "bottom-[calc(16px+env(safe-area-inset-bottom,0px))]",
+            ? 'bottom-0 pb-[calc(env(safe-area-inset-bottom,0px))] max-w-full overflow-x-hidden'
+            : 'bottom-[calc(16px+env(safe-area-inset-bottom,0px))]'
         ),
     // Smooth slide animation with longer duration for better UX
-    "transition-all duration-300 ease-out",
-    !isLeftFab && (
-      shouldAlwaysShow || fabPinned
-        ? "translate-y-0 opacity-100"
+    'transition-all duration-300 ease-out',
+    !isLeftFab &&
+      'focus-within:translate-y-0 focus-within:opacity-100 focus-within:pointer-events-auto',
+    !isLeftFab &&
+      (shouldAlwaysShow || fabPinned
+        ? 'translate-y-0 opacity-100'
         : scrollHidden
-          ? "translate-y-[200%] opacity-0 pointer-events-none"
-          : "translate-y-0 opacity-100"
-    ),
+          ? 'translate-y-[200%] opacity-0 pointer-events-none'
+          : 'translate-y-0 opacity-100')
   );
 
-  const allDockActions: DockAction[] = useMemo(() => [
-    {
-      key: "chat",
-      label: str.nav.chat,
-      desktopLabel: language === "ko" ? "AI 채팅" : "AI Chat",
-      icon: Sparkles,
-      onClick: () => {
-        if (chatOpen) {
-          closeChat();
-        } else {
-          openChat();
-          send('fab_ai_chat_open');
-        }
+  const allDockActions: DockAction[] = useMemo(
+    () => [
+      {
+        key: 'chat',
+        label: str.nav.chat,
+        desktopLabel: language === 'ko' ? 'AI 채팅' : 'AI Chat',
+        icon: Sparkles,
+        triggerRef: chatTriggerRef,
+        onClick: () => {
+          if (chatOpen) {
+            closeChat();
+          } else {
+            rememberFocus('chat');
+            openChat();
+            send('fab_ai_chat_open');
+          }
+        },
+        primary: true,
+        hidden: !featureFlags.aiEnabled,
       },
-      primary: true,
-      hidden: !featureFlags.aiEnabled,
-    },
-    {
-      key: "memo",
-      label: str.nav.memo,
-      desktopLabel: language === "ko" ? "메모" : "Memo",
-      icon: NotebookPen,
-      onClick: () => {
-        send("fab_memo_toggle");
-        toggleMemo();
+      {
+        key: 'memo',
+        label: str.nav.memo,
+        desktopLabel: language === 'ko' ? '메모' : 'Memo',
+        icon: NotebookPen,
+        onClick: () => {
+          send('fab_memo_toggle');
+          toggleMemo();
+        },
       },
-    },
-    {
-      key: "stack",
-      label: str.nav.stack,
-      desktopLabel: language === "ko" ? "방문 스택" : "Visited Stack",
-      icon: Layers,
-      onClick: handleStackClick,
-      disabled: !!stackDisabledReason,
-      title: stackDisabledReason || undefined,
-    },
-    {
-      key: "insight",
-      label: str.nav.insight,
-      desktopLabel: language === "ko" ? "인사이트" : "Insight",
-      icon: MapIcon,
-      onClick: () => {
-        send("fab_insight_click");
-        clearBadge();
-        vfs.navigate("/insight");
+      {
+        key: 'stack',
+        label: str.nav.stack,
+        desktopLabel: language === 'ko' ? '방문 스택' : 'Visited Stack',
+        icon: Layers,
+        onClick: handleStackClick,
+        disabled: !!stackDisabledReason,
+        title: stackDisabledReason || undefined,
       },
-      badge: hasNew,
-    },
-  ], [str, language, chatOpen, featureFlags.aiEnabled, send, toggleMemo, handleStackClick, stackDisabledReason, hasNew, clearBadge, vfs, openChat, closeChat]);
+      {
+        key: 'insight',
+        label: str.nav.insight,
+        desktopLabel: language === 'ko' ? '인사이트' : 'Insight',
+        icon: MapIcon,
+        onClick: () => {
+          send('fab_insight_click');
+          clearBadge();
+          vfs.navigate('/insight');
+        },
+        badge: hasNew,
+      },
+    ],
+    [
+      str,
+      language,
+      chatOpen,
+      featureFlags.aiEnabled,
+      send,
+      toggleMemo,
+      handleStackClick,
+      stackDisabledReason,
+      hasNew,
+      clearBadge,
+      vfs,
+      openChat,
+      closeChat,
+      chatTriggerRef,
+      rememberFocus,
+    ]
+  );
 
   const dockActions = allDockActions
     .filter(action => !action.hidden)
@@ -474,7 +529,7 @@ export default function FloatingActionBar() {
     return null;
   }
 
-  const stackSheet = <VisitedPostsMinimap mode="fab" />;
+  const stackSheet = <VisitedPostsMinimap mode='fab' />;
   const toolbarDisabled = modalOpen || overlayOpen;
 
   return (
@@ -485,6 +540,7 @@ export default function FloatingActionBar() {
       {isTerminal && isMobile && (
         <ShellModal
           isOpen={shellOpen && !realTerminalOpen}
+          onReturnFocus={requestFocusReturn}
           onClose={() => {
             setShellOpen(false);
             shell.setShellOutput(null);
@@ -511,9 +567,10 @@ export default function FloatingActionBar() {
       {isTerminal && isMobile && (
         <RealTerminalModal
           isOpen={realTerminalOpen}
+          onReturnFocus={requestFocusReturn}
           onClose={() => {
             setRealTerminalOpen(false);
-            send("fab_real_terminal_close");
+            send('fab_real_terminal_close');
           }}
           viewportHeight={viewportHeight}
           onSwitchToVirtual={() => {
@@ -527,26 +584,29 @@ export default function FloatingActionBar() {
       {isTerminal && isMobile && !shellOpen && !realTerminalOpen && (
         <ShellOutputOverlay
           output={shell.shellOutput}
-          onExpand={() => setShellOpen(true)}
+          onExpand={() => openShell('shell-output')}
+          expandRef={shellOutputRef}
           onClose={() => shell.setShellOutput(null)}
         />
       )}
 
       {!toolbarDisabled && (
         <div
-          role="toolbar"
-          aria-label={normalizeFabActionLabel(language === "ko" ? "빠른 작업" : "Floating actions")}
-          aria-orientation={isLeftFab ? "vertical" : "horizontal"}
+          role='toolbar'
+          aria-label={normalizeFabActionLabel(
+            language === 'ko' ? '빠른 작업' : 'Floating actions'
+          )}
+          aria-orientation={isLeftFab ? 'vertical' : 'horizontal'}
           className={containerClasses}
         >
           <nav
             className={cn(
-              "mx-auto flex w-full justify-center",
+              'mx-auto flex w-full justify-center',
               isLeftFab
-                ? "flex-col items-center gap-1"
+                ? 'flex-col items-center gap-1'
                 : isMobile
-                  ? "max-w-none"
-                  : "max-w-6xl",
+                  ? 'max-w-none'
+                  : 'max-w-6xl'
             )}
           >
             {/* Terminal style dock */}
@@ -556,7 +616,10 @@ export default function FloatingActionBar() {
                 !shellOpen && (
                   <MobileShellBar
                     displayPath={vfs.displayPath}
-                    onShellOpen={() => setShellOpen(true)}
+                    onShellOpen={() => openShell('shell')}
+                    onPathOpen={() => openShell('shell-path')}
+                    triggerRef={shellTriggerRef}
+                    pathRef={shellPathRef}
                     showScrollTop={showScrollTop}
                     hasNew={hasNew}
                     data-hidden={scrollHidden}
@@ -564,11 +627,19 @@ export default function FloatingActionBar() {
                 )
               ) : (
                 // PC Terminal Dock
-                <TerminalDock dockActions={dockActions} isMobile={isMobile} isLeft={isLeftFab} />
+                <TerminalDock
+                  dockActions={dockActions}
+                  isMobile={isMobile}
+                  isLeft={isLeftFab}
+                />
               )
             ) : (
               // Default style dock
-              <DefaultDock dockActions={dockActions} isMobile={isMobile} isLeft={isLeftFab} />
+              <DefaultDock
+                dockActions={dockActions}
+                isMobile={isMobile}
+                isLeft={isLeftFab}
+              />
             )}
           </nav>
         </div>
@@ -580,6 +651,7 @@ export default function FloatingActionBar() {
           initialSelectedBlockAttachments={chatSelectedBlockAttachments}
           currentPost={chatCurrentPost ?? undefined}
           onClose={closeChat}
+          onReturnFocus={requestFocusReturn}
         />
       )}
     </>

@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -18,7 +24,9 @@ vi.mock('@/services/discovery/webSearch', () => ({
 
 describe('SearchBar', () => {
   it('normalizes web search error messages before display', () => {
-    expect(normalizeSearchBarErrorMessage(' Rate\u0000\nlimited ')).toBe('Rate limited');
+    expect(normalizeSearchBarErrorMessage(' Rate\u0000\nlimited ')).toBe(
+      'Rate limited'
+    );
     expect(normalizeSearchBarErrorMessage(null)).toBe('Web search failed');
   });
 
@@ -37,7 +45,7 @@ describe('SearchBar', () => {
         posts={[post]}
         onSearchResults={onSearchResults}
         enableWebSearch={false}
-      />,
+      />
     );
 
     fireEvent.change(screen.getByRole('textbox'), {
@@ -63,7 +71,7 @@ describe('SearchBar', () => {
         posts={[]}
         onSearchResults={onSearchResults}
         onWebSearchResults={onWebSearchResults}
-      />,
+      />
     );
 
     fireEvent.change(screen.getByRole('textbox'), {
@@ -74,11 +82,11 @@ describe('SearchBar', () => {
       vi.advanceTimersByTime(500);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /웹에서 검색/i }));
-
-    await waitFor(() => {
-      expect(searchWebMock).toHaveBeenCalledWith('no match', { maxResults: 5 });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /웹에서 검색/i }));
     });
+    expect(searchWebMock).toHaveBeenCalledWith('no match', { maxResults: 5 });
+    expect(onWebSearchResults).toHaveBeenCalledWith([], 'done');
 
     vi.useRealTimers();
   });

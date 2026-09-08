@@ -469,10 +469,11 @@ export function TraceViewer() {
           </div>
         </CardHeader>
         <CardContent className="ui-panel-body">
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-wrap gap-4 mb-4">
+            <div className="min-w-0 flex-[1_1_240px] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                aria-label="Trace ID 검색"
                 placeholder="Search by trace ID..."
                 value={searchTerm}
               onChange={(e) => {
@@ -489,7 +490,7 @@ export function TraceViewer() {
                 setPage(0);
               }}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40 max-w-full" aria-label="Trace 상태">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>

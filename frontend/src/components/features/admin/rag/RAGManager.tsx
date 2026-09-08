@@ -380,15 +380,16 @@ function SearchTesterSection() {
         <span className="text-xs font-semibold text-ui-text">Semantic Search Tester</span>
       </div>
       <div className="px-4 py-3 space-y-3">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Input
+            aria-label="RAG 검색어"
             placeholder="Enter search query..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void handleSearch();
             }}
-            className="ui-input h-8 text-sm rounded-md border-ui-line flex-1"
+            className="ui-input h-8 text-sm rounded-md border-ui-line min-w-0 flex-[1_1_200px]"
           />
           <button
             type="button"

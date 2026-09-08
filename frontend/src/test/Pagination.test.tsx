@@ -16,17 +16,23 @@ describe('Pagination', () => {
         currentPage={Number.POSITIVE_INFINITY}
         totalPages={5.8}
         onPageChange={onPageChange}
-      />,
+      />
     );
 
-    expect(screen.getByText('Page')).toBeInTheDocument();
-    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Page 1' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Previous page' })
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'First page' })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
-    expect(onPageChange).toHaveBeenCalledWith(4);
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(onPageChange).toHaveBeenCalledWith(2);
 
-    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Last page' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Last page' }));
+    expect(onPageChange).toHaveBeenCalledWith(5);
   });
 
   it('clamps direct page button and quick-jump values through one boundary', () => {
@@ -38,7 +44,7 @@ describe('Pagination', () => {
         totalPages={10}
         onPageChange={onPageChange}
         showQuickJump
-      />,
+      />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Page 4' }));
@@ -46,7 +52,8 @@ describe('Pagination', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Jump to page' })[0]);
     const input = screen.getByPlaceholderText('Go to');
-    fireEvent.change(input, { target: { value: '999<script>' } });
+    // Native number inputs reject nonnumeric strings before React sees them.
+    fireEvent.change(input, { target: { value: '999' } });
     fireEvent.click(screen.getByRole('button', { name: 'Go' }));
 
     expect(onPageChange).toHaveBeenCalledWith(10);
@@ -58,7 +65,7 @@ describe('Pagination', () => {
         currentPage={1}
         totalPages={Number.NaN}
         onPageChange={vi.fn()}
-      />,
+      />
     );
 
     expect(container).toBeEmptyDOMElement();

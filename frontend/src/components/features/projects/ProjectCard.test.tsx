@@ -43,41 +43,42 @@ describe('ProjectCard', () => {
       />
     );
 
-    expect(container.querySelector('[aria-label="Project: Safe project"]')).toHaveAttribute(
-      'title',
-      'Card title'
-    );
-    expect(screen.getByRole('img', { name: 'Safe project thumbnail' })).toHaveAttribute(
-      'src',
-      '/images/project.png'
-    );
+    expect(
+      container.querySelector('[aria-label="Project: Safe project"]')
+    ).toHaveAttribute('title', 'Card title');
+    expect(
+      screen.getByRole('img', { name: 'Safe project 미리보기' })
+    ).toHaveAttribute('src', '/images/project.png');
     expect(screen.getByText('Safe description')).toBeInTheDocument();
     expect(screen.getByText('live')).toBeInTheDocument();
     expect(screen.getByText('AI')).toBeInTheDocument();
-    expect(screen.getByText('Tools')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute(
-      'href',
-      '/projects/safe'
-    );
-    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute(
-      'href',
-      'https://example.test/repo'
-    );
+    expect(screen.getAllByText('Tools')[0]).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Open: Safe project · 새 탭' })
+    ).toHaveAttribute('href', '/projects/safe');
+    expect(
+      screen.getByRole('link', { name: 'Source: Safe project · 새 탭' })
+    ).toHaveAttribute('href', 'https://example.test/repo');
     expect(container.textContent).not.toContain('\u001b');
     expect(container.textContent).not.toContain('\u0000');
   });
 
   it('keeps preview callback payload unchanged while exposing a sanitized preview label', () => {
     const onPreview = vi.fn();
-    const rawProject = project({ title: '\u001b[31mPreview target\u0000' });
+    const rawProject = project({
+      type: 'embed',
+      title: '\u001b[31mPreview target\u0000',
+    });
     render(<ProjectCard project={rawProject} onPreview={onPreview} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview: Preview target' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: '미리보기: Preview target' })
+    );
 
     expect(onPreview).toHaveBeenCalledWith(rawProject);
   });
 
-  it('falls back to category artwork and disabled unsafe links', () => {
+  it('retains the project description and disables unavailable preview without unsafe links', () => {
     render(
       <ProjectCard
         project={project({
@@ -92,8 +93,11 @@ describe('ProjectCard', () => {
 
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.getByText('Fallback category')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Visit' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Code' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Visit: Safe project' })
+    ).toBeDisabled();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByText('공개 주소가 아직 없습니다.')).toBeInTheDocument();
   });
 
   it('normalizes only safe project URLs', () => {
@@ -102,8 +106,33 @@ describe('ProjectCard', () => {
       'https://example.test/project'
     );
     expect(normalizeProjectCardUrl('javascript:alert(1)')).toBeUndefined();
-    expect(normalizeProjectCardUrl('https://user:pass@example.test/project')).toBeUndefined();
+    expect(
+      normalizeProjectCardUrl('https://user:pass@example.test/project')
+    ).toBeUndefined();
     expect(normalizeProjectCardUrl('/projects/%0Aunsafe')).toBeUndefined();
+  });
+
+  it('exposes mobile embed navigation as a real link without duplicate service actions', () => {
+    const onPreview = vi.fn();
+    render(
+      <ProjectCard
+        project={project({ type: 'embed' })}
+        onPreview={onPreview}
+        openExternally
+        visitLabel='서비스 열기'
+      />
+    );
+
+    const link = screen.getByRole('link', {
+      name: '서비스 열기: Safe project · 새 탭',
+    });
+    expect(link).toHaveAttribute('href', '/projects/safe');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(
+      screen.queryByRole('button', { name: /미리보기/ })
+    ).not.toBeInTheDocument();
+    expect(onPreview).not.toHaveBeenCalled();
   });
 
   it('strips OSC and CSI ANSI escape sequences from card text', () => {

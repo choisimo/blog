@@ -1,13 +1,14 @@
-import React, { useRef } from "react";
-import { createPortal } from "react-dom";
-import { Terminal, X, MonitorUp } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { ShellLog } from "../types";
-import { hasAuthToken } from "@/services/realtime/terminal";
+import React, { useRef } from 'react';
+import { OverlayDialog } from '@/components/molecules/OverlayDialog';
+import { Terminal, X, MonitorUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { ShellLog } from '../types';
+import { hasAuthToken } from '@/services/realtime/terminal';
 
 type ShellModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onReturnFocus?: () => void;
   displayPath: string;
   viewportHeight: string;
   shellInput: string;
@@ -26,13 +27,14 @@ type ShellModalProps = {
 };
 
 const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
-const SHELL_MODAL_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const SHELL_MODAL_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
-function normalizeShellModalText(value: unknown, fallback = ""): string {
-  if (typeof value !== "string") return fallback;
+function normalizeShellModalText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
   const normalized = value
-    .replace(ANSI_ESCAPE_PATTERN, "")
-    .replace(SHELL_MODAL_CONTROL_TEXT_PATTERN, "")
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(SHELL_MODAL_CONTROL_TEXT_PATTERN, '')
     .trim();
   return normalized || fallback;
 }
@@ -40,6 +42,7 @@ function normalizeShellModalText(value: unknown, fallback = ""): string {
 export function ShellModal({
   isOpen,
   onClose,
+  onReturnFocus,
   displayPath,
   viewportHeight,
   shellInput,
@@ -58,234 +61,265 @@ export function ShellModal({
 }: ShellModalProps) {
   const shellContentRef = useRef<HTMLDivElement>(null);
   const canSwitchToReal = onSwitchToRealTerminal && hasAuthToken();
-  const safeDisplayPath = normalizeShellModalText(displayPath, "~/");
-  const safeSuggestions = suggestions.flatMap((suggestion) => {
+  const safeDisplayPath = normalizeShellModalText(displayPath, '~/');
+  const safeSuggestions = suggestions.flatMap(suggestion => {
     const safeSuggestion = normalizeShellModalText(suggestion);
     return safeSuggestion ? [safeSuggestion] : [];
   });
-  const safeLogs = shellLogs.map((log) => ({
+  const safeLogs = shellLogs.map(log => ({
     ...log,
     text: normalizeShellModalText(log.text),
   }));
-  const safeCommandHistory = commandHistory.flatMap((cmd) => {
+  const safeCommandHistory = commandHistory.flatMap(cmd => {
     const safeCommand = normalizeShellModalText(cmd);
     return safeCommand ? [safeCommand] : [];
   });
-  const hasVisibleOutput = safeLogs.some((log) => log.text) || Boolean(normalizeShellModalText(shellOutput));
+  const hasVisibleOutput =
+    safeLogs.some(log => log.text) ||
+    Boolean(normalizeShellModalText(shellOutput));
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div
-      ref={shellContentRef}
-      aria-label="터미널 명령 입력"
-      aria-modal="true"
-      className="fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
-      role="dialog"
-      style={{ height: viewportHeight }}
+  return (
+    <OverlayDialog
+      open={isOpen}
+      onClose={onClose}
+      onReturnFocus={onReturnFocus}
+      label='터미널 명령 입력'
+      layer='var(--z-terminal-modal)'
+      initialFocusRef={shellInputRef}
+      onEscapeKeyDown={event => {
+        // The input handler owns suggestion dismissal and shell Escape exactly once.
+        if (event.target === shellInputRef.current) event.preventDefault();
+      }}
     >
-      {/* Backdrop - clicking closes the shell */}
       <div
-        className="absolute inset-0 z-0"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      {/* Content container - must be above backdrop */}
-      <div
-        className="relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 w-full max-w-full overflow-x-hidden"
+        ref={shellContentRef}
+        aria-label='터미널 명령 입력'
+        aria-modal='true'
+        className='fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200'
+        role='dialog'
         style={{ height: viewportHeight }}
       >
-        {/* Input field at the top - redesigned for long paths */}
-        <div className="flex-shrink-0 flex flex-col border-b border-border/50 bg-black/20">
-          {/* Path display - separate row */}
-          <div className="flex items-center justify-between px-3 pt-2 pb-1">
-            <span
-              className="text-primary/60 font-mono text-[10px] truncate max-w-[50%]"
-              title={safeDisplayPath}
-            >
-              {safeDisplayPath}
-            </span>
-            <div className="flex items-center gap-2">
-              {/* Switch to Real Terminal button */}
-              {canSwitchToReal && (
-                <button
-                  type="button"
-                  onClick={onSwitchToRealTerminal}
-                  className={cn(
-                    "flex items-center gap-1 px-2 py-0.5",
-                    "text-[10px] font-mono uppercase tracking-wider",
-                    "bg-primary/10 border border-primary/30 rounded",
-                    "text-primary/70 hover:text-primary hover:bg-primary/20",
-                    "transition-colors"
-                  )}
-                  aria-label="실제 Linux 터미널로 전환"
-                  title="Switch to real Linux terminal"
-                >
-                  <MonitorUp aria-hidden="true" className="h-3 w-3" focusable="false" />
-                  <span>Real Shell</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 text-muted-foreground hover:text-primary transition-colors"
-                aria-label="터미널 닫기"
+        {/* Backdrop - clicking closes the shell */}
+        <div
+          className='absolute inset-0 z-0'
+          onClick={onClose}
+          aria-hidden='true'
+        />
+        {/* Content container - must be above backdrop */}
+        <div
+          className='relative z-10 flex flex-col bg-[hsl(var(--terminal-code-bg))] border-t border-primary/20 w-full max-w-full overflow-x-hidden'
+          style={{ height: viewportHeight }}
+        >
+          {/* Input field at the top - redesigned for long paths */}
+          <div className='relative flex-shrink-0 flex flex-col border-b border-border/50 bg-black/20'>
+            {/* Path display - separate row */}
+            <div className='flex items-center justify-between px-3 pt-2 pb-1'>
+              <span
+                className='text-primary/60 font-mono text-[10px] truncate max-w-[50%]'
+                title={safeDisplayPath}
               >
-                <X aria-hidden="true" className="h-4 w-4" focusable="false" />
-              </button>
-            </div>
-          </div>
-          {/* Input row */}
-          <div className="relative flex items-center gap-1.5 px-3 pb-2.5">
-            <span aria-hidden="true" className="text-primary font-mono text-sm font-bold shrink-0">
-              $
-            </span>
-            <input
-              ref={shellInputRef}
-              type="text"
-              aria-label="터미널 명령어"
-              aria-autocomplete="list"
-              aria-expanded={safeSuggestions.length > 0}
-              value={shellInput}
-              onChange={(e) => setShellInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Type a command or 'help'"
-              className="flex-1 min-w-0 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-            />
-          </div>
-
-          {/* Autocomplete suggestions dropdown */}
-          {safeSuggestions.length > 0 && (
-            <div
-              aria-label="명령어 제안"
-              className="absolute left-0 right-0 top-full z-[var(--z-terminal-floating)] mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden"
-              role="listbox"
-            >
-              <div className="text-[9px] font-mono text-primary/50 uppercase tracking-wider px-2 py-1 border-b border-border/30">
-                // Suggestions (Tab/Enter to select)
-              </div>
-              <div className="max-h-40 overflow-y-auto overscroll-contain">
-                {safeSuggestions.map((suggestion, index) => (
+                {safeDisplayPath}
+              </span>
+              <div className='flex items-center gap-2'>
+                {/* Switch to Real Terminal button */}
+                {canSwitchToReal && (
                   <button
-                    key={`${suggestion}-${index}`}
-                    type="button"
-                    aria-label={`명령어 제안 선택: ${suggestion}`}
-                    aria-selected={index === selectedSuggestionIndex}
-                    onClick={() => selectSuggestion(suggestion)}
-                    role="option"
+                    type='button'
+                    onClick={onSwitchToRealTerminal}
                     className={cn(
-                      "w-full text-left px-3 py-1.5 font-mono text-xs transition-colors",
-                      index === selectedSuggestionIndex
-                        ? "bg-primary/20 text-primary"
-                        : "text-foreground/80 hover:bg-primary/10 hover:text-primary",
+                      'flex items-center gap-1 px-2 py-0.5',
+                      'text-[10px] font-mono uppercase tracking-wider',
+                      'bg-primary/10 border border-primary/30 rounded',
+                      'text-primary/70 hover:text-primary hover:bg-primary/20',
+                      'transition-colors'
                     )}
+                    aria-label='실제 Linux 터미널로 전환'
+                    title='Switch to real Linux terminal'
                   >
-                    <span aria-hidden="true" className="text-primary/60">$ </span>
-                    {suggestion}
+                    <MonitorUp
+                      aria-hidden='true'
+                      className='h-3 w-3'
+                      focusable='false'
+                    />
+                    <span>Real Shell</span>
                   </button>
-                ))}
+                )}
+                <button
+                  type='button'
+                  onClick={onClose}
+                  className='p-1 text-muted-foreground hover:text-primary transition-colors'
+                  aria-label='터미널 닫기'
+                >
+                  <X aria-hidden='true' className='h-4 w-4' focusable='false' />
+                </button>
               </div>
             </div>
-          )}
-        </div>
+            {/* Input row */}
+            <div className='relative flex items-center gap-1.5 px-3 pb-2.5'>
+              <span
+                aria-hidden='true'
+                className='text-primary font-mono text-sm font-bold shrink-0'
+              >
+                $
+              </span>
+              <input
+                ref={shellInputRef}
+                type='text'
+                aria-label='터미널 명령어'
+                aria-autocomplete='list'
+                aria-expanded={safeSuggestions.length > 0}
+                value={shellInput}
+                onChange={e => setShellInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Type a command or 'help'"
+                className='flex-1 min-w-0 bg-transparent border-none outline-none font-mono text-sm text-foreground placeholder:text-muted-foreground/40'
+                autoComplete='off'
+                autoCapitalize='off'
+                spellCheck={false}
+              />
+            </div>
 
-        {/* Console Output Window */}
-        <div className="flex-1 min-h-0 relative">
-          <div className="absolute inset-0 overflow-y-auto overscroll-contain p-3 bg-black/30">
-            {/* Empty state */}
-            {!hasVisibleOutput && (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 text-center">
-                <Terminal aria-hidden="true" className="h-8 w-8 mb-2 opacity-30" focusable="false" />
-                <p className="text-xs font-mono">
-                  Run a command to see output here...
-                </p>
-                <p className="text-[10px] mt-1 opacity-70">
-                  Type 'help' for available commands
-                </p>
-              </div>
-            )}
-
-            {/* Execution logs */}
-            {safeLogs.map((log, index) => (
+            {/* Autocomplete suggestions dropdown */}
+            {safeSuggestions.length > 0 && (
               <div
-                key={index}
-                aria-label={log.type === "input" ? `입력: ${log.text}` : `출력: ${log.text}`}
-                className={cn(
-                  "mb-1 font-mono text-xs whitespace-pre-wrap break-all leading-relaxed",
-                  log.type === "input"
-                    ? "text-primary/90 font-medium"
-                    : "text-foreground/80 pl-2 border-l-2 border-primary/20",
-                )}
+                aria-label='명령어 제안'
+                className='absolute left-0 right-0 top-full z-[var(--z-terminal-floating)] mx-3 mb-2 bg-[hsl(var(--terminal-code-bg))] border border-primary/30 rounded-[4px] shadow-lg overflow-hidden'
+                role='listbox'
               >
-                {log.text}
-              </div>
-            ))}
-
-            {/* Scroll anchor */}
-            <div ref={consoleEndRef} />
-          </div>
-        </div>
-
-        {/* Quick Actions Bar */}
-        <div className="flex-shrink-0 border-t border-border/30 bg-black/20 p-2.5">
-          <div className="text-[10px] font-mono text-primary/60 uppercase tracking-wider mb-2">
-            // Quick Commands
-          </div>
-          <div className="grid grid-cols-4 gap-1.5">
-            {["ls", "find", "help", "clear"].map((cmd) => (
-              <button
-                key={cmd}
-                type="button"
-                aria-label={`빠른 명령 실행: ${cmd}`}
-                onClick={() => executeCommand(cmd)}
-                className={cn(
-                  "py-2 px-1 font-mono text-xs uppercase tracking-wider",
-                  "bg-primary/15 border border-primary/40",
-                  "text-primary rounded-[4px]",
-                  "hover:bg-primary/25 hover:border-primary/60 hover:text-primary",
-                  "hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)]",
-                  "active:scale-95 transition-all duration-200",
-                )}
-              >
-                {cmd}
-              </button>
-            ))}
-          </div>
-          {safeCommandHistory.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-border/20">
-              <div className="text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5">
-                // History
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {safeCommandHistory
-                  .slice(-4)
-                  .reverse()
-                  .map((cmd, idx) => (
+                <div className='text-[9px] font-mono text-primary/50 uppercase tracking-wider px-2 py-1 border-b border-border/30'>
+                  // Suggestions (Tab/Enter to select)
+                </div>
+                <div className='max-h-40 overflow-y-auto overscroll-contain'>
+                  {safeSuggestions.map((suggestion, index) => (
                     <button
-                      key={`${cmd}-${idx}`}
-                      type="button"
-                      aria-label={`명령 기록 실행: ${cmd}`}
-                      onClick={() => executeCommand(cmd)}
+                      key={`${suggestion}-${index}`}
+                      type='button'
+                      aria-label={`명령어 제안 선택: ${suggestion}`}
+                      aria-selected={index === selectedSuggestionIndex}
+                      onClick={() => selectSuggestion(suggestion)}
+                      role='option'
                       className={cn(
-                        "py-1 px-2 rounded-[4px] text-[10px] font-mono",
-                        "bg-primary/10 border border-primary/30",
-                        "text-primary/80",
-                        "hover:bg-primary/20 hover:text-primary hover:border-primary/50",
-                        "transition-colors truncate max-w-[80px]",
+                        'w-full text-left px-3 py-1.5 font-mono text-xs transition-colors',
+                        index === selectedSuggestionIndex
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-foreground/80 hover:bg-primary/10 hover:text-primary'
                       )}
                     >
-                      {cmd}
+                      <span aria-hidden='true' className='text-primary/60'>
+                        ${' '}
+                      </span>
+                      {suggestion}
                     </button>
                   ))}
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* Console Output Window */}
+          <div className='flex-1 min-h-0 relative'>
+            <div className='absolute inset-0 overflow-y-auto overscroll-contain p-3 bg-black/30'>
+              {/* Empty state */}
+              {!hasVisibleOutput && (
+                <div className='flex flex-col items-center justify-center h-full text-muted-foreground/50 text-center'>
+                  <Terminal
+                    aria-hidden='true'
+                    className='h-8 w-8 mb-2 opacity-30'
+                    focusable='false'
+                  />
+                  <p className='text-xs font-mono'>
+                    Run a command to see output here...
+                  </p>
+                  <p className='text-[10px] mt-1 opacity-70'>
+                    Type 'help' for available commands
+                  </p>
+                </div>
+              )}
+
+              {/* Execution logs */}
+              {safeLogs.map((log, index) => (
+                <div
+                  key={index}
+                  aria-label={
+                    log.type === 'input'
+                      ? `입력: ${log.text}`
+                      : `출력: ${log.text}`
+                  }
+                  className={cn(
+                    'mb-1 font-mono text-xs whitespace-pre-wrap break-all leading-relaxed',
+                    log.type === 'input'
+                      ? 'text-primary/90 font-medium'
+                      : 'text-foreground/80 pl-2 border-l-2 border-primary/20'
+                  )}
+                >
+                  {log.text}
+                </div>
+              ))}
+
+              {/* Scroll anchor */}
+              <div ref={consoleEndRef} />
             </div>
-          )}
+          </div>
+
+          {/* Quick Actions Bar */}
+          <div className='flex-shrink-0 border-t border-border/30 bg-black/20 p-2.5'>
+            <div className='text-[10px] font-mono text-primary/60 uppercase tracking-wider mb-2'>
+              // Quick Commands
+            </div>
+            <div className='grid grid-cols-4 gap-1.5'>
+              {['ls', 'find', 'help', 'clear'].map(cmd => (
+                <button
+                  key={cmd}
+                  type='button'
+                  aria-label={`빠른 명령 실행: ${cmd}`}
+                  onClick={() => executeCommand(cmd)}
+                  className={cn(
+                    'py-2 px-1 font-mono text-xs uppercase tracking-wider',
+                    'bg-primary/15 border border-primary/40',
+                    'text-primary rounded-[4px]',
+                    'hover:bg-primary/25 hover:border-primary/60 hover:text-primary',
+                    'hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)]',
+                    'active:scale-95 transition-all duration-200'
+                  )}
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
+            {safeCommandHistory.length > 0 && (
+              <div className='mt-2 pt-2 border-t border-border/20'>
+                <div className='text-[10px] font-mono text-muted-foreground/60 uppercase tracking-wider mb-1.5'>
+                  // History
+                </div>
+                <div className='flex flex-wrap gap-1'>
+                  {safeCommandHistory
+                    .slice(-4)
+                    .reverse()
+                    .map((cmd, idx) => (
+                      <button
+                        key={`${cmd}-${idx}`}
+                        type='button'
+                        aria-label={`명령 기록 실행: ${cmd}`}
+                        onClick={() => executeCommand(cmd)}
+                        className={cn(
+                          'py-1 px-2 rounded-[4px] text-[10px] font-mono',
+                          'bg-primary/10 border border-primary/30',
+                          'text-primary/80',
+                          'hover:bg-primary/20 hover:text-primary hover:border-primary/50',
+                          'transition-colors truncate max-w-[80px]'
+                        )}
+                      >
+                        {cmd}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </OverlayDialog>
   );
 }

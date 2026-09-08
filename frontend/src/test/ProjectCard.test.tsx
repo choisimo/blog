@@ -57,7 +57,7 @@ describe('ProjectCard link boundaries', () => {
     );
   });
 
-  it('disables visit and code actions instead of rendering unsafe links', () => {
+  it('disables unavailable preview and omits unsafe navigation links', () => {
     render(
       <ProjectCard
         project={makeProject({
@@ -68,9 +68,14 @@ describe('ProjectCard link boundaries', () => {
       />
     );
 
-    expect(screen.queryByRole('link', { name: /visit/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /code/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /visit/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /code/i })
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /visit/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /code/i })).toBeDisabled();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByText('공개 주소가 아직 없습니다.')).toBeInTheDocument();
   });
 });

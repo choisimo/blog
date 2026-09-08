@@ -121,14 +121,14 @@ export function AuditLogViewer() {
   return (
     <Card className={["ui-admin-section ui-admin-auditlogviewer", ("ui-panel")].filter(Boolean).join(' ')}>
       <CardHeader className="ui-panel-header">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="ui-panel-title">Audit Log</CardTitle>
             <CardDescription className="ui-description">History of all secret changes and access</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Select value={actionFilter} onValueChange={handleActionFilterChange}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-32" aria-label="감사 로그 동작 필터">
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
               <SelectContent>

@@ -1,11 +1,21 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import Fuse from "fuse.js";
-import { BlogPost } from "@/types/blog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { X, Search, Terminal, ChevronRight, Globe, Loader2 } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
-import { searchWeb, type WebSearchResult } from "@/services/discovery/webSearch";
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import Fuse from 'fuse.js';
+import { BlogPost } from '@/types/blog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  X,
+  Search,
+  Terminal,
+  ChevronRight,
+  Globe,
+  Loader2,
+} from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import {
+  searchWeb,
+  type WebSearchResult,
+} from '@/services/discovery/webSearch';
 
 interface SearchBarProps {
   posts: BlogPost[];
@@ -21,29 +31,30 @@ interface SearchBarProps {
   webSearchLoadingLabel?: string;
   enableWebSearch?: boolean;
   onFocus?: () => void;
+  onQueryChange?: (query: string) => void;
 }
 
 const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/g;
 const ANSI_ESCAPE_PATTERN =
   /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
 const WHITESPACE_PATTERN = /\s+/g;
-const DEFAULT_SEARCH_LABEL = "Blog search";
-const DEFAULT_INPUT_LABEL = "Search blog posts";
-const DEFAULT_CLEAR_LABEL = "Clear search";
-const DEFAULT_PLACEHOLDER = "블로그 검색...";
+const DEFAULT_SEARCH_LABEL = 'Blog search';
+const DEFAULT_INPUT_LABEL = 'Search blog posts';
+const DEFAULT_CLEAR_LABEL = 'Clear search';
+const DEFAULT_PLACEHOLDER = '블로그 검색...';
 const DEFAULT_TERMINAL_PLACEHOLDER = '--pattern "search query"';
-const DEFAULT_WEB_SEARCH_LABEL = "웹에서 검색";
-const DEFAULT_WEB_SEARCH_LOADING_LABEL = "검색 중...";
+const DEFAULT_WEB_SEARCH_LABEL = '웹에서 검색';
+const DEFAULT_WEB_SEARCH_LOADING_LABEL = '검색 중...';
 
 export function normalizeSearchQuery(value: unknown): string {
-  if (typeof value !== "string" && typeof value !== "number") {
-    return "";
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    return '';
   }
 
   return String(value)
-    .replace(ANSI_ESCAPE_PATTERN, " ")
-    .replace(CONTROL_CHAR_PATTERN, " ")
-    .replace(WHITESPACE_PATTERN, " ")
+    .replace(ANSI_ESCAPE_PATTERN, ' ')
+    .replace(CONTROL_CHAR_PATTERN, ' ')
+    .replace(WHITESPACE_PATTERN, ' ')
     .trim();
 }
 
@@ -57,7 +68,7 @@ function normalizeOptionalSearchText(value: unknown): string | undefined {
 
 export function normalizeSearchBarErrorMessage(value: unknown): string {
   const normalized = normalizeSearchQuery(value);
-  return normalized || "Web search failed";
+  return normalized || 'Web search failed';
 }
 
 export function SearchBar({
@@ -74,13 +85,16 @@ export function SearchBar({
   webSearchLoadingLabel = DEFAULT_WEB_SEARCH_LOADING_LABEL,
   enableWebSearch = true,
   onFocus,
+  onQueryChange,
 }: SearchBarProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [isWebSearching, setIsWebSearching] = useState(false);
   const [webSearchError, setWebSearchError] = useState<string | null>(null);
   const [showWebSearchPrompt, setShowWebSearchPrompt] = useState(false);
   const { isTerminal } = useTheme();
-  const webSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const webSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const normalizedQuery = normalizeSearchQuery(query);
   const safeSearchLabel = normalizeSearchText(label, DEFAULT_SEARCH_LABEL);
   const safeTitle = normalizeOptionalSearchText(title);
@@ -91,7 +105,10 @@ export function SearchBar({
     terminalPlaceholder,
     DEFAULT_TERMINAL_PLACEHOLDER
   );
-  const safeWebSearchLabel = normalizeSearchText(webSearchLabel, DEFAULT_WEB_SEARCH_LABEL);
+  const safeWebSearchLabel = normalizeSearchText(
+    webSearchLabel,
+    DEFAULT_WEB_SEARCH_LABEL
+  );
   const safeWebSearchLoadingLabel = normalizeSearchText(
     webSearchLoadingLabel,
     DEFAULT_WEB_SEARCH_LOADING_LABEL
@@ -101,50 +118,55 @@ export function SearchBar({
     () =>
       new Fuse(posts, {
         keys: [
-          { name: "title", weight: 3 },
-          { name: "description", weight: 2 },
-          { name: "content", weight: 1 },
-          { name: "tags", weight: 2 },
-          { name: "category", weight: 2 },
+          { name: 'title', weight: 3 },
+          { name: 'description', weight: 2 },
+          { name: 'content', weight: 1 },
+          { name: 'tags', weight: 2 },
+          { name: 'category', weight: 2 },
         ],
         threshold: 0.3,
         includeScore: true,
       }),
-    [posts],
+    [posts]
   );
 
-  const triggerWebSearch = useCallback(async (searchQuery: string) => {
-    const safeQuery = normalizeSearchQuery(searchQuery);
-    if (!safeQuery) return;
-    if (!enableWebSearch || !onWebSearchResults) return;
-    
-    setIsWebSearching(true);
-    setWebSearchError(null);
-    
-    try {
-      const result = await searchWeb(safeQuery, { maxResults: 5 });
-      onWebSearchResults(result.results, result.answer);
-    } catch (err) {
-      const message = normalizeSearchBarErrorMessage(err instanceof Error ? err.message : err);
-      setWebSearchError(message);
-    } finally {
-      setIsWebSearching(false);
-    }
-  }, [enableWebSearch, onWebSearchResults]);
+  const triggerWebSearch = useCallback(
+    async (searchQuery: string) => {
+      const safeQuery = normalizeSearchQuery(searchQuery);
+      if (!safeQuery) return;
+      if (!enableWebSearch || !onWebSearchResults) return;
+
+      setIsWebSearching(true);
+      setWebSearchError(null);
+
+      try {
+        const result = await searchWeb(safeQuery, { maxResults: 5 });
+        onWebSearchResults(result.results, result.answer);
+      } catch (err) {
+        const message = normalizeSearchBarErrorMessage(
+          err instanceof Error ? err.message : err
+        );
+        setWebSearchError(message);
+      } finally {
+        setIsWebSearching(false);
+      }
+    },
+    [enableWebSearch, onWebSearchResults]
+  );
 
   useEffect(() => {
     if (webSearchTimeoutRef.current) {
       clearTimeout(webSearchTimeoutRef.current);
     }
 
-    if (normalizedQuery === "") {
+    if (normalizedQuery === '') {
       onSearchResults(posts);
       setShowWebSearchPrompt(false);
       return;
     }
 
     const results = fuse.search(normalizedQuery);
-    const matchedPosts = results.map((result) => result.item);
+    const matchedPosts = results.map(result => result.item);
     onSearchResults(matchedPosts);
 
     if (matchedPosts.length === 0 && enableWebSearch && onWebSearchResults) {
@@ -161,12 +183,25 @@ export function SearchBar({
         webSearchTimeoutRef.current = null;
       }
     };
-  }, [normalizedQuery, posts, onSearchResults, fuse, enableWebSearch, onWebSearchResults]);
+  }, [
+    normalizedQuery,
+    posts,
+    onSearchResults,
+    fuse,
+    enableWebSearch,
+    onWebSearchResults,
+  ]);
 
   const handleClear = () => {
-    setQuery("");
+    setQuery('');
+    onQueryChange?.('');
     setShowWebSearchPrompt(false);
     setWebSearchError(null);
+  };
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    onQueryChange?.(normalizeSearchQuery(value));
   };
 
   const handleWebSearchClick = () => {
@@ -176,87 +211,105 @@ export function SearchBar({
   if (isTerminal) {
     return (
       <div
-        role="search"
+        role='search'
         aria-label={safeSearchLabel}
         title={safeTitle}
-        className="relative w-full font-mono"
+        className='relative w-full font-mono'
       >
-        <div className="relative group">
-          <div className="flex items-center border border-border bg-[hsl(var(--terminal-code-bg))]">
-            <div className="flex items-center gap-1.5 px-3 py-2.5 border-r border-border/50 text-primary select-none shrink-0">
-              <Terminal aria-hidden="true" className="w-4 h-4" />
-              <span className="text-sm font-bold">grep</span>
+        <div className='relative group'>
+          <div className='flex items-center border border-border bg-[hsl(var(--terminal-code-bg))]'>
+            <div className='flex items-center gap-1.5 px-3 py-2.5 border-r border-border/50 text-primary select-none shrink-0'>
+              <Terminal aria-hidden='true' className='w-4 h-4' />
+              <span className='text-sm font-bold'>grep</span>
             </div>
 
-            <div className="flex-1 flex items-center">
+            <div className='min-w-0 flex-1 flex items-center'>
               <Input
-                type="text"
+                type='text'
                 aria-label={safeInputLabel}
                 placeholder={safeTerminalPlaceholder}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={e => handleQueryChange(e.target.value)}
                 onFocus={onFocus}
-                className="flex-1 h-10 border-0 bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0"
+                className='min-w-0 flex-1 h-12 border-0 bg-transparent px-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0'
               />
             </div>
 
-            <div className="flex items-center gap-1 px-2">
+            <div className='flex items-center gap-1 px-2'>
               {query && (
                 <Button
-                  variant="ghost"
-                  size="sm"
+                  variant='ghost'
+                  size='sm'
                   onClick={handleClear}
                   aria-label={safeClearLabel}
-                  className="h-7 w-7 p-0 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-none"
+                  className='h-11 w-11 shrink-0 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-none'
                 >
-                  <X aria-hidden="true" className="w-3.5 h-3.5" />
+                  <X aria-hidden='true' className='w-3.5 h-3.5' />
                 </Button>
               )}
-              <div aria-hidden="true" className="h-7 w-7 flex items-center justify-center text-primary/70">
-                <ChevronRight className="w-4 h-4" />
+              <div
+                aria-hidden='true'
+                className='h-7 w-7 flex items-center justify-center text-primary/70'
+              >
+                <ChevronRight className='w-4 h-4' />
               </div>
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 h-[2px] bg-primary/50 transform scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300" />
+          <div className='absolute inset-x-0 bottom-0 h-[2px] bg-primary/50 transform scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300' />
         </div>
 
         {normalizedQuery && (
-          <div className="mt-2 px-3 py-2 border border-border/50 bg-[hsl(var(--terminal-code-bg))] text-xs">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <span className="text-primary/60">$</span>
+          <div className='mt-2 break-words px-3 py-2 border border-border/50 bg-[hsl(var(--terminal-code-bg))] text-xs [overflow-wrap:anywhere]'>
+            <div className='flex items-center gap-2 text-muted-foreground'>
+              <span className='text-primary/60'>$</span>
               <span>
-                grep -r "<span className="text-primary">{normalizedQuery}</span>" ./posts
+                grep -r "<span className='text-primary'>{normalizedQuery}</span>
+                " ./posts
               </span>
             </div>
-            <div className="mt-1 text-primary/70"># Searching...</div>
+            <div className='mt-1 text-muted-foreground'>
+              # 아래에서 검색 결과를 확인하세요.
+            </div>
           </div>
         )}
 
         {showWebSearchPrompt && enableWebSearch && (
-          <div className="mt-2 px-3 py-2 border border-primary/30 bg-primary/5 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Globe aria-hidden="true" className="w-3.5 h-3.5 text-primary" />
+          <div className='mt-2 px-3 py-2 border border-primary/30 bg-primary/5 text-xs'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2 text-muted-foreground'>
+                <Globe
+                  aria-hidden='true'
+                  className='w-3.5 h-3.5 text-primary'
+                />
                 <span>블로그 내 결과 없음. 웹에서 검색할까요?</span>
               </div>
               <Button
-                variant="ghost"
-                size="sm"
+                variant='ghost'
+                size='sm'
                 onClick={handleWebSearchClick}
                 disabled={isWebSearching}
-                aria-label={isWebSearching ? safeWebSearchLoadingLabel : safeWebSearchLabel}
-                className="h-6 px-2 text-xs text-primary hover:bg-primary/20"
+                aria-label={
+                  isWebSearching
+                    ? safeWebSearchLoadingLabel
+                    : safeWebSearchLabel
+                }
+                className='min-h-11 shrink-0 px-3 text-xs text-primary hover:bg-primary/20'
               >
                 {isWebSearching ? (
-                  <Loader2 aria-hidden="true" className="w-3 h-3 animate-spin" />
+                  <Loader2
+                    aria-hidden='true'
+                    className='w-3 h-3 animate-spin'
+                  />
                 ) : (
                   safeWebSearchLabel
                 )}
               </Button>
             </div>
             {webSearchError && (
-              <div className="mt-1 text-destructive/70"># Error: {webSearchError}</div>
+              <div role='alert' className='mt-1 text-destructive'>
+                # Error: {webSearchError}
+              </div>
             )}
           </div>
         )}
@@ -266,78 +319,90 @@ export function SearchBar({
 
   return (
     <div
-      role="search"
+      role='search'
       aria-label={safeSearchLabel}
       title={safeTitle}
-      className="relative w-full"
+      className='relative w-full'
     >
-      <div className="relative group">
-        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors group-focus-within:text-primary">
-          <Search aria-hidden="true" className="w-4 h-4" />
+      <div className='relative group'>
+        <div className='absolute left-3 top-1/2 transform -translate-y-1/2 transition-colors group-focus-within:text-primary'>
+          <Search aria-hidden='true' className='w-4 h-4' />
         </div>
         <Input
-          type="text"
+          type='text'
           aria-label={safeInputLabel}
           placeholder={safePlaceholder}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={e => handleQueryChange(e.target.value)}
           onFocus={onFocus}
-          className="h-12 rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] pl-11 pr-10 text-sm shadow-none transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground/60 focus:border-primary/60 focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]"
+          className='h-12 rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] pl-11 pr-12 text-base shadow-none placeholder:text-muted-foreground focus:border-primary/60 focus:ring-0 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.12)]'
         />
         {query && (
           <Button
-            variant="ghost"
-            size="sm"
+            variant='ghost'
+            size='sm'
             onClick={handleClear}
             aria-label={safeClearLabel}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full"
+            className='absolute right-0.5 top-1/2 transform -translate-y-1/2 h-11 w-11 p-0 hover:bg-destructive/10 hover:text-destructive rounded-md'
           >
-            <X aria-hidden="true" className="w-3 h-3" />
+            <X aria-hidden='true' className='w-3 h-3' />
           </Button>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-accent transform scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300 rounded-full" />
+        <div className='absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-primary to-accent transform scale-x-0 group-focus-within:scale-x-100 transition-transform duration-300 rounded-full' />
       </div>
 
       {normalizedQuery && !showWebSearchPrompt && (
-        <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-border/30">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-            <span className="font-medium">'{normalizedQuery}' 검색 결과</span>
+        <div className='mt-3 p-2 rounded-lg bg-muted/30 border border-border/30'>
+          <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+            <div
+              aria-hidden='true'
+              className='w-1.5 h-1.5 shrink-0 rounded-full bg-primary'
+            ></div>
+            <span className='min-w-0 break-words font-medium [overflow-wrap:anywhere]'>
+              '{normalizedQuery}' 검색 결과
+            </span>
           </div>
         </div>
       )}
 
       {showWebSearchPrompt && enableWebSearch && (
-        <div className="mt-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Globe aria-hidden="true" className="w-4 h-4 text-primary" />
+        <div className='mt-3 p-3 rounded-xl bg-primary/5 border border-primary/20'>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+              <Globe aria-hidden='true' className='w-4 h-4 text-primary' />
               <span>블로그 내 결과가 없습니다</span>
             </div>
             <Button
-              variant="outline"
-              size="sm"
+              variant='outline'
+              size='sm'
               onClick={handleWebSearchClick}
               disabled={isWebSearching}
-              aria-label={isWebSearching ? safeWebSearchLoadingLabel : safeWebSearchLabel}
-              className="h-8 px-3 text-xs border-primary/30 hover:bg-primary/10"
+              aria-label={
+                isWebSearching ? safeWebSearchLoadingLabel : safeWebSearchLabel
+              }
+              className='min-h-11 shrink-0 px-3 text-xs border-primary/30 hover:bg-primary/10'
             >
               {isWebSearching ? (
                 <>
-                  <Loader2 aria-hidden="true" className="w-3 h-3 mr-1.5 animate-spin" />
+                  <Loader2
+                    aria-hidden='true'
+                    className='w-3 h-3 mr-1.5 animate-spin'
+                  />
                   {safeWebSearchLoadingLabel}
                 </>
               ) : (
                 <>
-                  <Globe aria-hidden="true" className="w-3 h-3 mr-1.5" />
+                  <Globe aria-hidden='true' className='w-3 h-3 mr-1.5' />
                   {safeWebSearchLabel}
                 </>
               )}
             </Button>
           </div>
           {webSearchError && (
-            <div className="mt-2 text-xs text-destructive">{webSearchError}</div>
+            <div role='alert' className='mt-2 text-xs text-destructive'>
+              {webSearchError}
+            </div>
           )}
         </div>
       )}

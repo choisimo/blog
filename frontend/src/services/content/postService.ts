@@ -400,7 +400,9 @@ export class PostService {
       return parsePostsManifest(await response.json());
     } catch (error) {
       console.error('Error loading posts manifest:', error);
-      return null;
+      // A failed request is not an empty catalog. Let callers show a retry and
+      // avoid caching a temporary outage as a successful empty post index.
+      throw error;
     }
   }
 

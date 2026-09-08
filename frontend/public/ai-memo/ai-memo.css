@@ -87,6 +87,11 @@
   animation: memo-slide-in 0.25s ease-out;
 }
 
+/* A closed memo must leave both the page and keyboard navigation unobstructed. */
+.panel:not(.open) {
+  display: none;
+}
+
 .panel.window-dragging,
 .panel.window-resizing {
   user-select: none;
@@ -4834,4 +4839,47 @@ body.ai-memo-block-select-active {
   .code-mode-button.is-loading::before {
     animation: none !important;
   }
+}
+
+/* Compact tools: keep editing primary and expose named secondary actions on demand. */
+.panel .memo-icon { display:block; flex:0 0 18px; width:18px; height:18px; }
+.panel .memo-toolbar { position:relative; overflow:visible; justify-content:space-between; padding:6px 12px; }
+.panel .toolbar-btn { min-width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.memo-disclosure > summary { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:0 12px; border:1px solid var(--memo-border); border-radius:8px; color:var(--memo-text-muted); background:var(--memo-surface); font-size:13px; font-weight:600; cursor:pointer; list-style:none; }
+.memo-disclosure > summary::-webkit-details-marker { display:none; }
+.memo-disclosure > summary:hover,.memo-disclosure[open] > summary { color:var(--memo-primary); background:var(--memo-surface-subtle); }
+.memo-disclosure > summary:focus-visible { outline:2px solid var(--memo-primary); outline-offset:2px; }
+.memo-format-options,.panel .memo-more-actions .footer-actions { position:absolute; z-index:10; box-sizing:border-box; padding:12px; background:var(--memo-surface); border:1px solid var(--memo-border-strong); border-radius:12px; box-shadow:var(--memo-shadow); overflow:auto; overscroll-behavior:contain; }
+.memo-format-options { top:calc(100% + 4px); left:10px; right:10px; max-height:min(260px,40dvh); display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.memo-format-options .toolbar-divider,.memo-format-options .toolbar-spacer { display:none; }
+.memo-format-options .toolbar-group { flex-wrap:wrap; }
+.panel .footer { position:relative; }
+.panel .footer-utility { justify-content:space-between; gap:12px; }
+.panel .status-bar { min-width:0; border:0; background:transparent; flex:1; justify-content:flex-start; }
+.panel .status-text { line-height:1.5; white-space:normal; overflow-wrap:anywhere; }
+.memo-more-actions { flex-shrink:0; }
+.panel .memo-more-actions .footer-actions { bottom:calc(100% + 8px); right:10px; width:min(340px,calc(100% - 20px)); max-height:45dvh; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.panel .memo-more-actions .footer-btn { display:flex; width:100%; min-width:0; min-height:48px; height:auto; justify-content:flex-start; gap:8px; padding:10px; font-size:12px; line-height:1.5; text-align:left; }
+.panel .memo-more-actions .footer-btn.danger { border-color:var(--memo-danger); }
+.panel .code-mode-copy strong { white-space:nowrap; }
+.panel .code-mode-button,.panel .code-mode-select { min-height:44px; }
+/* Hide only the scrollbar chrome; native wheel, touch and keyboard scrolling remain enabled. */
+:host .panel * { scrollbar-width:none; }
+:host .panel *::-webkit-scrollbar { display:none; width:0; height:0; }
+@container memo-panel (max-width:520px) {
+  .panel .code-mode { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .panel .code-mode-actions { display:grid; grid-template-columns:minmax(0,1fr) auto auto; width:100%; }
+  .panel .code-mode-select { min-width:0; width:100%; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .panel .memo-disclosure * { transition:none; animation:none; }
+}
+/* Responsive toolbar rules previously removed these groups entirely. */
+.panel .memo-format-options .toolbar-group { display:inline-flex; }
+.panel .window-controls :is(button,.close) { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+@container memo-panel (max-width:520px) {
+  .panel .window-controls :is(#windowMinimize,#windowRestore) { display:none; }
+}
+@media(max-width:900px) {
+  .panel .window-controls :is(#windowMinimize,#windowRestore) { display:none; }
 }

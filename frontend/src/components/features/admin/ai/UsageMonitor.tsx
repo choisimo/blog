@@ -222,17 +222,17 @@ export function UsageMonitor() {
       {/* Header */}
       <Card className="ui-panel">
         <CardHeader className="ui-panel-header">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="ui-panel-title">Usage & Monitoring</CardTitle>
               <CardDescription className="ui-description">Track AI usage, costs, and performance</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Select
                 value={period}
                 onValueChange={(value) => setPeriod(normalizePeriod(value))}
               >
-                <SelectTrigger className="w-[130px]">
+                <SelectTrigger className="w-[130px]" aria-label="사용량 기간">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -245,7 +245,7 @@ export function UsageMonitor() {
                 value={groupBy}
                 onValueChange={(value) => setGroupBy(normalizeGroupBy(value))}
               >
-                <SelectTrigger className="w-[130px]">
+                <SelectTrigger className="w-[130px]" aria-label="사용량 집계 기준">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

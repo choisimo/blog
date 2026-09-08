@@ -510,7 +510,7 @@ export function ModelsManager() {
   return (
     <Card className={["ui-admin-section ui-admin-modelsmanager", ("ui-panel")].filter(Boolean).join(' ')}>
       <CardHeader className="ui-panel-header">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="ui-panel-title">AI Models</CardTitle>
             <CardDescription className="ui-description">Manage available AI models and their configurations</CardDescription>
@@ -525,6 +525,7 @@ export function ModelsManager() {
         {/* Filters */}
         <div className="flex gap-4 flex-wrap">
           <Input
+            aria-label="AI 모델 검색"
             placeholder="Search models..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

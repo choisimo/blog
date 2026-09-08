@@ -7,7 +7,7 @@
   --ui-muted: 216.522 11.443% 39.412%; /* #596270 */
   --ui-subtle: 216.522 10.502% 42.941%; /* #626b79 */
   --ui-line: 216.000 23.810% 87.647%; /* #d8dee7 */
-  --ui-line-strong: 214.286 13.861% 60.392%; /* #8c98a8 */
+  --ui-line-strong: 215.294 14.783% 54.902%; /* #7b899d */
   --ui-accent: 220.263 67.857% 43.922%; /* #2456bc */
   --ui-accent-soft: 220.000 100.000% 96.471%; /* #edf3ff */
   --ui-danger: 352.742 57.944% 41.961%; /* #a92d3c */
@@ -39,6 +39,7 @@
   --ui-page-gutter: clamp(16px, 2.5vw, 40px);
   --ui-workspace-width: 1920px;
   --ui-body-size: 16px;
+  --ui-ease: cubic-bezier(.2, .8, .2, 1);
 }
 .dark {
   --ui-canvas: 216.000 22.727% 8.627%; /* #11151b */

@@ -428,7 +428,7 @@ function SaveTemplateDialog({
 }
 
 export function Playground() {
-  const { models, error: modelsError, fetchModels } = useModels();
+  const { models, loading: modelsLoading, error: modelsError, fetchModels } = useModels();
   const {
     history,
     templates,
@@ -601,8 +601,9 @@ export function Playground() {
                 </CardHeader>
                 <CardContent className="ui-panel-body space-y-4">
                   <div>
-                    <Label className="ui-label">System Prompt (Optional)</Label>
+                    <Label className="ui-label" htmlFor="playground-system-prompt">System Prompt (Optional)</Label>
                     <Textarea
+                      id="playground-system-prompt"
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       placeholder="You are a helpful assistant..."
@@ -611,8 +612,9 @@ export function Playground() {
                     />
                   </div>
                   <div>
-                    <Label className="ui-label">User Prompt *</Label>
+                    <Label className="ui-label" htmlFor="playground-user-prompt">User Prompt *</Label>
                     <Textarea
+                      id="playground-user-prompt"
                       value={userPrompt}
                       onChange={(e) => setUserPrompt(e.target.value)}
                       placeholder="Enter your prompt here..."
@@ -653,28 +655,52 @@ export function Playground() {
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="ui-panel-body">
+                <CardContent className="ui-panel-body" aria-busy={modelsLoading}>
                   <ScrollArea className="h-[200px]">
                     <div className="space-y-2">
-                      {enabledModels.map((model) => (
-                        <div
+                      {modelsLoading ? (
+                        <p role="status" className="p-2 text-sm text-muted-foreground">
+                          Loading models…
+                        </p>
+                      ) : modelsError ? (
+                        <div className="space-y-3 p-2">
+                          <p role="alert" className="text-sm text-muted-foreground">
+                            Unable to load models. Please try again.
+                          </p>
+                          <Button
+                            className="ui-control"
+                            data-ui-variant="outline"
+                            variant="outline"
+                            onClick={() => void fetchModels(undefined, true)}
+                          >
+                            Retry models
+                          </Button>
+                        </div>
+                      ) : enabledModels.length === 0 ? (
+                        <p role="status" className="p-2 text-sm text-muted-foreground">
+                          No enabled models available. Add or enable a model in the Models tab.
+                        </p>
+                      ) : enabledModels.map((model) => (
+                        <label
                           key={model.id}
-                          className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
-                          onClick={() => handleModelToggle(model.id)}
+                          htmlFor={`playground-model-${model.id}`}
+                          className="flex min-h-11 items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
                         >
                           <Checkbox
+                            id={`playground-model-${model.id}`}
                             checked={selectedModelIds.includes(model.id)}
+                            onCheckedChange={() => handleModelToggle(model.id)}
                             disabled={
                               !selectedModelIds.includes(model.id) && selectedModelIds.length >= 5
                             }
                           />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{model.displayName}</div>
-                            <div className="text-xs text-muted-foreground">
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm font-medium break-words">{model.displayName}</span>
+                            <span className="block text-xs text-muted-foreground break-words">
                               {model.provider.displayName}
-                            </div>
-                          </div>
-                        </div>
+                            </span>
+                          </span>
+                        </label>
                       ))}
                     </div>
                   </ScrollArea>
@@ -700,8 +726,9 @@ export function Playground() {
                     />
                   </div>
                   <div>
-                    <Label className="ui-label">Max Tokens (Optional)</Label>
+                    <Label className="ui-label" htmlFor="playground-max-tokens">Max Tokens (Optional)</Label>
                     <Input
+                      id="playground-max-tokens"
                       type="number"
                       value={maxTokens ?? ''}
                       onChange={(e) =>

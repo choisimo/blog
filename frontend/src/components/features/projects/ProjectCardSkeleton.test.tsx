@@ -11,14 +11,12 @@ describe('ProjectCardSkeleton', () => {
       />
     );
 
-    expect(screen.getByRole('status', { name: 'Loading projects' })).toHaveAttribute(
-      'aria-busy',
-      'true'
-    );
-    expect(screen.getByRole('status', { name: 'Loading projects' })).toHaveAttribute(
-      'title',
-      'Project placeholder'
-    );
+    expect(
+      screen.getByRole('status', { name: 'Loading projects' })
+    ).toHaveAttribute('aria-busy', 'true');
+    expect(
+      screen.getByRole('status', { name: 'Loading projects' })
+    ).toHaveAttribute('title', 'Project placeholder');
     expect(container.textContent).not.toContain('\u001b');
     expect(container.textContent).not.toContain('\u0000');
   });
@@ -26,7 +24,15 @@ describe('ProjectCardSkeleton', () => {
   it('keeps placeholder blocks hidden from the accessibility tree', () => {
     const { container } = render(<ProjectCardSkeleton />);
 
-    expect(screen.getByRole('status', { name: 'Loading project card' })).toBeInTheDocument();
-    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(12);
+    expect(
+      screen.getByRole('status', { name: 'Loading project card' })
+    ).toBeInTheDocument();
+    const placeholders = container.querySelectorAll(
+      '.ui-project-item-content span'
+    );
+    expect(placeholders.length).toBeGreaterThan(0);
+    for (const placeholder of placeholders) {
+      expect(placeholder.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
   });
 });

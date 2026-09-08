@@ -545,7 +545,7 @@ export function ConfigManager() {
 
   return (
     <div className={["ui-admin-section ui-admin-configmanager", ("space-y-3")].filter(Boolean).join(' ')}>
-      <div className="rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface px-4 py-3 flex items-center justify-between gap-3">
+      <div className="rounded-xl border border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {!mutationsEnabled ? (
             <>
@@ -561,7 +561,7 @@ export function ConfigManager() {
             <span className="text-xs text-ui-muted dark:text-ui-muted">Environment config</span>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0 max-w-full sm:justify-end">
           <button
             type='button'
             onClick={() => exportMutation.mutate('env')}

@@ -106,9 +106,53 @@ describe('Playground', () => {
     render(<Playground />);
 
     expect(screen.getByText('Model inventory unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load models');
+    expect(screen.queryByText(/No enabled models available/)).not.toBeInTheDocument();
     await waitFor(() => {
       expect(mockFetchModels).toHaveBeenCalledWith(undefined, true);
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Retry models' }));
+    expect(mockFetchModels).toHaveBeenCalledTimes(2);
+    expect(mockFetchModels).toHaveBeenLastCalledWith(undefined, true);
+  });
+
+  it('shows loading before an empty enabled-model inventory', () => {
+    mockUseModels.mockReturnValue(createUseModelsValue({ loading: true }));
+    const { rerender } = render(<Playground />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading models');
+    expect(screen.queryByText(/No enabled models available/)).not.toBeInTheDocument();
+
+    mockUseModels.mockReturnValue(createUseModelsValue());
+    rerender(<Playground />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'No enabled models available. Add or enable a model in the Models tab.',
+    );
+    expect(screen.queryByText(/Loading models/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled();
+  });
+
+  it('names each model checkbox from its visible model and provider and supports keyboard selection', async () => {
+    const user = userEvent.setup();
+    mockUseModels.mockReturnValue(createUseModelsValue({
+      models: [{
+        id: 'model-1',
+        displayName: 'Writing Model',
+        isEnabled: true,
+        provider: { displayName: 'Test Provider' },
+      }],
+    }));
+    render(<Playground />);
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Writing Model Test Provider' });
+    checkbox.focus();
+    await user.keyboard(' ');
+    expect(checkbox).toBeChecked();
+    expect(screen.getByText('1/5 selected')).toBeInTheDocument();
+    await user.click(screen.getByText('Writing Model'));
+    expect(checkbox).not.toBeChecked();
+    expect(screen.getByText('0/5 selected')).toBeInTheDocument();
   });
 
   it('shows template load errors without also showing the template empty state', async () => {

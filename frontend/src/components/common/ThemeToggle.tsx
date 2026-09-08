@@ -121,6 +121,7 @@ export function ThemeToggle({
       <DropdownMenuContent 
         align='end'
         className={cn(
+          'ui-preferences-menu',
           isTerminal && 'border-primary/40 bg-background/95 backdrop-blur'
         )}
       >
@@ -137,6 +138,7 @@ export function ThemeToggle({
           return (
             <DropdownMenuItem
               key={mode}
+              role='menuitemradio'
               onClick={() => handleThemeChange(mode)}
               className={cn(
                 safeTheme === mode &&
@@ -162,6 +164,7 @@ export function ThemeToggle({
               </span>
               {safeTheme === mode && (
                 <span
+                  aria-hidden='true'
                   className={cn(
                     'ml-auto',
                     (isTerminal || mode === 'terminal') && 'text-primary'

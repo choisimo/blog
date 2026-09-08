@@ -13,11 +13,18 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogContent: ({
     children,
     hideClose: _hideClose,
+    onOpenAutoFocus: _onOpenAutoFocus,
+    onCloseAutoFocus: _onCloseAutoFocus,
     ...props
-  }: HTMLAttributes<HTMLDivElement> & { hideClose?: boolean }) => (
-    <div {...props}>{children}</div>
-  ),
+  }: HTMLAttributes<HTMLDivElement> & {
+    hideClose?: boolean;
+    onOpenAutoFocus?: (event: Event) => void;
+    onCloseAutoFocus?: (event: Event) => void;
+  }) => <div {...props}>{children}</div>,
   DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children: ReactNode }) => (
+    <p>{children}</p>
+  ),
 }));
 
 vi.mock('@/components/ui/button', () => ({
@@ -92,7 +99,9 @@ describe('ProjectModal preview URL boundary', () => {
       'src',
       'https://example.com/demo'
     );
-    expect(screen.getByRole('button', { name: /fullscreen/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /fullscreen/i })
+    ).toBeInTheDocument();
   });
 
   it('does not render links, fullscreen, or iframe for unsafe embed urls', () => {
@@ -104,7 +113,9 @@ describe('ProjectModal preview URL boundary', () => {
       />
     );
 
-    expect(screen.queryByRole('link', { name: /open/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /open/i })
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /fullscreen/i })
     ).not.toBeInTheDocument();

@@ -727,9 +727,12 @@ export default function InsightWorkspacePage() {
   const selectStackItem = useCallback(
     (item: InsightWorkspaceItem) => {
       const targetNodeId = findPostNodeForItem(graph, item);
-      if (targetNodeId) setSelectedNodeId(targetNodeId);
+      if (targetNodeId) {
+        setSelectedNodeId(targetNodeId);
+        switchPane('inspector');
+      }
     },
-    [graph]
+    [graph, switchPane]
   );
 
   return (
@@ -1508,7 +1511,7 @@ const StackTray = memo(function StackTray({
                 >
                   <div
                     className={cn(
-                      'group relative flex h-[118px] flex-col rounded-lg border p-3',
+                      'ui-insight-stack-item group relative flex h-[118px] flex-col rounded-lg border p-3',
                       TOKENS.motion,
                       active
                         ? 'border-ui-accent bg-ui-accent-soft shadow-none dark:border-ui-accent dark:bg-ui-accent-soft'
@@ -1518,7 +1521,7 @@ const StackTray = memo(function StackTray({
                     <button
                       type='button'
                       className={cn(
-                        'min-h-11 min-w-0 pr-8 text-left',
+                        'ui-insight-stack-select min-h-11 min-w-0 pr-8 text-left',
                         TOKENS.focus
                       )}
                       onClick={() => onSelect(item)}
@@ -1542,7 +1545,7 @@ const StackTray = memo(function StackTray({
                     <button
                       type='button'
                       className={cn(
-                        "absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-lg text-ui-muted hover:bg-destructive/10 hover:text-destructive",
+                        "ui-insight-stack-action ui-insight-stack-remove absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-lg text-ui-muted hover:bg-destructive/10 hover:text-destructive",
                         TOKENS.focus,
                         TOKENS.motion
                       )}
@@ -1551,7 +1554,7 @@ const StackTray = memo(function StackTray({
                     >
                       <X className="h-4 w-4" />
                     </button>
-                    <div className="mt-auto flex flex-wrap gap-1.5">
+                    <div className="ui-insight-stack-meta mt-auto flex flex-wrap gap-1.5">
                       <span className="rounded-lg bg-ui-soft px-2 py-0.5 text-[11px] font-medium text-ui-muted dark:bg-muted dark:text-muted-foreground">
                         {item.kind}
                       </span>
@@ -1569,7 +1572,7 @@ const StackTray = memo(function StackTray({
                     <button
                       type='button'
                       className={cn(
-                        "absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-lg text-ui-muted hover:bg-ui-accent-soft hover:text-ui-accent dark:hover:bg-ui-accent-soft",
+                        "ui-insight-stack-action ui-insight-stack-pin absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-lg text-ui-muted hover:bg-ui-accent-soft hover:text-ui-accent dark:hover:bg-ui-accent-soft",
                         pinned && 'text-ui-accent',
                         TOKENS.focus,
                         TOKENS.motion

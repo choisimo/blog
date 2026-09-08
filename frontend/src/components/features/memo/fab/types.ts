@@ -1,4 +1,5 @@
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from 'lucide-react';
+import type { Ref } from 'react';
 
 // Shell command definitions
 export type ShellCommand = {
@@ -24,11 +25,12 @@ export type VirtualFS = {
 };
 
 export type DockAction = {
-  key: "chat" | "memo" | "stack" | "insight" | "live";
+  key: 'chat' | 'memo' | 'stack' | 'insight' | 'live';
   label: string;
   desktopLabel?: string;
   icon: LucideIcon;
   onClick: () => void;
+  triggerRef?: Ref<HTMLButtonElement>;
   disabled?: boolean;
   title?: string;
   badge?: boolean;
@@ -37,6 +39,6 @@ export type DockAction = {
 };
 
 export type ShellLog = {
-  type: "input" | "output";
+  type: 'input' | 'output';
   text: string;
 };

@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
-import type { DockAction } from "../types";
+import { cn } from '@/lib/utils';
+import type { DockAction } from '../types';
 
 type DefaultDockProps = {
   dockActions: DockAction[];
@@ -8,67 +8,83 @@ type DefaultDockProps = {
 };
 
 const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
-const DEFAULT_DOCK_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const DEFAULT_DOCK_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
-function normalizeDockLabel(value: unknown, fallback = "Action"): string {
-  if (typeof value !== "string") return fallback;
+function normalizeDockLabel(value: unknown, fallback = 'Action'): string {
+  if (typeof value !== 'string') return fallback;
   const normalized = value
-    .replace(ANSI_ESCAPE_PATTERN, "")
-    .replace(DEFAULT_DOCK_CONTROL_TEXT_PATTERN, "")
-    .replace(/\s+/g, " ")
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(DEFAULT_DOCK_CONTROL_TEXT_PATTERN, '')
+    .replace(/\s+/g, ' ')
     .trim();
   return normalized || fallback;
 }
 
-export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps) {
+export function DefaultDock({
+  dockActions,
+  isMobile,
+  isLeft,
+}: DefaultDockProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center backdrop-blur-xl",
+        'flex items-center justify-center backdrop-blur-xl',
         isMobile
-          ? "w-full rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10"
+          ? 'w-full rounded-none border-t border-border/30 bg-background/95 px-2 py-1.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:bg-background/90 dark:border-white/10'
           : isLeft
-            ? "flex-col w-auto rounded-[20px] border border-white/20 bg-background/75 px-2 py-3 shadow-[4px_0_24px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-background/65"
-            : "w-auto max-w-full rounded-[28px] border border-white/20 bg-background/75 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/65 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
+            ? 'flex-col w-auto rounded-[20px] border border-white/20 bg-background/75 px-2 py-3 shadow-[4px_0_24px_rgba(0,0,0,0.08)] dark:border-white/10 dark:bg-background/65'
+            : 'w-auto max-w-full rounded-[28px] border border-white/20 bg-background/75 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.08),_0_2px_8px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-background/65 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]'
       )}
     >
       {isMobile ? (
         // Mobile: Flex layout with equal spacing - always single row
-        <div className="flex w-full items-center justify-around">
-          {dockActions.map((action) => {
+        <div className='flex w-full items-center justify-around'>
+          {dockActions.map(action => {
             const Icon = action.icon;
             const label = normalizeDockLabel(action.label, action.key);
-            const title = normalizeDockLabel(action.title || action.desktopLabel || action.label, label);
+            const title = normalizeDockLabel(
+              action.title || action.desktopLabel || action.label,
+              label
+            );
             return (
               <button
                 key={action.key}
-                type="button"
+                type='button'
                 onClick={action.onClick}
+                ref={action.triggerRef}
                 disabled={action.disabled}
                 aria-disabled={action.disabled}
                 aria-label={label}
                 title={title}
                 className={cn(
-                  "group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 min-w-0 flex-1 transition-all active:scale-95",
-                  action.disabled && "opacity-40",
+                  'group relative flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 min-w-0 flex-1 transition-all active:scale-95',
+                  action.disabled && 'opacity-40'
                 )}
               >
                 <span
                   className={cn(
-                    "flex items-center justify-center rounded-xl transition-all duration-150",
-                    "h-11 w-11",
+                    'flex items-center justify-center rounded-xl transition-all duration-150',
+                    'h-11 w-11',
                     action.primary
-                      ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                      : "bg-muted/70 text-foreground/85 dark:bg-white/10 dark:text-white/80",
+                      ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                      : 'bg-muted/70 text-foreground/85 dark:bg-white/10 dark:text-white/80'
                   )}
                 >
-                  <Icon aria-hidden="true" className="h-5 w-5" focusable="false" />
+                  <Icon
+                    aria-hidden='true'
+                    className='h-5 w-5'
+                    focusable='false'
+                  />
                 </span>
-                <span className="text-[10px] text-foreground/75 dark:text-white/70">
+                <span className='text-[10px] text-foreground/75 dark:text-white/70'>
                   {label}
                 </span>
                 {action.badge && (
-                  <span aria-hidden="true" className="absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span
+                    aria-hidden='true'
+                    className='absolute top-0.5 right-2 inline-flex h-1.5 w-1.5 rounded-full bg-primary'
+                  />
                 )}
               </button>
             );
@@ -76,31 +92,42 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
         </div>
       ) : isLeft ? (
         // PC Left sidebar: vertical icon-only pill
-        <div className="flex flex-col items-center gap-1 py-1">
-          {dockActions.map((action) => {
+        <div className='flex flex-col items-center gap-1 py-1'>
+          {dockActions.map(action => {
             const Icon = action.icon;
-            const displayLabel = normalizeDockLabel(action.desktopLabel || action.label, action.key);
-            const title = normalizeDockLabel(action.title || action.desktopLabel || action.label, displayLabel);
+            const displayLabel = normalizeDockLabel(
+              action.desktopLabel || action.label,
+              action.key
+            );
+            const title = normalizeDockLabel(
+              action.title || action.desktopLabel || action.label,
+              displayLabel
+            );
             return (
               <button
                 key={action.key}
-                type="button"
+                type='button'
                 onClick={action.onClick}
+                ref={action.triggerRef}
                 disabled={action.disabled}
                 aria-disabled={action.disabled}
                 aria-label={displayLabel}
                 title={title}
                 className={cn(
-                  "group relative flex items-center justify-center rounded-xl p-3 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 hover:scale-105",
+                  'group relative flex items-center justify-center rounded-xl p-3 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 hover:scale-105',
                   action.primary
-                    ? "bg-gradient-to-b from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
-                    : "text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white",
+                    ? 'bg-gradient-to-b from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30'
+                    : 'text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white'
                 )}
               >
-                <Icon aria-hidden="true" className="h-5 w-5" focusable="false" />
+                <Icon
+                  aria-hidden='true'
+                  className='h-5 w-5'
+                  focusable='false'
+                />
                 {action.badge && (
                   <span
-                    className="absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse"
+                    className='absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse'
                     aria-hidden
                   />
                 )}
@@ -110,48 +137,55 @@ export function DefaultDock({ dockActions, isMobile, isLeft }: DefaultDockProps)
         </div>
       ) : (
         // PC: Premium hover effects and labels
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {dockActions.map((action) => {
+        <div className='flex flex-wrap items-center justify-center gap-2'>
+          {dockActions.map(action => {
             const Icon = action.icon;
-            const displayLabel = normalizeDockLabel(action.desktopLabel || action.label, action.key);
-            const title = normalizeDockLabel(action.title || action.desktopLabel || action.label, displayLabel);
+            const displayLabel = normalizeDockLabel(
+              action.desktopLabel || action.label,
+              action.key
+            );
+            const title = normalizeDockLabel(
+              action.title || action.desktopLabel || action.label,
+              displayLabel
+            );
             return (
               <button
                 key={action.key}
-                type="button"
+                type='button'
                 onClick={action.onClick}
+                ref={action.triggerRef}
                 disabled={action.disabled}
                 aria-label={displayLabel}
                 aria-disabled={action.disabled}
                 title={title}
                 className={cn(
-                  "group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50",
+                  'group relative flex items-center gap-2.5 rounded-2xl px-4 py-2.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50',
                   action.primary
-                    ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02]"
-                    : "text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white",
+                    ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:scale-[1.02]'
+                    : 'text-foreground/75 hover:bg-muted/70 hover:text-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white'
                 )}
               >
                 <Icon
-                  aria-hidden="true"
+                  aria-hidden='true'
                   className={cn(
-                    "h-[18px] w-[18px]",
-                    action.primary && "text-primary-foreground",
+                    'h-[18px] w-[18px]',
+                    action.primary && 'text-primary-foreground'
                   )}
-                  focusable="false"
+                  focusable='false'
                 />
                 <span
                   className={cn(
-                    "text-sm font-medium tracking-wide",
+                    'text-sm font-medium tracking-wide',
                     action.primary
-                      ? "text-primary-foreground"
-                      : "text-foreground/80 dark:text-white/80",
+                      ? 'text-primary-foreground'
+                      : 'text-foreground/80 dark:text-white/80'
                   )}
                 >
                   {displayLabel}
                 </span>
                 {action.badge && (
                   <span
-                    className="absolute -top-1 -right-1 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse"
+                    className='absolute -top-1 -right-1 inline-flex h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background animate-pulse'
                     aria-hidden
                   />
                 )}

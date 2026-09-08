@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useId } from 'react';
+import { useId, useLayoutEffect, useRef } from 'react';
 
 export interface AdminSubtabsTab {
   id: string;
@@ -53,6 +53,19 @@ function normalizeOptionalAdminSubtabText(value: unknown): string | undefined {
   return normalizeAdminSubtabLabel(String(value)) ?? undefined;
 }
 
+function revealTabHorizontally(container: HTMLElement, button: HTMLElement) {
+  const containerBounds = container.getBoundingClientRect();
+  const buttonBounds = button.getBoundingClientRect();
+  const visibleLeft = containerBounds.left + container.clientLeft;
+  const visibleRight = visibleLeft + container.clientWidth;
+
+  if (buttonBounds.left < visibleLeft) {
+    container.scrollLeft += buttonBounds.left - visibleLeft;
+  } else if (buttonBounds.right > visibleRight) {
+    container.scrollLeft += buttonBounds.right - visibleRight;
+  }
+}
+
 export function AdminSubtabs<T extends string = string>({
   tabs,
   activeTab,
@@ -63,6 +76,7 @@ export function AdminSubtabs<T extends string = string>({
   title,
 }: AdminSubtabsProps<T>) {
   const tabListId = useId();
+  const tabListRef = useRef<HTMLDivElement>(null);
   const safeAriaLabel =
     normalizeOptionalAdminSubtabText(ariaLabel) ?? DEFAULT_ADMIN_SUBTABS_LABEL;
   const safeTitle = normalizeOptionalAdminSubtabText(title);
@@ -76,6 +90,22 @@ export function AdminSubtabs<T extends string = string>({
     0,
     normalizedTabs.findIndex(tab => normalizedActiveTab === tab.id),
   );
+  const tabContents = normalizedTabs.map(tab => `${tab.id}:${tab.label}`).join('|');
+
+  useLayoutEffect(() => {
+    const container = tabListRef.current;
+    const activeButton = container?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+    if (!container || !activeButton) return;
+
+    const revealActiveTab = () => revealTabHorizontally(container, activeButton);
+    revealActiveTab();
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(revealActiveTab);
+    observer.observe(container);
+    observer.observe(activeButton);
+    return () => observer.disconnect();
+  }, [normalizedActiveTab, tabContents]);
 
   const emitTabChange = (tabId: string) => {
     const normalizedTabId = normalizeAdminSubtabId(tabId);
@@ -93,7 +123,10 @@ export function AdminSubtabs<T extends string = string>({
       const nextButton = container?.querySelectorAll<HTMLButtonElement>(
         '[data-admin-subtab]',
       )[index];
-      nextButton?.focus();
+      if (container?.isConnected && nextButton) {
+        nextButton.focus({ preventScroll: true });
+        revealTabHorizontally(container, nextButton);
+      }
     };
 
     if (typeof requestAnimationFrame === 'function') {
@@ -142,6 +175,7 @@ export function AdminSubtabs<T extends string = string>({
 
   return (
     <div
+      ref={tabListRef}
       role="tablist"
       aria-label={safeAriaLabel}
       aria-orientation="horizontal"

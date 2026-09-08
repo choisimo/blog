@@ -62,11 +62,11 @@ describe('LanguageToggle', () => {
     expect(
       screen.getByRole('button', { name: '언어 변경: 현재 한국어' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /한국어/ })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: /한국어/ })).toHaveAttribute(
       'aria-checked',
       'true'
     );
-    expect(screen.getByRole('button', { name: 'EN' })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: 'EN' })).toHaveAttribute(
       'aria-checked',
       'false'
     );
@@ -75,7 +75,7 @@ describe('LanguageToggle', () => {
   it('only emits allowlisted language values from menu options', () => {
     render(<LanguageToggle />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'EN' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'EN' }));
 
     expect(languageMocks.setLanguage).toHaveBeenCalledWith('en');
   });
@@ -95,16 +95,16 @@ describe('LanguageToggle', () => {
     expect(
       screen.getByRole('button', { name: '언어 변경: 현재 English' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
       'aria-checked',
       'true'
     );
-    expect(screen.getByRole('button', { name: 'Korean' })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: 'Korean' })).toHaveAttribute(
       'aria-checked',
       'false'
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Korean' }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: 'Korean' }));
 
     expect(languageMocks.setLanguage).toHaveBeenCalledWith('ko');
     expect(container.textContent).not.toContain('Hidden');
@@ -125,6 +125,6 @@ describe('LanguageToggle', () => {
     expect(
       screen.getByRole('button', { name: '언어 변경: 현재 한국어' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'EN' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: 'EN' })).toBeInTheDocument();
   });
 });

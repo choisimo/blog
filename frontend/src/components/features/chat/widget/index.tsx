@@ -1,7 +1,7 @@
-import { useCallback, useState, useEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/ui/use-mobile";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useCallback, useState, useEffect, useRef } from 'react';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,10 +11,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import type { PageContext } from "@/services/chat/types";
-import type { LiveReplyTarget } from "./types";
+} from '@/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { OverlayDialog } from '@/components/molecules/OverlayDialog';
+import type { PageContext } from '@/services/chat/types';
+import type { LiveReplyTarget } from './types';
 
 import {
   useChatState,
@@ -24,7 +25,7 @@ import {
   useKeyboardHeight,
   useInputKeyDown,
   usePreventScrollChaining,
-} from "./hooks";
+} from './hooks';
 import {
   ChatHeader,
   ChatSessionPanel,
@@ -36,38 +37,40 @@ import {
   MobileActionSheet,
   LiveRoomPanel,
   ChatSidebar,
-} from "./components";
-import { streamChatEvents } from "@/services/chat";
-import type { SelectedBlockAttachment } from "@/services/chat";
+} from './components';
+import { streamChatEvents } from '@/services/chat';
+import type { SelectedBlockAttachment } from '@/services/chat';
 
 const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
-const WIDGET_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const WIDGET_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 function stripUnsafeWidgetControls(value: string): string {
   return value
-    .replace(ANSI_ESCAPE_PATTERN, "")
-    .replace(WIDGET_CONTROL_TEXT_PATTERN, "");
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(WIDGET_CONTROL_TEXT_PATTERN, '');
 }
 
-function normalizeWidgetLine(value: unknown, fallback = ""): string {
-  if (typeof value !== "string") return fallback;
+function normalizeWidgetLine(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
   const normalized = stripUnsafeWidgetControls(value)
-    .replace(/\s+/g, " ")
+    .replace(/\s+/g, ' ')
     .trim();
   return normalized || fallback;
 }
 
 export function formatLiveRoomName(room: unknown): string {
-  return normalizeWidgetLine(room, "room:lobby")
-    .replace(/^room:/, "")
-    .replace(/:/g, "/");
+  return normalizeWidgetLine(room, 'room:lobby')
+    .replace(/^room:/, '')
+    .replace(/:/g, '/');
 }
 
 export default function ChatWidget(props: {
   onClose?: () => void;
+  onReturnFocus?: () => void;
   initialMessage?: string;
   initialSelectedBlockAttachments?: SelectedBlockAttachment[];
-  currentPost?: PageContext["article"];
+  currentPost?: PageContext['article'];
 }) {
   const isMobile = useIsMobile();
   const { isTerminal } = useTheme();
@@ -78,6 +81,7 @@ export default function ChatWidget(props: {
   const [isExpanded, setIsExpanded] = useState(false);
   const debateAbortRef = useRef<AbortController | null>(null);
   const widgetRef = useRef<HTMLDivElement | null>(null);
+  const nestedOpenerRef = useRef<HTMLElement | null>(null);
 
   // Main state hook
   const state = useChatState({
@@ -93,9 +97,28 @@ export default function ChatWidget(props: {
     setMessages,
     setShowActionSheet,
   } = state;
+  const rememberNestedFocus = () => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && widgetRef.current?.contains(active))
+      nestedOpenerRef.current = active;
+  };
+  const restoreNestedFocus = (event: Event) => {
+    event.preventDefault();
+    if (
+      state.showImageDrawer ||
+      state.showActionSheet ||
+      (isMobile && sidebarOpen) ||
+      showClearConfirm
+    )
+      return;
+    const target = nestedOpenerRef.current?.isConnected
+      ? nestedOpenerRef.current
+      : state.textareaRef.current;
+    target?.focus({ preventScroll: true });
+  };
 
   // Dynamic max height calculation for PC
-  const [pcMaxHeight, setPcMaxHeight] = useState("80vh");
+  const [pcMaxHeight, setPcMaxHeight] = useState('80vh');
   usePreventScrollChaining(widgetRef);
 
   useEffect(() => {
@@ -110,8 +133,8 @@ export default function ChatWidget(props: {
     };
 
     calculateHeight();
-    window.addEventListener("resize", calculateHeight);
-    return () => window.removeEventListener("resize", calculateHeight);
+    window.addEventListener('resize', calculateHeight);
+    return () => window.removeEventListener('resize', calculateHeight);
   }, [isExpanded, isMobile]);
 
   useEffect(() => {
@@ -201,7 +224,7 @@ export default function ChatWidget(props: {
       setInput(prompt);
       focusInput();
     },
-    [focusInput, setInput],
+    [focusInput, setInput]
   );
 
   const handleRetry = useCallback(
@@ -209,7 +232,7 @@ export default function ChatWidget(props: {
       setInput(lastPrompt);
       focusInput();
     },
-    [focusInput, setInput],
+    [focusInput, setInput]
   );
 
   const handleClearAll = useCallback(async () => {
@@ -228,20 +251,20 @@ export default function ChatWidget(props: {
   const currentLiveRoomLabel = formatLiveRoomName(liveVisitorChat.room);
   const safeSummary = normalizeWidgetLine(state.summary);
   const toggleLivePinned = useCallback(() => {
-    setLivePinned((prev) => !prev);
+    setLivePinned(prev => !prev);
   }, [setLivePinned]);
   const handleExpireMessage = useCallback(
     (id: string) => {
-      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setMessages(prev => prev.filter(m => m.id !== id));
     },
-    [setMessages],
+    [setMessages]
   );
   const handleReplyToLiveMessage = useCallback(
     (target: LiveReplyTarget) => {
       setLiveReplyTarget(target);
       focusInput();
     },
-    [focusInput, setLiveReplyTarget],
+    [focusInput, setLiveReplyTarget]
   );
 
   useEffect(() => {
@@ -258,9 +281,9 @@ export default function ChatWidget(props: {
     // 토론 시작 알림
     push({
       id: `debate_start_${Date.now()}`,
-      role: "system",
+      role: 'system',
       text: `[토론 시작] 주제: ${topic}`,
-      systemKind: "status",
+      systemKind: 'status',
     });
 
     setDebateBusy(true);
@@ -282,7 +305,7 @@ export default function ChatWidget(props: {
       prefix: string;
       signal: AbortSignal;
     }) => {
-      let text = "";
+      let text = '';
 
       try {
         for await (const ev of streamChatEvents({
@@ -290,12 +313,12 @@ export default function ChatWidget(props: {
           signal: params.signal,
           useArticleContext: false,
         })) {
-          if (ev.type !== "text") continue;
+          if (ev.type !== 'text') continue;
           text += ev.text;
         }
       } finally {
-        setMessages((prev) =>
-          prev.map((m) =>
+        setMessages(prev =>
+          prev.map(m =>
             m.id === params.id
               ? {
                   ...m,
@@ -303,8 +326,8 @@ export default function ChatWidget(props: {
                   pending: false,
                   typingLabel: undefined,
                 }
-              : m,
-          ),
+              : m
+          )
         );
       }
 
@@ -312,7 +335,7 @@ export default function ChatWidget(props: {
     };
 
     try {
-      let previousConText = "";
+      let previousConText = '';
       for (let round = 1; round <= rounds; round++) {
         if (abort.signal.aborted) break;
 
@@ -320,10 +343,10 @@ export default function ChatWidget(props: {
         const proId = `debate_pro_${round}_${Date.now()}`;
         push({
           id: proId,
-          role: "assistant",
-          text: "",
+          role: 'assistant',
+          text: '',
           pending: true,
-          typingLabel: "토론 · 찬성 작성 중...",
+          typingLabel: '토론 · 찬성 작성 중...',
         });
         const proText = await runDebateTurn({
           prompt:
@@ -331,7 +354,7 @@ export default function ChatWidget(props: {
               ? PRO_PROMPT
               : `${PRO_PROMPT}\n\n직전 반대측 주장:\n${previousConText}\n위 주장에 반박하며 찬성 논리를 강화하세요.`,
           id: proId,
-          prefix: "[토론 · 찬성] ",
+          prefix: '[토론 · 찬성] ',
           signal: abort.signal,
         });
 
@@ -341,10 +364,10 @@ export default function ChatWidget(props: {
         const conId = `debate_con_${round}_${Date.now()}`;
         push({
           id: conId,
-          role: "assistant",
-          text: "",
+          role: 'assistant',
+          text: '',
           pending: true,
-          typingLabel: "토론 · 반대 작성 중...",
+          typingLabel: '토론 · 반대 작성 중...',
         });
         const conText = await runDebateTurn({
           prompt:
@@ -352,7 +375,7 @@ export default function ChatWidget(props: {
               ? `${CON_PROMPT}\n\n찬성측 주장:\n${proText}`
               : `${CON_PROMPT}\n\n찬성측 최신 주장:\n${proText}\n이를 반박하여 반대 주장을 강화하세요.`,
           id: conId,
-          prefix: "[토론 · 반대] ",
+          prefix: '[토론 · 반대] ',
           signal: abort.signal,
         });
         previousConText = conText;
@@ -361,19 +384,19 @@ export default function ChatWidget(props: {
       if (!abort.signal.aborted) {
         push({
           id: `debate_end_${Date.now()}`,
-          role: "system",
-          text: "[토론 종료] AI 토론이 완료되었습니다.",
-          systemKind: "status",
+          role: 'system',
+          text: '[토론 종료] AI 토론이 완료되었습니다.',
+          systemKind: 'status',
         });
       }
     } catch {
       if (!abort.signal.aborted) {
         push({
           id: `debate_err_${Date.now()}`,
-          role: "system",
-          text: "[토론 오류] 토론 중 문제가 발생했습니다.",
-          systemKind: "error",
-          systemLevel: "error",
+          role: 'system',
+          text: '[토론 오류] 토론 중 문제가 발생했습니다.',
+          systemKind: 'error',
+          systemLevel: 'error',
         });
       }
     } finally {
@@ -384,231 +407,254 @@ export default function ChatWidget(props: {
 
   return (
     <>
-      <div
-        ref={widgetRef}
-        aria-label="AI Chat"
-        className={cn(
-          "fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background overscroll-contain",
-          isMobile ? "shadow-none" : "shadow-2xl transition-all",
-          // Mobile: always fullscreen
-          isMobile
-            ? "left-0 right-0 rounded-none max-w-full w-full overflow-x-hidden"
-            : isExpanded
-              ? "left-1/2 top-4 w-[min(calc(100%-24px),88rem)] -translate-x-1/2 rounded-2xl"
-              : sidebarOpen
-                ? "bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl"
-                : "bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl",
-          isTerminal &&
-            !isMobile &&
-            "border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt",
-          isTerminal &&
-            isMobile &&
-            "border-0 bg-[hsl(var(--terminal-code-bg))]",
-        )}
-        style={
-          isMobile
-            ? {
-                height: keyboardViewport.viewportHeight,
-                top: `${keyboardViewport.viewportTop}px`,
-                bottom: "auto",
-              }
-            : isExpanded
-              ? { height: pcMaxHeight, maxHeight: pcMaxHeight, bottom: "auto" }
-              : { height: pcMaxHeight, maxHeight: pcMaxHeight }
-        }
-        role="dialog"
+      <OverlayDialog
+        open
+        onClose={() => props.onClose?.()}
+        onReturnFocus={props.onReturnFocus}
+        label='AI Chat'
+        modal={isMobile || isExpanded}
+        layer='var(--z-chat-widget)'
+        initialFocusRef={state.textareaRef}
       >
-        {/* Header */}
-        <ChatHeader
-          isMobile={isMobile}
-          isTerminal={isTerminal}
-          busy={state.busy}
-          persistOptIn={state.persistOptIn}
-          sessions={state.sessions}
-          uploadedImages={state.uploadedImages}
-          onShowSessions={() => state.setShowSessions((v) => !v)}
-          onShowActionSheet={() => state.setShowActionSheet(true)}
-          onShowImageDrawer={() => state.setShowImageDrawer(true)}
-          onTogglePersist={state.togglePersistStorage}
-          onStartDebate={handleStartDebate}
-          currentLiveRoomLabel={currentLiveRoomLabel}
-          livePinned={state.livePinned}
-          onClearAll={handleClearAll}
-          onClose={props.onClose}
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          canExpand={!isMobile}
-          expanded={isExpanded}
-          onToggleExpanded={() => setIsExpanded((prev) => !prev)}
-          transportStatus={liveVisitorChat.transportStatus}
-        />
-
-        {/* 2-panel layout: sidebar (desktop) + main chat area */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {/* Desktop sidebar (inline) */}
-          {!isMobile && sidebarOpen && (
-            <ChatSidebar
-              isTerminal={isTerminal}
-              questionMode={state.questionMode}
-              onModeChange={state.setQuestionMode}
-              currentRoom={liveVisitorChat.room}
-              onRoomSelect={liveVisitorChat.switchRoom}
-              sessions={state.sessions}
-              selectedSessionIds={state.selectedSessionIds}
-              onToggleSession={session.toggleSessionSelected}
-              onLoadSession={session.loadSession}
-              onAggregateSelected={session.handleAggregateFromSelected}
-              persistOptIn={state.persistOptIn}
-              onTogglePersist={state.togglePersistStorage}
-              livePinned={state.livePinned}
-              onToggleLivePinned={toggleLivePinned}
-              onStartDebate={handleStartDebate}
-              currentLiveRoomLabel={currentLiveRoomLabel}
-            />
+        <div
+          ref={widgetRef}
+          aria-label='AI Chat'
+          className={cn(
+            'fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background overscroll-contain',
+            isMobile ? 'shadow-none' : 'shadow-2xl transition-all',
+            // Mobile: always fullscreen
+            isMobile
+              ? 'left-0 right-0 rounded-none max-w-full w-full overflow-x-hidden'
+              : isExpanded
+                ? 'left-1/2 top-4 w-[min(calc(100%-24px),88rem)] -translate-x-1/2 rounded-2xl'
+                : sidebarOpen
+                  ? 'bottom-20 left-1/2 w-[min(100%-24px,58rem)] -translate-x-1/2 rounded-2xl'
+                  : 'bottom-20 left-1/2 w-[min(100%-24px,42rem)] -translate-x-1/2 rounded-2xl',
+            isTerminal &&
+              !isMobile &&
+              'border-border bg-[hsl(var(--terminal-code-bg))] rounded-lg terminal-crt',
+            isTerminal &&
+              isMobile &&
+              'border-0 bg-[hsl(var(--terminal-code-bg))]'
           )}
+          style={
+            isMobile
+              ? {
+                  height: keyboardViewport.viewportHeight,
+                  top: `${keyboardViewport.viewportTop}px`,
+                  bottom: 'auto',
+                }
+              : isExpanded
+                ? {
+                    height: pcMaxHeight,
+                    maxHeight: pcMaxHeight,
+                    bottom: 'auto',
+                  }
+                : { height: pcMaxHeight, maxHeight: pcMaxHeight }
+          }
+          role='dialog'
+        >
+          {/* Header */}
+          <ChatHeader
+            isMobile={isMobile}
+            isTerminal={isTerminal}
+            busy={state.busy}
+            persistOptIn={state.persistOptIn}
+            sessions={state.sessions}
+            uploadedImages={state.uploadedImages}
+            onShowSessions={() => state.setShowSessions(v => !v)}
+            onShowActionSheet={() => state.setShowActionSheet(true)}
+            onShowImageDrawer={() => state.setShowImageDrawer(true)}
+            onTogglePersist={state.togglePersistStorage}
+            onStartDebate={handleStartDebate}
+            currentLiveRoomLabel={currentLiveRoomLabel}
+            livePinned={state.livePinned}
+            onClearAll={handleClearAll}
+            onClose={props.onClose}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={() => setSidebarOpen(v => !v)}
+            canExpand={!isMobile}
+            expanded={isExpanded}
+            onToggleExpanded={() => setIsExpanded(prev => !prev)}
+            transportStatus={liveVisitorChat.transportStatus}
+          />
 
-          {/* Main chat column */}
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* Session panel */}
-            {state.showSessions && (
-              <ChatSessionPanel
+          {/* 2-panel layout: sidebar (desktop) + main chat area */}
+          <div className='flex flex-1 min-h-0 overflow-hidden'>
+            {/* Desktop sidebar (inline) */}
+            {!isMobile && sidebarOpen && (
+              <ChatSidebar
+                isTerminal={isTerminal}
+                questionMode={state.questionMode}
+                onModeChange={state.setQuestionMode}
+                currentRoom={liveVisitorChat.room}
+                onRoomSelect={liveVisitorChat.switchRoom}
                 sessions={state.sessions}
                 selectedSessionIds={state.selectedSessionIds}
                 onToggleSession={session.toggleSessionSelected}
                 onLoadSession={session.loadSession}
-                onClose={() => state.setShowSessions(false)}
                 onAggregateSelected={session.handleAggregateFromSelected}
-                isTerminal={isTerminal}
-                isMobile={isMobile}
-              />
-            )}
-
-            {/* Live room panel (mobile only — desktop uses sidebar) */}
-            {isMobile && !isKeyboardFocusMode && (
-              <LiveRoomPanel
-                isTerminal={isTerminal}
-                isMobile={isMobile}
-                currentRoom={liveVisitorChat.room}
-                onRoomSelect={liveVisitorChat.switchRoom}
-                onStartDebate={handleStartDebate}
-                currentRoomLabel={currentLiveRoomLabel}
+                persistOptIn={state.persistOptIn}
+                onTogglePersist={state.togglePersistStorage}
                 livePinned={state.livePinned}
                 onToggleLivePinned={toggleLivePinned}
+                onStartDebate={handleStartDebate}
+                currentLiveRoomLabel={currentLiveRoomLabel}
               />
             )}
 
-            {/* Mode selector (mobile only — desktop uses sidebar) */}
-            {isMobile && !isKeyboardFocusMode && (
-              <ModeSelector
-                questionMode={state.questionMode}
-                onModeChange={state.setQuestionMode}
-                isTerminal={isTerminal}
-                isMobile={isMobile}
-              />
-            )}
-
-            {/* Messages area */}
-            <ChatStatusRail
-              banner={liveVisitorChat.banner}
-              isTerminal={isTerminal}
-            />
-            <div
-              ref={state.scrollRef}
-              data-testid="chat-messages"
-              role="log"
-              aria-label="대화 메시지"
-              aria-live="polite"
-              aria-relevant="additions text"
-              className={cn(
-                "flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4 [content-visibility:auto]",
-                isKeyboardFocusMode && "py-2",
-                isMobile && "px-4",
-                !isMobile && isExpanded && "px-5 py-5",
-                isTerminal && "space-y-3 font-mono text-sm",
+            {/* Main chat column */}
+            <div className='flex flex-col flex-1 min-h-0 overflow-hidden'>
+              {/* Session panel */}
+              {state.showSessions && (
+                <ChatSessionPanel
+                  sessions={state.sessions}
+                  selectedSessionIds={state.selectedSessionIds}
+                  onToggleSession={session.toggleSessionSelected}
+                  onLoadSession={session.loadSession}
+                  onClose={() => state.setShowSessions(false)}
+                  onAggregateSelected={session.handleAggregateFromSelected}
+                  isTerminal={isTerminal}
+                  isMobile={isMobile}
+                />
               )}
-            >
-              <ChatMessages
-                messages={state.messages}
-                isTerminal={isTerminal}
-                isMobile={isMobile}
-                onPromptClick={handlePromptClick}
-                onRetry={handleRetry}
-                lastPrompt={state.lastPromptRef.current}
-                onNavigate={props.onClose}
-                onExpireMessage={handleExpireMessage}
-                activeReplyTargetName={state.liveReplyTarget?.name ?? null}
-                onReplyToLiveMessage={handleReplyToLiveMessage}
-              />
-            </div>
 
-            {/* Summary bar */}
-            {state.persistOptIn && safeSummary && !isKeyboardFocusMode && (
+              {/* Live room panel (mobile only — desktop uses sidebar) */}
+              {isMobile && !isKeyboardFocusMode && (
+                <LiveRoomPanel
+                  isTerminal={isTerminal}
+                  isMobile={isMobile}
+                  currentRoom={liveVisitorChat.room}
+                  onRoomSelect={liveVisitorChat.switchRoom}
+                  onStartDebate={handleStartDebate}
+                  currentRoomLabel={currentLiveRoomLabel}
+                  livePinned={state.livePinned}
+                  onToggleLivePinned={toggleLivePinned}
+                />
+              )}
+
+              {/* Mode selector (mobile only — desktop uses sidebar) */}
+              {isMobile && !isKeyboardFocusMode && (
+                <ModeSelector
+                  questionMode={state.questionMode}
+                  onModeChange={state.setQuestionMode}
+                  isTerminal={isTerminal}
+                  isMobile={isMobile}
+                />
+              )}
+
+              {/* Messages area */}
+              <ChatStatusRail
+                banner={liveVisitorChat.banner}
+                isTerminal={isTerminal}
+              />
               <div
-                aria-label={`대화 요약: ${safeSummary}`}
-                aria-live="polite"
+                ref={state.scrollRef}
+                data-testid='chat-messages'
+                role='log'
+                aria-label='대화 메시지'
+                aria-live='polite'
+                aria-relevant='additions text'
                 className={cn(
-                  "px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0",
-                  isTerminal &&
-                    "font-mono border-border bg-[hsl(var(--terminal-code-bg))]",
+                  'flex-1 overflow-auto overscroll-contain px-4 py-4 space-y-4 [content-visibility:auto]',
+                  isKeyboardFocusMode && 'py-2',
+                  isMobile && 'px-4',
+                  !isMobile && isExpanded && 'px-5 py-5',
+                  isTerminal && 'space-y-3 font-mono text-sm'
                 )}
               >
-                {isTerminal ? (
-                  <span>
-                    <span className="text-primary/60"># Last:</span>{" "}
-                    {safeSummary}
-                  </span>
-                ) : (
-                  <>요약: {safeSummary}</>
-                )}
+                <ChatMessages
+                  messages={state.messages}
+                  isTerminal={isTerminal}
+                  isMobile={isMobile}
+                  onPromptClick={handlePromptClick}
+                  onRetry={handleRetry}
+                  lastPrompt={state.lastPromptRef.current}
+                  onNavigate={props.onClose}
+                  onExpireMessage={handleExpireMessage}
+                  activeReplyTargetName={state.liveReplyTarget?.name ?? null}
+                  onReplyToLiveMessage={handleReplyToLiveMessage}
+                />
               </div>
-            )}
 
-            {/* Input area */}
-            <ChatInput
-              input={state.input}
-              onInputChange={state.setInput}
-              onKeyDown={onKeyDown}
-              onSend={actions.send}
-              onStop={actions.stop}
-              onClearAll={handleClearAll}
-              onFileSelect={state.setAttachedImage}
-              selectedBlockAttachments={state.selectedBlockAttachments}
-              onRemoveSelectedBlockAttachment={(id) =>
-                state.setSelectedBlockAttachments((prev) =>
-                  prev.filter((attachment) => attachment.id !== id),
-                )
-              }
-              attachedImage={state.attachedImage}
-              attachedPreviewUrl={state.attachedPreviewUrl}
-              busy={state.busy}
-              canSend={state.canSend}
-              firstTokenMs={state.firstTokenMs}
-              questionMode={state.questionMode}
-              liveReplyTarget={state.liveReplyTarget}
-              onClearLiveReplyTarget={() => state.setLiveReplyTarget(null)}
-              isTerminal={isTerminal}
-              isMobile={isMobile}
-              textareaRef={state.textareaRef}
-              fileInputRef={state.fileInputRef}
-              hasMessages={state.messages.length > 0}
-            />
+              {/* Summary bar */}
+              {state.persistOptIn && safeSummary && !isKeyboardFocusMode && (
+                <div
+                  aria-label={`대화 요약: ${safeSummary}`}
+                  aria-live='polite'
+                  className={cn(
+                    'px-4 py-2 border-t text-xs text-muted-foreground truncate shrink-0',
+                    isTerminal &&
+                      'font-mono border-border bg-[hsl(var(--terminal-code-bg))]'
+                  )}
+                >
+                  {isTerminal ? (
+                    <span>
+                      <span className='text-primary/60'># Last:</span>{' '}
+                      {safeSummary}
+                    </span>
+                  ) : (
+                    <>요약: {safeSummary}</>
+                  )}
+                </div>
+              )}
+
+              {/* Input area */}
+              <ChatInput
+                input={state.input}
+                onInputChange={state.setInput}
+                onKeyDown={onKeyDown}
+                onSend={actions.send}
+                onStop={actions.stop}
+                onClearAll={handleClearAll}
+                onFileSelect={state.setAttachedImage}
+                selectedBlockAttachments={state.selectedBlockAttachments}
+                onRemoveSelectedBlockAttachment={id =>
+                  state.setSelectedBlockAttachments(prev =>
+                    prev.filter(attachment => attachment.id !== id)
+                  )
+                }
+                attachedImage={state.attachedImage}
+                attachedPreviewUrl={state.attachedPreviewUrl}
+                busy={state.busy}
+                canSend={state.canSend}
+                firstTokenMs={state.firstTokenMs}
+                questionMode={state.questionMode}
+                liveReplyTarget={state.liveReplyTarget}
+                onClearLiveReplyTarget={() => state.setLiveReplyTarget(null)}
+                isTerminal={isTerminal}
+                isMobile={isMobile}
+                textareaRef={state.textareaRef}
+                fileInputRef={state.fileInputRef}
+                hasMessages={state.messages.length > 0}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </OverlayDialog>
 
       {/* Image drawer dialog */}
       <ImageDrawer
         open={state.showImageDrawer}
         onOpenChange={state.setShowImageDrawer}
         uploadedImages={state.uploadedImages}
+        onOpenAutoFocus={rememberNestedFocus}
+        onCloseAutoFocus={restoreNestedFocus}
       />
 
       {/* Mobile sidebar slide-over */}
       <Sheet
         open={isMobile && sidebarOpen}
-        onOpenChange={(open) => setSidebarOpen(open)}
+        onOpenChange={open => setSidebarOpen(open)}
       >
-        <SheetContent side="left" className="w-72 max-w-[85vw] p-0">
+        <SheetContent
+          side='left'
+          className='w-72 max-w-[85vw] p-0'
+          aria-describedby={undefined}
+          onOpenAutoFocus={rememberNestedFocus}
+          onCloseAutoFocus={restoreNestedFocus}
+        >
+          <SheetTitle className='sr-only'>채팅 메뉴</SheetTitle>
           <ChatSidebar
             isTerminal={isTerminal}
             questionMode={state.questionMode}
@@ -634,12 +680,14 @@ export default function ChatWidget(props: {
       <MobileActionSheet
         open={state.showActionSheet}
         onOpenChange={state.setShowActionSheet}
+        onOpenAutoFocus={rememberNestedFocus}
+        onCloseAutoFocus={restoreNestedFocus}
         sessions={state.sessions}
         uploadedImages={state.uploadedImages}
         persistOptIn={state.persistOptIn}
         onShowSessions={() => {
           state.setShowActionSheet(false);
-          state.setShowSessions((v) => !v);
+          state.setShowSessions(v => !v);
         }}
         onShowImageDrawer={() => {
           state.setShowActionSheet(false);
@@ -655,7 +703,10 @@ export default function ChatWidget(props: {
       />
 
       <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onOpenAutoFocus={rememberNestedFocus}
+          onCloseAutoFocus={restoreNestedFocus}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>대화 삭제</AlertDialogTitle>
             <AlertDialogDescription>
@@ -666,7 +717,7 @@ export default function ChatWidget(props: {
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleClearConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
             >
               삭제
             </AlertDialogAction>

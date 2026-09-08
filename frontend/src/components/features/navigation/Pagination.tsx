@@ -86,7 +86,7 @@ const Pagination = ({
 }: PaginationProps) => {
   const { isTerminal } = useTheme();
   const [jumpValue, setJumpValue] = useState('');
-  const [isJumpOpen, setIsJumpOpen] = useState(false);
+  const [jumpPosition, setJumpPosition] = useState<string | null>(null);
   const safeTotalPages =
     Number.isFinite(totalPages) && totalPages > 0 ? Math.floor(totalPages) : 0;
   const safeCurrentPage =
@@ -143,7 +143,7 @@ const Pagination = ({
     const page = Number.parseInt(jumpValue.replace(/[^\d]/g, ''), 10);
     emitPageChange(page);
     setJumpValue('');
-    setIsJumpOpen(false);
+    setJumpPosition(null);
   }, [emitPageChange, jumpValue]);
 
   const handleKeyDown = useCallback(
@@ -151,7 +151,7 @@ const Pagination = ({
       if (e.key === 'Enter') {
         handleJump();
       } else if (e.key === 'Escape') {
-        setIsJumpOpen(false);
+        setJumpPosition(null);
         setJumpValue('');
       }
     },
@@ -161,9 +161,21 @@ const Pagination = ({
   if (safeTotalPages <= 1) return null;
 
   const sizeClasses = {
-    sm: { button: 'h-8 w-8 text-xs', icon: 'h-3.5 w-3.5', gap: 'gap-1' },
-    md: { button: 'h-10 w-10 text-sm', icon: 'h-4 w-4', gap: 'gap-1.5' },
-    lg: { button: 'h-12 w-12 text-base', icon: 'h-5 w-5', gap: 'gap-2' },
+    sm: {
+      button: 'h-[44px] w-[44px] min-h-[44px] min-w-[44px] text-xs',
+      icon: 'h-3.5 w-3.5',
+      gap: 'gap-1',
+    },
+    md: {
+      button: 'h-[44px] w-[44px] min-h-[44px] min-w-[44px] text-sm',
+      icon: 'h-4 w-4',
+      gap: 'gap-1.5',
+    },
+    lg: {
+      button: 'h-[48px] w-[48px] min-h-[44px] min-w-[44px] text-base',
+      icon: 'h-5 w-5',
+      gap: 'gap-2',
+    },
   };
 
   const styles = sizeClasses[safeSize];
@@ -200,7 +212,7 @@ const Pagination = ({
 
   const visiblePages = getVisiblePages();
 
-  const NavButton = ({
+  const renderNavButton = ({
     onClick,
     disabled,
     children,
@@ -221,10 +233,10 @@ const Pagination = ({
       aria-label={label}
       className={cn(
         styles.button,
-        'rounded-xl transition-all duration-200',
+        'shrink-0 rounded-lg motion-safe:transition-transform motion-safe:duration-200',
         'disabled:opacity-40 disabled:cursor-not-allowed',
-        'hover:bg-primary/10 hover:border-primary/30 hover:scale-105',
-        'active:scale-95',
+        'hover:bg-primary/10 hover:border-primary/30',
+        'motion-safe:active:scale-95',
         'focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
       )}
     >
@@ -239,38 +251,40 @@ const Pagination = ({
     ? 'focus-visible:ring-green-400'
     : 'focus-visible:ring-primary/40';
 
-  const PageButton = ({
+  const renderPageButton = ({
     page,
     isActive,
   }: {
     page: number;
     isActive: boolean;
   }) => (
-<Button
-  variant={isActive ? 'default' : 'ghost'}
-  size='icon'
-  onClick={() => emitPageChange(page)}
-  aria-label={`${safePageLabel} ${page}`}
-  aria-current={isActive ? 'page' : undefined}
-  className={cn(
-    styles.button,
-    'rounded-xl transition-all duration-200',
-    // 선택된 상태 (isActive) 디자인 변경
-    isActive ? activePageClasses : 'font-medium hover:bg-muted hover:scale-105',
-    'active:scale-95',
-    // 포커스 링도 테마에 맞춰 라임색으로 변경 (선택 사항)
-    'focus-visible:ring-2 focus-visible:ring-offset-2',
-    focusRingClass
-  )}
->
-  {page}
-</Button>
+    <Button
+      key={page}
+      variant={isActive ? 'default' : 'ghost'}
+      size='icon'
+      onClick={() => emitPageChange(page)}
+      aria-label={`${safePageLabel} ${page}`}
+      aria-current={isActive ? 'page' : undefined}
+      className={cn(
+        styles.button,
+        'shrink-0 rounded-lg motion-safe:transition-transform motion-safe:duration-200',
+        // 선택된 상태 (isActive) 디자인 변경
+        isActive ? activePageClasses : 'font-medium hover:bg-muted',
+        'motion-safe:active:scale-95',
+        // 포커스 링도 테마에 맞춰 라임색으로 변경 (선택 사항)
+        'focus-visible:ring-2 focus-visible:ring-offset-2',
+        focusRingClass
+      )}
+    >
+      {page}
+    </Button>
   );
 
-  const EllipsisButton = ({ position: _position }: { position: 'start' | 'end' }) => {
+  const renderEllipsis = (position: string) => {
     if (!showQuickJump) {
       return (
         <span
+          key={position}
           className={cn(
             styles.button,
             'flex items-center justify-center text-muted-foreground'
@@ -283,21 +297,24 @@ const Pagination = ({
     }
 
     return (
-      <div className='relative'>
+      <div key={position} className='relative'>
         <Button
           variant='ghost'
           size='icon'
-          onClick={() => setIsJumpOpen(!isJumpOpen)}
+          onClick={() =>
+            setJumpPosition(current => (current === position ? null : position))
+          }
+          aria-expanded={jumpPosition === position}
           aria-label={safeJumpLabel}
           className={cn(
             styles.button,
             'rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted',
-            'transition-all duration-200'
+            'motion-safe:transition-transform motion-safe:duration-200'
           )}
         >
           <MoreHorizontal aria-hidden='true' className={styles.icon} />
         </Button>
-        {isJumpOpen && (
+        {jumpPosition === position && (
           <div className='absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[var(--z-popover)]'>
             <div className='bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1.5'>
               <Input
@@ -305,17 +322,17 @@ const Pagination = ({
                 min={1}
                 max={safeTotalPages}
                 value={jumpValue}
-                onChange={(e) => setJumpValue(e.target.value)}
+                onChange={e => setJumpValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 aria-label={safeJumpInputLabel}
                 placeholder={safeJumpPlaceholder}
-                className='w-16 h-8 text-xs rounded-lg text-center'
+                className='w-20 h-[44px] min-h-[44px] text-base rounded-lg text-center'
                 autoFocus
               />
               <Button
                 size='sm'
                 onClick={handleJump}
-                className='h-8 px-2 text-xs rounded-lg'
+                className='h-[44px] min-h-[44px] min-w-[44px] px-3 text-sm rounded-lg'
               >
                 {safeJumpSubmitLabel}
               </Button>
@@ -331,68 +348,76 @@ const Pagination = ({
       role='navigation'
       aria-label={safeLabel}
       title={safeTitle}
-      className={cn('flex flex-col items-center gap-3', className)}
+      className={cn('flex max-w-full flex-col items-center gap-3', className)}
     >
-      <div className={cn('flex items-center', styles.gap)}>
+      <div
+        className={cn(
+          'flex max-w-full flex-wrap items-center justify-center',
+          styles.gap
+        )}
+      >
         {showFirstLast && (
-          <span className='hidden sm:inline-flex'>
-            <NavButton
-              onClick={() => emitPageChange(1)}
-              disabled={safeCurrentPage === 1}
-              label={safeFirstPageLabel}
-              variant='ghost'
-            >
-              <ChevronsLeft aria-hidden='true' className={styles.icon} />
-            </NavButton>
+          <span className='inline-flex shrink-0'>
+            {renderNavButton({
+              onClick: () => emitPageChange(1),
+              disabled: safeCurrentPage === 1,
+              label: safeFirstPageLabel,
+              variant: 'ghost',
+              children: (
+                <ChevronsLeft aria-hidden='true' className={styles.icon} />
+              ),
+            })}
           </span>
         )}
 
-        <NavButton
-          onClick={() => emitPageChange(safeCurrentPage - 1)}
-          disabled={safeCurrentPage === 1}
-          label={safePreviousPageLabel}
-        >
-          <ChevronLeft aria-hidden='true' className={styles.icon} />
-        </NavButton>
+        {renderNavButton({
+          onClick: () => emitPageChange(safeCurrentPage - 1),
+          disabled: safeCurrentPage === 1,
+          label: safePreviousPageLabel,
+          children: <ChevronLeft aria-hidden='true' className={styles.icon} />,
+        })}
 
-        <div className={cn('flex items-center', styles.gap, 'mx-1')}>
-          {visiblePages.map((page) =>
-            typeof page === 'string' ? (
-              <EllipsisButton
-                key={page}
-                position={page === 'ellipsis-start' ? 'start' : 'end'}
-              />
-            ) : (
-              <PageButton key={page} page={page} isActive={safeCurrentPage === page} />
-            )
+        <span
+          className='inline-flex min-h-11 items-center px-1 text-sm tabular-nums sm:hidden'
+          aria-label={`${safePageLabel} ${safeCurrentPage} / ${safeTotalPages}`}
+        >
+          {safeCurrentPage} / {safeTotalPages}
+        </span>
+        <div className={cn('hidden items-center sm:flex', styles.gap, 'mx-1')}>
+          {visiblePages.map(page =>
+            typeof page === 'string'
+              ? renderEllipsis(page)
+              : renderPageButton({ page, isActive: safeCurrentPage === page })
           )}
         </div>
 
-        <NavButton
-          onClick={() => emitPageChange(safeCurrentPage + 1)}
-          disabled={safeCurrentPage === safeTotalPages}
-          label={safeNextPageLabel}
-        >
-          <ChevronRight aria-hidden='true' className={styles.icon} />
-        </NavButton>
+        {renderNavButton({
+          onClick: () => emitPageChange(safeCurrentPage + 1),
+          disabled: safeCurrentPage === safeTotalPages,
+          label: safeNextPageLabel,
+          children: <ChevronRight aria-hidden='true' className={styles.icon} />,
+        })}
 
         {showFirstLast && (
-          <span className='hidden sm:inline-flex'>
-            <NavButton
-              onClick={() => emitPageChange(safeTotalPages)}
-              disabled={safeCurrentPage === safeTotalPages}
-              label={safeLastPageLabel}
-              variant='ghost'
-            >
-              <ChevronsRight aria-hidden='true' className={styles.icon} />
-            </NavButton>
+          <span className='inline-flex shrink-0'>
+            {renderNavButton({
+              onClick: () => emitPageChange(safeTotalPages),
+              disabled: safeCurrentPage === safeTotalPages,
+              label: safeLastPageLabel,
+              variant: 'ghost',
+              children: (
+                <ChevronsRight aria-hidden='true' className={styles.icon} />
+              ),
+            })}
           </span>
         )}
       </div>
 
       {showPageInfo && (
         <p className='text-xs text-muted-foreground'>
-          Page <span className='font-medium text-foreground'>{safeCurrentPage}</span> of{' '}
+          Page{' '}
+          <span className='font-medium text-foreground'>{safeCurrentPage}</span>{' '}
+          of{' '}
           <span className='font-medium text-foreground'>{safeTotalPages}</span>
         </p>
       )}

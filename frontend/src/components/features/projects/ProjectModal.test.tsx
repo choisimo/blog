@@ -20,12 +20,22 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogContent: ({
     children,
     hideClose: _hideClose,
+    onOpenAutoFocus: _onOpenAutoFocus,
+    onCloseAutoFocus: _onCloseAutoFocus,
     ...props
-  }: HTMLAttributes<HTMLDivElement> & { hideClose?: boolean }) => (
+  }: HTMLAttributes<HTMLDivElement> & {
+    hideClose?: boolean;
+    onOpenAutoFocus?: (event: Event) => void;
+    onCloseAutoFocus?: (event: Event) => void;
+  }) => (
     <div role='dialog' {...props}>
       {children}
     </div>
   ),
+  DialogDescription: ({
+    children,
+    ...props
+  }: HTMLAttributes<HTMLParagraphElement>) => <p {...props}>{children}</p>,
   DialogTitle: ({ children, ...props }: HTMLAttributes<HTMLHeadingElement>) => (
     <h2 {...props}>{children}</h2>
   ),
@@ -73,21 +83,25 @@ describe('ProjectModal', () => {
       />
     );
 
-    expect(screen.getByRole('dialog', { name: 'Preview panel: Safe project' })).toHaveAttribute(
-      'title',
-      'Panel title'
-    );
-    expect(screen.getByRole('heading', { name: 'Safe project' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open project: Safe project' })).toHaveAttribute(
-      'href',
-      'https://example.test/project'
-    );
-    expect(screen.getByRole('button', { name: 'Expand project: Safe project' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Preview panel: Safe project' })
+    ).toHaveAttribute('title', 'Panel title');
+    expect(
+      screen.getByRole('heading', { name: 'Safe project' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Open project: Safe project' })
+    ).toHaveAttribute('href', 'https://example.test/project');
+    expect(
+      screen.getByRole('button', { name: 'Expand project: Safe project' })
+    ).toBeInTheDocument();
     expect(screen.getByTitle('Safe project preview')).toHaveAttribute(
       'src',
       'https://example.test/project'
     );
-    expect(screen.getByRole('button', { name: 'Close panel' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Close panel' })
+    ).toBeInTheDocument();
     expect(container.textContent).not.toContain('\u001b');
     expect(container.textContent).not.toContain('\u0000');
   });
@@ -120,8 +134,12 @@ describe('ProjectModal', () => {
       />
     );
 
-    expect(screen.queryByRole('link', { name: /Open/ })).not.toBeInTheDocument();
-    expect(screen.queryByTitle('Unsafe project preview')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Open/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTitle('Unsafe project preview')
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Cannot embed safely')).toBeInTheDocument();
   });
 
@@ -131,7 +149,9 @@ describe('ProjectModal', () => {
       'https://example.test/project'
     );
     expect(normalizeProjectPreviewUrl('javascript:alert(1)')).toBeUndefined();
-    expect(normalizeProjectPreviewUrl('https://user:pass@example.test/project')).toBeUndefined();
+    expect(
+      normalizeProjectPreviewUrl('https://user:pass@example.test/project')
+    ).toBeUndefined();
     expect(normalizeProjectPreviewUrl('/projects/%0Aunsafe')).toBeUndefined();
   });
 
