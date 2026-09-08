@@ -205,6 +205,8 @@
             font-family: monospace;
         }
     </style>
+    <link rel="stylesheet" href="./fieldnotes-simulator.css" />
+    <script defer src="./fieldnotes-simulator.js"></script>
 </head>
 
 <body>
@@ -345,8 +347,8 @@
             const header = document.createElement("div");
             header.className = "step-header mono";
             header.textContent = reqPage;
-            header.style.color = res.hit ? "#2563eb" : "#dc2626";
-            header.style.borderColor = res.hit ? "#bfdbfe" : "#fecaca";
+            header.style.color = res.hit ? "var(--embed-accent)" : "var(--embed-error)";
+            header.style.borderColor = res.hit ? "var(--embed-accent)" : "var(--embed-error)";
             col.appendChild(header);
 
             for (let i = 0; i < maxFrames; i++) {

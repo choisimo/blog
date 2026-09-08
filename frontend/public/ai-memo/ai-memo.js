@@ -61,7 +61,7 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
-  const AI_MEMO_ASSET_VERSION = '20260908-memo-discussion-ux';
+  const AI_MEMO_ASSET_VERSION = '20260908-fieldnotes-reader-desk';
   const CATALYST_PROMPT_MAX_LENGTH = 160;
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
   const MAX_BLOCK_PAYLOAD_CHARS = 6000;

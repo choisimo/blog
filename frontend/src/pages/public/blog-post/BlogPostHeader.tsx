@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Breadcrumb } from '@/components/features/navigation/Breadcrumb';
 import {
   ArrowLeft,
@@ -23,6 +22,7 @@ import type {
 } from '@/types/blog';
 import type { TranslationResult } from '@/services/content/translate';
 import { SafeDescriptionMarkdown } from '@/components/features/blog/SafeDescriptionMarkdown';
+import { ArticleReadingTools } from './ArticleReadingTools';
 import type { AsyncArtifactStatus } from '@/components/features/sentio/hooks/useAsyncArtifact';
 
 interface BlogPostHeaderProps {
@@ -124,14 +124,22 @@ export function BlogPostHeader({
 }: BlogPostHeaderProps) {
   const navigate = useNavigate();
   const description = postView.description;
-  const safeYear = normalizeHeaderPathSegment(year) ?? normalizeHeaderPathSegment(post.year) ?? 'post';
-  const safeSlug = normalizeHeaderPathSegment(slug) ?? normalizeHeaderPathSegment(post.slug) ?? 'untitled';
+  const safeYear =
+    normalizeHeaderPathSegment(year) ??
+    normalizeHeaderPathSegment(post.year) ??
+    'post';
+  const safeSlug =
+    normalizeHeaderPathSegment(slug) ??
+    normalizeHeaderPathSegment(post.slug) ??
+    'untitled';
   const safeCategoryLabel = normalizeHeaderText(postView.categoryLabel, 'Post');
   const safeCategoryQuery = normalizeHeaderQueryValue(post.category);
   const safeTitle = normalizeHeaderText(postView.title, 'Untitled post');
   const safeAuthor = normalizeHeaderText(postView.author);
   const safeReadingTimeLabel = normalizeHeaderText(postView.readingTimeLabel);
-  const safeTranslationErrorMessage = normalizeHeaderText(translationError?.message);
+  const safeTranslationErrorMessage = normalizeHeaderText(
+    translationError?.message
+  );
   const isTranslationWarming = translationStatus === 'warming';
   const hasAiTranslationReady =
     translationStatus === 'ready' && aiTranslation && !hasNativeTranslation;
@@ -149,59 +157,54 @@ export function BlogPostHeader({
   };
 
   return (
-    <header className="ui-article-header">
+    <header className='ui-article-header fn-post-title-block rd-article-head'>
       <Breadcrumb
         items={[
           { label: 'Blog', href: '/blog' },
           {
             label: safeCategoryLabel,
-            href: safeCategoryQuery ? `/blog?category=${safeCategoryQuery}` : '/blog',
+            href: safeCategoryQuery
+              ? `/blog?category=${safeCategoryQuery}`
+              : '/blog',
           },
           { label: safeTitle },
         ]}
-        className={cn(isTerminal && 'font-mono text-xs')}
+        className={cn('rd-crumbs', isTerminal && 'font-mono text-xs')}
       />
-      <div className="ui-article-header__navigation">
-        <Button data-ui-variant='ghost'
+      <div className='ui-article-header__navigation rd-back'>
+        <Button
+          data-ui-variant='ghost'
           variant='ghost'
           onClick={handleBackToBlog}
-          className={["ui-control", (cn(
-            'hover:bg-primary/10 dark:text-white',
-            isTerminal && 'font-mono text-primary hover:text-primary'
-          ))].filter(Boolean).join(' ')}
+          className={[
+            'ui-control',
+            cn(
+              'hover:bg-primary/10 dark:text-white',
+              isTerminal && 'font-mono text-primary hover:text-primary'
+            ),
+          ]
+            .filter(Boolean)
+            .join(' ')}
           size='sm'
         >
-          <ArrowLeft aria-hidden="true" className="mr-2 h-4 w-4" />
+          <ArrowLeft aria-hidden='true' className='mr-2 h-4 w-4' />
           {isTerminal ? `< ${backToBlogLabel}` : backToBlogLabel}
-        </Button>
-        <Button data-ui-variant='outline'
-          onClick={onShare}
-          variant='outline'
-          size='sm'
-          className={["ui-control", (cn(
-            "gap-2 rounded-full border-border bg-ui-surface/70 text-foreground hover:bg-primary/10 dark:border-ui-line dark:bg-ui-surface/5 dark:text-white",
-            isTerminal && 'font-mono border-border bg-transparent'
-          ))].filter(Boolean).join(' ')}
-        >
-          <Share2 aria-hidden="true" className="h-4 w-4" />
-          {shareLabel}
         </Button>
       </div>
 
-      <div
-        className="ui-article-header__intro"
-      >
-        <div className="ui-article-header__copy">
+      <div className='ui-article-header__intro'>
+        <div className='ui-article-header__copy'>
           {/* Terminal-style path indicator */}
           {isTerminal && (
-            <div className="font-mono text-xs text-muted-foreground">
-              <span className="text-primary">cat</span> ~/blog/{safeYear}/{safeSlug}.md
+            <div className='font-mono text-xs text-muted-foreground'>
+              <span className='text-primary'>cat</span> ~/blog/{safeYear}/
+              {safeSlug}.md
             </div>
           )}
 
           <div
             className={cn(
-              'ui-article-category',
+              'ui-article-category rd-topic',
               isTerminal && 'rounded font-mono tracking-wider'
             )}
           >
@@ -212,7 +215,7 @@ export function BlogPostHeader({
 
           <h1
             className={cn(
-              'ui-article-title',
+              'ui-article-title fn-display-title rd-title',
               isTerminal && 'font-mono terminal-glow'
             )}
           >
@@ -224,7 +227,7 @@ export function BlogPostHeader({
             <SafeDescriptionMarkdown
               text={description}
               className={cn(
-                'ui-article-description',
+                'ui-article-description rd-description',
                 isTerminal && 'border-l-2 border-primary/30 pl-4'
               )}
             />
@@ -232,23 +235,30 @@ export function BlogPostHeader({
 
           <div
             className={cn(
-              'ui-article-meta',
+              'ui-article-meta fn-post-meta rd-byline',
               isTerminal && 'font-mono text-xs'
             )}
           >
-            <div
-              className="ui-article-meta__item"
-            >
-              <Calendar aria-hidden="true" className="h-4 w-4 text-foreground/70" />
+            {!isTerminal && (
+              <span className='rd-monogram' aria-hidden='true'>
+                {safeAuthor ? safeAuthor.charAt(0) : 'n'}
+              </span>
+            )}
+            <div className='ui-article-meta__item'>
+              <Calendar
+                aria-hidden='true'
+                className='h-4 w-4 text-foreground/70'
+              />
               <span>
                 {isTerminal ? `date: ${formattedDate}` : formattedDate}
               </span>
             </div>
             {safeReadingTimeLabel && (
-              <div
-                className="ui-article-meta__item"
-              >
-                <Clock aria-hidden="true" className="h-4 w-4 text-foreground/70" />
+              <div className='ui-article-meta__item'>
+                <Clock
+                  aria-hidden='true'
+                  className='h-4 w-4 text-foreground/70'
+                />
                 <span>
                   {isTerminal
                     ? `time: ${safeReadingTimeLabel}`
@@ -257,50 +267,12 @@ export function BlogPostHeader({
               </div>
             )}
             {safeAuthor && (
-              <div
-                className="ui-article-meta__item"
-              >
-                <User aria-hidden="true" className="h-4 w-4 text-foreground/70" />
-                <span>
-                  {isTerminal ? `author: ${safeAuthor}` : safeAuthor}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Language Selection */}
-          <div
-            className="ui-article-language"
-          >
-            <Languages aria-hidden="true" className="h-4 w-4 text-primary" />
-            <span className="uppercase tracking-wide">
-              {readingLanguageLabel}
-            </span>
-            <div className="ui-article-language__options" role="group" aria-label={readingLanguageLabel}>
-              {availableLanguages.map(code => (
-                <button
-                  key={code}
-                  type='button'
-                  onClick={() => setLanguage(code)}
-                  disabled={isTranslationWarming}
-                  aria-pressed={language === code}
-                  className="ui-article-language__option"
-                >
-                  {resolveLanguageName(code)}
-                </button>
-              ))}
-            </div>
-            {/* Translation status indicators */}
-            {isTranslationWarming && (
-              <div className="flex items-center gap-1.5 ml-2 text-primary">
-                <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
-                <span className="text-xs">{translatingLabel}</span>
-              </div>
-            )}
-            {hasAiTranslationReady && (
-              <div className="flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400">
-                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
-                <span className="text-xs">{aiTranslatedLabel}</span>
+              <div className='ui-article-meta__item'>
+                <User
+                  aria-hidden='true'
+                  className='h-4 w-4 text-foreground/70'
+                />
+                <span>{isTerminal ? `author: ${safeAuthor}` : safeAuthor}</span>
               </div>
             )}
           </div>
@@ -313,26 +285,31 @@ export function BlogPostHeader({
                 isTerminal && 'font-mono'
               )}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className='flex items-start justify-between gap-3'>
                 <div>
-                  <p className="font-medium mb-1">{translationFailedLabel}</p>
-                  <p className="text-xs opacity-80">
+                  <p className='font-medium mb-1'>{translationFailedLabel}</p>
+                  <p className='text-xs opacity-80'>
                     {safeTranslationErrorMessage}
                   </p>
-                  <p className="text-xs mt-1 opacity-60">
+                  <p className='text-xs mt-1 opacity-60'>
                     {showingOriginalLabel}
                   </p>
                 </div>
                 {translationError.retryable && (
-                  <Button data-ui-variant='outline'
+                  <Button
+                    data-ui-variant='outline'
                     size='sm'
-                    variant='outline'
                     onClick={onRetryTranslation}
-                    className={["ui-control", (cn(
-                      'shrink-0 text-xs h-8',
-                      isTerminal &&
-                        'font-mono border-primary/40 text-primary hover:bg-primary/10'
-                    ))].filter(Boolean).join(' ')}
+                    className={[
+                      'ui-control',
+                      cn(
+                        'shrink-0 text-xs h-8',
+                        isTerminal &&
+                          'font-mono border-primary/40 text-primary hover:bg-primary/10'
+                      ),
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                   >
                     {retryLabel}
                   </Button>
@@ -344,12 +321,15 @@ export function BlogPostHeader({
           {post.tags && post.tags.length > 0 && (
             <div
               className={cn(
-                'flex flex-wrap items-center gap-2 text-foreground/80 dark:text-foreground/80',
+                'rd-tags flex flex-wrap items-center gap-2 text-foreground/80 dark:text-foreground/80',
                 isTerminal && 'font-mono text-xs'
               )}
             >
-              <Tag aria-hidden="true" className="h-4 w-4 text-foreground/75 dark:text-foreground/75" />
-              {isTerminal && <span className="text-primary">tags:</span>}
+              <Tag
+                aria-hidden='true'
+                className='h-4 w-4 text-foreground/75 dark:text-foreground/75'
+              />
+              {isTerminal && <span className='text-primary'>tags:</span>}
               {post.tags.flatMap((tag, index) => {
                 const safeTag = normalizeHeaderText(tag);
                 const safeTagQuery = normalizeHeaderQueryValue(tag);
@@ -359,30 +339,103 @@ export function BlogPostHeader({
                   safeTag,
                 );
                 return [
-                <Badge
-                  key={`${safeTag}-${index}`}
-                  variant='outline'
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs dark:border-ui-line dark:text-white cursor-pointer hover:bg-primary/10 transition-colors",
-                    isTerminal &&
-                      'rounded border-primary/40 text-primary hover:bg-primary/20'
-                  )}
-                  onClick={() => {
-                    curiosityTracker.trackTagClick(
-                      safeTag,
-                      `${safeYear}/${safeSlug}`
-                    );
-                    navigate(`/blog?tag=${safeTagQuery}`);
-                  }}
-                >
-                  {isTerminal
-                    ? `[${safeTagLabel}]`
-                    : `#${safeTagLabel}`}
-                </Badge>
+                  <button
+                    type='button'
+                    key={`${safeTag}-${index}`}
+                    className={cn(
+                      'rd-chip rounded-full px-3 py-1 text-xs dark:border-ui-line dark:text-white cursor-pointer hover:bg-primary/10',
+                      isTerminal &&
+                        'rounded border-primary/40 text-primary hover:bg-primary/20'
+                    )}
+                    onClick={() => {
+                      curiosityTracker.trackTagClick(
+                        safeTag,
+                        `${safeYear}/${safeSlug}`
+                      );
+                      navigate(`/blog?tag=${safeTagQuery}`);
+                    }}
+                  >
+                    {isTerminal ? `[${safeTagLabel}]` : `#${safeTagLabel}`}
+                  </button>,
                 ];
               })}
             </div>
           )}
+          <div className='rd-toolbar'>
+            {!isTerminal && (
+              <button
+                type='button'
+                className='rd-reading-settings'
+                aria-label={
+                  language === 'ko' ? '읽기 설정' : 'Reading settings'
+                }
+                onClick={() =>
+                  window.dispatchEvent(new Event('fieldnotes:reading-settings'))
+                }
+              >
+                <span aria-hidden='true'>Aa</span>
+              </button>
+            )}
+            {/* Language Selection */}
+            <div className='ui-article-language fn-language-strip'>
+              <Languages aria-hidden='true' className='h-4 w-4 text-primary' />
+              <span className='sr-only'>{readingLanguageLabel}</span>
+              <div
+                className='ui-article-language__options'
+                role='group'
+                aria-label={readingLanguageLabel}
+              >
+                {availableLanguages.map(code => (
+                  <button
+                    key={code}
+                    type='button'
+                    onClick={() => setLanguage(code)}
+                    disabled={isTranslationWarming}
+                    aria-pressed={language === code}
+                    className='ui-article-language__option'
+                  >
+                    {resolveLanguageName(code)}
+                  </button>
+                ))}
+              </div>
+              {/* Translation status indicators */}
+              {isTranslationWarming && (
+                <div className='flex items-center gap-1.5 ml-2 text-primary'>
+                  <Loader2
+                    aria-hidden='true'
+                    className='h-3.5 w-3.5 animate-spin'
+                  />
+                  <span className='text-xs'>{translatingLabel}</span>
+                </div>
+              )}
+              {hasAiTranslationReady && (
+                <div className='flex items-center gap-1.5 ml-2 text-amber-600 dark:text-amber-400'>
+                  <Sparkles aria-hidden='true' className='h-3.5 w-3.5' />
+                  <span className='text-xs'>{aiTranslatedLabel}</span>
+                </div>
+              )}
+            </div>
+
+            {!isTerminal && <ArticleReadingTools key={`${safeYear}/${safeSlug}:${language}`} postId={`${safeYear}/${safeSlug}`} title={safeTitle} content={postView.content} onShare={onShare} />}
+            {isTerminal && <Button
+              data-ui-variant='outline'
+              onClick={onShare}
+              variant='outline'
+              size='sm'
+              className={[
+                'ui-control',
+                cn(
+                  'gap-2 rounded-full border-border bg-ui-surface/70 text-foreground hover:bg-primary/10 dark:border-ui-line dark:bg-ui-surface/5 dark:text-white',
+                  isTerminal && 'font-mono border-border bg-transparent'
+                ),
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <Share2 aria-hidden='true' className='h-4 w-4' />
+              {shareLabel}
+            </Button>}
+          </div>
         </div>
       </div>
     </header>

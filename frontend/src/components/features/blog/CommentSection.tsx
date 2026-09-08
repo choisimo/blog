@@ -592,18 +592,6 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                 >
                   {isTerminal ? '>_ Discussion' : 'Discussion'}
                 </h2>
-                <p
-                  className={cn(
-                    'mt-1 max-w-2xl text-sm leading-relaxed',
-                    isTerminal
-                      ? 'font-mono text-muted-foreground'
-                      : 'text-muted-foreground dark:text-white/60'
-                  )}
-                >
-                  {isTerminal
-                    ? '// saved thread for humans, agents, and follow-up context'
-                    : '질문이나 의견을 남기고 함께 이야기해 보세요.'}
-                </p>
               </div>
             </div>
           </div>

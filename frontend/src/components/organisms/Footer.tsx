@@ -94,11 +94,11 @@ export function Footer() {
   };
 
   return (
-    <footer className={cn('ui-footer', isTerminal && 'font-mono')}>
+    <footer className={cn('ui-footer fn-site-footer', isTerminal && 'font-mono')}>
       <PageContainer>
         <div className="ui-footer__top">
           <div className="ui-footer__identity">
-            <h2 className="ui-footer__title">{isTerminal ? '>_ Nodove Blog' : 'Nodove Blog'}</h2>
+            <h2 className="ui-footer__title ui-footer__brand">{isTerminal ? '>_ Nodove Blog' : 'nodove.'}</h2>
             <p className="ui-footer__description">AI, 시스템 설계, 그리고 코드에 관한 기록.</p>
             <nav className="ui-footer__links" aria-label="Footer navigation">
               <Link to="/">Home</Link><Link to="/blog">Blog</Link><Link to="/projects">Projects</Link><Link to="/about">About</Link>

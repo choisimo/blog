@@ -127,8 +127,8 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
     fetchOverview();
   }, [fetchOverview]);
 
-  const missingRequired = overview?.stats?.missing_required ?? 0;
-  const expiringSoon = overview?.stats?.expiring_soon ?? 0;
+  const missingRequired = overview?.stats?.missing_required;
+  const expiringSoon = overview?.stats?.expiring_soon;
 
   return (
     <div className={["ui-admin-section ui-admin-secretsmanager", ("bg-ui-surface border border-ui-line rounded-lg overflow-hidden")].filter(Boolean).join(' ')}>
@@ -190,7 +190,9 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
               {overview?.stats?.total ?? '-'}
             </span>
             <span className="text-xs text-ui-muted">
-              ({overview?.stats?.configured ?? 0} configured)
+              {overview?.stats?.configured == null
+                ? 'Unknown'
+                : `(${overview.stats.configured} configured)`}
             </span>
           </div>
         </div>
@@ -200,7 +202,9 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
             <AlertTriangle className="h-3.5 w-3.5 text-ui-muted" />
             <span className="text-xs text-ui-muted">Missing Required</span>
           </div>
-          {missingRequired > 0 ? (
+          {missingRequired == null ? (
+            <p className="text-xs text-ui-muted">{loading ? 'Loading…' : 'Unknown'}</p>
+          ) : missingRequired > 0 ? (
             <div className="flex items-center gap-1.5">
               <span className="font-mono text-xs text-red-600 bg-red-50 border border-red-200 px-1 py-0.5 rounded">
                 {missingRequired}
@@ -220,7 +224,9 @@ export function SecretsManager({ subtab, onSubtabChange }: SecretsManagerProps) 
             <Clock className="h-3.5 w-3.5 text-ui-muted" />
             <span className="text-xs text-ui-muted">Expiring Soon</span>
           </div>
-          {expiringSoon > 0 ? (
+          {expiringSoon == null ? (
+            <p className="text-xs text-ui-muted">{loading ? 'Loading…' : 'Unknown'}</p>
+          ) : expiringSoon > 0 ? (
             <div className="flex items-center gap-1.5">
               <span className="font-mono text-xs text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded">
                 {expiringSoon}

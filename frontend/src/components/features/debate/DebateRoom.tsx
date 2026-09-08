@@ -701,7 +701,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
         e.preventDefault();
         if (canSend) sendMessage();
       }
@@ -765,7 +765,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
   return (
     <div
       className={cn(
-        "flex flex-col h-full max-h-[80vh] sm:max-h-[600px] overflow-hidden rounded-2xl border shadow-xl",
+        "fn-debate-workbench flex flex-col h-full max-h-[80vh] sm:max-h-[600px] overflow-hidden rounded-2xl border shadow-xl",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-primary/30 font-mono shadow-[0_0_30px_hsl(var(--terminal-glow)/0.15)]"
           : "bg-card border-border",
@@ -774,7 +774,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       {/* Header */}
       <div
         className={cn(
-          "flex items-center justify-between px-4 py-3.5 border-b shrink-0",
+          "fn-debate-room-header flex items-center justify-between px-4 py-3.5 border-b shrink-0",
           isTerminal
             ? "border-primary/20 bg-[hsl(var(--terminal-titlebar))]"
             : "border-border/40 bg-muted/40",
@@ -862,7 +862,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       {/* Messages Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-5"
+        className="fn-debate-messages flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-5"
       >
         {selectionStep === "intent" && (
           <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
@@ -875,7 +875,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
             {/* Topic Card */}
             <div
               className={cn(
-                "rounded-xl px-4 py-4 border",
+                "fn-debate-topic rounded-xl px-4 py-4 border",
                 isTerminal
                   ? "bg-primary/5 border-primary/30"
                   : "bg-muted/40 border-border/60",
@@ -925,7 +925,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                       type="button"
                       onClick={() => startDebateWithIntent(intent)}
                       className={cn(
-                        "group flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left",
+                        "fn-debate-intent group flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left",
                         "hover:scale-[1.01] active:scale-[0.99]",
                         isTerminal
                           ? "border-primary/30 hover:border-primary/60 hover:bg-primary/10"
@@ -982,7 +982,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                 )}
                 <div
                   className={cn(
-                    "rounded-2xl px-4 py-3 min-w-0",
+                    "fn-debate-response rounded-2xl px-4 py-3 min-w-0",
                     isTerminal
                       ? "bg-primary/10 border border-primary/30 rounded-bl-md"
                       : "bg-secondary text-secondary-foreground rounded-bl-md",
@@ -1012,7 +1012,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
             ) : (
               <div
                 className={cn(
-                  "max-w-[88%] rounded-2xl px-4 py-3",
+                  "fn-debate-message max-w-[88%] rounded-2xl px-4 py-3",
                   msg.role === "user" &&
                     "bg-primary text-primary-foreground rounded-br-md",
                   msg.role === "system" && "bg-muted text-muted-foreground",
@@ -1054,7 +1054,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
                   type="button"
                   onClick={() => handleFollowUp(prompt)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-full transition-colors",
+                    "fn-debate-follow-up inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-full transition-colors",
                     isTerminal
                       ? "bg-primary/15 text-primary/90 hover:bg-primary/25 hover:text-primary border border-primary/30"
                       : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground",
@@ -1072,7 +1072,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       {selectionStep === "chat" && (
         <div
           className={cn(
-            "border-t px-4 py-4 shrink-0",
+            "fn-debate-composer border-t px-4 py-4 shrink-0",
             isTerminal
               ? "border-primary/20 bg-primary/5"
               : "border-border/40 bg-muted/30",
@@ -1093,6 +1093,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
               onKeyDown={handleKeyDown}
               onInput={handleInputResize}
               placeholder="생각을 나눠보세요..."
+              aria-label="상담 메시지"
               rows={1}
               className={cn(
                 "flex-1 resize-none border-0 bg-transparent py-2 text-sm focus:outline-none focus:ring-0",

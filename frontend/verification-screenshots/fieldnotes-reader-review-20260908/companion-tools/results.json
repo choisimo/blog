@@ -1,0 +1,50 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "source": "existing application fallback after aborted network",
+    "answered": 10,
+    "failedApiRequests": 18,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "source": "existing application fallback after aborted network",
+    "answered": 10,
+    "failedApiRequests": 18,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "source": "existing application fallback after aborted network",
+    "answered": 10,
+    "failedApiRequests": 18,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "source": "existing application fallback after aborted network",
+    "answered": 10,
+    "failedApiRequests": 18,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "source": "existing application fallback after aborted network",
+    "answered": 10,
+    "failedApiRequests": 18,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "source": "existing application fallback after aborted network",
+    "answered": 10,
+    "failedApiRequests": 18,
+    "errors": []
+  }
+]

@@ -1,0 +1,314 @@
+/* Named overlay surfaces only. Content renderers, status hues and terminal keep their contracts. */
+/* The custom element also carries .dark; do not let the legacy .dark palette
+   redeclare app colors on that host instead of inheriting the refined root. */
+:root:not(.terminal) ai-memo-pad:not(.terminal) {
+  --background: inherit;
+  --card: inherit;
+  --foreground: inherit;
+  --muted: inherit;
+  --muted-foreground: inherit;
+  --border: inherit;
+  --border-strong: inherit;
+  --primary: inherit;
+  --primary-foreground: inherit;
+  --accent: inherit;
+  --ring: inherit;
+}
+:root:not(.terminal) .fn-chat-desk {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  box-shadow: 0 24px 80px hsl(var(--foreground) / 0.12);
+  font-family: var(--fn-sans);
+  transition:
+    opacity 180ms var(--fn-ease),
+    transform 180ms var(--fn-ease);
+}
+@media (min-width: 768px) {
+  :root:not(.terminal) .fn-chat-desk--docked {
+    top: 12px;
+    right: 12px;
+    bottom: auto;
+    left: auto;
+    width: min(420px, calc(100vw - 24px));
+    transform: none;
+  }
+}
+:root:not(.terminal) .fn-chat-heading {
+  padding: 18px 16px 14px;
+  gap: 12px;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  align-items: flex-start;
+}
+:root:not(.terminal) .fn-chat-heading-title {
+  font: 500 25px/1.35 var(--fn-serif);
+  letter-spacing: -0.035em;
+}
+:root:not(.terminal) .fn-chat-heading button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 5px;
+}
+:root:not(.terminal) .fn-chat-heading button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+:root:not(.terminal) .fn-chat-composer {
+  border-radius: 7px;
+  padding: 12px;
+  border-color: hsl(var(--border));
+  background: hsl(var(--background));
+}
+:root:not(.terminal) .fn-chat-composer:focus-within {
+  border-color: hsl(var(--primary));
+}
+:root:not(.terminal) .fn-chat-composer textarea {
+  font: 14px/1.8 var(--fn-sans);
+  color: hsl(var(--foreground));
+}
+:root:not(.terminal) .fn-chat-composer button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 5px;
+}
+:root:not(.terminal) .fn-chat-composer button:disabled {
+  opacity: 0.5;
+}
+:root:not(.terminal) .fn-chat-sidebar {
+  border-color: hsl(var(--border));
+  background: hsl(var(--background));
+}
+:root:not(.terminal) .fn-chat-sidebar button:not([role='switch']) {
+  min-height: 44px;
+}
+:root:not(.terminal) .fn-chat-sidebar-sheet {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  font-family: var(--fn-sans);
+}
+:root:not(.terminal) .fn-search-panel {
+  color: hsl(var(--foreground));
+  font-family: var(--fn-sans);
+}
+:root:not(.terminal) .fn-search-panel[data-radix-popper-content-wrapper],
+:root:not(.terminal) .fn-search-panel[data-state] {
+  border-radius: 10px;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 18px 60px hsl(var(--foreground) / 0.1);
+}
+:root:not(.terminal) .fn-search-panel input {
+  border-radius: 7px;
+  min-height: 48px;
+  font-size: 15px;
+}
+:root:not(.terminal) .fn-search-panel .fn-search-record {
+  padding: 16px 12px;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  box-shadow: none;
+}
+:root:not(.terminal)
+  .fn-search-record
+  > div
+  > div:nth-child(2)
+  > div:first-child {
+  white-space: normal;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.65;
+}
+:root:not(.terminal) .fn-search-panel button {
+  min-height: 44px;
+}
+:root:not(.terminal) .fn-visited-desk {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+  font-family: var(--fn-sans);
+  backdrop-filter: none;
+}
+:root:not(.terminal) .fn-visited-desk > div:first-child {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+:root:not(.terminal) .fn-visited-desk h2 {
+  font: 500 26px/1.4 var(--fn-serif);
+  letter-spacing: -0.035em;
+}
+:root:not(.terminal) .fn-visited-desk button {
+  min-height: 44px;
+  min-width: 44px;
+}
+:root:not(.terminal) .fn-visited-desk li button {
+  border-radius: 5px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+@media (min-width: 768px) {
+  :root:not(.terminal) .fn-visited-desk {
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    height: calc(100dvh - 24px);
+    max-width: calc(100vw - 24px);
+    border: 1px solid hsl(var(--border));
+    border-radius: 10px;
+    box-shadow: 0 24px 80px hsl(var(--foreground) / 0.12);
+  }
+}
+@media (max-width: 767px) {
+  :root:not(.terminal) .fn-chat-desk {
+    border-radius: 0;
+  }
+  :root:not(.terminal) .fn-chat-heading {
+    padding: 12px 12px 10px;
+  }
+  :root:not(.terminal) .fn-chat-heading-title {
+    font-size: 22px;
+  }
+  :root:not(.terminal) .fn-chat-composer textarea {
+    font-size: 16px;
+  }
+  :root:not(.terminal) .fn-search-panel input {
+    font-size: 16px;
+  }
+  :root:not(.terminal) .fn-visited-desk {
+    border-radius: 12px 12px 0 0;
+  }
+}
+/* Normal declarations on the custom-element host override its default :host tokens.
+   Its open shadow DOM and owner/session code remain untouched. */
+:root:not(.terminal) ai-memo-pad {
+  --memo-radius: 10px;
+  --memo-surface: hsl(var(--card));
+  --memo-surface-subtle: hsl(var(--background));
+  --memo-surface-soft: hsl(var(--muted));
+  --memo-border: hsl(var(--border));
+  --memo-border-strong: hsl(var(--border-strong));
+  --memo-border-dark: hsl(var(--border));
+  --memo-text: hsl(var(--foreground));
+  --memo-text-dark: hsl(var(--foreground));
+  --memo-text-muted: hsl(var(--muted-foreground));
+  --memo-text-subtle: hsl(var(--muted-foreground));
+  --memo-primary: hsl(var(--primary));
+  --memo-primary-hover: hsl(var(--primary) / 0.88);
+  --memo-accent: hsl(var(--primary));
+  --memo-accent-hover: hsl(var(--primary) / 0.88);
+  --memo-ai: hsl(var(--primary));
+  --memo-danger: hsl(var(--destructive));
+  --memo-ease: var(--fn-ease);
+  --memo-spring: var(--fn-ease);
+  --memo-shadow: 0 24px 80px hsl(var(--foreground) / 0.12);
+  --memo-shadow-dark: 0 24px 80px hsl(160 30% 3% / 0.35);
+  --memo-font: var(--fn-sans);
+  --memo-title-font: var(--fn-serif);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not(.terminal) .fn-chat-desk,
+  :root:not(.terminal) .fn-chat-heading button,
+  :root:not(.terminal) .fn-visited-desk {
+    transition: none;
+    animation: none;
+  }
+  :root:not(.terminal) .fn-chat-heading button:active:not(:disabled) {
+    transform: none;
+  }
+}
+@media print {
+  .fn-chat-desk,
+  .fn-chat-sidebar-sheet,
+  .fn-visited-desk,
+  ai-memo-pad {
+    display: none !important;
+  }
+}
+/* The composer supplies the focus ring around its complete input/action group. */
+.ui-search-sheet :is(.fn-search-results, .fn-search-history) {
+  position: static;
+  max-height: none;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:root:not(.terminal) .fn-chat-composer textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+:root:not(.terminal) .ui-dialog-content.ui-image-viewer {
+  width: min(1200px, calc(100vw - 32px));
+  height: calc(100dvh - 48px);
+  border-color: hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+:root:not(.terminal) .ui-image-viewer :is(.ui-image-viewer__header, .ui-image-viewer__footer) {
+  border-color: hsl(var(--border));
+}
+:root:not(.terminal) .ui-image-viewer .ui-image-viewer__header { flex-wrap: nowrap; }
+:root:not(.terminal) .ui-image-viewer .ui-image-viewer__title {
+  font: 500 27px/1.4 var(--fn-serif);
+  color: hsl(var(--foreground));
+}
+:root:not(.terminal) .ui-image-viewer :is(.ui-image-viewer__description, .ui-image-viewer__caption, .ui-image-viewer__status, .ui-image-viewer__scale) {
+  color: hsl(var(--muted-foreground));
+}
+:root:not(.terminal) .ui-image-viewer .ui-image-viewer__canvas {
+  margin: 0;
+  background: hsl(var(--background));
+}
+:root:not(.terminal) .ui-image-viewer .ui-image-viewer__tools {
+  background: transparent;
+  padding: 0;
+  gap: 3px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+:root:not(.terminal) .ui-image-viewer .ui-image-viewer__tools::before,
+:root:not(.terminal) .ui-image-viewer .ui-image-viewer__tools::after { content: none; }
+:root:not(.terminal) .ui-image-viewer :is(.ui-image-viewer__tools button, .ui-image-viewer__close, .ui-image-viewer__original) {
+  border-color: hsl(var(--border));
+  border-radius: 5px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  box-shadow: none;
+}
+:root:not(.terminal) .ui-image-viewer :is(.ui-image-viewer__tools button, .ui-image-viewer__close, .ui-image-viewer__original):hover {
+  background: hsl(var(--muted));
+}
+:root:not(.terminal) .ui-image-viewer :is(button, a, .ui-image-viewer__canvas):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: -2px;
+}
+@media (max-width: 599px) {
+  :root:not(.terminal) .ui-dialog-content.ui-image-viewer { height: calc(100dvh - 20px); }
+  :root:not(.terminal) .ui-image-viewer .ui-image-viewer__heading { flex: 1; }
+  :root:not(.terminal) .ui-image-viewer .ui-image-viewer__title { font-size: 24px; }
+  :root:not(.terminal) .ui-image-viewer .ui-image-viewer__footer { gap: 6px; }
+  :root:not(.terminal) .ui-image-viewer .ui-image-viewer__caption { flex-basis: 100%; font-size: 11px; }
+  :root:not(.terminal) .ui-image-viewer .ui-image-viewer__tools { width: auto; }
+}
+
+/* Comment authoring uses the same paper and editing controls as the reader. */
+:root:not(.terminal) .ui-dialog.ui-comment-dialog { width: min(580px, calc(100vw - 32px)); border-radius: 12px; background: hsl(var(--card)); }
+:root:not(.terminal) .ui-comment-heading .ui-comment-title { font: 500 27px/1.4 var(--fn-serif); letter-spacing: -.035em; }
+:root:not(.terminal) .ui-comment-heading .ui-comment-description { font-size: 12px; }
+:root:not(.terminal) .ui-comment-dialog .ui-comment-field :is(input,textarea) { border-color: hsl(var(--border)); background: hsl(var(--card)); }
+.fn-comment-format { display: flex; align-items: center; gap: 3px; border: 1px solid hsl(var(--border)); border-radius: 6px; padding: 3px; background: hsl(var(--background)); }
+.fn-comment-format button { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 5px; border-radius: 4px; color: hsl(var(--muted-foreground)); }
+.fn-comment-format button:hover:not(:disabled), .fn-comment-format button[aria-pressed='true'] { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.fn-comment-format svg { width: 16px; height: 16px; }
+.fn-comment-preview-toggle { margin-left: auto; font-size: 11px; }
+.fn-comment-preview { min-height: 220px; padding: 12px 14px; border: 1px solid hsl(var(--border)); border-radius: 6px; font-size: 16px; line-height: 1.85; overflow-wrap: anywhere; }
+@media (max-width: 599px) {
+  :root:not(.terminal) .ui-dialog.ui-comment-dialog { width: 100vw; border-radius: 12px 12px 0 0; }
+  :root:not(.terminal) .ui-comment-heading .ui-comment-title { font-size: 24px; }
+  .fn-comment-preview { min-height: 170px; }
+}

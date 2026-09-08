@@ -1,0 +1,128 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "geometry": {
+      "height": 489,
+      "scroll": 489,
+      "bottom": 490.65625,
+      "resultBottom": 461.65625,
+      "position": "static",
+      "inputFont": "16px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "geometry": {
+      "height": 489,
+      "scroll": 489,
+      "bottom": 490.65625,
+      "resultBottom": 461.65625,
+      "position": "static",
+      "inputFont": "16px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "geometry": {
+      "height": 466,
+      "scroll": 466,
+      "bottom": 467.5625,
+      "resultBottom": 438.5625,
+      "position": "static",
+      "inputFont": "16px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "geometry": {
+      "height": 466,
+      "scroll": 466,
+      "bottom": 467.5625,
+      "resultBottom": 438.5625,
+      "position": "static",
+      "inputFont": "16px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "geometry": {
+      "height": 404,
+      "scroll": 404,
+      "bottom": 406.28125,
+      "resultBottom": 377.28125,
+      "position": "static",
+      "inputFont": "15px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "geometry": {
+      "height": 404,
+      "scroll": 404,
+      "bottom": 406.28125,
+      "resultBottom": 377.28125,
+      "position": "static",
+      "inputFont": "15px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  },
+  {
+    "theme": "terminal",
+    "width": 390,
+    "geometry": {
+      "height": 348,
+      "scroll": 348,
+      "bottom": 349.5,
+      "resultBottom": 320.5,
+      "position": "static",
+      "inputFont": "16px"
+    },
+    "historyInFlow": true,
+    "keyboardNavigation": true,
+    "shortViewportLastResultReachable": true,
+    "emptySearch": true,
+    "escapeFocusReturn": true,
+    "errors": []
+  }
+]

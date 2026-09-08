@@ -185,7 +185,8 @@ function mapPrismFacetsToCards(
       summary: bullets[0] || facet.title,
       bullets,
       detail: [facet.title, ...facet.points].join('\n\n'),
-      tags: [sourceTag, 'prism'],
+      // Transport/source identifiers are conveyed by artifact status, not topic tags.
+      tags: [],
     };
   });
 }

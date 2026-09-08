@@ -57,6 +57,10 @@ describe('SecretsManager', () => {
     expect(screen.getByText('Secrets overview unavailable')).toBeInTheDocument();
     expect(screen.queryByText('No categories found.')).not.toBeInTheDocument();
     expect(screen.queryByText('No recent activity.')).not.toBeInTheDocument();
+    expect(screen.queryByText('All configured')).not.toBeInTheDocument();
+    expect(screen.queryByText('None expiring')).not.toBeInTheDocument();
+    expect(screen.queryByText('(0 configured)')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Unknown')).toHaveLength(4);
     await waitFor(() => {
       expect(mockFetchOverview).toHaveBeenCalled();
     });

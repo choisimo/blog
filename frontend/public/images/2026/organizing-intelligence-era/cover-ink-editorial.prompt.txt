@@ -1,0 +1,10 @@
+Generation mode: built-in image_gen
+
+Use case: illustration-story
+Asset type: understated editorial illustration for a Korean long-form essay about moving from possessing knowledge to organizing and verifying intelligence.
+Primary request: Create a completely new image in a quiet, economical pen-and-ink editorial drawing style, like an illustration commissioned for the inside pages of a literary journal.
+Scene: An ordinary working table seen from a gently elevated oblique angle. At one end a few closed reference books; across the table, small unlabelled index cards being arranged into three loose groups, a pencil, and an open notebook. The arrangement suggests thinking, selecting, and organizing knowledge. No people or hands.
+Style: Fine dark graphite-grey ink lines, restrained irregular hand-drawn contours, a handful of sparse parallel hatch marks. Flat two-dimensional drawing on a clean warm off-white background. A very small muted sage wash on just two cards. Large unmarked areas, low visual density, a deliberately modest everyday scene.
+Composition: Landscape 1536 by 1024, asymmetrical but balanced, scene in the middle half with generous whitespace around it. Readable as a small blog thumbnail.
+Avoid: Photorealism, 3D rendering, cut-paper collage, woven strips, fake paper grain, distressed vintage filters, glossy gradients, dramatic lighting, cast-shadow realism, perfect stock-vector geometry, a central glowing object, brains, robots, circuits, network nodes, futuristic AI imagery, intricate decorative detail.
+Text: None. No lettering, numbers, pseudo-handwriting, logos, or watermark.

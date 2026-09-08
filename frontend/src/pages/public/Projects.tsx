@@ -127,17 +127,13 @@ const Projects = () => {
   };
   return (
     <div
-      className='ui-page ui-projects-page ui-page-container'
+      className='ui-page ui-projects-page ui-page-container fn-projects fn-shell fn-page-space'
       data-ui-page='projects'
     >
       <header className='ui-projects-heading'>
         <div>
-          <p className='ui-eyebrow'>PROJECTS</p>
-          <h1>프로젝트</h1>
-          <p>
-            GitHub choisimo의 공개 저장소를 2026년 9월 8일 기준으로 정리했습니다.
-            원본·포크·빈 저장소를 구분하며, 소개와 주요 언어는 공개 자료에서 확인한 내용입니다.
-          </p>
+          <p className='fn-eyebrow'>SELECTED WORK / BUILDING IN PUBLIC</p>
+          <h1>From ideas to systems.</h1>
         </div>
         {!loading && !error && (
           <div className='ui-projects-total'>

@@ -256,7 +256,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
 
   // Pre-generate quiz silently after page load so 'Start' is instant
   useEffect(() => {
-    if (!shouldEnableQuiz) return;
+    if (!shouldEnableQuiz || state !== "idle") return;
     // Don't pre-gen if already in progress or already have data
     if (isFetchingRef.current || preGeneratedRef.current.length > 0) return;
     const requestVersion = requestVersionRef.current;
@@ -291,6 +291,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
 
     return () => clearTimeout(timer);
   }, [
+    state,
     shouldEnableQuiz,
     content,
     normalizedPostTitle,
@@ -503,7 +504,7 @@ export function QuizPanel({ content, postTitle, postTags }: QuizPanelProps) {
     <div
       data-testid="quiz-panel"
       className={cn(
-        "my-8 max-w-4xl mx-auto rounded-2xl border shadow-sm overflow-hidden",
+        "fn-reader-quiz my-8 max-w-4xl mx-auto rounded-2xl border shadow-sm overflow-hidden",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-primary/20"
           : "bg-card/80 backdrop-blur-sm border-border/60",
@@ -835,8 +836,9 @@ function QuestionView({
                   key={i}
                   type="button"
                   onClick={() => onAnswerChange(option)}
+                  aria-pressed={normalizeComparableText(currentAnswer) === normalizeComparableText(option)}
                   className={cn(
-                    "w-full text-left px-4 py-3 rounded-xl border text-sm transition-all",
+                    "fn-quiz-option w-full text-left px-4 py-3 rounded-xl border text-sm transition-all",
                     "hover:scale-[1.005] active:scale-[0.998]",
                     normalizeComparableText(currentAnswer) ===
                       normalizeComparableText(option)

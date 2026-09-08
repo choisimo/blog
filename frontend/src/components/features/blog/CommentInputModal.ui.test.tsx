@@ -17,7 +17,7 @@ describe('comment composer UI lifecycle', () => {
     expect(screen.getByRole('textbox', { name: /이름/ })).toHaveValue('nodove');
   });
 
-  it('asks before discarding and restores focus when continuing', () => {
+  it('asks before discarding and restores focus when continuing', async () => {
     const onClose = vi.fn();
     render(<CommentInputModal {...defaults} onClose={onClose} onSubmit={vi.fn()} />);
     const content = screen.getByRole('textbox', { name: /댓글/ });
@@ -26,7 +26,7 @@ describe('comment composer UI lifecycle', () => {
     expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '계속 작성' }));
     expect(content).toHaveValue('보존할 댓글');
-    expect(content).toHaveFocus();
+    await waitFor(() => expect(content).toHaveFocus());
   });
 
   it('blocks duplicate sends and keeps the textarea after a failed request', async () => {

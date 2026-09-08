@@ -42,6 +42,7 @@ const AdminConfig = lazy(() => import("./pages/admin/AdminConfig"));
 const AdminAuthCallback = lazy(() => import("./pages/admin/AdminAuthCallback"));
 import "./App.css";
 import { PublicShell } from "@/components/organisms/layout";
+import { ReadingPreferences } from "@/components/common/ReadingPreferences";
 const VisitedPostsMinimap = lazy(() =>
   import("@/components/features/navigation/VisitedPostsMinimap").then((m) => ({
     default: m.VisitedPostsMinimap,
@@ -249,6 +250,7 @@ function App() {
             <ThemeProvider>
               <TooltipProvider>
                 <PublicShell>
+                  <ReadingPreferences />
                   <RouteHeader />
                   <RouteMain>
                     <Suspense fallback={<PageTransitionFallback />}>

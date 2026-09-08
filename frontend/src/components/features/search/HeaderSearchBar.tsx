@@ -588,9 +588,9 @@ export function HeaderSearchBar({
     if (!queryTrimmed) return null;
 
     const wrapperClass = floating
-      ? "space-y-1"
+      ? "fn-search-results space-y-1"
       : cn(
-          "absolute left-0 right-0 top-full z-[var(--z-popover)] mt-2 max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-sm",
+          "fn-search-results absolute left-0 right-0 top-full z-[var(--z-popover)] mt-2 max-h-80 overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-sm",
           isTerminal && "mt-1 border-border bg-[hsl(var(--terminal-code-bg))]",
         );
 
@@ -626,7 +626,7 @@ export function HeaderSearchBar({
               aria-label={`${safeResultLabel}: ${safePostTitle}`}
               onClick={() => handleSelect(post)}
               className={cn(
-                "w-full text-left transition-colors",
+                "fn-search-record w-full text-left transition-colors",
                 floating
                   ? cn(
                       "rounded-xl border px-3 py-3",
@@ -733,7 +733,7 @@ export function HeaderSearchBar({
     return (
       <div
         className={cn(
-          "absolute left-0 right-0 top-full z-[var(--z-popover)] mt-2 max-h-60 overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-sm",
+          "fn-search-history absolute left-0 right-0 top-full z-[var(--z-popover)] mt-2 max-h-60 overflow-y-auto overscroll-contain rounded-xl border border-border/60 bg-card/95 shadow-xl backdrop-blur-sm",
           isTerminal && "mt-1 border-border bg-[hsl(var(--terminal-code-bg))]",
         )}
       >
@@ -805,7 +805,7 @@ export function HeaderSearchBar({
       role="search"
       aria-label={safeLabel}
       title={safeTitle}
-      className={cn("relative", className)}
+      className={cn("fn-search-panel relative", className)}
     >
       {isTerminal ? renderTerminalInput() : renderDefaultInput()}
       {isOpen && renderResults()}
@@ -878,7 +878,7 @@ export function HeaderSearchBar({
 
       <PopoverContent
         className={cn(
-          "w-[min(92vw,28rem)] p-3",
+          "fn-search-panel w-[min(92vw,28rem)] p-3",
           isTerminal &&
             "border-primary/30 bg-[hsl(var(--terminal-code-bg))] shadow-[0_0_24px_hsl(var(--terminal-glow)/0.14)]",
         )}

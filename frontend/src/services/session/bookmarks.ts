@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'blog.bookmarks';
 const MAX_BOOKMARK_ID_LENGTH = 180;
-const BOOKMARK_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,179}$/;
+const BOOKMARK_ID_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}._/-]{0,179}$/u;
+const POST_WITH_SPACES_PATTERN = /^\d{4}\/[\p{L}\p{N}][\p{L}\p{N}\p{M}._ -]*$/u;
 
 export type BookmarkItem = {
   id: string;
@@ -27,15 +28,16 @@ function decodeBookmarkId(value: string): string | null {
 function normalizeBookmarkId(value: unknown): string | null {
   if (typeof value !== 'string') return null;
 
-  const normalized = decodeBookmarkId(value);
+  const normalized = decodeBookmarkId(value)?.normalize('NFC');
   if (
     !normalized ||
     normalized.length > MAX_BOOKMARK_ID_LENGTH ||
-    !BOOKMARK_ID_PATTERN.test(normalized) ||
+    (!BOOKMARK_ID_PATTERN.test(normalized) && !POST_WITH_SPACES_PATTERN.test(normalized)) ||
     normalized.includes('//') ||
     normalized.includes('/../') ||
     normalized.startsWith('../') ||
-    normalized.endsWith('/..')
+    normalized.endsWith('/..') ||
+    normalized.split('/').some(segment => segment === '.' || segment === '..')
   ) {
     return null;
   }

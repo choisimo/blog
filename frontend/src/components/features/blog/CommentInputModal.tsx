@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, useCallback } from 'react';
-import { Globe2, Loader2, Quote, Reply, Send, X } from 'lucide-react';
+import { Bold, Code, Eye, Globe2, Italic, Loader2, PenLine, Quote, Reply, Send, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import CommentMarkdown from './CommentMarkdown';
 
 interface CommentInputModalProps {
   isOpen: boolean;
@@ -141,6 +142,7 @@ export default function CommentInputModal({
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [dismissHint, setDismissHint] = useState('');
+  const [preview, setPreview] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const authorRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -172,7 +174,7 @@ export default function CommentInputModal({
       const nextContent = normalizeCommentContent(initialContent);
       setAuthor(nextAuthor); setContent(nextContent); setWebsite('');
       setShowWebsiteField(false); setSubmitting(false); setError(null);
-      setConfirmDiscard(false); setDismissHint('');
+      setConfirmDiscard(false); setDismissHint(''); setPreview(false);
       initialSignatureRef.current = commentDraftSignature(nextAuthor, nextContent, '');
       contextKeyRef.current = draftKey;
     }
@@ -268,6 +270,23 @@ export default function CommentInputModal({
   const safeContextPreview = normalizeCommentContent(contextPreview);
   const canSubmit = !submitting && !confirmDiscard && !!normalizeCommentSingleLine(author) && !!normalizeCommentContent(content);
   const ContextIcon = intent === 'quote' ? Quote : Reply;
+  const format = (kind: 'bold' | 'italic' | 'quote' | 'code') => {
+    const editor = contentRef.current;
+    if (!editor || submitting || preview) return;
+    const start = editor.selectionStart, end = editor.selectionEnd;
+    const selected = content.slice(start, end);
+    const marker = kind === 'bold' ? '**' : kind === 'italic' ? '*' : selected.includes('\n') ? '```\n' : '`';
+    const formatted = kind === 'quote' ? selected.replace(/^/gm, '> ') : `${marker}${selected}${marker === '```\n' ? '\n```' : marker}`;
+    const before = content.slice(0, start), after = content.slice(end);
+    const block = kind === 'quote' || marker === '```\n';
+    const leading = block && before && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '';
+    const trailing = block && after && !after.startsWith('\n\n') ? (after.startsWith('\n') ? '\n' : '\n\n') : '';
+    setContent(before + leading + formatted + trailing + after);
+    requestAnimationFrame(() => {
+      editor.focus();
+      editor.setSelectionRange(start + leading.length + (kind === 'quote' ? 2 : marker.length), start + leading.length + formatted.length - (kind === 'quote' ? 0 : marker.length));
+    });
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={open => { if (!open) requestClose(); }}>
@@ -322,8 +341,13 @@ export default function CommentInputModal({
               </div>
               <div className="ui-comment-field ui-comment-content-field">
                 <label htmlFor={`${id}-content`}>{safeContentLabel}<span>필수</span></label>
+                <div className='fn-comment-format' role='group' aria-label='댓글 서식'>
+                  {([{ kind: 'bold', label: '굵게', Icon: Bold }, { kind: 'italic', label: '기울임', Icon: Italic }, { kind: 'quote', label: '인용', Icon: Quote }, { kind: 'code', label: '코드', Icon: Code }] as const).map(({ kind, label: formatLabel, Icon }) => <button key={kind} type='button' aria-label={formatLabel} title={formatLabel} disabled={preview} onClick={() => format(kind)}><Icon aria-hidden='true' /></button>)}
+                  <button type='button' className='fn-comment-preview-toggle' aria-label={preview ? '댓글 편집' : '댓글 미리보기'} aria-pressed={preview} onClick={() => { setPreview(value => !value); if (preview) requestAnimationFrame(() => contentRef.current?.focus()); }}>{preview ? <PenLine aria-hidden='true' /> : <Eye aria-hidden='true' />}<span>{preview ? '편집' : '미리보기'}</span></button>
+                </div>
+                {preview && <div className='fn-comment-preview' role='region' aria-label='댓글 미리보기'>{content.trim() ? <CommentMarkdown content={content} isTerminal={isTerminal} /> : <p>아직 작성한 내용이 없습니다.</p>}</div>}
                 <textarea id={`${id}-content`} ref={contentRef} value={content} onChange={event => setContent(event.target.value)} required rows={8}
-                  className="ui-textarea ui-comment-textarea" placeholder={safeContentPlaceholder} aria-describedby={`${hintId}${error ? ` ${errorId}` : ''}`} />
+                  hidden={preview} className="ui-textarea ui-comment-textarea" placeholder={safeContentPlaceholder} aria-describedby={`${hintId}${error ? ` ${errorId}` : ''}`} />
                 <div className="ui-comment-writing-help"><span id={hintId}>{safeFooterHint}</span><span>{Array.from(content).length.toLocaleString()}자</span></div>
               </div>
             </fieldset>
@@ -331,7 +355,7 @@ export default function CommentInputModal({
           {confirmDiscard && <div className="ui-comment-discard" role="group" aria-label="작성 내용 폐기 확인">
             <div><strong>작성 중인 내용을 버릴까요?</strong><p>아직 게시되지 않았습니다. 닫으면 이 창의 입력은 사라집니다.</p></div>
             <div className="ui-actions"><button type="button" className="ui-control" data-ui-variant="outline" ref={keepWritingRef}
-              onClick={() => { setConfirmDiscard(false); contentRef.current?.focus(); }}>계속 작성</button>
+              onClick={() => { setConfirmDiscard(false); setPreview(false); requestAnimationFrame(() => contentRef.current?.focus()); }}>계속 작성</button>
               <button type="button" className="ui-control" data-ui-variant="destructive" onClick={() => { setConfirmDiscard(false); onClose(); }}>버리고 닫기</button></div>
           </div>}
           <footer className="ui-comment-footer">

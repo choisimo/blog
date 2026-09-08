@@ -90,7 +90,7 @@ function SettingToggleCard({
   // Default mode: slim inline toggle row (Vercel style)
   return (
     <div className="flex items-center justify-between py-1.5 px-2">
-      <span className="text-xs text-[#666666] font-medium dark:text-[#999999]">
+      <span className="text-xs text-muted-foreground font-medium dark:text-muted-foreground">
         {label}
       </span>
       <button
@@ -108,10 +108,10 @@ function SettingToggleCard({
         }}
         className={cn(
           "relative rounded-full transition-colors duration-150",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#0070F3] focus-visible:ring-offset-1",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-1",
           checked
-            ? "bg-[#111111] dark:bg-[#EEEEEE]"
-            : "bg-[#E5E5E5] dark:bg-[#333333]",
+            ? "bg-foreground dark:bg-foreground"
+            : "bg-muted dark:bg-muted",
           disabled && "opacity-40 cursor-not-allowed",
         )}
       >
@@ -123,7 +123,7 @@ function SettingToggleCard({
             height: "14px",
             width: "14px",
           }}
-          className="rounded-full bg-white shadow-sm transition-all duration-150"
+          className="rounded-full bg-card shadow-sm transition-all duration-150"
         />
       </button>
     </div>
@@ -230,7 +230,7 @@ export function ChatSidebar({
     "flex items-center gap-1.5 mb-2",
     isTerminal
       ? "text-xs font-semibold uppercase tracking-wider text-primary/50 font-mono"
-      : "text-[10px] font-semibold uppercase tracking-[0.08em] text-[#999999] dark:text-[#666666]",
+      : "text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground dark:text-muted-foreground",
   );
 
   // Vercel-style active: left border indicator + bold text, no filled background
@@ -240,10 +240,10 @@ export function ChatSidebar({
       active
         ? isTerminal
           ? "bg-primary/20 text-primary"
-          : "text-[#111111] dark:text-[#EEEEEE] font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-0.5 before:bg-[#111111] dark:before:bg-[#EEEEEE] before:rounded-full"
+          : "text-foreground dark:text-foreground font-semibold before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-4 before:w-0.5 before:bg-foreground dark:before:bg-foreground before:rounded-full"
         : isTerminal
           ? "text-muted-foreground hover:text-foreground hover:bg-white/5"
-          : "text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+          : "text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted",
     );
 
   // Hairline divider (Vercel style) vs. Separator for terminal
@@ -251,17 +251,17 @@ export function ChatSidebar({
     isTerminal ? (
       <div className="h-px bg-border/40 mx-0 my-1" />
     ) : (
-      <div className="h-px bg-[#EAEAEA] dark:bg-[#222222] mx-3 my-1" />
+      <div className="h-px bg-muted dark:bg-muted mx-3 my-1" />
     );
 
   return (
     <div
       aria-label="채팅 사이드바"
       className={cn(
-        "flex h-full w-72 shrink-0 flex-col overflow-hidden border-r",
+        "fn-chat-sidebar flex h-full w-72 shrink-0 flex-col overflow-hidden border-r",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border font-mono"
-          : "bg-[#FAFAFA] dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
+          : "bg-card dark:bg-card border-border dark:border-border",
       )}
     >
       <ScrollArea className="flex-1">
@@ -306,7 +306,7 @@ export function ChatSidebar({
                 "shrink-0 rounded border px-2 py-1 text-[10px] leading-none transition-colors",
                 isTerminal
                   ? "border-primary/40 text-primary hover:bg-primary/10"
-                  : "border-[#EAEAEA] dark:border-[#333333] text-[#666666] dark:text-[#888888] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#EEEEEE]",
+                  : "border-border dark:border-border text-muted-foreground dark:text-muted-foreground hover:bg-muted dark:hover:bg-muted hover:text-foreground dark:hover:text-foreground",
                 !onStartDebate && "opacity-50 cursor-not-allowed",
               )}
               title={
@@ -324,7 +324,7 @@ export function ChatSidebar({
                 "text-xs px-2 py-1",
                 isTerminal
                   ? "text-muted-foreground/50"
-                  : "text-[#AAAAAA] dark:text-[#555555]",
+                  : "text-muted-foreground dark:text-muted-foreground",
               )}
             >
               활성 방 없음
@@ -376,7 +376,7 @@ export function ChatSidebar({
                 "text-xs px-2 py-1",
                 isTerminal
                   ? "text-muted-foreground/50"
-                  : "text-[#AAAAAA] dark:text-[#555555]",
+                  : "text-muted-foreground dark:text-muted-foreground",
               )}
             >
               저장된 대화 없음
@@ -404,7 +404,7 @@ export function ChatSidebar({
                       "min-w-0 rounded px-2 py-1.5 text-left text-sm transition-colors",
                       isTerminal
                         ? "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                        : "text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+                        : "text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted",
                     )}
                     onClick={() => onLoadSession(s.id)}
                     title={title}
@@ -437,7 +437,7 @@ export function ChatSidebar({
           "shrink-0 border-t px-3 py-3",
           isTerminal
             ? "border-border bg-[hsl(var(--terminal-titlebar))]"
-            : "border-[#EAEAEA] bg-[#FCFCFC] dark:border-[#222222] dark:bg-[#050505]",
+            : "border-border bg-card dark:border-border dark:bg-card",
         )}
       >
         <div className={labelClass}>

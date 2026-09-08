@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Compass, FlaskConical, MessageSquareQuote, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import './sentio.css';
@@ -114,8 +115,12 @@ export default function LensCard({
   const interactionHint = showEvidence
     ? '클릭해 요점 보기'
     : '클릭해 근거 보기';
+  const lensRef = useRef<HTMLElement>(null);
+  const toggleEvidence = () => {
+    onToggleEvidence?.();
+    requestAnimationFrame(() => lensRef.current?.querySelector<HTMLButtonElement>('.sentio-evidence-toggle[tabindex="0"]')?.focus({ preventScroll: true }));
+  };
   const cardId = normalizeKey(card.id, 'lens-card');
-  const angleKey = normalizeDisplayText(card.angleKey, cardId);
   const title = normalizeDisplayText(card.title, 'Lens card');
   const summary = normalizeDisplayText(card.summary, title);
   const detail = normalizeDisplayText(card.detail);
@@ -124,6 +129,7 @@ export default function LensCard({
 
   return (
     <article
+      ref={lensRef}
       onPointerDown={event => {
         if (!(event.target as HTMLElement).closest('button, input, a'))
           onPointerDown?.(event);
@@ -148,14 +154,14 @@ export default function LensCard({
         ) : (
           <div
             className={cn(
-              'relative h-full w-full transition-transform duration-300 motion-reduce:transition-none [transform-style:preserve-3d]',
+              'fn-lens-faces relative h-full w-full transition-transform duration-300 motion-reduce:transition-none [transform-style:preserve-3d]',
               active && showEvidence && '[transform:rotateY(180deg)]'
             )}
           >
             <div
               aria-hidden={showEvidence}
               className={cn(
-                'absolute inset-0 flex h-full flex-col overflow-hidden rounded-2xl px-5 py-5 [backface-visibility:hidden]',
+                'fn-lens-face absolute inset-0 flex h-full flex-col overflow-hidden rounded-2xl px-5 py-5 [backface-visibility:hidden]',
                 persona.shell,
                 active && 'ring-1 ring-ui-line/20'
               )}
@@ -165,21 +171,18 @@ export default function LensCard({
                   <div className='flex flex-wrap items-center gap-2'>
                     <span
                       className={cn(
-                        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold',
+                        'fn-lens-persona inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold',
                         persona.badge
                       )}
                     >
                       <PersonaIcon className='h-3.5 w-3.5' />
                       {persona.label}
                     </span>
-                    <span className='rounded-full border border-ui-line bg-ui-soft/50 px-3 py-1 text-[10px] font-medium text-ui-muted'>
-                      {angleKey}
-                    </span>
                     {active && onToggleEvidence && (
                       <button
                         type='button'
                         className='sentio-evidence-toggle'
-                        onClick={onToggleEvidence}
+                        onClick={toggleEvidence}
                         aria-label={interactionHint}
                         aria-pressed={showEvidence}
                         tabIndex={showEvidence ? -1 : 0}
@@ -194,7 +197,7 @@ export default function LensCard({
                 </div>
               </div>
 
-              <div className='mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1'>
+              <div className='fn-lens-prose mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1'>
                 <div className='rounded-xl border border-ui-line/60 bg-ui-soft/50 px-3.5 py-3.5 shadow-sm'>
                   <p className='break-words text-sm leading-6 text-ui-text'>
                     {summary}
@@ -235,7 +238,7 @@ export default function LensCard({
             <div
               aria-hidden={!showEvidence}
               className={cn(
-                'absolute inset-0 flex h-full flex-col overflow-hidden rounded-2xl px-5 py-5 [backface-visibility:hidden] [transform:rotateY(180deg)]',
+                'fn-lens-face absolute inset-0 flex h-full flex-col overflow-hidden rounded-2xl px-5 py-5 [backface-visibility:hidden] [transform:rotateY(180deg)]',
                 persona.shell,
                 active && 'ring-1 ring-ui-line/20'
               )}
@@ -245,7 +248,7 @@ export default function LensCard({
                   <div className='flex flex-wrap items-center gap-2'>
                     <span
                       className={cn(
-                        'inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold',
+                        'fn-lens-persona inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold',
                         persona.badge
                       )}
                     >
@@ -259,7 +262,7 @@ export default function LensCard({
                       <button
                         type='button'
                         className='sentio-evidence-toggle'
-                        onClick={onToggleEvidence}
+                        onClick={toggleEvidence}
                         aria-label={interactionHint}
                         aria-pressed={showEvidence}
                         tabIndex={showEvidence ? 0 : -1}
@@ -274,7 +277,7 @@ export default function LensCard({
                 </div>
               </div>
 
-              <div className='mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1'>
+              <div className='fn-lens-prose mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1'>
                 {detail && (
                   <section className='space-y-2'>
                     <p className='text-[11px] font-semibold text-ui-muted'>

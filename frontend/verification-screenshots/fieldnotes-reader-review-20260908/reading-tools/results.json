@@ -1,0 +1,56 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "bookmarkPersistence": true,
+    "searchKeyboardAndScroll": true,
+    "commentDraftRetained": true,
+    "printOverlaysHidden": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "bookmarkPersistence": true,
+    "searchKeyboardAndScroll": true,
+    "commentDraftRetained": true,
+    "printOverlaysHidden": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "bookmarkPersistence": true,
+    "searchKeyboardAndScroll": true,
+    "commentDraftRetained": true,
+    "printOverlaysHidden": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "bookmarkPersistence": true,
+    "searchKeyboardAndScroll": true,
+    "commentDraftRetained": true,
+    "printOverlaysHidden": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "bookmarkPersistence": true,
+    "searchKeyboardAndScroll": true,
+    "commentDraftRetained": true,
+    "printOverlaysHidden": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "bookmarkPersistence": true,
+    "searchKeyboardAndScroll": true,
+    "commentDraftRetained": true,
+    "printOverlaysHidden": true,
+    "errors": []
+  }
+]

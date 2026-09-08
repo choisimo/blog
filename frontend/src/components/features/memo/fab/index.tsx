@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { NotebookPen, Sparkles, Layers, Map as MapIcon } from 'lucide-react';
 import VisitedPostsMinimap from '@/components/molecules/VisitedPostsMinimap';
 import { useVisitedPostsState } from '@/components/molecules/useVisitedPostsState';
@@ -79,6 +80,20 @@ function sanitizeDockAction(action: DockAction): DockAction {
 }
 
 export default function FloatingActionBar() {
+  const { pathname } = useLocation();
+  const isReaderRoute = /^\/blog\/[^/]+\/[^/]+\/?$/.test(pathname);
+  const [readerToolsOpen, setReaderToolsOpen] = useState(false);
+  useEffect(() => {
+    const toggle = () => setReaderToolsOpen(value => !value);
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setReaderToolsOpen(false); };
+    window.addEventListener('fieldnotes:reader-tools', toggle);
+    window.addEventListener('keydown', close);
+    return () => { window.removeEventListener('fieldnotes:reader-tools', toggle); window.removeEventListener('keydown', close); };
+  }, []);
+  useEffect(() => { setReaderToolsOpen(false); }, [pathname]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('fieldnotes:reader-tools-state', { detail: { open: readerToolsOpen } }));
+  }, [readerToolsOpen]);
   const enabled = isFabEnabled();
   const aiMemoEl = useAIMemoElement();
   const memoOpen = useMemoOpen(aiMemoEl);
@@ -242,9 +257,12 @@ export default function FloatingActionBar() {
 
   const toggleMemo = useCallback(() => {
     const dispatchToggle = () => {
+      const panel = (ensureAIMemoElement() as MemoPadElement | null)?.shadowRoot?.getElementById('panel');
+      const openReaderDesk = isReaderRoute && !isTerminal &&
+        window.matchMedia('(min-width: 851px)').matches && !panel?.classList.contains('open');
       window.dispatchEvent(
         new CustomEvent('aiMemo:windowCommand', {
-          detail: { action: 'toggle' },
+          detail: openReaderDesk ? { action: 'open', mode: 'docked' } : { action: 'toggle' },
         })
       );
     };
@@ -285,7 +303,7 @@ export default function FloatingActionBar() {
     }
 
     clickShadowBtn('launcher');
-  }, [aiMemoEl, clickShadowBtn]);
+  }, [aiMemoEl, clickShadowBtn, isReaderRoute, isTerminal]);
 
   const openHistory = useCallback(() => {
     let opened = false;
@@ -429,7 +447,8 @@ export default function FloatingActionBar() {
   const isLeftFab = !isMobile && fabPosition === 'left';
 
   const containerClasses = cn(
-    'fixed z-[var(--z-fab-bar)] print:hidden',
+    'fn-assistant-dock fixed z-[var(--z-fab-bar)] print:hidden',
+    isReaderRoute && !isTerminal && 'fn-reader-dock',
     isLeftFab
       ? 'left-0 top-1/2 -translate-y-1/2 px-0 py-3'
       : cn(
@@ -598,6 +617,8 @@ export default function FloatingActionBar() {
           )}
           aria-orientation={isLeftFab ? 'vertical' : 'horizontal'}
           className={containerClasses}
+          data-reader-tools-open={readerToolsOpen}
+          id={isReaderRoute ? 'fieldnotes-reader-tools' : undefined}
         >
           <nav
             className={cn(

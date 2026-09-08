@@ -750,7 +750,7 @@ export function PostEditorWorkspace() {
   ];
 
   return (
-    <div className="ui-editor" data-ui-page='post-editor' data-editor-mode={editorMode} data-active-pane={mobilePane}>
+    <div className="ui-editor fn-editor-workspace" data-ui-page='post-editor' data-editor-mode={editorMode} data-active-pane={mobilePane}>
       <section className="ui-editor-document">
         <header className="ui-editor-commandbar">
           <div className="min-w-0">

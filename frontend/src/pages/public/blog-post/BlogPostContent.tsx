@@ -44,7 +44,10 @@ export function BlogPostContent({
   postPath,
   isTerminal,
 }: BlogPostContentProps) {
-  const safePostTitle = normalizeContentMetadataText(postTitle, 'Untitled post');
+  const safePostTitle = normalizeContentMetadataText(
+    postTitle,
+    'Untitled post'
+  );
   const safePostPath = normalizeContentPostPath(postPath);
 
   return (
@@ -53,7 +56,7 @@ export function BlogPostContent({
       data-toc-boundary
       data-ai-block-scope='article'
       className={cn(
-        'ui-article-body',
+        'ui-article-body fn-reading-body rd-content-wrap',
         isTerminal &&
           'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
       )}
@@ -67,13 +70,13 @@ export function BlogPostContent({
       >
         <Suspense
           fallback={
-            <div className="space-y-3" aria-label='Loading article content'>
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-11/12" />
-              <Skeleton className="h-4 w-10/12" />
-              <Skeleton className="h-4 w-9/12" />
-              <Skeleton className="h-4 w-1/2" />
+            <div className='space-y-3' aria-label='Loading article content'>
+              <Skeleton className='h-6 w-3/4' />
+              <Skeleton className='h-4 w-full' />
+              <Skeleton className='h-4 w-11/12' />
+              <Skeleton className='h-4 w-10/12' />
+              <Skeleton className='h-4 w-9/12' />
+              <Skeleton className='h-4 w-1/2' />
             </div>
           }
         >

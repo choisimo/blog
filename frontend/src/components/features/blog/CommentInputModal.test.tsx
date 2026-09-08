@@ -39,10 +39,10 @@ describe('CommentInputModal', () => {
     );
     expect(screen.getByText('Replying to Mina')).toBeInTheDocument();
     expect(screen.getByText('Quoted text')).toBeInTheDocument();
-    expect(screen.getByLabelText('Author')).toHaveValue('Ada');
-    expect(screen.getByLabelText('Author')).toHaveAttribute('placeholder', 'Your display name');
-    expect(screen.getByLabelText('Body')).toHaveValue('Initial text');
-    expect(screen.getByLabelText('Body')).toHaveAttribute('placeholder', 'Reply here');
+    expect(screen.getByRole('textbox', { name: /^Author\s*필수$/ })).toHaveValue('Ada');
+    expect(screen.getByRole('textbox', { name: /^Author\s*필수$/ })).toHaveAttribute('placeholder', 'Your display name');
+    expect(screen.getByRole('textbox', { name: /^Body\s*필수$/ })).toHaveValue('Initial text');
+    expect(screen.getByRole('textbox', { name: /^Body\s*필수$/ })).toHaveAttribute('placeholder', 'Reply here');
     expect(screen.getByText('Markdown ok')).toBeInTheDocument();
     expect(container.textContent).not.toContain('\u001b');
     expect(container.textContent).not.toContain('\u0000');
@@ -63,10 +63,10 @@ describe('CommentInputModal', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name\s*필수$/ }), {
       target: { value: '\u001b[31mAda Lovelace\u0000' },
     });
-    fireEvent.change(screen.getByLabelText('Comment'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Comment\s*필수$/ }), {
       target: { value: '\u001b[32mHello\r\nworld\u0007' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Show website' }));
@@ -97,8 +97,8 @@ describe('CommentInputModal', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ada' } });
-    fireEvent.change(screen.getByLabelText('Comment'), { target: { value: 'Hello' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name\s*필수$/ }), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Comment\s*필수$/ }), { target: { value: 'Hello' } });
     fireEvent.click(screen.getByRole('button', { name: 'Show website' }));
     fireEvent.change(screen.getByLabelText('Show website'), {
       target: { value: 'https://user:pass@example.com/profile' },
@@ -130,11 +130,11 @@ describe('CommentInputModal', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('User'), { target: { value: 'Ada' } });
-    fireEvent.change(screen.getByLabelText('Terminal comment'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^User\s*필수$/ }), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /^Terminal comment\s*필수$/ }), {
       target: { value: 'Hello' },
     });
-    fireEvent.keyDown(screen.getByLabelText('Terminal comment'), {
+    fireEvent.keyDown(screen.getByRole('textbox', { name: /^Terminal comment\s*필수$/ }), {
       key: 'Enter',
       ctrlKey: true,
     });

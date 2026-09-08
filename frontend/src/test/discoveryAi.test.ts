@@ -75,5 +75,6 @@ describe('discovery ai service', () => {
     await expect(summary({ paragraph: ' Hello\u0000\r\nworld ' })).resolves.toMatchObject({
       summary: 'Hello \nworld',
     });
+    await expect(summary({ paragraph: '본문', strict: true })).rejects.toThrow('down');
   });
 });

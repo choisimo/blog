@@ -185,16 +185,17 @@ export default function ErrorStatusPage({
 
   return (
     <div
-      className='ui-page ui-error-page'
+      className='ui-page ui-error-page fn-error-page'
       data-ui-page={`error-${statusCode}`}
       data-tone={tone}
     >
-      <section className='ui-error-content' aria-labelledby='error-page-title'>
+      <section className='ui-error-content fn-error-card' aria-labelledby='error-page-title'>
+        <div className='fn-error-intro'>
         <div className='ui-error-meta'>
           <Icon className='h-5 w-5' aria-hidden='true' />
           <span>{label}</span>
-          <code>{statusCode}</code>
         </div>
+        <p className='fn-error-number'>{statusCode}</p>
         <h1 id='error-page-title'>{title}</h1>
         <p className='ui-error-description'>{description}</p>
         {actions.length > 0 && (
@@ -207,6 +208,7 @@ export default function ErrorStatusPage({
             ))}
           </div>
         )}
+        </div>
         <section className='ui-error-help' aria-label='다음에 할 수 있는 일'>
           <h2>다음에 할 수 있는 일</h2>
           <ul>

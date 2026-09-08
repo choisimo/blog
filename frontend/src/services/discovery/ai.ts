@@ -499,6 +499,7 @@ export async function chain(input: {
 export async function summary(input: {
   paragraph: string;
   postTitle?: string;
+  strict?: boolean;
 }): Promise<SummaryResult> {
   const { paragraph, postTitle } = input;
 
@@ -521,6 +522,7 @@ export async function summary(input: {
     throw new Error("Invalid summary response format");
   } catch (err) {
     console.error("Summary AI call failed:", err);
+    if (input.strict) throw err;
     return {
       summary:
         safeTruncate(paragraph, TEXT_LIMITS.SUMMARY_TRUNCATE) ||

@@ -16,17 +16,6 @@ vi.mock('@/components/ui/scroll-area', () => ({
   ),
 }));
 
-vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetContent: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-    <div role='dialog' {...props}>{children}</div>
-  ),
-  SheetTitle: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 {...props}>{children}</h2>
-  ),
-  SheetTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
 vi.mock('@/utils/content/markdownHeadings', () => ({
   buildMarkdownToc: vi.fn(() => [
     { id: 'intro', title: '\u001b[31mIntro\u0000', level: 2 },
@@ -104,6 +93,7 @@ describe('TableOfContents', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Open toc' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open toc' }));
     expect(screen.getByRole('dialog', { name: 'Drawer toc' })).toHaveAttribute(
       'title',
       'Drawer title'

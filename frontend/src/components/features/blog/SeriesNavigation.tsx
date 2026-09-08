@@ -167,7 +167,7 @@ export const SeriesNavigation = ({
       aria-label={safeLabel}
       title={safeTitle}
       className={cn(
-        'rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm backdrop-blur',
+        'fn-reader-series rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm backdrop-blur',
         isTerminal && 'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))]'
       )}
     >

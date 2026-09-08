@@ -1,11 +1,7 @@
 import { ResponsiveFilterPanel } from '@/components/organisms/layout';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import {
-  BlogSkeletonFeatured,
-  BlogSkeletonSpotlight,
-  BlogSkeletonList,
-} from '@/components/features/blog';
+import { BlogSkeletonList } from '@/components/features/blog';
 import { Pagination } from '@/components';
 import {
   getPostsPage,
@@ -15,18 +11,9 @@ import {
 import { BlogPost, PostsPage } from '@/types/blog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  BookOpen,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Search,
-  X,
-} from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/core/useDebounce';
 import { formatDate } from '@/utils/content/blog';
-import { OptimizedImage } from '@/components/common/OptimizedImage';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 import { cn } from '@/lib/utils';
@@ -147,14 +134,17 @@ const Blog = () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await getPostsPage({
-          page: currentPage,
-          pageSize: POSTS_PER_PAGE,
-          category: selectedCategory,
-          tags: selectedTags,
-          search: debouncedSearchTerm,
-          sort: sortBy as 'date' | 'title' | 'readTime',
-        }, { throwOnError: true });
+        const res = await getPostsPage(
+          {
+            page: currentPage,
+            pageSize: POSTS_PER_PAGE,
+            category: selectedCategory,
+            tags: selectedTags,
+            search: debouncedSearchTerm,
+            sort: sortBy as 'date' | 'title' | 'readTime',
+          },
+          { throwOnError: true }
+        );
         if (!cancelled) setPageData(res);
       } catch (error) {
         console.error('Failed to load posts page:', error);
@@ -287,60 +277,25 @@ const Blog = () => {
   const hasActiveFilters = Boolean(
     searchTerm.trim() || selectedCategory !== 'all' || selectedTags.length
   );
-  const showEditorial =
-    !hasActiveFilters && currentPage === 1 && sortBy === 'date';
-  const featuredPost = showEditorial ? pageData.items[0] : undefined;
-  const spotlightPosts = showEditorial ? pageData.items.slice(1, 3) : [];
-  const listPosts = showEditorial ? pageData.items.slice(3) : pageData.items;
+  const listPosts = pageData.items;
   const visibleCategories = Array.from(
     new Set([
       ...categories,
       ...(selectedCategory === 'all' ? [] : [selectedCategory]),
     ])
   );
-  const renderPostImage = (
-    post: BlogPost,
-    className: string,
-    fallbackLabel = '기술 기록'
-  ) => (
-    <div
-      className={cn(
-        'ui-post-thumbnail overflow-hidden rounded-lg bg-[hsl(var(--blog-surface-muted))]',
-        className
-      )}
-    >
-      {post.coverImage ? (
-        <OptimizedImage
-          src={post.coverImage}
-          alt={post.title}
-          className='h-full w-full object-cover transition-transform duration-300 ease-smooth'
-        />
-      ) : (
-        <div className='flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground'>
-          <BookOpen
-            aria-hidden='true'
-            className='h-7 w-7 text-muted-foreground/50'
-          />
-          <span className='text-xs'>{fallbackLabel}</span>
-        </div>
-      )}
-    </div>
-  );
 
   return (
-    <div className='ui-page ui-blog-page' data-ui-page='blog'>
-      <div className='ui-page-container ui-blog-layout'>
-        <header className='ui-blog-heading'>
+    <div className='ui-page ui-blog-page fn-archive' data-ui-page='blog'>
+      <div className='ui-page-container ui-blog-layout fn-shell fn-page-space'>
+        <header className='ui-blog-heading fn-archive-header'>
           <div>
             <p className='my-0 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground'>
-              Discover
+              THE ARCHIVE / KEEP EXPLORING
             </p>
             <h1 className='my-0 mt-3 text-3xl font-bold tracking-tight text-[hsl(var(--blog-title))] sm:text-4xl'>
-              Blog Posts
+              Thoughts, collected.
             </h1>
-            <p className='ui-discovery-intro'>
-              AI부터 시스템 운영까지, 주제별로 살펴보는 기술 기록
-            </p>
           </div>
           <div className='relative'>
             <Search
@@ -598,84 +553,6 @@ const Blog = () => {
           </section>
         </ResponsiveFilterPanel>
 
-        {featuredPost && !resultsPending && !error && (
-          <section className='ui-blog-featured'>
-            <div className='rounded-lg border border-[hsl(var(--blog-border))] bg-[hsl(var(--blog-surface))] p-5 shadow-none'>
-              <Link
-                to={buildBlogListPostPath(featuredPost)}
-                className='group grid gap-7 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 lg:grid-cols-[1.08fr_minmax(0,1fr)]'
-                state={{
-                  from: {
-                    pathname: location.pathname,
-                    search: location.search,
-                  },
-                }}
-                data-testid='post-link'
-              >
-                {renderPostImage(
-                  featuredPost,
-                  'aspect-[16/9] min-h-[14rem] lg:min-h-[18rem]',
-                  'No cover'
-                )}
-                <div className='flex min-w-0 flex-col justify-center py-1'>
-                  <div className='mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground'>
-                    <Badge variant='secondary' className='rounded-md px-3 py-1'>
-                      {featuredPost.category}
-                    </Badge>
-                    <span>{formatDate(featuredPost.date)}</span>
-                    {featuredPost.readingTime && (
-                      <span className='inline-flex items-center gap-1'>
-                        <Clock className='h-3.5 w-3.5' />
-                        {featuredPost.readingTime}
-                      </span>
-                    )}
-                  </div>
-                  <h2 className='my-0 text-2xl font-bold leading-tight tracking-tight text-[hsl(var(--blog-title))] transition-colors group-hover:text-primary sm:text-3xl'>
-                    {featuredPost.title}
-                  </h2>
-                  <p className='mt-5 line-clamp-3 text-base leading-7 text-muted-foreground'>
-                    {featuredPost.excerpt || featuredPost.description}
-                  </p>
-                </div>
-              </Link>
-
-              {spotlightPosts.length > 0 && (
-                <div className='mt-5 grid gap-5 md:grid-cols-2'>
-                  {spotlightPosts.map(post => (
-                    <Link
-                      key={`${post.year}/${post.slug}`}
-                      to={buildBlogListPostPath(post)}
-                      className='ui-post-record ui-post-record-compact group'
-                      state={{
-                        from: {
-                          pathname: location.pathname,
-                          search: location.search,
-                        },
-                      }}
-                      data-testid='post-link'
-                    >
-                      {renderPostImage(post, 'h-24 w-full')}
-                      <div className='min-w-0 self-center'>
-                        <div className='mb-2 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground'>
-                          <span>{post.category}</span>
-                          <span>{formatDate(post.date)}</span>
-                          {post.readingTime && <span>{post.readingTime}</span>}
-                        </div>
-                        <h3 className='my-0 line-clamp-2 text-base font-semibold leading-snug text-[hsl(var(--blog-title))] transition-colors group-hover:text-primary'>
-                          {post.title}
-                        </h3>
-                        <p className='mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground'>
-                          {post.excerpt || post.description}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
         <section
           className='ui-blog-results'
           aria-label='게시글 검색 결과'
@@ -683,11 +560,7 @@ const Blog = () => {
         >
           <div className='flex flex-wrap items-center justify-between gap-3'>
             <h2 className='my-0 text-lg font-semibold text-[hsl(var(--blog-title))]'>
-              {hasActiveFilters
-                ? '검색 결과'
-                : showEditorial && featuredPost
-                  ? '이어지는 글'
-                  : '모든 글'}
+              {hasActiveFilters ? '검색 결과' : '모든 기록'}
             </h2>
             <p className='ui-result-count' role='status'>
               {resultsPending
@@ -709,11 +582,6 @@ const Blog = () => {
 
           {resultsPending ? (
             <div className='space-y-5' aria-hidden='true'>
-              <BlogSkeletonFeatured />
-              <div className='grid gap-5 md:grid-cols-2'>
-                <BlogSkeletonSpotlight />
-                <BlogSkeletonSpotlight />
-              </div>
               <div className='space-y-3'>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <BlogSkeletonList key={i} />
@@ -736,40 +604,41 @@ const Blog = () => {
               </Button>
             </div>
           ) : listPosts.length > 0 ? (
-            <div className='ui-post-records'>
-              {listPosts.map(post => (
-                <Link
+            <div className='fn-post-list'>
+              {listPosts.map((post, index) => (
+                <article
+                  className='fn-archive-row'
                   key={`${post.year}/${post.slug}`}
-                  to={buildBlogListPostPath(post)}
-                  className='ui-post-record group'
-                  state={{
-                    from: {
-                      pathname: location.pathname,
-                      search: location.search,
-                    },
-                  }}
-                  data-testid='post-link'
                 >
-                  {renderPostImage(post, 'h-20 w-full sm:h-24')}
-                  <div className='min-w-0 self-center text-sm'>
-                    <div className='mb-1 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground'>
-                      <span>{post.category}</span>
-                      <span>{formatDate(post.date)}</span>
-                      {post.readingTime && (
-                        <span className='inline-flex items-center gap-1 normal-case tracking-normal'>
-                          <Clock className='h-3 w-3' />
-                          {post.readingTime}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className='my-0 line-clamp-2 text-base font-semibold leading-snug text-[hsl(var(--blog-title))] transition-colors group-hover:text-primary'>
-                      {post.title}
+                  <span className='fn-row-index' aria-hidden='true'>
+                    {String(
+                      (currentPage - 1) * POSTS_PER_PAGE + index + 1
+                    ).padStart(2, '0')}
+                  </span>
+                  <div className='fn-row-copy'>
+                    <h3>
+                      <Link
+                        to={buildBlogListPostPath(post)}
+                        state={{
+                          from: {
+                            pathname: location.pathname,
+                            search: location.search,
+                          },
+                        }}
+                        data-testid='post-link'
+                      >
+                        {post.title}
+                      </Link>
                     </h3>
-                    <p className='mt-1 line-clamp-2 leading-6 text-muted-foreground'>
-                      {post.excerpt || post.description}
-                    </p>
+                    <p>{post.excerpt || post.description}</p>
                   </div>
-                </Link>
+                  <div className='fn-row-meta'>
+                    <span>{post.category}</span>
+                    <time dateTime={post.date}>{formatDate(post.date)}</time>
+                    {post.readingTime && <span>{post.readingTime}</span>}
+                  </div>
+                  <ArrowUpRight className='fn-row-arrow' aria-hidden='true' />
+                </article>
               ))}
             </div>
           ) : pageData.items.length > 0 ? (

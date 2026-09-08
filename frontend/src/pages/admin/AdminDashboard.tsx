@@ -213,9 +213,9 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
   };
 
   return (
-    <WorkspaceShell className="ui-admin-workspace" header={
-      <header className="ui-admin-topbar">
-        <Link className="ui-wordmark" to='/' aria-label='블로그 홈'>noblog <span>admin</span></Link>
+    <WorkspaceShell className="ui-admin-workspace fn-admin-shell" contentClassName="fn-admin-content" header={
+      <header className="ui-admin-topbar fn-admin-masthead">
+        <Link className="ui-wordmark" to='/' aria-label='블로그 홈'>nodove<span> / control room</span></Link>
         <div className="ui-admin-account">
           {safeUserEmail && <span className="ui-account-name" title={safeUserEmail}>{safeUserEmail}</span>}
           <button type='button' onClick={onLogout} className="ui-plain-button" aria-label='Logout'>
@@ -224,9 +224,9 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
         </div>
       </header>
     } navigation={
-      <aside className="ui-admin-navigation">
+      <aside className="ui-admin-navigation fn-admin-navigation">
         <p className="ui-nav-caption">관리 작업공간</p>
-        <nav className="ui-admin-sidebar" role='tablist' aria-label='Admin navigation' aria-orientation='vertical'>
+        <nav className="ui-admin-sidebar" role='tablist' aria-label='Admin navigation' aria-orientation='horizontal'>
           {NAV_TABS.map((tab, index) => (
             <button key={tab.id} id={`admin-tab-${tab.id}`} data-admin-nav-tab
               type='button' role='tab' onClick={() => setActiveTab(tab.id)}
@@ -250,7 +250,7 @@ export function AdminDashboard({ userEmail, onLogout }: AdminDashboardProps) {
       </aside>
     }>
       <header className="ui-admin-page-heading">
-        <p className="ui-eyebrow">Administration</p>
+        <p className="ui-eyebrow">THE CONTROL ROOM</p>
         <h1 id='admin-current-section'>{NAV_TABS.find(tab => tab.id === activeTab)?.label}</h1>
       </header>
       <div id={`admin-panel-${activeTab}`} className="ui-admin-panel" role='tabpanel'

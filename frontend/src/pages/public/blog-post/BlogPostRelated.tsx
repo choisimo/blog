@@ -1,9 +1,9 @@
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { BookOpen } from "lucide-react";
-import { prefetchPost } from "@/data/content/posts";
-import type { ResolvedRelatedPostCard } from "@/types/blog";
+import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { BookOpen } from 'lucide-react';
+import { prefetchPost } from '@/data/content/posts';
+import type { ResolvedRelatedPostCard } from '@/types/blog';
 
 interface BlogPostRelatedProps {
   relatedPosts: ResolvedRelatedPostCard[];
@@ -85,37 +85,37 @@ export function BlogPostRelated({
   if (safeRelatedPosts.length === 0) return null;
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-3">
+    <section className='rd-related space-y-6'>
+      <div className='flex items-center gap-3'>
         <div
           className={cn(
-            "rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-ui-surface/10 dark:text-white",
-            isTerminal && "rounded bg-[hsl(var(--terminal-code-bg))]",
+            'rounded-full bg-secondary/20 p-2 text-secondary-foreground dark:bg-ui-surface/10 dark:text-white',
+            isTerminal && 'rounded bg-[hsl(var(--terminal-code-bg))]'
           )}
         >
-          <BookOpen className="h-5 w-5" />
+          <BookOpen className='h-5 w-5' />
         </div>
         <div>
           <h2
             className={cn(
-              "text-xl font-semibold text-foreground dark:text-white",
-              isTerminal && "font-mono text-primary",
+              'text-xl font-semibold text-foreground dark:text-white',
+              isTerminal && 'font-mono text-primary'
             )}
           >
             {isTerminal ? `> ${safeRelatedPostsLabel}` : safeRelatedPostsLabel}
           </h2>
           <p
             className={cn(
-              "text-sm text-foreground/80 dark:text-foreground/80",
-              isTerminal && "font-mono text-xs",
+              'text-sm text-foreground/80 dark:text-foreground/80',
+              isTerminal && 'font-mono text-xs'
             )}
           >
             {safeRelatedPostsDescLabel}
           </p>
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {safeRelatedPosts.map((relatedPost) => (
+      <div className='rd-related-list grid gap-4 md:grid-cols-3'>
+        {safeRelatedPosts.map(relatedPost => (
           <Link
             key={`${relatedPost.year}/${relatedPost.slug}`}
             to={{
@@ -124,9 +124,9 @@ export function BlogPostRelated({
             }}
             state={preservedFrom ? { from: preservedFrom } : undefined}
             className={cn(
-              "group rounded-lg border border-border/60 bg-card/70 p-5 transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/40 dark:border-ui-line dark:bg-[hsl(var(--card-blog))]",
+              'group rounded-lg border border-border/60 bg-card/70 p-5 transition-[transform,box-shadow,border-color] duration-200 hover:border-primary/40 dark:border-ui-line dark:bg-[hsl(var(--card-blog))]',
               isTerminal &&
-                "rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary",
+                'rounded-lg border-border bg-[hsl(var(--terminal-code-bg))] hover:border-primary'
             )}
             onMouseEnter={() =>
               prefetchPost(relatedPost.year, relatedPost.slug)
@@ -134,11 +134,11 @@ export function BlogPostRelated({
             onFocus={() => prefetchPost(relatedPost.year, relatedPost.slug)}
           >
             <Badge
-              variant="secondary"
+              variant='secondary'
               className={cn(
-                "mb-3 rounded-full px-3 py-1 text-xs dark:bg-ui-surface/10 dark:text-white",
+                'mb-3 rounded-full px-3 py-1 text-xs dark:bg-ui-surface/10 dark:text-white',
                 isTerminal &&
-                  "rounded font-mono text-primary bg-transparent border border-primary/40",
+                  'rounded font-mono text-primary bg-transparent border border-primary/40'
               )}
             >
               {isTerminal
@@ -147,20 +147,20 @@ export function BlogPostRelated({
             </Badge>
             <h3
               className={cn(
-                "text-base font-semibold leading-snug text-foreground dark:text-white group-hover:text-primary",
-                isTerminal && "font-mono",
+                'text-base font-semibold leading-snug text-foreground dark:text-white group-hover:text-primary',
+                isTerminal && 'font-mono'
               )}
             >
               {relatedPost.title}
             </h3>
-            <p className="mt-2 line-clamp-2 text-sm text-foreground/80 dark:text-foreground/80">
+            <p className='mt-2 line-clamp-2 text-sm text-foreground/80 dark:text-foreground/80'>
               {relatedPost.excerpt}
             </p>
             {relatedPost.readingTimeLabel && (
               <p
                 className={cn(
-                  "mt-3 text-xs uppercase tracking-wide text-foreground/70 dark:text-foreground/75",
-                  isTerminal && "font-mono",
+                  'mt-3 text-xs uppercase tracking-wide text-foreground/70 dark:text-foreground/75',
+                  isTerminal && 'font-mono'
                 )}
               >
                 {relatedPost.readingTimeLabel}

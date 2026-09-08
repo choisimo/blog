@@ -78,9 +78,10 @@ function ErrorMsg({ message }: { message: string }) {
 
 function AuthShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="ui-workspace ui-auth-page admin-auth-shell">
+    <div className="ui-workspace ui-auth-page admin-auth-shell fn-auth-shell">
       <div className="ui-auth-container">
-        <a href='/' className="ui-wordmark">noblog <span>admin</span></a>
+        <a href='/' className="ui-wordmark fn-auth-wordmark">nodove<span> / control room</span></a>
+        <p className="fn-auth-edition">NODOVE / THE CONTROL ROOM</p>
         {children}
       </div>
     </div>

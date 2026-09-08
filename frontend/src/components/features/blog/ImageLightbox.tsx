@@ -237,28 +237,10 @@ function ImagePreview({ src, alt, caption, onClose, closeRef }: {
             스크롤·두 손가락으로 확대, 드래그로 이동 · Esc 닫기
           </DialogDescription>
         </div>
-        <div className={cn('ui-image-viewer__tools', overlayControlPlateClassName)} role='group' aria-label='이미지 도구'>
-          <TouchIconButton variant='ghost' onClick={() => zoom(-0.25)} aria-label='Zoom out image preview'
-            title='축소 (−)' className={overlayControlButtonClassName} disabled={controlsDisabled || view.scale <= 0.5}>
-            <ZoomOut aria-hidden='true' className='h-4 w-4' />
-          </TouchIconButton>
-          <TouchIconButton variant='ghost' onClick={() => zoom(0.25)} aria-label='Zoom in image preview'
-            title='확대 (+)' className={overlayControlButtonClassName} disabled={controlsDisabled || view.scale >= 4}>
-            <ZoomIn aria-hidden='true' className='h-4 w-4' />
-          </TouchIconButton>
-          <TouchIconButton variant='ghost' onClick={rotate} aria-label='Rotate image preview'
-            title='회전 (R)' className={overlayControlButtonClassName} disabled={controlsDisabled}>
-            <RotateCw aria-hidden='true' className='h-4 w-4' />
-          </TouchIconButton>
-          <TouchIconButton variant='ghost' onClick={reset} aria-label='Reset image preview'
-            title='화면에 맞추기 (0)' className={overlayControlButtonClassName} disabled={controlsDisabled}>
-            <Maximize aria-hidden='true' className='h-4 w-4' />
-          </TouchIconButton>
-          <TouchIconButton ref={closeRef} variant='ghost' onClick={onClose} aria-label='Close image preview'
-            title='닫기 (Esc)' className={cn('ui-image-viewer__close', overlayControlCloseButtonClassName)}>
-            <X aria-hidden='true' className='h-4 w-4' />
-          </TouchIconButton>
-        </div>
+        <TouchIconButton ref={closeRef} variant='ghost' onClick={onClose} aria-label='Close image preview'
+          title='닫기 (Esc)' className={cn('ui-image-viewer__close', overlayControlCloseButtonClassName)}>
+          <X aria-hidden='true' className='h-4 w-4' />
+        </TouchIconButton>
       </div>
       <div ref={canvasRef} data-testid='lightbox-container' className='ui-image-viewer__canvas'
         data-zoomed={view.scale > 1} tabIndex={0} role='region' aria-label='이미지. +, − 확대 및 축소, 0 초기화, R 회전, 방향키 이동'
@@ -280,6 +262,24 @@ function ImagePreview({ src, alt, caption, onClose, closeRef }: {
       </div>
       <div className='ui-image-viewer__footer'>
         <p className='ui-image-viewer__caption ui-scroll-region'>{caption || '원본 이미지'}</p>
+        <div className={cn('ui-image-viewer__tools', overlayControlPlateClassName)} role='group' aria-label='이미지 도구'>
+          <TouchIconButton variant='ghost' onClick={() => zoom(-0.25)} aria-label='Zoom out image preview'
+            title='축소 (−)' className={overlayControlButtonClassName} disabled={controlsDisabled || view.scale <= 0.5}>
+            <ZoomOut aria-hidden='true' className='h-4 w-4' />
+          </TouchIconButton>
+          <TouchIconButton variant='ghost' onClick={() => zoom(0.25)} aria-label='Zoom in image preview'
+            title='확대 (+)' className={overlayControlButtonClassName} disabled={controlsDisabled || view.scale >= 4}>
+            <ZoomIn aria-hidden='true' className='h-4 w-4' />
+          </TouchIconButton>
+          <TouchIconButton variant='ghost' onClick={rotate} aria-label='Rotate image preview'
+            title='회전 (R)' className={overlayControlButtonClassName} disabled={controlsDisabled}>
+            <RotateCw aria-hidden='true' className='h-4 w-4' />
+          </TouchIconButton>
+          <TouchIconButton variant='ghost' onClick={reset} aria-label='Reset image preview'
+            title='화면에 맞추기 (0)' className={overlayControlButtonClassName} disabled={controlsDisabled}>
+            <Maximize aria-hidden='true' className='h-4 w-4' />
+          </TouchIconButton>
+        </div>
         <output className='ui-image-viewer__scale' aria-label='화면 맞춤 대비 배율'>{Math.round(view.scale * 100)}%</output>
         <a className='ui-image-viewer__original' href={src} target='_blank' rel='noopener noreferrer' aria-label='원본 이미지 새 탭에서 열기'>
           <ExternalLink aria-hidden='true' /><span>원본</span>
@@ -456,7 +456,6 @@ function ArticleImage({ src, alt, caption, className, isTerminal, layout = 'wide
   const [status, setStatus] = useState<LoadState>('loading');
   const [originalFallback, setOriginalFallback] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const { isInView, mediaRef } = useInView<HTMLElement>();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const width = normalizeImageDimension(intrinsicWidth);
@@ -466,8 +465,20 @@ function ArticleImage({ src, alt, caption, className, isTerminal, layout = 'wide
 
   useEffect(() => {
     const image = imgRef.current;
-    if (isInView && image?.complete && image.naturalWidth > 0) setStatus('ready');
-  }, [isInView, displaySrc, attempt]);
+    if (image?.complete && image.naturalWidth > 0) setStatus('ready');
+  }, [displaySrc, attempt]);
+
+  useEffect(() => {
+    // Native lazy loading keeps a real src available to printing and non-scrolling readers.
+    const prepare = () => { if (imgRef.current) imgRef.current.loading = 'eager'; };
+    const restore = () => { if (imgRef.current) imgRef.current.loading = 'lazy'; };
+    window.addEventListener('beforeprint', prepare);
+    window.addEventListener('afterprint', restore);
+    return () => {
+      window.removeEventListener('beforeprint', prepare);
+      window.removeEventListener('afterprint', restore);
+    };
+  }, []);
 
   const handleError = () => {
     if (displaySrc !== src) { setOriginalFallback(true); setStatus('loading'); }
@@ -477,7 +488,7 @@ function ArticleImage({ src, alt, caption, className, isTerminal, layout = 'wide
 
   return (
     <>
-      <figure ref={mediaRef} className={cn('article-media-frame', isTerminal && 'article-media-frame--terminal')} data-layout={layout}>
+      <figure className={cn('article-media-frame', isTerminal && 'article-media-frame--terminal')} data-layout={layout}>
         <div className='article-media-surface'>
           {status === 'error' ? (
             <div className='article-image-error' role='status'>
@@ -493,13 +504,14 @@ function ArticleImage({ src, alt, caption, className, isTerminal, layout = 'wide
               {status === 'loading' && <span className='article-image-loading' role='status' aria-label={IMAGE_THUMBNAIL_LOADING_LABEL}>
                 <Loader2 aria-hidden='true' className='h-6 w-6 motion-safe:animate-spin' /><span>이미지를 불러오는 중</span>
               </span>}
-              <img key={`${displaySrc}:${attempt}`} ref={imgRef} src={isInView ? displaySrc : undefined} data-src={displaySrc}
+              <img key={`${displaySrc}:${attempt}`} ref={imgRef} src={displaySrc} data-src={displaySrc}
                 alt={safeAlt} width={width} height={height} loading='lazy' decoding='async'
                 onLoad={() => setStatus('ready')} onError={handleError} className={cn('article-image', className)} />
               <span className='article-image-affordance' aria-hidden='true'><ZoomIn /><span>확대 보기</span></span>
             </button>
           )}
         </div>
+        <a className='article-print-source' hidden={status === 'ready'} href={src}>{safeAlt || '이미지'} — 원본 이미지</a>
         {displayCaption && <figcaption className='article-media-caption'>{displayCaption}</figcaption>}
       </figure>
       <ImageLightbox src={src} alt={safeAlt} caption={displayCaption} open={lightboxOpen}

@@ -4883,3 +4883,110 @@ body.ai-memo-block-select-active {
 @media(max-width:900px) {
   .panel .window-controls :is(#windowMinimize,#windowRestore) { display:none; }
 }
+
+/* Fieldnotes presentation bridge. App theme channels are inherited through the
+   host; no memo storage, API, window state or terminal styling is replaced. */
+:host(:not(.terminal)) {
+  --memo-radius: 10px;
+  --memo-surface: hsl(var(--card, 48 45% 98%));
+  --memo-surface-subtle: hsl(var(--background, 51 28% 95%));
+  --memo-surface-soft: hsl(var(--muted, 73 19% 91%));
+  --memo-border: hsl(var(--border, 87 15% 85%));
+  --memo-border-strong: hsl(var(--border-strong, 108 8% 64%));
+  --memo-text: hsl(var(--foreground, 162 27% 19%));
+  --memo-text-muted: hsl(var(--muted-foreground, 132 4% 44%));
+  --memo-text-subtle: var(--memo-text-muted);
+  --memo-primary: hsl(var(--primary, 153 34% 30%));
+  --memo-primary-hover: hsl(var(--primary, 153 34% 30%) / .88);
+  --memo-accent: var(--memo-primary);
+  --memo-accent-hover: var(--memo-primary-hover);
+  --memo-ai: var(--memo-primary);
+  --memo-shadow: 0 24px 80px hsl(var(--foreground, 162 27% 19%) / .12);
+  --memo-font: var(--fn-sans, 'Pretendard', system-ui, sans-serif);
+  --memo-title-font: var(--fn-serif, Georgia, Batang, serif);
+  --memo-ease: cubic-bezier(.2, .75, .25, 1);
+  --memo-spring: var(--memo-ease);
+}
+:host(:not(.terminal)) .panel { font-family: var(--memo-font); }
+:host(:not(.terminal)) .header .title { font: 500 27px/1.4 var(--memo-title-font); letter-spacing: -.035em; }
+:host(:not(.terminal)) :is(.auto-save,.header-help,.toolbar-btn .label,.tab,.footer-btn,.save-btn,.settings-reset) { font-family: var(--memo-font); font-weight: 500; }
+:host(:not(.terminal)) .auto-save { font-size: 11px; }
+:host(:not(.terminal)) .tab { font-size: 12px; }
+:host(:not(.terminal)) .tab { color: var(--memo-text-muted); }
+:host(:not(.terminal)) .tab.active {
+  color: var(--memo-primary);
+  background: transparent;
+  text-shadow: none;
+}
+:host(:not(.terminal)) .tab:hover { color: var(--memo-text); background: var(--memo-surface-soft); }
+:host(:not(.terminal)) .textarea,
+:host(:not(.terminal)) .textarea:hover,
+:host(:not(.terminal)) .textarea:focus {
+  color: var(--memo-text);
+  background: var(--memo-surface);
+  border-color: var(--memo-border);
+}
+:host(:not(.terminal)) .textarea::placeholder { color: var(--memo-text-muted); }
+:host(:not(.terminal)) .tab.active::after { height: 2px; border-radius: 0; }
+:host(:not(.terminal)) :is(.toolbar-btn.action:hover,.toolbar-btn.ai,.toolbar-btn.ai:hover,.memo-rendered blockquote) { color: var(--memo-primary); background: hsl(var(--accent, 101 23% 91%)); border-color: var(--memo-border); box-shadow: none; }
+:host(:not(.terminal)) :is(.toolbar-btn.ai.primary,.save-btn,.footer-btn.primary) { color: hsl(var(--primary-foreground, 48 100% 99%)); background: var(--memo-primary); border-color: var(--memo-primary); box-shadow: none; }
+:host(:not(.terminal)) :is(.toolbar-btn.ai.primary,.save-btn,.footer-btn.primary):hover { background: var(--memo-primary-hover); }
+:host(:not(.terminal)) :is(.window-control,.header .close,.header-help) { min-height: 44px; min-width: 44px; border-radius: 5px; }
+:host(:not(.terminal)) :is(.window-control,.header .close,.toolbar-btn,.tab,.footer-btn,.save-btn,.settings-reset):focus-visible { outline: 2px solid var(--memo-primary); outline-offset: 3px; box-shadow: none; }
+:host(:not(.terminal)) :is(.memo-preview-pane,.memo-compose,.pane-header,.body,.footer,.memo-toolbar,.tabs) { border-color: var(--memo-border); }
+/* The reader opens the established docked mode as the reference's side desk. */
+@media (min-width: 851px) {
+  :host(:not(.terminal)) .panel.window-docked {
+    inset: 12px 12px 12px auto !important;
+    width: 420px !important;
+    min-width: 0;
+    max-width: calc(100vw - 24px) !important;
+    height: calc(100dvh - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 10px;
+  }
+}
+@media (max-width: 850px) {
+  :host(:not(.terminal)) .panel:not(.window-fullscreen) {
+    inset: auto 0 0 !important;
+    width: 100% !important;
+    min-width: 0;
+    max-width: 100% !important;
+    height: 94dvh !important;
+    max-height: 94dvh !important;
+    border-radius: 14px 14px 0 0;
+  }
+}
+:host(:not(.terminal)) .pane-header { background: var(--memo-surface-subtle); }
+:host(:not(.terminal)) .block-action-menu {
+  border-color: var(--memo-border);
+  border-radius: 7px;
+  background: var(--memo-surface);
+  color: var(--memo-text);
+  box-shadow: 0 12px 40px hsl(var(--foreground, 158 27% 19%) / .12);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:host(:not(.terminal)) .block-action-preview {
+  border-radius: 4px;
+  background: var(--memo-surface-subtle);
+  color: var(--memo-text-muted);
+}
+:host(:not(.terminal)) .block-action-button {
+  border-radius: 5px;
+  background: var(--memo-surface-subtle);
+  color: var(--memo-text);
+}
+:host(:not(.terminal)) .block-action-button.primary {
+  background: var(--memo-primary);
+  color: hsl(var(--primary-foreground, 48 100% 99%));
+}
+:host(:not(.terminal)) .block-action-cancel { color: var(--memo-text-muted); }
+:host(:not(.terminal)) .block-action-backdrop { background: rgb(24 46 40 / .09); }
+:host(:not(.terminal)) :is(.pane-title,.status-text) { font-family: var(--fn-mono, ui-monospace, monospace); font-size: 10px; font-weight: 500; letter-spacing: .08em; }
+:host(:not(.terminal)) .memo-preview { font-family: var(--memo-font); }
+@media (max-width:640px) {
+  :host(:not(.terminal)) .header .title { font-size: 23px; }
+  :host(:not(.terminal)) .header { padding-inline: 12px; gap: 8px; }
+  :host(:not(.terminal)) .title-stack { gap: 8px; flex-wrap: wrap; }
+}
