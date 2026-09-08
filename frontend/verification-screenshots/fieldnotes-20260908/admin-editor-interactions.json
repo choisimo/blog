@@ -1,0 +1,26 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "draftPreserved": true,
+    "paneSwitching": true
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "draftPreserved": true,
+    "paneSwitching": true
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "draftPreserved": true,
+    "paneSwitching": true
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "draftPreserved": true,
+    "paneSwitching": true
+  }
+]

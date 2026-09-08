@@ -78,7 +78,16 @@ for (const theme of ['light', 'dark', 'terminal']) {
       const table = page.locator('.article-table-shell table');
       await expect(table).toHaveCSS('display', 'table');
       await expect(table).toHaveCSS('overflow-x', 'visible');
-      expect(await page.locator('.article-table-scroll').evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+      const scroll = page.locator('.article-table-scroll');
+      await expect(scroll).toHaveCSS('overflow-x', 'auto');
+      // A table that fits the refined 12px typography need not overflow on desktop.
+      // Narrow screens must still scroll locally without widening the document.
+      if (width < 500) {
+        expect(await scroll.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+        await scroll.evaluate(element => { element.scrollLeft = element.scrollWidth; });
+        expect(await scroll.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
       await expect(page.locator('.article-flow h2').first()).toHaveCSS('text-align', 'start');
       const headingBox = await page.locator('.article-flow h2').first().boundingBox();
       const paragraphBox = await page.locator('.article-flow > .article-readable').first().boundingBox();
@@ -109,7 +118,7 @@ test('image viewer preserves keyboard focus, safe fit and reset on a small scree
   await opener.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog).toHaveCSS('background-color', 'rgb(13, 20, 32)');
+  await expect(dialog).toHaveCSS('background-color', 'rgb(252, 251, 247)');
   await expect(page.getByTestId('lightbox-image')).toHaveAttribute('data-state', 'ready');
   await expect(page.getByRole('button', { name: 'Close image preview' })).toBeFocused();
   // Measure the final dialog geometry after Radix's entry scale animation.

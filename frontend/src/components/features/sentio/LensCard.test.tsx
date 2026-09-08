@@ -23,7 +23,7 @@ describe("LensCard", () => {
     );
 
     expect(screen.getAllByText("Mentor").length).toBeGreaterThan(0);
-    expect(screen.getByText("angle_key Injected")).toBeInTheDocument();
+    expect(screen.queryByText("angle_key Injected")).not.toBeInTheDocument();
     expect(screen.getAllByText("Title Injected").length).toBeGreaterThan(0);
     expect(screen.getByText("Summary Injected")).toBeInTheDocument();
     expect(screen.getAllByText("First").length).toBeGreaterThan(0);

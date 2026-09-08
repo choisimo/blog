@@ -168,7 +168,7 @@ export function ChatInput({
         isMobile && "pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]",
         isTerminal
           ? "bg-[hsl(var(--terminal-code-bg))] border-border"
-          : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
+          : "bg-card dark:bg-card border-border dark:border-border",
       )}
       aria-label={safeLabel || undefined}
       title={safeTitle || undefined}
@@ -185,7 +185,7 @@ export function ChatInput({
           className={cn(
             isTerminal
               ? "text-xs text-primary/60"
-              : "text-[11px] text-[#AAAAAA] dark:text-[#555555]",
+              : "text-[11px] text-muted-foreground dark:text-muted-foreground",
           )}
         >
           {isTerminal ? "# 새 주제 시작" : "새 주제를 시작할 땐"}
@@ -205,7 +205,7 @@ export function ChatInput({
             type="button"
             onClick={onClearAll}
             aria-label="새 대화 시작"
-            className="text-[11px] text-[#666666] dark:text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] px-2 py-1 rounded-sm hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] transition-colors"
+            className="text-[11px] text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground px-2 py-1 rounded-sm hover:bg-muted dark:hover:bg-muted transition-colors"
           >
             새 대화
           </button>
@@ -352,7 +352,7 @@ function SelectedBlockAttachmentList({
                   "grid h-9 w-9 shrink-0 place-items-center rounded-lg",
                   isTerminal
                     ? "border border-primary/25 text-primary"
-                    : "bg-white text-primary shadow-sm dark:bg-[#101010]",
+                    : "bg-card text-primary shadow-sm dark:bg-muted",
                 )}
               >
                 <FileText className="h-4 w-4" aria-hidden="true" />
@@ -400,7 +400,7 @@ function SelectedBlockAttachmentList({
                   "mt-3 rounded-lg border px-3 py-2 text-xs leading-5 text-muted-foreground",
                   isTerminal
                     ? "border-primary/20"
-                    : "border-primary/10 bg-white/70 dark:bg-black/20",
+                    : "border-primary/10 bg-card/70 dark:bg-black/20",
                 )}
               >
                 <p className="line-clamp-6 whitespace-pre-wrap break-words">
@@ -657,8 +657,8 @@ function DefaultInput({
   return (
     <div
       className={cn(
-        "rounded-lg border border-[#EAEAEA] dark:border-[#333333] bg-white dark:bg-[#0A0A0A]",
-        "transition-colors focus-within:border-[#111111] dark:focus-within:border-[#EEEEEE]",
+        "fn-chat-composer rounded-lg border border-border dark:border-border bg-card dark:bg-card",
+        "transition-colors focus-within:border-ring dark:focus-within:border-ring",
         "px-3 py-2",
       )}
     >
@@ -674,8 +674,8 @@ function DefaultInput({
           ref={textareaRef}
           className={cn(
             "flex-1 resize-none border-0 bg-transparent px-0 py-1.5",
-            "text-[13px] text-[#111111] dark:text-[#EEEEEE]",
-            "placeholder:text-[#AAAAAA] focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
+            "text-[13px] text-foreground dark:text-foreground",
+            "placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 overflow-y-auto",
             isMobile
               ? "min-h-[44px] max-h-[96px]"
               : "min-h-[40px] max-h-[96px]",
@@ -696,7 +696,7 @@ function DefaultInput({
             type="button"
             onClick={onFileClick}
             aria-label="이미지 첨부"
-            className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-[#AAAAAA] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
+            className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted"
           >
             <ImageIcon aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
           </button>
@@ -705,7 +705,7 @@ function DefaultInput({
               type="button"
               onClick={onStop}
               aria-label="응답 생성 중지"
-              className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-[#888888] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
+              className="h-8 w-8 flex items-center justify-center rounded-md transition-colors text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted"
             >
               <Square aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
             </button>
@@ -718,8 +718,8 @@ function DefaultInput({
               className={cn(
                 "h-8 w-8 flex items-center justify-center rounded-md transition-colors",
                 canSend
-                  ? "text-[#111111] dark:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]"
-                  : "text-[#CCCCCC] dark:text-[#444444] cursor-not-allowed",
+                  ? "text-foreground dark:text-foreground hover:bg-muted dark:hover:bg-muted"
+                  : "text-muted-foreground dark:text-muted-foreground cursor-not-allowed",
               )}
             >
               <Send aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />

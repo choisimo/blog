@@ -266,7 +266,7 @@ export function VisitedPostsMinimap({
       hideClose
       aria-label={safeHistoryLabel}
       className={cn(
-        'p-0 bg-background/95',
+        'fn-visited-desk p-0 bg-background/95',
         // Only apply backdrop-blur on desktop for performance
         !isMobile && 'backdrop-blur supports-[backdrop-filter]:backdrop-blur-lg',
         isMobile

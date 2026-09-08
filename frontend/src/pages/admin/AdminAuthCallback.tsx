@@ -118,9 +118,9 @@ export default function AdminAuthCallback() {
   }, [navigate, setTokens, setTokensFromOAuth]);
 
   return (
-    <div className="ui-page ui-auth-page" data-ui-page="admin-auth-callback">
-      <section className="ui-auth-card" aria-labelledby="callback-title">
-        <Link className="ui-auth-brand" to="/">noblog</Link>
+    <div className="ui-page ui-auth-page fn-auth-shell" data-ui-page="admin-auth-callback">
+      <section className="ui-auth-card admin-auth-card" aria-labelledby="callback-title">
+        <Link className="ui-auth-brand" to="/">nodove</Link>
         <h1 id="callback-title">{error ? '인증을 완료하지 못했습니다' : '로그인 확인 중'}</h1>
         {error ? <>
           <p role="alert" className="ui-inline-error">인증 응답을 확인하지 못했습니다. 로그인을 다시 시작해 주세요.</p>

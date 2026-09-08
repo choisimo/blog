@@ -25,6 +25,10 @@ export default {
         mono: ['JetBrains Mono', ...fontFamily.mono],
       },
       colors: {
+        // Fieldnotes paper/ink shades; terminal restores its original neutral scale.
+        slate: Object.fromEntries([50,100,200,300,400,500,600,700,800,900,950].map(shade => [shade, `hsl(var(--fn-slate-${shade}) / <alpha-value>)`])),
+        zinc: Object.fromEntries([50,100,200,300,400,500,600,700,800,900,950].map(shade => [shade, `hsl(var(--fn-zinc-${shade}) / <alpha-value>)`])),
+
         // Namespaced tokens: legacy accent/surface variables retain their HSL semantics.
         ui: {
           'canvas': 'hsl(var(--ui-canvas) / <alpha-value>)',

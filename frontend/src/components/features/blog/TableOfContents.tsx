@@ -157,59 +157,50 @@ export const TableOfContents = ({
   }, [content, postTitle]);
 
   useEffect(() => {
-    if (isMobile) return;
-
-    let mutationObserver: MutationObserver | null = null;
-
-    const visibleHeadings = new Map<string, number>();
-    const observedHeadingElements = new WeakSet<Element>();
-    const headingObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const heading = entry.target as HTMLElement;
-          if (!heading.id) return;
-
-          if (entry.isIntersecting) {
-            visibleHeadings.set(heading.id, entry.boundingClientRect.top);
-          } else {
-            visibleHeadings.delete(heading.id);
-          }
-        });
-
-        if (visibleHeadings.size > 0) {
-          const topmostHeadingId = [...visibleHeadings.entries()].sort(
-            (a, b) => a[1] - b[1],
-          )[0][0];
-          setActiveId(topmostHeadingId);
-        }
-      },
-      { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
-    );
-
-    const boundaryEl = document.querySelector("[data-toc-boundary]");
-    const observeHeadings = () => {
-      boundaryEl?.querySelectorAll("h1,h2,h3,h4,h5,h6").forEach((heading) => {
-        if (!heading.id || observedHeadingElements.has(heading)) return;
-        observedHeadingElements.add(heading);
-        headingObserver.observe(heading);
-      });
+    const boundary = document.querySelector('[data-toc-boundary]');
+    if (!boundary || !toc.length) return;
+    const ids = new Set(toc.map(item => item.id));
+    let headings: HTMLElement[] = [];
+    let frame: number | null = null;
+    const update = () => {
+      frame = null;
+      const headerBottom = document.querySelector('header.ui-header')?.getBoundingClientRect().bottom ?? 76;
+      const readingLine = Math.min(window.innerHeight * .4, Math.max(0, headerBottom) + 64);
+      let current = headings[0]?.id ?? '';
+      for (const heading of headings) {
+        if (heading.getBoundingClientRect().top > readingLine) break;
+        current = heading.id;
+      }
+      if (current) setActiveId(current);
     };
-
-    observeHeadings();
-
-    if (boundaryEl && typeof MutationObserver !== "undefined") {
-      mutationObserver = new MutationObserver(observeHeadings);
-      mutationObserver.observe(boundaryEl, { childList: true, subtree: true });
-    }
-
+    const schedule = () => {
+      if (frame === null) frame = window.requestAnimationFrame(update);
+    };
+    const collect = () => {
+      headings = Array.from(boundary.querySelectorAll<HTMLElement>('h1,h2,h3,h4,h5,h6'))
+        .filter(heading => ids.has(heading.id));
+      schedule();
+    };
+    collect();
+    // A large scroll can skip every observed heading; derive the active section
+    // from document order and the reading line, including gaps between headings.
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    const mutations = new MutationObserver(collect);
+    mutations.observe(boundary, { childList: true, subtree: true });
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    resize?.observe(boundary);
     return () => {
-      mutationObserver?.disconnect();
-      headingObserver.disconnect();
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      mutations.disconnect();
+      resize?.disconnect();
+      if (frame !== null) window.cancelAnimationFrame(frame);
     };
-  }, [isMobile, toc]);
+  }, [toc]);
 
   useEffect(() => {
-    if (isMobile || !activeId) return;
+    if (!activeId) return;
 
     const tocRoot = scrollAreaRef.current;
     const activeItem = itemRefs.current[activeId];
@@ -293,7 +284,7 @@ export const TableOfContents = ({
           type="auto"
           viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': `${safeLabel} 스크롤 영역` }}
           className={cn(
-            "min-h-0",
+            "ui-toc-scroll-silent min-h-0",
             sticky ? "ui-toc-scroll" : "ui-toc-drawer-scroll",
           )}
         >
@@ -360,6 +351,7 @@ export const TocDrawer = ({
   const [open, setOpen] = useState(false);
   const [isTriggerVisible, setIsTriggerVisible] = useState(!showAfterScroll);
   const { isTerminal } = useTheme();
+  const isMobile = useIsMobile();
   const triggerVisibleRef = useRef(!showAfterScroll);
 
   useEffect(() => {
@@ -442,10 +434,11 @@ export const TocDrawer = ({
           )}
         >
           <BookOpen aria-hidden="true" className={cn(isFloatingTrigger ? "h-5 w-5" : "h-4 w-4")} />
+          {!isFloatingTrigger && !isTerminal && <span className="fn-toc-trigger-label" aria-hidden="true">목차</span>}
         </button>
       </SheetTrigger>
       <SheetContent
-        side="right"
+        side={isMobile && !isTerminal ? "bottom" : "right"}
         hideClose
         aria-label={safeLabel}
         title={safeTitle}

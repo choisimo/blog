@@ -17,7 +17,7 @@ function normalizeBookmarkHookPostId(value: string): string | null {
   }
 
   try {
-    const decoded = decodeURIComponent(trimmed).trim();
+    const decoded = decodeURIComponent(trimmed).trim().normalize('NFC');
     if (!decoded || BOOKMARK_HOOK_UNSAFE_DECODED_PATTERN.test(decoded)) {
       return null;
     }
@@ -100,6 +100,8 @@ export function useIsBookmarked(postId: string) {
   );
 
   useEffect(() => {
+    const sync = () => setBookmarked(normalizedPostId ? checkBookmarked(normalizedPostId) : false);
+    sync();
     const handleUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       const eventPostId =
@@ -113,7 +115,11 @@ export function useIsBookmarked(postId: string) {
       }
     };
     window.addEventListener('bookmarks:update', handleUpdate);
-    return () => window.removeEventListener('bookmarks:update', handleUpdate);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('bookmarks:update', handleUpdate);
+      window.removeEventListener('storage', sync);
+    };
   }, [normalizedPostId]);
 
   const toggleBookmark = useCallback(() => {

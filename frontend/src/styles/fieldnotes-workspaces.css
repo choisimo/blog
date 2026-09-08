@@ -1,0 +1,466 @@
+/* Fieldnotes operator and utility views. Functionality remains owned by each
+   workspace; these hooks carry the reference's paper, ink and ruled hierarchy. */
+.fn-admin-shell,
+.fn-auth-shell,
+.fn-writing-page,
+.fn-insight-shell {
+  --fn-workspace-width: 1400px;
+  --fn-workspace-radius: 6px;
+  --fn-workspace-gap: clamp(20px, 3vw, 40px);
+  color: hsl(var(--foreground));
+}
+.fn-admin-shell .ui-workspace-with-nav {
+  display: block;
+  max-width: none;
+}
+.fn-admin-masthead.ui-admin-topbar {
+  min-height: 80px;
+  padding: 16px var(--fn-gutter);
+  background: hsl(var(--background));
+  border-color: hsl(var(--border));
+}
+:root:not(.terminal) .fn-admin-masthead .ui-wordmark,
+:root:not(.terminal) .fn-auth-shell .ui-wordmark,
+:root:not(.terminal) .fn-auth-shell .ui-auth-brand {
+  font: 400 29px/1.25 var(--fn-serif);
+  letter-spacing: -0.055em;
+}
+.fn-admin-masthead .ui-wordmark span,
+.fn-auth-shell .ui-wordmark span {
+  font: 10px/1.7 var(--fn-mono);
+  letter-spacing: 0.06em;
+}
+.fn-admin-navigation.ui-admin-navigation {
+  position: sticky;
+  top: 80px;
+  z-index: 20;
+  display: block;
+  height: auto;
+  padding: 0 var(--fn-gutter);
+  overflow: visible;
+  border: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+.fn-admin-navigation .ui-nav-caption,
+.fn-admin-navigation .ui-admin-back-link {
+  display: none;
+}
+.fn-admin-navigation .ui-admin-sidebar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  max-width: var(--fn-workspace-width);
+  margin-inline: auto;
+  padding-block: 10px;
+}
+.fn-admin-navigation .ui-admin-nav-item {
+  width: auto;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  gap: 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.fn-admin-navigation .ui-admin-nav-item[aria-selected='true'] {
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+.fn-admin-shell .fn-admin-content {
+  width: 100%;
+  max-width: var(--fn-workspace-width);
+  margin-inline: auto;
+  padding: 40px var(--fn-gutter) 72px;
+}
+.fn-admin-shell .ui-admin-page-heading {
+  margin-bottom: 30px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid hsl(var(--border));
+}
+:root:not(.terminal) .fn-admin-shell .ui-admin-page-heading h1,
+:root:not(.terminal) .fn-writing-page > h1,
+:root:not(.terminal) .fn-insight-shell .ui-workspace-heading h1 {
+  font: 400 clamp(34px, 4vw, 48px) / 1.2 var(--fn-serif);
+  letter-spacing: -0.04em;
+  margin-top: 12px;
+}
+.fn-admin-shell .ui-eyebrow,
+.fn-writing-page > .ui-eyebrow,
+.fn-insight-shell .ui-eyebrow {
+  font: 500 10px/1.8 var(--fn-mono);
+  letter-spacing: 0.15em;
+}
+.fn-admin-shell .ui-admin-section {
+  line-height: 1.8;
+}
+.fn-admin-shell .ui-panel,
+.fn-insight-shell .ui-insight-surface,
+.fn-editor-workspace .ui-editor-document {
+  border-radius: var(--fn-workspace-radius, 6px);
+  border-color: hsl(var(--border));
+  box-shadow: none;
+}
+.fn-admin-shell .ui-panel-header {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 22px 24px;
+}
+.fn-admin-shell .ui-panel-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+.fn-admin-shell .ui-admin-section table {
+  font-size: 13px;
+}
+.fn-admin-shell .ui-admin-section th {
+  font: 500 11px/1.7 var(--fn-mono);
+  letter-spacing: 0.035em;
+}
+.fn-admin-shell .ui-admin-section :is(th, td) {
+  padding-block: 14px;
+}
+.fn-admin-shell .ui-admin-section .rounded-xl {
+  border-radius: 6px;
+}
+.fn-admin-shell .ui-admin-subtabs {
+  margin-bottom: 22px;
+}
+.fn-admin-shell .ui-admin-subtab {
+  font-size: 12px;
+}
+.fn-admin-shell .ui-admin-aimanager > :last-child {
+  padding-top: 8px;
+}
+.fn-admin-shell .ui-section-loading {
+  min-height: 240px;
+  display: grid;
+  align-content: center;
+  color: hsl(var(--muted-foreground));
+}
+.fn-auth-shell.ui-auth-page {
+  padding: 64px 20px;
+  min-height: 100dvh;
+}
+.fn-auth-shell .ui-auth-container {
+  width: min(100%, 430px);
+}
+.fn-auth-shell .ui-auth-container > .ui-wordmark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.fn-auth-shell .fn-auth-edition {
+  margin-bottom: 28px;
+}
+.fn-auth-shell .ui-auth-card {
+  padding: 32px;
+  border-radius: 6px;
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: 0 18px 70px hsl(var(--foreground) / 0.055);
+}
+/* The prototype's last-child padding assumed a different Card nesting. */
+.fn-auth-shell .admin-auth-card > div:last-child {
+  padding: 0;
+}
+:root:not(.terminal) .fn-auth-shell .ui-auth-card h1 {
+  font: 400 30px/1.3 var(--fn-serif);
+  letter-spacing: -0.035em;
+}
+.fn-auth-shell .ui-auth-card :is(input, button) {
+  border-radius: 4px;
+}
+.fn-auth-shell .ui-auth-card .admin-error-msg {
+  border-radius: 4px;
+}
+.fn-auth-shell .ui-auth-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 24px;
+}
+.fn-writing-page.ui-new-post-page {
+  max-width: 1500px;
+  margin: auto;
+  padding: 30px var(--fn-gutter) 72px;
+}
+.fn-writing-page > h1 {
+  margin-bottom: 32px;
+}
+.fn-editor-workspace .ui-editor-commandbar {
+  padding: 20px 24px;
+  background: transparent;
+}
+.fn-editor-workspace .ui-editor-commandbar .ui-editor-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+:root:not(.terminal) .fn-editor-workspace #post-editor-title {
+  font-family: var(--fn-serif);
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 400;
+}
+.fn-editor-workspace .ui-editor-write-pane .ui-textarea {
+  font: 14px/1.95 var(--fn-mono);
+}
+.fn-editor-workspace .ui-editor-preview-scroll {
+  background: hsl(var(--background));
+}
+.fn-editor-workspace .ui-editor-tools {
+  background: hsl(var(--background));
+}
+.fn-insight-shell .ui-insight-container {
+  max-width: 1440px;
+  padding: 40px var(--fn-gutter) 64px;
+}
+.fn-insight-shell .ui-workspace-heading {
+  padding-bottom: 24px;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 28px;
+}
+.fn-insight-shell .ui-insight-layout {
+  border-radius: 6px;
+}
+.fn-insight-shell .ui-insight-explorer-toolbar {
+  padding: 18px;
+}
+.fn-insight-shell .ui-insight-view-switch {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.fn-insight-shell .ui-insight-view-switch button {
+  border-radius: 4px;
+}
+.fn-insight-shell .ui-insight-view-switch button[aria-pressed='true'] {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--border));
+}
+.fn-insight-shell .ui-insight-stack-item {
+  height: auto;
+  min-height: 126px;
+  border-radius: 5px;
+  box-shadow: none;
+}
+.fn-insight-shell .ui-insight-stack-select {
+  min-height: 44px;
+}
+.fn-error-page.ui-error-page {
+  padding: 72px var(--fn-gutter);
+  max-width: 1240px;
+}
+.fn-error-page .fn-error-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.8fr);
+  gap: 24px 70px;
+  width: 100%;
+}
+.fn-error-page .fn-error-intro {
+  min-width: 0;
+}
+.fn-error-page .ui-error-meta {
+  font: 500 10px/1.8 var(--fn-mono);
+  letter-spacing: 0.12em;
+  padding: 0;
+  border: 0;
+}
+.fn-error-page .ui-error-meta svg {
+  width: 16px;
+  height: 16px;
+}
+.fn-error-page .fn-error-number {
+  margin: 24px 0;
+}
+.fn-error-page h1 {
+  margin-top: 0;
+}
+.fn-error-page .ui-error-help {
+  align-self: center;
+  margin: 0;
+  padding: 28px 0;
+  background: transparent;
+  border-block: 1px solid hsl(var(--border));
+}
+.fn-error-page .ui-error-help h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+.fn-error-page .ui-error-help li + li {
+  margin-top: 12px;
+}
+.fn-error-page :is(.ui-error-footer, .ui-error-navigation) {
+  grid-column: 1 / -1;
+}
+.fn-error-page .ui-error-navigation {
+  margin-top: 8px;
+  gap: 12px 28px;
+}
+:is(
+    .fn-admin-shell,
+    .fn-auth-shell,
+    .fn-editor-workspace,
+    .fn-insight-shell,
+    .fn-error-page
+  )
+  :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+:is(.fn-admin-shell, .fn-auth-shell, .fn-editor-workspace, .fn-insight-shell)
+  button:disabled {
+  cursor: not-allowed;
+}
+@media (max-width: 1023px) {
+  .fn-admin-navigation.ui-admin-navigation {
+    position: static;
+    padding: 12px var(--fn-gutter);
+  }
+  .fn-admin-navigation .ui-admin-sidebar {
+    display: none;
+  }
+  .fn-admin-shell .fn-admin-content {
+    padding-top: 28px;
+  }
+  .fn-error-page .fn-error-card {
+    gap: 28px 40px;
+  }
+}
+@media (max-width: 767px) {
+  .fn-admin-masthead.ui-admin-topbar {
+    min-height: 68px;
+    padding: 12px 20px;
+    flex-wrap: wrap;
+  }
+  .fn-admin-masthead .ui-wordmark span {
+    display: none;
+  }
+  .fn-admin-masthead .ui-account-name {
+    max-width: 130px;
+    font-size: 11px;
+  }
+  .fn-admin-masthead .ui-admin-account {
+    gap: 8px;
+  }
+  .fn-admin-shell .fn-admin-content {
+    padding: 28px 20px 48px;
+  }
+  .fn-admin-shell .ui-panel-header {
+    padding: 18px;
+  }
+  .fn-auth-shell .ui-auth-card {
+    padding: 24px;
+  }
+  .fn-writing-page.ui-new-post-page {
+    padding: 24px 20px 48px;
+  }
+  .fn-editor-workspace .ui-editor-commandbar {
+    padding: 18px;
+  }
+  .fn-insight-shell .ui-insight-container {
+    padding: 28px 20px 48px;
+  }
+  .fn-insight-shell .ui-workspace-heading {
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .fn-insight-shell .ui-workspace-context {
+    max-width: 130px;
+    margin-top: 4px;
+  }
+  .fn-error-page.ui-error-page {
+    padding: 40px 20px;
+  }
+  .fn-error-page .fn-error-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(
+      .fn-admin-shell,
+      .fn-auth-shell,
+      .fn-editor-workspace,
+      .fn-insight-shell,
+      .fn-error-page
+    )
+    *,
+  :is(
+      .fn-admin-shell,
+      .fn-auth-shell,
+      .fn-editor-workspace,
+      .fn-insight-shell,
+      .fn-error-page
+    )
+    *::before,
+  :is(
+      .fn-admin-shell,
+      .fn-auth-shell,
+      .fn-editor-workspace,
+      .fn-insight-shell,
+      .fn-error-page
+    )
+    *::after {
+    transition: none;
+    animation: none;
+    scroll-behavior: auto;
+  }
+}
+/* Short Korean pane labels remain one phrase even on a 320px writing screen. */
+@media (max-width: 599px) {
+  .fn-editor-workspace .ui-pane-switcher button {
+    padding-inline: 6px;
+    font-size: 13px;
+    word-break: keep-all;
+  }
+}
+/* Remove the former sidebar's grouped vertical offsets in horizontal navigation. */
+.fn-admin-navigation .ui-admin-sidebar .ui-admin-nav-item {
+  margin-top: 0;
+}
+/* Scrollable task tabs start at their first option; centering clips it on mobile. */
+.fn-admin-shell .ui-subtabs {
+  justify-content: flex-start;
+}
+/* Legacy operator status utilities retain their meaning in both paper modes. */
+.fn-admin-shell :is(.text-red-400,.text-red-500,.text-red-600,.text-red-700) {
+  color: hsl(var(--ui-danger));
+}
+.fn-admin-shell :is(.bg-red-50,.bg-red-100,.bg-red-950) {
+  background-color: hsl(var(--ui-danger-soft));
+}
+.fn-admin-shell :is(.text-amber-500,.text-amber-600,.text-amber-700,.text-amber-800,.text-yellow-600) {
+  color: hsl(var(--ui-warn));
+}
+.fn-admin-shell :is(.bg-amber-50,.bg-amber-100) {
+  background-color: hsl(var(--ui-warn) / .1);
+}
+.fn-admin-shell :is(.text-emerald-600,.text-emerald-700) {
+  color: hsl(var(--ui-success));
+}
+.fn-admin-shell :is(.divide-zinc-50,.divide-zinc-100,.divide-zinc-800) > :not([hidden]) ~ :not([hidden]) {
+  border-color: hsl(var(--border));
+}
+.fn-admin-shell button.bg-ui-text {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+:root:not(.terminal) .fn-editor-workspace .ui-editor-preview-pane .prose blockquote {
+  padding: 18px 22px;
+  border: 0;
+  border-left: 2px solid hsl(var(--fn-gold));
+  border-radius: 0;
+  background: hsl(var(--accent) / .55);
+  box-shadow: none;
+  color: hsl(var(--text));
+}
+:root:not(.terminal) .fn-editor-workspace .ui-editor-preview-pane .prose :is(h1,h2,h3) {
+  font-family: var(--fn-serif);
+  font-weight: 500;
+}
+.fn-admin-shell :is(.border-red-100,.border-red-200) {
+  border-color: hsl(var(--ui-danger) / .3);
+}
+.fn-admin-shell .border-amber-100 {
+  border-color: hsl(var(--ui-warn) / .3);
+}

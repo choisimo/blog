@@ -1,5 +1,5 @@
-/* Bridge both legacy/shadcn and migrated surfaces to the same root palette, including body portals. */
-:root:not(.dark):not(.terminal),:root.dark:not(.terminal),:root.terminal {
+/* Terminal retains its independent palette. Fieldnotes owns the light/dark bridge. */
+:root.terminal {
   color-scheme: light;
   --background:var(--ui-canvas); --foreground:var(--ui-text);
   --card:var(--ui-surface); --card-foreground:var(--ui-text);

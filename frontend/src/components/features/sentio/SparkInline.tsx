@@ -462,7 +462,7 @@ export default function SparkInline({
         role='region'
         aria-label='AI 분석 패널'
         onKeyDown={event => {
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
             event.stopPropagation();
             setOpen(false);
             triggerRef.current?.focus();

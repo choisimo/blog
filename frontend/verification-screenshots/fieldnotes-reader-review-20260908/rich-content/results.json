@@ -1,0 +1,98 @@
+[
+  {
+    "theme": "light",
+    "width": 390,
+    "diagrams": 3,
+    "printedLabels": 0,
+    "embeds": [
+      {
+        "src": "/posts/2026/teleport-paging-1.html",
+        "title": "Demand Paging Animation"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-2.html",
+        "title": "Page Fault Dashboard"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-3.html",
+        "title": "Algorithm History tracking"
+      }
+    ],
+    "printFramesHidden": true,
+    "simulatorControlsWorking": true,
+    "themePreservesInputsAndResults": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "diagrams": 3,
+    "printedLabels": 19,
+    "embeds": [
+      {
+        "src": "/posts/2026/teleport-paging-1.html",
+        "title": "Demand Paging Animation"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-2.html",
+        "title": "Page Fault Dashboard"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-3.html",
+        "title": "Algorithm History tracking"
+      }
+    ],
+    "printFramesHidden": true,
+    "simulatorControlsWorking": true,
+    "themePreservesInputsAndResults": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "diagrams": 3,
+    "printedLabels": 0,
+    "embeds": [
+      {
+        "src": "/posts/2026/teleport-paging-1.html",
+        "title": "Demand Paging Animation"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-2.html",
+        "title": "Page Fault Dashboard"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-3.html",
+        "title": "Algorithm History tracking"
+      }
+    ],
+    "printFramesHidden": true,
+    "simulatorControlsWorking": true,
+    "themePreservesInputsAndResults": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "diagrams": 3,
+    "printedLabels": 19,
+    "embeds": [
+      {
+        "src": "/posts/2026/teleport-paging-1.html",
+        "title": "Demand Paging Animation"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-2.html",
+        "title": "Page Fault Dashboard"
+      },
+      {
+        "src": "/posts/2026/teleport-paging-3.html",
+        "title": "Algorithm History tracking"
+      }
+    ],
+    "printFramesHidden": true,
+    "simulatorControlsWorking": true,
+    "themePreservesInputsAndResults": true,
+    "errors": []
+  }
+]

@@ -90,6 +90,8 @@
             animation: pulse-red 2s infinite;
         }
     </style>
+    <link rel="stylesheet" href="./fieldnotes-simulator.css" />
+    <script defer src="./fieldnotes-simulator.js"></script>
 </head>
 
 <body>
@@ -205,6 +207,8 @@
 
             const canvas = document.getElementById("hitRateChart");
             const ctx = canvas.getContext("2d");
+            const palette = getComputedStyle(document.documentElement);
+            const color = name => palette.getPropertyValue(`--embed-${name}`).trim();
 
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
@@ -216,7 +220,7 @@
             const maxFaults = Math.max(...results.dataFIFO, ...results.dataLRU, 1);
 
             // Draw Grid
-            ctx.strokeStyle = "#e2e8f0";
+            ctx.strokeStyle = color("line");
             ctx.lineWidth = 1;
 
             // Horizontal lines
@@ -231,7 +235,7 @@
             ctx.stroke();
 
             // Axis labels
-            ctx.fillStyle = "#64748b";
+            ctx.fillStyle = color("muted");
             ctx.font = "11px Inter";
             ctx.textAlign = "right";
             ctx.fillText(maxFaults, pad - 8, pad + 4);
@@ -242,12 +246,12 @@
                 const x = pad + ((w - 2 * pad) / 6) * (i - 1);
                 ctx.fillText(i, x, h - pad + 16);
             }
-            ctx.fillStyle = "#94a3b8";
+            ctx.fillStyle = color("muted");
             ctx.fillText("Frames", w / 2, h - 2);
 
-            function drawLine(data, color) {
+            function drawLine(data, seriesColor) {
                 ctx.beginPath();
-                ctx.strokeStyle = color;
+                ctx.strokeStyle = seriesColor;
                 ctx.lineWidth = 2;
                 for (let i = 0; i < 7; i++) {
                     const x = pad + ((w - 2 * pad) / 6) * i;
@@ -258,7 +262,7 @@
                 }
                 ctx.stroke();
 
-                ctx.fillStyle = "white";
+                ctx.fillStyle = color("paper");
                 for (let i = 0; i < 7; i++) {
                     const x = pad + ((w - 2 * pad) / 6) * i;
                     const val = data[i];
@@ -270,20 +274,21 @@
                 }
             }
 
-            drawLine(results.dataFIFO, "#ef4444"); // Red for FIFO
-            drawLine(results.dataLRU, "#2563eb");  // Blue for LRU
+            drawLine(results.dataFIFO, color("error")); // Distinct FIFO series
+            drawLine(results.dataLRU, color("accent")); // Distinct LRU series
 
             // Legend
             ctx.textAlign = "right";
             ctx.font = "11px Inter";
-            ctx.fillStyle = "#ef4444";
+            ctx.fillStyle = color("error");
             ctx.fillText("■ FIFO Faults", w - 10, 20);
-            ctx.fillStyle = "#2563eb";
+            ctx.fillStyle = color("accent");
             ctx.fillText("■ LRU Faults", w - 10, 36);
         }
 
         window.onload = analyzeAndDrawChart;
         window.addEventListener("resize", analyzeAndDrawChart);
+        window.addEventListener("fieldnotes-theme-change", analyzeAndDrawChart);
     </script>
 </body>
 

@@ -27,6 +27,8 @@ import SparkInline from '@/components/molecules/SparkInline';
 import { getMarkdownSanitizeSchema } from './markdownSanitizeSchema';
 import { ArticleDiagram } from './visualization/ArticleDiagram';
 import { parseArticleDiagram } from './visualization/articleDiagram';
+import { ArticleReferences } from './ArticleReferences';
+import { rehypeArticleReferences } from '@/utils/content/articleReferences';
 import {
   ClickableImage,
   EmbeddedVideo,
@@ -279,7 +281,14 @@ function EmbeddedIframe({
   }
 
   return (
-    <div className='my-8 max-w-5xl mx-auto'>
+    <div className='article-embed not-prose my-8 max-w-5xl mx-auto'>
+      <div className='article-embed__caption'>
+        <span>{title ?? '임베드 콘텐츠'}</span>
+        <a href={resolvedSrc} target='_blank' rel='noopener noreferrer'>
+          <span className='article-embed__open-label'>새 탭에서 열기</span>
+          <span className='article-embed__print-label'>온라인에서 보기</span>
+        </a>
+      </div>
       <iframe
         {...rest}
         ref={iframeRef}
@@ -978,7 +987,7 @@ function CodeBlock({
                 paddingRight: '1em',
                 color: isTerminalTheme
                   ? 'rgba(100,160,120,0.4)'
-                  : 'rgba(148,163,184,0.55)',
+                  : 'var(--article-code-muted, #91a891)',
                 userSelect: 'none',
                 fontSize: '0.78em',
                 paddingTop: '0.15rem',
@@ -987,13 +996,14 @@ function CodeBlock({
                 margin: 0,
                 padding: isTerminalTheme
                   ? '1.2rem 1.25rem 1.15rem'
-                  : '1.15rem 1.2rem',
+                  : 'var(--article-code-padding, 22px)',
                 borderRadius: 0,
-                background: isTerminalTheme ? 'hsl(200 50% 3%)' : '#0f172a',
+                background: isTerminalTheme ? 'hsl(200 50% 3%)' : 'var(--article-code-bg, #15271f)',
+                color: isTerminalTheme ? undefined : 'var(--article-code-text, #d4e2d5)',
                 border: 'none',
                 boxShadow: 'none',
-                fontSize: '0.92rem',
-                lineHeight: 1.75,
+                fontSize: isTerminalTheme ? '0.92rem' : 'var(--article-code-size, 12px)',
+                lineHeight: isTerminalTheme ? 1.75 : 1.95,
                 overflowX: 'visible',
                 ...wrappingStyle,
               }}
@@ -1001,7 +1011,7 @@ function CodeBlock({
                 style: {
                   fontFamily:
                     "'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace",
-                  fontSize: '0.92rem',
+                  fontSize: 'inherit',
                   ...wrappingStyle,
                 },
               }}
@@ -1038,7 +1048,7 @@ function CodeBlock({
             style={{
               background: isTerminalTheme
                 ? 'linear-gradient(to bottom, transparent, hsl(200 50% 3%))'
-                : 'linear-gradient(to bottom, transparent, #282c34)',
+                : 'linear-gradient(to bottom, transparent, var(--article-code-bg, #15271f))',
             }}
           />
         )}
@@ -1131,6 +1141,7 @@ function MarkdownRendererInner({
     };
 
     return {
+      details: ArticleReferences,
       h1: ({ children }: { children?: ReactNode }) => {
         const id = getHeadingId(children);
         return (
@@ -1513,6 +1524,7 @@ function MarkdownRendererInner({
           rehypePlugins={[
             rehypeRaw,
             [rehypeSanitize, sanitizeSchema],
+            rehypeArticleReferences,
           ]}
           components={markdownComponents}
         >

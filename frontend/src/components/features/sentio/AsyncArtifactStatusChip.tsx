@@ -66,6 +66,7 @@ export function AsyncArtifactStatusChip({
 
   return (
     <span
+      data-artifact-status={safeStatus}
       className={cn(
         "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
         STATUS_CLASSES[safeStatus],

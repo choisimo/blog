@@ -1,0 +1,71 @@
+/* Final refined HTML palette; adapters keep existing components on one source of truth. */
+:root:not(.terminal) {
+  --background: 51.429 28.000% 95.098%;
+  --card: 48.000 45.455% 97.843%;
+  --foreground: 161.538 27.083% 18.824%;
+  --text: 153.750 12.698% 24.706%;
+  --muted-foreground: 132.000 4.425% 44.314%;
+  --border: 87.273 14.667% 85.294%;
+  --muted: 73.333 19.149% 90.784%;
+  --primary: 152.941 33.775% 29.608%;
+}
+:root.dark:not(.terminal) {
+  --background: 168.000 31.915% 9.216%;
+  --card: 164.211 32.203% 11.569%;
+  --foreground: 84.000 25.424% 88.431%;
+  --text: 115.000 11.111% 78.824%;
+  --muted-foreground: 124.000 8.021% 63.333%;
+  --border: 150.000 18.644% 23.137%;
+  --muted: 155.455 26.829% 16.078%;
+  --primary: 129.730 25.517% 71.569%;
+}
+:root[data-reading-paper='warm']:not(.dark):not(.terminal) {
+  --background: 40.000 46.154% 89.804%;
+  --card: 39.000 66.667% 94.118%;
+  --foreground: 87.000 16.393% 23.922%;
+  --text: 80.000 13.043% 27.059%;
+  --muted-foreground: 62.857 9.589% 42.941%;
+  --border: 43.846 24.074% 78.824%;
+  --muted: 42.222 36.000% 85.294%;
+  --primary: 99.474 21.591% 34.510%;
+}
+
+:root:not(.terminal) {
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --surface: var(--background);
+  --surface-2: var(--muted);
+  --surface-elevated: var(--card);
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --divider: var(--border);
+  --text-strong: var(--foreground);
+  --text-muted: var(--muted-foreground);
+  --ui-canvas: var(--background);
+  --ui-surface: var(--card);
+  --ui-soft: var(--muted);
+  --ui-text: var(--foreground);
+  --ui-muted: var(--muted-foreground);
+  --ui-subtle: var(--muted-foreground);
+  --ui-line: var(--border);
+  --ui-line-strong: var(--border-strong);
+  --ui-accent: var(--primary);
+  --ui-accent-soft: var(--accent);
+  --ui-code-bg: var(--muted);
+  --ui-on-accent: var(--primary-foreground);
+  --ui-font: var(--fn-sans);
+  --ui-mono: var(--fn-mono);
+}
+:root {
+  --fn-header-height: 76px;
+  --fn-reading-width: 720px;
+  --ui-header-height: var(--fn-header-height);
+  --ui-content-width: var(--fn-page-width);
+  --ui-reading-width: var(--fn-reading-width);
+  --ui-page-gutter: var(--fn-gutter);
+  --ui-radius-panel: 6px;
+}
+@media (max-width:599px) {
+  :root { --fn-header-height: 62px; --fn-gutter: 20px; }
+}

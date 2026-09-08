@@ -420,7 +420,8 @@ export default function ChatWidget(props: {
           ref={widgetRef}
           aria-label='AI Chat'
           className={cn(
-            'fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background overscroll-contain',
+            'fn-chat-desk fixed z-[var(--z-chat-widget)] flex flex-col overflow-hidden border bg-background overscroll-contain',
+            !isMobile && !isExpanded && !sidebarOpen && 'fn-chat-desk--docked',
             isMobile ? 'shadow-none' : 'shadow-2xl transition-all',
             // Mobile: always fullscreen
             isMobile
@@ -450,7 +451,9 @@ export default function ChatWidget(props: {
                     maxHeight: pcMaxHeight,
                     bottom: 'auto',
                   }
-                : { height: pcMaxHeight, maxHeight: pcMaxHeight }
+                : !isTerminal && !sidebarOpen
+                  ? { height: 'calc(100dvh - 24px)', maxHeight: 'calc(100dvh - 24px)' }
+                  : { height: pcMaxHeight, maxHeight: pcMaxHeight }
           }
           role='dialog'
         >
@@ -649,7 +652,7 @@ export default function ChatWidget(props: {
       >
         <SheetContent
           side='left'
-          className='w-72 max-w-[85vw] p-0'
+          className='fn-chat-sidebar-sheet w-72 max-w-[85vw] p-0'
           aria-describedby={undefined}
           onOpenAutoFocus={rememberNestedFocus}
           onCloseAutoFocus={restoreNestedFocus}

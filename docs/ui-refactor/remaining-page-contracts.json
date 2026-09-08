@@ -2193,14 +2193,24 @@
       "name": "observedHeadingIds",
       "before": "ce4923a57a6886ec751aec3b95a9ceb252c3240b4291ff3ebc9215fa0429ce9d",
       "after": null,
-      "reason": "RICH-03: replace the persistent heading-ID set with an element-identity WeakSet. When React replaces a heading during a streaming update, the new element must be observed even when its stable anchor ID is unchanged; the TOC ID and source heading contract remain unchanged."
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
     },
     {
       "file": "frontend/src/components/features/blog/TableOfContents.tsx",
       "name": "observeHeadings",
       "before": "c54d146a7649cd595919cc53807b920b2bf2df3f54901a2808f2c118384932e3",
-      "after": "be5a5c663e82009f2959fa5a1556d0deb62689eb91ab3ab48d924c44a5d799ac",
-      "reason": "RICH-03: observe heading DOM element identity rather than only anchor IDs, so a streaming React replacement with the same stable ID is re-observed. This changes observation bookkeeping only; heading IDs and navigation targets are preserved."
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
     },
     {
       "file": "frontend/src/components/features/blog/TableOfContents.tsx",
@@ -2468,8 +2478,8 @@
       "file": "frontend/src/pages/public/Blog.tsx",
       "name": "featuredPost",
       "before": "1b8c2a50c2f6c2dc79a148723801e8934c01d4a8cceaf90316c34cc3f4f1467f",
-      "after": "f000186c58713deff90ba62051297873c9157847d20255acb9381b18857da046",
-      "reason": "Show editorial lead only on the first, unfiltered latest-order page; filtered results use one uniform result list.",
+      "after": null,
+      "reason": "Show editorial lead only on the first, unfiltered latest-order page; filtered results use one uniform result list. Fieldnotes 2026-09-08: Fieldnotes archive uses one ruled list. Removed the featured-only projection; all results remain in listPosts.",
       "tests": [
         "frontend/src/pages/public/Blog.discovery.test.tsx"
       ]
@@ -2478,8 +2488,8 @@
       "file": "frontend/src/pages/public/Blog.tsx",
       "name": "spotlightPosts",
       "before": "5ebdfea26866b4613c61b96d10b794eba01a0294302328877eb0272b7945c20d",
-      "after": "c3fd89150af73e97bf2b7ba5ab05aeb5663253486eb31c72d9f5bb7157a1e156",
-      "reason": "Keep spotlight items exclusive to the unfiltered first latest-order page, preventing duplicated small result sets.",
+      "after": null,
+      "reason": "Keep spotlight items exclusive to the unfiltered first latest-order page, preventing duplicated small result sets. Fieldnotes 2026-09-08: Fieldnotes archive uses one ruled list. Removed the spotlight-only projection; all results remain in listPosts.",
       "tests": [
         "frontend/src/pages/public/Blog.discovery.test.tsx"
       ]
@@ -2488,8 +2498,8 @@
       "file": "frontend/src/pages/public/Blog.tsx",
       "name": "listPosts",
       "before": "217c443a995dfcceff131f77166f51806e52a22af90055051a731e9b4f4bbfb5",
-      "after": "bd4e847c94aea7404665f4ee769c8943eb581ee419406386c2acf8d242ce057b",
-      "reason": "On editorial pages render only posts after lead/spotlights; for filtered or sorted pages render every result once.",
+      "after": "af2de46dd1099cfe6d189ca7f00b9ccd97360b0fd70fef30ff7e4c2b548a7314",
+      "reason": "On editorial pages render only posts after lead/spotlights; for filtered or sorted pages render every result once. Fieldnotes 2026-09-08: Fieldnotes archive renders every item on the current page in the ruled list. Filters, sort, pagination and source query remain unchanged.",
       "tests": [
         "frontend/src/pages/public/Blog.discovery.test.tsx"
       ]
@@ -2675,6 +2685,114 @@
         "frontend/src/pages/public/Index.search.test.tsx"
       ],
       "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "sanitizeSearchResultPost",
+      "before": "bea09a635ea0b7e5ac2d8c8d35706db0e2bcfac04207cff57652db2fac413014",
+      "after": "3825d81d2284361688cc235d7a32cb22cf7b6a79d7eda3a4278a224f718bd03a",
+      "reason": "Fieldnotes 2026-09-08: The new editorial card displays description when present; sanitize it through the same existing display-text normalizer as title/excerpt."
+    },
+    {
+      "file": "frontend/src/pages/public/blog-post/ArticleQuickActions.tsx",
+      "name": "scrollToTop",
+      "before": "5f30476405aaef2a47591cc4ac32c14826654e70a691b9ef89c69d2d01983b50",
+      "after": "1273135a267fdde499d80b25fc2c1672c776aa8ea5140c79ae7a2d707e9d614c",
+      "reason": "Fieldnotes 2026-09-08: Respect the existing reduced-motion accessibility setting by using immediate scrolling when requested; destination stays the top of the same page."
+    },
+    {
+      "file": "frontend/src/components/features/blog/TableOfContents.tsx",
+      "name": "mutationObserver",
+      "before": "05738574bc826e26cd2138a3227df3d12c3c24c121a9b8ee256ea1bcdcf7756b",
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/blog/TableOfContents.tsx",
+      "name": "visibleHeadings",
+      "before": "e7b2941801bd242f5c7c39519cd35c58d287f4b7919f5e8ce29c6039245e14b6",
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/blog/TableOfContents.tsx",
+      "name": "headingObserver",
+      "before": "fe760228d32da76847d805c52540794b7842d9c5795b779e33d5e4483fff4219",
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/blog/TableOfContents.tsx",
+      "name": "heading",
+      "before": "af3c7ac2ce0c27f43fcef8b1323d8fa8cc4dce9d4bc6d7de7f0492ef6f531baa",
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/blog/TableOfContents.tsx",
+      "name": "topmostHeadingId",
+      "before": "0fef6d978f5ab2091fc1d91d9deea51e79811f688480bc2086c5c95b9024d91d",
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/blog/TableOfContents.tsx",
+      "name": "boundaryEl",
+      "before": "f4891e79ba54de685044608a43b61d731975dd5ea989bfab652c049304ac0378",
+      "after": null,
+      "reason": "Fieldnotes reader review: replace intersection-only bookkeeping with frame-scheduled heading collection and reading-line tracking. Large scroll jumps and long gaps can skip all intersection entries and leave the TOC stale. Mutation/resize observation preserves streaming heading replacements; original heading IDs, click targets and reduced-motion navigation remain unchanged.",
+      "tests": [
+        "frontend/e2e/fieldnotes-design.spec.ts",
+        "frontend/src/components/features/blog/TableOfContents.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-reader-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/admin/secrets/SecretsManager.tsx",
+      "name": "missingRequired",
+      "before": "0777d47ce89b25eacef8f8aa02616e2fb9eb83bdd35a8b10fc88ea9d082e6d1b",
+      "after": "fb9e42127caff903a407cfaccce557babac7fa0b61fdd4cb19d09aeb3739f350",
+      "reason": "Fieldnotes state review: absent secret overview statistics remain unknown instead of becoming zero and displaying a green All configured/None expiring success. Existing API hooks, authenticated operations and loaded counts are preserved.",
+      "tests": [
+        "frontend/src/components/features/admin/secrets/SecretsManager.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-public-workspace-review.md"
+    },
+    {
+      "file": "frontend/src/components/features/admin/secrets/SecretsManager.tsx",
+      "name": "expiringSoon",
+      "before": "32c5f1a09b58acf2bfbd9d882f0cb692f9803bdf5ab0074b1944421767d72d54",
+      "after": "8cf9d2bd8d7b021e1de702674db3853e45f06d01d1ceacb947921eaee98a79f5",
+      "reason": "Fieldnotes state review: absent secret overview statistics remain unknown instead of becoming zero and displaying a green All configured/None expiring success. Existing API hooks, authenticated operations and loaded counts are preserved.",
+      "tests": [
+        "frontend/src/components/features/admin/secrets/SecretsManager.test.tsx"
+      ],
+      "documentation": "frontend/docs/design/fieldnotes-public-workspace-review.md"
     }
   ]
 }

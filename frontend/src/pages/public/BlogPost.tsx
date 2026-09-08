@@ -1,3 +1,4 @@
+import { Focus, MessageSquare, Printer, Share2 } from 'lucide-react';
 import { TableOfContents } from '@/components/features/blog/TableOfContents';
 import { useParams, Navigate, useLocation } from 'react-router-dom';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,10 +20,7 @@ import {
   hasNativeTranslationContent,
   resolveLocalizedPost,
 } from '@/utils/content/blog';
-import {
-  CommentSection,
-  SeriesNavigation,
-} from '@/components/features/blog';
+import { CommentSection, SeriesNavigation } from '@/components/features/blog';
 import { QuizPanel } from '@/components/features/sentio/QuizPanel';
 import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/i18n/useLanguage';
@@ -46,6 +44,7 @@ import { BlogPostHeader } from './blog-post/BlogPostHeader';
 import { BlogPostContent } from './blog-post/BlogPostContent';
 import { BlogPostRelated } from './blog-post/BlogPostRelated';
 import { ArticleQuickActions } from './blog-post/ArticleQuickActions';
+import { ArticleDeskActions } from './blog-post/ArticleDeskActions';
 
 type VisitedPostItem = {
   path: string;
@@ -65,7 +64,10 @@ type SimulatorManifest = {
   simulatorFiles?: Set<string>;
 };
 
-const simulatorManifestCache = new Map<string, Promise<SimulatorManifest | null>>();
+const simulatorManifestCache = new Map<
+  string,
+  Promise<SimulatorManifest | null>
+>();
 
 function buildSimulatorCandidate(year: string, slug: string): string {
   return encodeURI(`/posts/${year}/${slug}-simulator.html`);
@@ -102,7 +104,10 @@ function isAppShellHtml(content: string): boolean {
   );
 }
 
-async function checkSimulatorExists(year: string, path: string): Promise<boolean> {
+async function checkSimulatorExists(
+  year: string,
+  path: string
+): Promise<boolean> {
   if (simulatorExistenceCache.has(path)) {
     return simulatorExistenceCache.get(path)!;
   }
@@ -840,15 +845,19 @@ ${description}
 
   if (loading) {
     return (
-      <div className="ui-page ui-article-loading">
-        <div className="ui-article-skeleton space-y-4 motion-safe:animate-pulse" role='status' aria-label='글을 불러오는 중'>
-          <div className="h-4 w-24 rounded bg-muted"></div>
-          <div className="h-10 w-3/4 rounded bg-muted"></div>
-          <div className="h-4 w-1/2 rounded bg-muted"></div>
-          <div className="mt-8 space-y-2">
-            <div className="h-4 rounded bg-muted"></div>
-            <div className="h-4 rounded bg-muted"></div>
-            <div className="h-4 w-5/6 rounded bg-muted"></div>
+      <div className='ui-page ui-article-loading'>
+        <div
+          className='ui-article-skeleton space-y-4 motion-safe:animate-pulse'
+          role='status'
+          aria-label='글을 불러오는 중'
+        >
+          <div className='h-4 w-24 rounded bg-muted'></div>
+          <div className='h-10 w-3/4 rounded bg-muted'></div>
+          <div className='h-4 w-1/2 rounded bg-muted'></div>
+          <div className='mt-8 space-y-2'>
+            <div className='h-4 rounded bg-muted'></div>
+            <div className='h-4 rounded bg-muted'></div>
+            <div className='h-4 w-5/6 rounded bg-muted'></div>
           </div>
         </div>
       </div>
@@ -863,26 +872,34 @@ ${description}
 
   return (
     <>
-      <ReadingProgress targetSelector="[data-reading-content]" />
+      <ReadingProgress targetSelector='[data-reading-content]' />
       <div
         className={cn(
-          'ui-page ui-article-page',
+          'ui-page ui-article-page fn-post-page',
           isTerminal &&
             'bg-background from-background via-background to-background'
         )}
       >
         <div
-          className="ui-article-container"
+          className='ui-article-container fn-post-shell'
           style={safeAreaPaddingStyle}
         >
-          <div
-            className={cn(
-              'ui-article-layout'
-            )}
-          >
+          <div className={cn('ui-article-layout fn-reading-layout rd-shell')}>
+            <aside
+              className='ui-article-toc fn-reading-rail rd-left'
+              aria-label='글 목차'
+            >
+              <div className='fn-reading-rail-inner fn-rail-toc'>
+                <TableOfContents
+                  content={contentForRender}
+                  postTitle={displayTitle}
+                  sticky={false}
+                />
+              </div>
+            </aside>
             <article
               className={cn(
-                'ui-article',
+                'ui-article fn-post-article rd-maincol',
                 isTerminal && 'terminal-card p-4 sm:p-6'
               )}
             >
@@ -940,7 +957,9 @@ ${description}
                 postTags={post.tags}
               />
 
-              <MemoizedCommentSection postId={`${post.year}/${post.slug}`} />
+              <div id='article-discussion' className='rd-discussion'>
+                <MemoizedCommentSection postId={`${post.year}/${post.slug}`} />
+              </div>
 
               <MemoizedBlogPostRelated
                 relatedPosts={resolvedRelatedPosts}
@@ -951,9 +970,55 @@ ${description}
                 relatedPostsDescLabel={str.blog.relatedPostsDesc}
               />
             </article>
-            <aside className="ui-article-toc" aria-label='글 목차'>
-              <TableOfContents content={contentForRender} postTitle={displayTitle} />
-            </aside>
+            {!isTerminal && (
+              <aside
+                className='rd-right'
+                aria-label={language === 'ko' ? '읽기 도구' : 'Reading tools'}
+              >
+                <p className='fn-eyebrow rd-kicker'>
+                  {language === 'ko' ? '이 글과 함께' : 'Alongside this note'}
+                </p>
+                <ArticleDeskActions
+                  title={displayTitle}
+                  content={contentForRender}
+                  year={post.year}
+                  slug={post.slug}
+                  language={language}
+                />
+                <button
+                  type='button'
+                  className='rd-rail-action'
+                  onClick={handleShare}
+                >
+                  <Share2 aria-hidden='true' />
+                  {str.blog.share}
+                </button>
+                <button
+                  type='button'
+                  className='rd-rail-action'
+                  onClick={() => window.print()}
+                >
+                  <Printer aria-hidden='true' />
+                  {language === 'ko' ? '인쇄하기' : 'Print article'}
+                </button>
+                <a className='rd-rail-action' href='#article-discussion'>
+                  <MessageSquare aria-hidden='true' />
+                  {language === 'ko'
+                    ? '댓글로 이어가기'
+                    : 'Join the discussion'}
+                </a>
+                <button
+                  type='button'
+                  className='rd-rail-action'
+                  onClick={() =>
+                    window.dispatchEvent(new Event('fieldnotes:toggle-focus'))
+                  }
+                >
+                  <Focus aria-hidden='true' />
+                  {language === 'ko' ? '집중해서 읽기' : 'Focus on reading'}
+                </button>
+              </aside>
+            )}
           </div>
         </div>
       </div>
@@ -962,6 +1027,7 @@ ${description}
         isTerminal={isTerminal}
         tocContent={contentForRender}
         tocPostTitle={displayTitle}
+        language={language}
       />
     </>
   );

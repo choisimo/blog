@@ -1,0 +1,32 @@
+{
+  "before": [
+    {
+      "title": "Demand Paging Animation",
+      "outer": 1180,
+      "body": 1180,
+      "scroll": 1180,
+      "viewport": 1179
+    },
+    {
+      "title": "Page Fault Dashboard",
+      "outer": 557,
+      "body": 557,
+      "scroll": 557,
+      "viewport": 556
+    },
+    {
+      "title": "Algorithm History tracking",
+      "outer": 1078,
+      "body": 1078,
+      "scroll": 1078,
+      "viewport": 1077
+    }
+  ],
+  "after": [
+    1180,
+    557,
+    1078
+  ],
+  "stable": true,
+  "loaded": true
+}

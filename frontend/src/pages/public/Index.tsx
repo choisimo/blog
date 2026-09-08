@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PostCard } from '@/components';
+import { FieldnotesPostsSection } from './home/FieldnotesPostsSection';
 import {
   getTags,
   getPosts,
@@ -19,8 +20,6 @@ import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
 import {
   HomeCategoryStrip,
-  HomeEditorPicksSection,
-  HomeLatestPostsSection,
   HomeMarkdownCta,
   type HomeCategorySummary,
   type HomeSectionLoadState,
@@ -79,6 +78,7 @@ function sanitizeSearchResultPost(post: BlogPost): BlogPost | null {
     title: sanitizeDisplayText(post.title),
     category: sanitizeDisplayText(post.category),
     excerpt: sanitizeDisplayText(post.excerpt),
+    description: sanitizeDisplayText(post.description),
     readingTime: sanitizeDisplayText(post.readingTime),
     tags: Array.isArray(post.tags)
       ? post.tags.map(tag => sanitizeDisplayText(tag)).filter(Boolean)
@@ -200,11 +200,14 @@ const Index = () => {
         }
 
         // 3. Final fallback: Latest posts
-        const res = await getPostsPage({
-          page: 1,
-          pageSize: 4,
-          sort: 'date',
-        }, { throwOnError: true });
+        const res = await getPostsPage(
+          {
+            page: 1,
+            pageSize: 4,
+            sort: 'date',
+          },
+          { throwOnError: true }
+        );
         if (!cancelled) setFeaturedPosts(res.items);
       } catch {
         if (!cancelled) {
@@ -212,11 +215,14 @@ const Index = () => {
         }
         // Fallback to latest posts on error
         try {
-          const res = await getPostsPage({
-            page: 1,
-            pageSize: 4,
-            sort: 'date',
-          }, { throwOnError: true });
+          const res = await getPostsPage(
+            {
+              page: 1,
+              pageSize: 4,
+              sort: 'date',
+            },
+            { throwOnError: true }
+          );
           if (!cancelled) setFeaturedPosts(res.items);
         } catch {
           if (!cancelled) {
@@ -335,50 +341,71 @@ const Index = () => {
   }, [searchResults]);
 
   return (
-    <div className='ui-home'>
-      <PageContainer className='ui-home__container'>
-        <PageHeader
-          eyebrow='Nodove Blog'
-          title={isTerminal ? '> engineering_notes' : '코드와 시스템의 기록'}
-          description='AI, 시스템 설계, 그리고 코드의 본질을 탐구하는 기술 블로그'
-          actions={
-            <Link to='/blog' className='ui-action'>
-              모든 글 보기
-            </Link>
-          }
-        />
-        <div className='ui-home__search'>
-          <SearchBar
-            posts={allPosts}
-            onSearchResults={handleSearchResults}
-            onQueryChange={setSearchQuery}
-            onFocus={handleSearchFocus}
-            label='블로그 글 검색'
-            inputLabel='검색어'
-            clearLabel='검색어 지우기'
-            placeholder='제목, 태그, 주제로 글 검색'
-          />
-          <p className='ui-home__search-help'>
-            관심 있는 기술이나 키워드로 기록을 찾아보세요.
-          </p>
-          {searchLoadState === 'loading' && (
-            <ContentStatus kind='loading'>
-              검색할 글을 불러오는 중입니다.
-            </ContentStatus>
-          )}
-          {searchLoadState === 'error' && (
-            <ContentStatus kind='error'>
-              검색할 글을 불러오지 못했습니다.{' '}
-              <button
-                type='button'
-                className='ui-inline-link'
-                onClick={handleSearchFocus}
-              >
-                검색 다시 시도
-              </button>
-            </ContentStatus>
-          )}
-        </div>
+    <div className='ui-home fn-home'>
+      <PageContainer className='ui-home__container fn-shell fn-page-space'>
+        <section className='fn-home-hero' aria-labelledby='home-title'>
+          <div className='fn-home-intro'>
+            <div className='fn-home-heading'>
+              <p className='fn-eyebrow'>AN OPEN NOTEBOOK / WELCOME TO</p>
+              <h1 id='home-title'>
+                {isTerminal ? (
+                  '> engineering_notes'
+                ) : (
+                  <>
+                    <span>Architecting</span>
+                    <br />
+                    <span>Intelligence</span>
+                  </>
+                )}
+              </h1>
+            </div>
+            <p className='fn-home-description'>
+              AI, 시스템 설계, 그리고 코드의 본질을
+              <br />
+              탐구하는 기술 블로그
+            </p>
+            <div className='ui-home__search fn-home-search'>
+              <SearchBar
+                posts={allPosts}
+                onSearchResults={handleSearchResults}
+                onQueryChange={setSearchQuery}
+                onFocus={handleSearchFocus}
+                label='블로그 글 검색'
+                inputLabel='검색어'
+                clearLabel='검색어 지우기'
+                placeholder='제목, 태그, 주제로 글 검색'
+              />
+              <p className='ui-home__search-help'>
+                관심 있는 기술이나 키워드로 기록을 찾아보세요.
+              </p>
+              {searchLoadState === 'loading' && (
+                <ContentStatus kind='loading'>
+                  검색할 글을 불러오는 중입니다.
+                </ContentStatus>
+              )}
+              {searchLoadState === 'error' && (
+                <ContentStatus kind='error'>
+                  검색할 글을 불러오지 못했습니다.{' '}
+                  <button
+                    type='button'
+                    className='ui-inline-link'
+                    onClick={handleSearchFocus}
+                  >
+                    검색 다시 시도
+                  </button>
+                </ContentStatus>
+              )}
+            </div>
+            <div className='fn-home-cta'>
+              <Link to='/blog' className='ui-action' data-ui-variant='default'>
+                글 둘러보기 ↗
+              </Link>
+              <Link to='/about' className='ui-action'>
+                About me
+              </Link>
+            </div>
+          </div>
+        </section>
         {searchActive &&
           visibleSearchResults &&
           searchLoadState !== 'loading' &&
@@ -403,12 +430,14 @@ const Index = () => {
                   검색 결과가 없습니다. 검색어를 바꾸거나 지워 다시 확인하세요.
                 </ContentStatus>
               ) : (
-                <div className='ui-home__search-results'>
+                <div className='ui-home__search-results fn-home-search-results'>
                   {visibleSearchResults.slice(0, 9).map(post => (
                     <PostCard
                       key={`${post.year}/${post.slug}`}
                       post={post}
-                      variant='grid'
+                      variant='list'
+                      showTilt={false}
+                      className='fn-search-result'
                     />
                   ))}
                 </div>
@@ -423,38 +452,42 @@ const Index = () => {
               )}
             </section>
           )}
-        <HomeEditorPicksSection
-          posts={featuredPosts}
+        <FieldnotesPostsSection
+          id='home-latest-title'
+          eyebrow='FROM THE NOTEBOOK'
+          title={isTerminal ? '// latest_posts' : '최근의 기록'}
+          posts={latestPosts
+            .map(sanitizeSearchResultPost)
+            .filter((post): post is BlogPost => post !== null)}
+          state={error ? 'error' : loading ? 'loading' : 'ready'}
+          error={error}
+          onRetry={() => setLoadAttempt(attempt => attempt + 1)}
+        />
+        <FieldnotesPostsSection
+          id='home-picks-title'
+          eyebrow='WORTH A SECOND READ'
+          title={isTerminal ? '// editor_picks' : "Editor's Picks"}
+          posts={featuredPosts
+            .map(sanitizeSearchResultPost)
+            .filter((post): post is BlogPost => post !== null)}
           state={
             featuredLoading ? 'loading' : featuredError ? 'error' : 'ready'
           }
           notice={featuredNotice}
-          isTerminal={isTerminal}
+          onRetry={() => setLoadAttempt(attempt => attempt + 1)}
         />
-        {featuredError && (
-          <button
-            type='button'
-            className='ui-action ui-home__retry'
-            onClick={() => setLoadAttempt(attempt => attempt + 1)}
-          >
-            추천 글 다시 시도
-          </button>
-        )}
-        <HomeLatestPostsSection
-          posts={latestPosts}
-          tags={popularTags}
-          state={error ? 'error' : loading ? 'loading' : 'ready'}
-          error={error}
-          isTerminal={isTerminal}
-        />
-        {error && (
-          <button
-            type='button'
-            className='ui-action ui-home__retry'
-            onClick={() => setLoadAttempt(attempt => attempt + 1)}
-          >
-            최신 글 다시 시도
-          </button>
+        {popularTags.length > 0 && (
+          <nav className='fn-home-topics' aria-label='인기 태그'>
+            <span className='fn-eyebrow'>POPULAR TAGS</span>
+            {popularTags.slice(0, 6).map(tag => (
+              <Link
+                key={tag.name}
+                to={`/blog?tag=${encodeURIComponent(tag.name)}`}
+              >
+                #{tag.name} <span>{tag.count}</span>
+              </Link>
+            ))}
+          </nav>
         )}
         <HomeCategoryStrip
           categories={categories}

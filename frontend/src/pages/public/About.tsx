@@ -159,16 +159,19 @@ const About = () => {
 
   return (
     <div
-      className='ui-page ui-about-page ui-page-container'
+      className='ui-page ui-about-page ui-page-container fn-about fn-shell fn-page-space'
       data-ui-page='about'
     >
       <header className='ui-page-heading'>
-        <p className='ui-eyebrow'>ABOUT</p>
-        <h1>소개</h1>
+        <p className='fn-eyebrow'>ABOUT / THINKING IN PUBLIC</p>
+        <h1>
+          질문하고, 연결하고,
+          <br />
+          기록합니다.
+        </h1>
         <p>
           CS 전공 기반 위에서 AI와 시스템 아키텍처를 중심으로 프로젝트를 만들고
-          있습니다. 관심 분야와 작업 경험을 살펴보고, 함께 나누고 싶은 이야기를
-          남겨 주세요.
+          있습니다.
         </p>
         <nav className='ui-actions mt-5' aria-label='소개 페이지 바로가기'>
           <a href='#contact' className='ui-control' data-ui-variant='default'>
@@ -181,7 +184,7 @@ const About = () => {
         </nav>
       </header>
 
-      <div className='ui-about-layout'>
+      <div className='ui-about-layout fn-about-layout'>
         <Card
           className='ui-panel ui-about-profile'
           role='region'
@@ -306,207 +309,204 @@ const About = () => {
           </CardContent>
         </Card>
 
-        <div className='space-y-6'>
-          <Card
-            className='ui-panel ui-about-skills scroll-mt-24'
-            id='skills'
-            role='region'
-            aria-labelledby='about-skills-title'
-          >
-            <CardHeader className='ui-panel-header'>
-              <h2 id='about-skills-title' className='ui-panel-title'>
-                기술과 작업 분야
-              </h2>
-              <CardDescription className='ui-description'>
-                프로젝트에서 사용한 도구와 경험을 분야별로 정리했습니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className='ui-panel-body space-y-4'>
-              {stackSections.map(({ title, icon: Icon, badges, details }) => (
-                <section
-                  key={title}
-                  className='ui-about-skill rounded-lg border border-border bg-card p-4'
-                >
-                  <div className='flex items-start gap-3'>
-                    <Icon
-                      className='mt-0.5 h-5 w-5 shrink-0 text-primary'
-                      aria-hidden='true'
-                    />
-                    <h3 className='min-w-0 text-base font-semibold'>{title}</h3>
-                  </div>
-                  <div
-                    className='mt-3 flex flex-wrap gap-2'
-                    aria-label={`${title} 사용 기술`}
-                  >
-                    {badges.map(badge => (
-                      <Badge
-                        key={badge}
-                        variant='secondary'
-                        className='max-w-full whitespace-normal break-words text-xs'
-                      >
-                        {badge}
-                      </Badge>
-                    ))}
-                  </div>
-                  <ul className='mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground'>
-                    {details.map(detail => (
-                      <li key={detail} className='flex items-start gap-2'>
-                        <span className='text-primary' aria-hidden='true'>
-                          •
-                        </span>
-                        <span className='min-w-0'>{detail}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card
-            className='ui-panel ui-about-contact scroll-mt-24'
-            id='contact'
-            role='region'
-            aria-labelledby='about-contact-title'
-          >
-            <CardHeader className='ui-panel-header'>
-              <h2 id='about-contact-title' className='ui-panel-title'>
-                메시지 보내기
-              </h2>
-              <CardDescription className='ui-description'>
-                프로젝트 제안, 기술 이야기, 블로그에 대한 의견을 남겨 주세요.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className='ui-panel-body'>
-              <form
-                className='space-y-4'
-                onSubmit={handleSubmit}
-                aria-labelledby='about-contact-title'
-                aria-describedby='contact-form-help'
+        <Card
+          className='ui-panel ui-about-contact scroll-mt-24'
+          id='contact'
+          role='region'
+          aria-labelledby='about-contact-title'
+        >
+          <CardHeader className='ui-panel-header'>
+            <p className='fn-eyebrow'>CONTACT / START A CONVERSATION</p>
+            <h2 id='about-contact-title' className='ui-panel-title'>
+              메시지 보내기
+            </h2>
+            <CardDescription className='ui-description'>
+              프로젝트 제안, 기술 이야기, 블로그에 대한 의견을 남겨 주세요.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='ui-panel-body'>
+            <form
+              className='space-y-4'
+              onSubmit={handleSubmit}
+              aria-labelledby='about-contact-title'
+              aria-describedby='contact-form-help'
+            >
+              <p
+                id='contact-form-help'
+                className='text-sm leading-relaxed text-muted-foreground'
               >
-                <p
-                  id='contact-form-help'
-                  className='text-sm leading-relaxed text-muted-foreground'
-                >
-                  모든 항목을 입력해 주세요. 답변을 받을 이메일 주소를 확인해
-                  주세요.
-                </p>
-                <fieldset disabled={isSubmitting} className='min-w-0 space-y-4'>
-                  <legend className='sr-only'>문의 내용</legend>
-                  <div className='grid gap-4 sm:grid-cols-2'>
-                    <div className='min-w-0 space-y-2'>
-                      <Label className='ui-label' htmlFor='name'>
-                        이름
-                      </Label>
-                      <Input
-                        className='ui-input'
-                        id='name'
-                        name='name'
-                        autoComplete='name'
-                        maxLength={120}
-                        value={formData.name}
-                        onChange={handleChange}
-                        placeholder='어떻게 불러드릴까요?'
-                        required
-                      />
-                    </div>
-                    <div className='min-w-0 space-y-2'>
-                      <Label className='ui-label' htmlFor='email'>
-                        이메일
-                      </Label>
-                      <Input
-                        className='ui-input'
-                        id='email'
-                        name='email'
-                        type='email'
-                        autoComplete='email'
-                        maxLength={254}
-                        value={formData.email}
-                        onChange={handleChange}
-                        placeholder='you@example.com'
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className='space-y-2'>
-                    <Label className='ui-label' htmlFor='subject'>
-                      제목
+                모든 항목을 입력해 주세요. 답변을 받을 이메일 주소를 확인해
+                주세요.
+              </p>
+              <fieldset disabled={isSubmitting} className='min-w-0 space-y-4'>
+                <legend className='sr-only'>문의 내용</legend>
+                <div className='grid gap-4 sm:grid-cols-2'>
+                  <div className='min-w-0 space-y-2'>
+                    <Label className='ui-label' htmlFor='name'>
+                      이름
                     </Label>
                     <Input
                       className='ui-input'
-                      id='subject'
-                      name='subject'
-                      maxLength={200}
-                      value={formData.subject}
+                      id='name'
+                      name='name'
+                      autoComplete='name'
+                      maxLength={120}
+                      value={formData.name}
                       onChange={handleChange}
-                      placeholder='어떤 이야기를 나누고 싶으신가요?'
+                      placeholder='어떻게 불러드릴까요?'
                       required
                     />
                   </div>
-                  <div className='space-y-2'>
-                    <Label className='ui-label' htmlFor='message'>
-                      메시지
+                  <div className='min-w-0 space-y-2'>
+                    <Label className='ui-label' htmlFor='email'>
+                      이메일
                     </Label>
-                    <Textarea
-                      className='ui-textarea'
-                      id='message'
-                      name='message'
-                      rows={6}
-                      maxLength={5000}
-                      value={formData.message}
+                    <Input
+                      className='ui-input'
+                      id='email'
+                      name='email'
+                      type='email'
+                      autoComplete='email'
+                      maxLength={254}
+                      value={formData.email}
                       onChange={handleChange}
-                      placeholder='내용을 자유롭게 적어 주세요.'
-                      aria-describedby='contact-message-limit'
+                      placeholder='you@example.com'
                       required
                     />
-                    <p
-                      id='contact-message-limit'
-                      className='text-right text-xs tabular-nums text-muted-foreground'
-                    >
-                      {formData.message.length.toLocaleString('ko-KR')} /
-                      5,000자
-                    </p>
                   </div>
-                  <Button
-                    data-ui-variant='default'
-                    type='submit'
-                    disabled={isSubmitting}
-                    className='ui-control w-full sm:w-auto'
+                </div>
+                <div className='space-y-2'>
+                  <Label className='ui-label' htmlFor='subject'>
+                    제목
+                  </Label>
+                  <Input
+                    className='ui-input'
+                    id='subject'
+                    name='subject'
+                    maxLength={200}
+                    value={formData.subject}
+                    onChange={handleChange}
+                    placeholder='어떤 이야기를 나누고 싶으신가요?'
+                    required
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <Label className='ui-label' htmlFor='message'>
+                    메시지
+                  </Label>
+                  <Textarea
+                    className='ui-textarea'
+                    id='message'
+                    name='message'
+                    rows={6}
+                    maxLength={5000}
+                    value={formData.message}
+                    onChange={handleChange}
+                    placeholder='내용을 자유롭게 적어 주세요.'
+                    aria-describedby='contact-message-limit'
+                    required
+                  />
+                  <p
+                    id='contact-message-limit'
+                    className='text-right text-xs tabular-nums text-muted-foreground'
                   >
-                    <Send className='h-4 w-4' aria-hidden='true' />
-                    {isSubmitting ? '보내는 중…' : '메시지 보내기'}
-                  </Button>
-                </fieldset>
-                <div role='status' aria-live='polite' aria-atomic='true'>
-                  {isSubmitting && (
-                    <p className='ui-inline-status'>
-                      메시지를 보내고 있습니다. 잠시만 기다려 주세요.
-                    </p>
-                  )}
-                  {submitResult === 'success' && (
-                    <p className='ui-inline-status'>
-                      메시지가 접수되었습니다. 작성해 주셔서 감사합니다.
-                    </p>
+                    {formData.message.length.toLocaleString('ko-KR')} / 5,000자
+                  </p>
+                </div>
+                <Button
+                  data-ui-variant='default'
+                  type='submit'
+                  disabled={isSubmitting}
+                  className='ui-control w-full sm:w-auto'
+                >
+                  <Send className='h-4 w-4' aria-hidden='true' />
+                  {isSubmitting ? '보내는 중…' : '메시지 보내기'}
+                </Button>
+              </fieldset>
+              <div role='status' aria-live='polite' aria-atomic='true'>
+                {isSubmitting && (
+                  <p className='ui-inline-status'>
+                    메시지를 보내고 있습니다. 잠시만 기다려 주세요.
+                  </p>
+                )}
+                {submitResult === 'success' && (
+                  <p className='ui-inline-status'>
+                    메시지가 접수되었습니다. 작성해 주셔서 감사합니다.
+                  </p>
+                )}
+              </div>
+              {submitResult === 'error' && (
+                <div className='ui-inline-error' role='alert'>
+                  <p>
+                    메시지를 보내지 못했습니다. 입력한 내용은 유지됩니다. 잠시
+                    후 다시 시도해 주세요.
+                  </p>
+                  {emailHref && (
+                    <a href={emailHref} className='ui-text-action'>
+                      이메일로 직접 보내기
+                    </a>
                   )}
                 </div>
-                {submitResult === 'error' && (
-                  <div className='ui-inline-error' role='alert'>
-                    <p>
-                      메시지를 보내지 못했습니다. 입력한 내용은 유지됩니다. 잠시
-                      후 다시 시도해 주세요.
-                    </p>
-                    {emailHref && (
-                      <a href={emailHref} className='ui-text-action'>
-                        이메일로 직접 보내기
-                      </a>
-                    )}
-                  </div>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+              )}
+            </form>
+          </CardContent>
+        </Card>
       </div>
+      <Card
+        className='ui-panel ui-about-skills scroll-mt-24'
+        id='skills'
+        role='region'
+        aria-labelledby='about-skills-title'
+      >
+        <CardHeader className='ui-panel-header'>
+          <h2 id='about-skills-title' className='ui-panel-title'>
+            기술과 작업 분야
+          </h2>
+          <CardDescription className='ui-description'>
+            프로젝트에서 사용한 도구와 경험을 분야별로 정리했습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='ui-panel-body space-y-4'>
+          {stackSections.map(({ title, icon: Icon, badges, details }) => (
+            <section
+              key={title}
+              className='ui-about-skill rounded-lg border border-border bg-card p-4'
+            >
+              <div className='flex items-start gap-3'>
+                <Icon
+                  className='mt-0.5 h-5 w-5 shrink-0 text-primary'
+                  aria-hidden='true'
+                />
+                <h3 className='min-w-0 text-base font-semibold'>{title}</h3>
+              </div>
+              <div
+                className='mt-3 flex flex-wrap gap-2'
+                aria-label={`${title} 사용 기술`}
+              >
+                {badges.map(badge => (
+                  <Badge
+                    key={badge}
+                    variant='secondary'
+                    className='max-w-full whitespace-normal break-words text-xs'
+                  >
+                    {badge}
+                  </Badge>
+                ))}
+              </div>
+              <ul className='mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground'>
+                {details.map(detail => (
+                  <li key={detail} className='flex items-start gap-2'>
+                    <span className='text-primary' aria-hidden='true'>
+                      •
+                    </span>
+                    <span className='min-w-0'>{detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 };

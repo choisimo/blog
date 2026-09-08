@@ -49,6 +49,17 @@
         "frontend/src/test/postDiscoveryFailure.test.ts"
       ],
       "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "sanitizeSearchResultPost",
+      "before": "bea09a635ea0b7e5ac2d8c8d35706db0e2bcfac04207cff57652db2fac413014",
+      "after": "3825d81d2284361688cc235d7a32cb22cf7b6a79d7eda3a4278a224f718bd03a",
+      "reason": "Fieldnotes editorial cards display the existing description field. Apply the same display-text sanitizer used for title/excerpt without changing URL validation or mutating the source post.",
+      "tests": [
+        "frontend/scripts/ui-foundation-contracts.test.mjs",
+        "frontend/src/pages/public/Index.search.test.tsx"
+      ]
     }
   ]
 }

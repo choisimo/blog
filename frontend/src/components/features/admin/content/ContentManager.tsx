@@ -323,7 +323,7 @@ export function ContentManager({
             className="text-sm leading-7 text-ui-muted dark:text-ui-text"
           />
           {ctaLabel && ctaHref && (
-            <div className="mt-4 inline-flex h-9 items-center rounded-md bg-blue-600 px-4 text-sm font-semibold text-white">
+            <div className="mt-4 inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">
               {ctaLabel}
             </div>
           )}

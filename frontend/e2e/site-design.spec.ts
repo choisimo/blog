@@ -136,7 +136,7 @@ test('mobile stack selection reveals and focuses its inspector', async ({
   await localPreview(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.locator('.ui-pick').first().click();
+  await page.locator('.fn-note-card h3 a').first().click();
   await expect(page.locator('.ui-article-title')).toBeVisible({
     timeout: 30_000,
   });

@@ -433,10 +433,10 @@
 }
 
 @layer base {
-  /* Mobile viewport overflow prevention */
+  /* Clip horizontal overflow without creating a scroll ancestor for sticky reading tools. */
   html,
   body {
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100vw;
   }
 
@@ -1563,7 +1563,7 @@
 
 :root:not(.dark):not(.terminal) .bg-primary:hover,
 .light .bg-primary:hover {
-  background: hsl(226 55% 45%);
+  background: color-mix(in srgb, hsl(var(--primary)) 90%, hsl(var(--foreground)));
 }
 
 /* Light 테마 모달/다이얼로그 */

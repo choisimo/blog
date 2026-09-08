@@ -2,6 +2,13 @@ import './polyfills';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import './styles/fieldnotes-foundation.css';
+import './styles/fieldnotes-theme.css';
+import './styles/fieldnotes-shell.css';
+import './styles/fieldnotes-public.css';
+import './styles/fieldnotes-reader.css';
+import './styles/fieldnotes-workspaces.css';
+import './styles/fieldnotes-overlays.css';
 
 const GLOBAL_ERROR_LOG_WINDOW_MS = 5000;
 const globalErrorLastSeen = new Map<string, number>();

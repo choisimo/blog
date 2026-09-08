@@ -105,6 +105,7 @@ export function Header() {
   const [searchSheetOpen, setSearchSheetOpen] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
+  const preferencesTrigger = useRef<HTMLButtonElement>(null);
   const searchPanel = useRef<HTMLDivElement>(null);
   const menuOpenedAtPath = useRef("");
   const location = useLocation();
@@ -189,14 +190,19 @@ export function Header() {
 
   return (
     <>
-      <header className={cn("ui-header", isTerminal && "ui-header--terminal")}>
-        <div className="ui-header__inner">
-          <div className="ui-header__identity">
+      <header className={cn("ui-header fn-site-header", isTerminal && "ui-header--terminal")}>
+        <div className="ui-header__inner fn-header-inner">
+          <div className="ui-header__identity fn-header-identity">
             {isTerminal && <span className="ui-terminal-buttons"><TerminalWindowButtons /></span>}
-            <Link to="/" className="ui-wordmark no-terminal-style">{isTerminal ? ">_Nodove" : "Nodove"}</Link>
+            <Link to="/" className="ui-wordmark fn-brand no-terminal-style" aria-label="Nodove 홈">
+              {!isTerminal && <svg className="fn-brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true"><ellipse cx="18" cy="18" rx="16" ry="10" transform="rotate(-42 18 18)" stroke="currentColor" /><path d="M11 26V10l14 15V9" stroke="currentColor" strokeWidth="1.1" /></svg>}
+              <span className="fn-brand-name">{isTerminal ? ">_Nodove" : <>nodove<span className="fn-brand-dot">.</span></>}</span>
+            </Link>
+            {!isTerminal && <span className="fn-edition">FIELDNOTES<small>THINKING IN PUBLIC</small></span>}
           </div>
           <nav className="ui-header__navigation" aria-label="Global">{renderNavigation()}</nav>
           <div className="ui-header__actions">
+            <Button type="button" variant="ghost" size="icon" className="ui-icon-button fn-serif fn-reading-settings-trigger" aria-label="읽기 환경" aria-haspopup="dialog" title="읽기 환경 · Alt+A" onClick={() => window.dispatchEvent(new Event('fieldnotes:reading-settings'))}>Aa</Button>
             {!isHome && (
               <Button ref={searchTrigger} type="button" variant="ghost" size="icon"
                 onClick={() => setSearchSheetOpen(true)} className="ui-icon-button" aria-label="검색"
@@ -208,11 +214,15 @@ export function Header() {
             <div className="ui-mobile-preferences">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" className="ui-icon-button" aria-label="설정">
+                  <Button ref={preferencesTrigger} type="button" variant="ghost" size="icon" className="ui-icon-button" aria-label="설정">
                     <Settings className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="ui-preferences-menu">
+                  <DropdownMenuItem onSelect={() => {
+                    window.setTimeout(() => window.dispatchEvent(new CustomEvent('fieldnotes:reading-settings', { detail: { trigger: preferencesTrigger.current } })), 0);
+                  }}>읽기 환경</DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuLabel>언어 설정</DropdownMenuLabel>
                   <DropdownMenuItem role="menuitemradio" aria-checked={language === "ko"} onClick={() => setLanguage("ko")}>
                     <Globe className="mr-2 h-4 w-4" aria-hidden="true" />한국어{language === "ko" && <span className="ml-auto">✓</span>}

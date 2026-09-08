@@ -130,13 +130,13 @@ export function ChatHeader({
   return (
     <div
       className={cn(
-        "flex items-center justify-between border-b shrink-0",
+        "fn-chat-heading flex items-center justify-between border-b shrink-0",
         isMobile ? "px-4 py-3 safe-area-top" : "px-3 py-2.5",
         isTerminal
           ? "bg-[hsl(var(--terminal-titlebar))] border-border"
           : isMobile
-            ? "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]"
-            : "bg-white dark:bg-[#0A0A0A] border-[#EAEAEA] dark:border-[#222222]",
+            ? "bg-card dark:bg-card border-border dark:border-border"
+            : "bg-card dark:bg-card border-border dark:border-border",
       )}
     >
       {/* Left: Hamburger + Icon + Title */}
@@ -151,7 +151,7 @@ export function ChatHeader({
               "h-7 w-7 shrink-0 flex items-center justify-center rounded-md transition-colors",
               isTerminal
                 ? "text-primary hover:bg-primary/10"
-                : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+                : "text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted",
             )}
             onClick={onToggleSidebar}
           >
@@ -173,7 +173,7 @@ export function ChatHeader({
             isTerminal
               ? cn("rounded-lg bg-primary/20", isMobile ? "h-9 w-9" : "h-8 w-8")
               : cn(
-                  "rounded-md bg-[#F5F5F5] dark:bg-[#1A1A1A]",
+                  "rounded-md bg-muted dark:bg-muted",
                   isMobile ? "h-8 w-8" : "h-7 w-7",
                 ),
           )}
@@ -187,7 +187,7 @@ export function ChatHeader({
                     isMobile ? "h-4 w-4" : "h-4 w-4",
                   )
                 : cn(
-                    "text-[#111111] dark:text-[#EEEEEE]",
+                    "text-foreground dark:text-foreground",
                     isMobile ? "h-4 w-4" : "h-3.5 w-3.5",
                   ),
             )}
@@ -198,14 +198,14 @@ export function ChatHeader({
         <div className="min-w-0">
           <p
             className={cn(
-              "truncate leading-tight",
+              "fn-chat-heading-title truncate leading-tight",
               isTerminal
                 ? cn(
                     "font-mono text-primary",
                     isMobile ? "text-sm" : "text-[13px] font-semibold",
                   )
                 : cn(
-                    "font-semibold tracking-tight text-[#111111] dark:text-[#EEEEEE]",
+                    "font-semibold tracking-tight text-foreground dark:text-foreground",
                     isMobile ? "text-[13px]" : "text-[13px]",
                   ),
             )}
@@ -235,7 +235,7 @@ export function ChatHeader({
                 "truncate leading-tight",
                 isTerminal
                   ? "text-xs text-muted-foreground font-mono"
-                  : "text-[11px] text-[#888888] dark:text-[#666666]",
+                  : "text-[11px] text-muted-foreground dark:text-muted-foreground",
               )}
             >
               {busy ? (
@@ -262,7 +262,7 @@ export function ChatHeader({
               "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
               isTerminal
                 ? "text-primary hover:bg-primary/10"
-                : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+                : "text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted",
             )}
           >
             {expanded ? (
@@ -298,7 +298,7 @@ export function ChatHeader({
                   "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
                   isTerminal
                     ? "text-primary hover:bg-primary/10"
-                    : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+                    : "text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted",
                 )}
               >
                 <MoreVertical aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
@@ -350,7 +350,7 @@ export function ChatHeader({
               isMobile ? "h-10 w-10" : "h-7 w-7",
               isTerminal
                 ? "text-primary hover:bg-primary/10"
-                : "text-[#888888] dark:text-[#666666] hover:text-[#111111] dark:hover:text-[#EEEEEE] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A]",
+                : "text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground hover:bg-muted dark:hover:bg-muted",
             )}
           >
             <X aria-hidden="true" className={isMobile ? "h-5 w-5" : "h-3.5 w-3.5"} focusable="false" />

@@ -736,10 +736,10 @@ export default function InsightWorkspacePage() {
   );
 
   return (
-    <div className={cn(TOKENS.shell, isTerminal && 'font-mono')} data-ui-page='insight' data-active-pane={mobilePane}>
+    <div className={cn(TOKENS.shell, 'fn-insight-shell', isTerminal && 'font-mono')} data-ui-page='insight' data-active-pane={mobilePane}>
       <div className="ui-insight-container">
         <header className="ui-workspace-heading">
-          <div><p className="ui-eyebrow">Knowledge workspace</p><h1>Insight</h1></div>
+          <div><p className="ui-eyebrow">INSIGHT / CONNECTED NOTES</p><h1>Insight</h1></div>
           <div className="ui-workspace-context" role='status' aria-live='polite'>
             {loading ? '자료를 불러오는 중' : error ? '자료를 불러오지 못함' : `${graphStats.nodes}개 항목 · ${graphStats.connections}개 연결`}
           </div>
@@ -751,7 +751,7 @@ export default function InsightWorkspacePage() {
           <section
             className={cn(
               TOKENS.panel,
-              'ui-insight-layout'
+              'ui-insight-layout fn-insight-panel'
             )}
           >
             <div className="ui-insight-graph-pane" id='insight-graph-pane' role='region' aria-label='지식 그래프' tabIndex={-1}>

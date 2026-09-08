@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 // Start a local Vite preview before running this isolated design regression suite.
 export default defineConfig({
   testDir: '../e2e',
-  testMatch: ['site-design.spec.ts', 'reading-design.spec.ts'],
+  testMatch: ['site-design.spec.ts', 'reading-design.spec.ts', 'fieldnotes-design.spec.ts'],
   outputDir: process.env.DESIGN_RESULTS_DIR ?? '../test-results/design',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

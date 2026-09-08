@@ -94,11 +94,23 @@ test('all new layout modules are consumed by actual source',()=>{
  const index=text('frontend/src/pages/public/Index.tsx');assert.match(index,/<PageContainer/);assert.match(index,/<PageHeader/);assert.match(index,/<ContentStatus/);
 });
 test('the home still renders every existing service-driven section and PostCard search results',()=>{
- const s=text('frontend/src/pages/public/Index.tsx');for(const n of ['HomeEditorPicksSection','HomeLatestPostsSection','HomeCategoryStrip','HomeMarkdownCta','PostCard','SearchBar'])assert.match(s,new RegExp('<'+n+'[\\s>\\n]'));
+ const s=text('frontend/src/pages/public/Index.tsx');for(const n of ['FieldnotesPostsSection','HomeCategoryStrip','HomeMarkdownCta','PostCard','SearchBar'])assert.match(s,new RegExp('<'+n+'[\\s>\\n]'));
+ const sections=[];walk(tree(s),node=>{if(ts.isJsxSelfClosingElement(node)&&node.tagName.getText()==='FieldnotesPostsSection')sections.push(node.getText());});
+ assert.equal(sections.length,2);assert.match(sections[0],/posts=\{latestPosts/);assert.match(sections[1],/posts=\{featuredPosts/);
+ for(const section of sections)assert.match(section,/onRetry=/);
 });
-test('home card wall / fake chat illustration removed; CTA enabled gating retained',()=>{
- assert.doesNotMatch(text('frontend/src/pages/public/Index.tsx'),/Architecting|Intelligence|animate-hero-fade-up/);
+test('Fieldnotes editorial hero follows the supplied reference; CTA enabled gating retained',()=>{
+ const home=text('frontend/src/pages/public/Index.tsx');assert.match(home,/Architecting/);assert.match(home,/Intelligence/);assert.match(home,/fn-home-hero/);assert.doesNotMatch(home,/animate-hero-fade-up/);
  const s=text('frontend/src/components/features/home/HomeMarkdownCta.tsx');assert.match(s,/if \(!content.enabled\) return null/);assert.doesNotMatch(s,/Sparkles|MessageSquareText/);assert.match(s,/<SafeDescriptionMarkdown/);
+});
+test('actual home card normalizer removes control sequences from the new description field',()=>{
+ const source=text('frontend/src/pages/public/Index.tsx');
+ const declarations=source.slice(source.indexOf('const ANSI_ESCAPE_PATTERN'),source.indexOf('const Index ='));
+ const context={};vm.runInNewContext(ts.transpileModule(declarations,{compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText,context);
+ const post={year:'2026',slug:'real-note',description:'\u001b[31mQuiet\u001b[0m\u0000 note',title:'Title'};
+ assert.equal(context.sanitizeSearchResultPost(post).description,'Quiet note');
+ assert.equal(post.description,'\u001b[31mQuiet\u001b[0m\u0000 note');
+ assert.equal(context.sanitizeSearchResultPost({...post,slug:'../invalid'}),null);
 });
 test('subscription has a real label and persistent result, without a mock transport',()=>{
  const s=text('frontend/src/components/organisms/Footer.tsx');assert.match(s,/htmlFor="footer-subscribe-email"/);assert.match(s,/id="footer-subscribe-status"/);assert.match(s,/api\/v1\/subscribe/);

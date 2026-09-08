@@ -79,6 +79,9 @@ vi.mock('@/components/ui/badge', () => ({
 vi.mock('@/components/ui/skeleton', () => ({
   Skeleton: () => <div data-testid='skeleton' />,
 }));
+vi.mock('@/components/features/blog/TableOfContents', () => ({
+  TableOfContents: () => <div data-testid='table-of-contents' />,
+}));
 vi.mock('@/components/features/blog', () => ({
   CommentSection: () => <div data-testid='comment-section' />,
   TableOfContents: () => <div data-testid='table-of-contents' />,
@@ -147,7 +150,8 @@ vi.mock('@/services/engagement/curiosity', () => ({
     }
   ),
 }));
-vi.mock('@/utils/content/blog', () => ({
+vi.mock('@/utils/content/blog', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/content/blog')>()),
   formatDate: vi.fn(() => '2024-01-01'),
   formatReadingTimeLabel: vi.fn(() => '1 min read'),
   getAvailableLanguages: vi.fn(
@@ -261,6 +265,7 @@ function renderBlogPost() {
     <MemoryRouter initialEntries={['/posts/2024/test-post']}>
       <Routes>
         <Route path='/posts/:year/:slug' element={<BlogPost />} />
+        <Route path='/404' element={<h1>Post not found</h1>} />
       </Routes>
     </MemoryRouter>
   );
@@ -347,11 +352,11 @@ test('renders post content when loaded successfully', async () => {
   expect(await screen.findByText('Test Post')).toBeInTheDocument();
 });
 
-test('exposes table of contents only through the quick actions drawer', async () => {
+test('provides the desktop table of contents and quick actions drawer', async () => {
   renderBlogPost();
 
   expect(await screen.findByText('Test Post')).toBeInTheDocument();
-  expect(screen.queryByTestId('table-of-contents')).not.toBeInTheDocument();
+  expect(screen.getByTestId('table-of-contents')).toBeInTheDocument();
   expect(screen.getAllByTestId('toc-drawer')).toHaveLength(1);
 });
 
@@ -369,7 +374,8 @@ test('renders original content when translation fails', async () => {
     expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
       '2024',
       'test-post',
-      'en'
+      'en',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
   });
   expect(await screen.findByText('Test Post')).toBeInTheDocument();
@@ -395,7 +401,8 @@ test('uses cached translation from the public translation route', async () => {
   expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
     '2024',
     'test-post',
-    'en'
+    'en',
+    expect.objectContaining({ signal: expect.any(AbortSignal) })
   );
   expect(translateService.translatePost).not.toHaveBeenCalled();
   await waitFor(() => {
@@ -418,7 +425,8 @@ test('requests public translation even without a session', async () => {
     expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
       '2024',
       'test-post',
-      'en'
+      'en',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
   });
   expect(translateService.translatePost).not.toHaveBeenCalled();
@@ -445,7 +453,8 @@ test('keeps the original content when public translation is still pending', asyn
     expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
       '2024',
       'test-post',
-      'en'
+      'en',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
   });
   expect(await screen.findByText('Test Post')).toBeInTheDocument();
@@ -519,7 +528,9 @@ test('handles missing post gracefully', async () => {
   await waitFor(() => {
     expect(postsData.getPostBySlug).toHaveBeenCalled();
   });
-  expect(document.body).toBeInTheDocument();
+  expect(
+    await screen.findByRole('heading', { name: 'Post not found' })
+  ).toBeInTheDocument();
 });
 
 describe('translation: uses getCachedTranslation only', () => {
@@ -532,7 +543,8 @@ describe('translation: uses getCachedTranslation only', () => {
       expect(translateService.getCachedTranslation).toHaveBeenCalledWith(
         '2024',
         'test-post',
-        'en'
+        'en',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
   });
