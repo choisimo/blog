@@ -210,29 +210,149 @@ git submodule update --recursive  # 이거 꼭 해야 함
 ## 실제 사용 사례
 
 ### 사례 1: UI 컴포넌트 라이브러리
-```bash
-# 메인 프로젝트 구조
-my-website/
-├── src/
-├── components/          # 서브모듈
-│   ├── Button/
-│   ├── Modal/
-│   └── ...
-└── package.json
+```diagram
+{
+  "title": "my-website/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "my-website/"
+    },
+    {
+      "id": "n1",
+      "label": "src/"
+    },
+    {
+      "id": "n2",
+      "label": "components/",
+      "detail": "서브모듈"
+    },
+    {
+      "id": "n3",
+      "label": "Button/"
+    },
+    {
+      "id": "n4",
+      "label": "Modal/"
+    },
+    {
+      "id": "n5",
+      "label": "..."
+    },
+    {
+      "id": "n6",
+      "label": "package.json"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "메인 프로젝트 구조"
+}
 ```
 
 여러 프로젝트에서 공통 UI 컴포넌트를 사용할 때 유용했다. 컴포넌트가 업데이트되어도 각 프로젝트는 원하는 버전을 유지할 수 있다.
 
 ### 사례 2: 설정 파일 관리
-```bash
-# 프로덕션 설정을 별도 저장소로 관리
-api-server/
-├── src/
-├── config/              # 서브모듈 (private repo)
-│   ├── database.yml
-│   ├── secrets.yml
-│   └── ...
-└── app.js
+```diagram
+{
+  "title": "api-server/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "api-server/"
+    },
+    {
+      "id": "n1",
+      "label": "src/"
+    },
+    {
+      "id": "n2",
+      "label": "config/",
+      "detail": "서브모듈 (private repo)"
+    },
+    {
+      "id": "n3",
+      "label": "database.yml"
+    },
+    {
+      "id": "n4",
+      "label": "secrets.yml"
+    },
+    {
+      "id": "n5",
+      "label": "..."
+    },
+    {
+      "id": "n6",
+      "label": "app.js"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "프로덕션 설정을 별도 저장소로 관리"
+}
 ```
 
 민감한 설정 파일을 private 저장소로 분리해서 관리했다. 개발자별로 접근 권한을 다르게 줄 수 있어서 좋았다.

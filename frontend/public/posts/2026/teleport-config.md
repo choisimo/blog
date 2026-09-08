@@ -103,21 +103,77 @@ tsh ssh ubuntu@my-server-01
 
 ## 전체 아키텍처
 
-```text
-[인터넷]
-    |
-    v
-[your-domain.com]
-    |
-    v
-[Teleport Proxy/Auth 서버]
-  - 443  : Web UI, tsh login, HTTPS
-  - 3025 : Auth join
-  - 3024 : Reverse tunnel
-    |
-    +--> [대상 서버 1] teleport node agent
-    +--> [대상 서버 2] teleport node agent
-    +--> [대상 서버 3] teleport node agent
+```diagram
+{
+  "title": "Teleport 접속 구조",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "internet",
+      "label": "인터넷"
+    },
+    {
+      "id": "domain",
+      "label": "your-domain.com"
+    },
+    {
+      "id": "proxy",
+      "label": "Teleport Proxy/Auth 서버",
+      "items": [
+        "443 · Web UI / tsh login / HTTPS",
+        "3025 · Auth join",
+        "3024 · Reverse tunnel"
+      ]
+    },
+    {
+      "id": "one",
+      "label": "대상 서버 1",
+      "items": [
+        "Teleport node agent"
+      ]
+    },
+    {
+      "id": "two",
+      "label": "대상 서버 2",
+      "items": [
+        "Teleport node agent"
+      ]
+    },
+    {
+      "id": "three",
+      "label": "대상 서버 3",
+      "items": [
+        "Teleport node agent"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "to": "domain",
+      "from": "internet"
+    },
+    {
+      "to": "proxy",
+      "from": "domain"
+    },
+    {
+      "to": "one",
+      "from": "proxy",
+      "label": "접속 경로"
+    },
+    {
+      "to": "two",
+      "from": "proxy",
+      "label": "접속 경로"
+    },
+    {
+      "to": "three",
+      "from": "proxy",
+      "label": "접속 경로"
+    }
+  ],
+  "caption": "기본 포트를 기준으로 그린 논리적 접속 경로다. 노드 연결과 포트 공개 범위는 아래 설정을 따른다."
+}
 ```
 
 이 가이드를 따라가다 보면 **어디서 어떤 명령어를 쳐야 하는지** 헷갈리기 쉽습니다. 구성 요소들의 역할과 작업 환경을 명확히 구분해 두면 이해가 수월합니다.
@@ -147,11 +203,34 @@ tsh ssh ubuntu@my-server-01
 
 ### 실전 포트 맵
 
-```text
-외부 18080 -> Nginx 80  -> HTTP 접속 시 https://teleport.example.net:18443 으로 리다이렉트
-외부 18443 -> Nginx 443 -> Teleport 8443 으로 SSL passthrough
-내부 3025 -> Teleport Auth join
-내부 3024 -> Teleport reverse tunnel
+```diagram
+{
+  "title": "Nginx를 거치는 포트 연결",
+  "kind": "compare",
+  "nodes": [
+    {
+      "id": "http",
+      "label": "외부 18080 → Nginx 80",
+      "detail": "HTTPS 주소 https://teleport.example.net:18443 으로 리다이렉트한다."
+    },
+    {
+      "id": "https",
+      "label": "외부 18443 → Nginx 443",
+      "detail": "Teleport 8443으로 TLS 연결을 전달한다."
+    },
+    {
+      "id": "join",
+      "label": "내부 3025",
+      "detail": "Teleport Auth join"
+    },
+    {
+      "id": "tunnel",
+      "label": "내부 3024",
+      "detail": "Teleport reverse tunnel"
+    }
+  ],
+  "edges": []
+}
 ```
 
 ### 템플릿 1. 작업 디렉터리와 Cloudflare 시크릿 준비
@@ -375,13 +454,65 @@ cd /opt/teleport
 
 구조는 아래처럼 가져가면 관리하기 편합니다.
 
-```text
-/opt/teleport/
-├── docker-compose.yml
-├── config/
-│   └── teleport.yaml
-├── data/
-└── logs/
+```diagram
+{
+  "title": "/opt/teleport/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "/opt/teleport/"
+    },
+    {
+      "id": "n1",
+      "label": "docker-compose.yml"
+    },
+    {
+      "id": "n2",
+      "label": "config/"
+    },
+    {
+      "id": "n3",
+      "label": "teleport.yaml"
+    },
+    {
+      "id": "n4",
+      "label": "data/"
+    },
+    {
+      "id": "n5",
+      "label": "logs/"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 - `config/`: 설정 파일

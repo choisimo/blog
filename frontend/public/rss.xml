@@ -5,8 +5,47 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Wed, 03 Jun 2026 16:44:31 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 08 Sep 2026 00:01:03 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>AI 활용 안일화와 검색창 고착 구조 분석 보고서 첨부</title>
+      <description>AI 활용 안일화 및 검색창 고착 현상을 정리한 분석 보고서 PDF 첨부글입니다.</description>
+      <link>https://noblog.nodove.com/blog/2026/ai-usage-habitual-search-inertia-report</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-usage-habitual-search-inertia-report</guid>
+      <pubDate>Tue, 21 Jul 2026 00:00:00 GMT</pubDate>
+      <category>AI</category>
+      <category>AI</category>
+      <category>PDF</category>
+      <category>Analysis</category>
+    </item>
+    <item>
+      <title>AI 에 대한 이해</title>
+      <description>언어의 한계</description>
+      <link>https://noblog.nodove.com/blog/2026/knowledge</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/knowledge</guid>
+      <pubDate>Mon, 22 Jun 2026 00:00:00 GMT</pubDate>
+      <category>ai</category>
+      <category>ai</category>
+      <category>insight</category>
+      <category>infra</category>
+      <category>idea</category>
+      <category>system-architecture</category>
+    </item>
+    <item>
+      <title>Java는 왜 단순한 객체지향 언어가 아닐까?</title>
+      <description>Java를 문법 목록이 아니라, 코드가 실행 시점에 상태와 책임을 어떻게 분리하는지 보여주는 구조로 다시 본다.</description>
+      <link>https://noblog.nodove.com/blog/2026/java-object-dispatch</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/java-object-dispatch</guid>
+      <pubDate>Wed, 10 Jun 2026 00:00:00 GMT</pubDate>
+      <category>Programming Language</category>
+      <category>Java</category>
+      <category>객체지향</category>
+      <category>JVM</category>
+      <category>상속</category>
+      <category>다형성</category>
+      <category>static</category>
+      <category>런타임</category>
+    </item>
     <item>
       <title>ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다</title>
       <description>ArgoCD의 Repository Failed는 마지막 증상이었고, 실제 원인은 CoreDNS가 외부 질의를 넘기던 upstream resolver 체인이 깨져 `github.com` 이름 해석이 실패한 데 있었다.</description>
@@ -248,51 +287,6 @@
       <category>record</category>
       <category>interpreter</category>
       <category>awk</category>
-    </item>
-    <item>
-      <title>Teleport 설치와 서버 관리 가이드</title>
-      <description>직접 443을 여는 기본 템플릿부터, 80/443 충돌 환경에서 DNS-01과 Nginx L4 passthrough로 우회한 실전 예시까지 함께 정리한 Teleport 운영 가이드</description>
-      <link>https://noblog.nodove.com/blog/2026/teleport-config</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/teleport-config</guid>
-      <pubDate>Sun, 01 Mar 2026 00:00:00 GMT</pubDate>
-      <category>Tech</category>
-      <category>teleport</category>
-      <category>ssh</category>
-      <category>security</category>
-      <category>devops</category>
-      <category>infra</category>
-      <category>nginx</category>
-      <category>cloudflare</category>
-      <category>dns-01</category>
-    </item>
-    <item>
-      <title>리눅스, fork에서 io_uring까지, OS가 선택한 타협</title>
-      <description>리눅스가 수십 년에 걸쳐 쌓아 올린 설계의 타협</description>
-      <link>https://noblog.nodove.com/blog/2026/teleport</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/teleport</guid>
-      <pubDate>Sun, 01 Mar 2026 00:00:00 GMT</pubDate>
-      <category>Tech</category>
-      <category>linux</category>
-      <category>os</category>
-      <category>security</category>
-      <category>ssh</category>
-      <category>teleport</category>
-      <category>selinux</category>
-      <category>devops</category>
-      <category>kernel</category>
-    </item>
-    <item>
-      <title>[Arena 상세] Gemini_3.0_pro_high_reasoning 분석</title>
-      <description>Gemini_3.0_pro_high_reasoning 구현의 구조, 코드 포인트, 장단점과 Arena 내 비교 결과를 정리한 상세 페이지</description>
-      <link>https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning</guid>
-      <pubDate>Thu, 19 Feb 2026 00:00:00 GMT</pubDate>
-      <category>AI Engineering</category>
-      <category>Gemini_3.0</category>
-      <category>AI Gateway</category>
-      <category>MVC</category>
-      <category>Prototype</category>
-      <category>Arena</category>
     </item>
   </channel>
 </rss>

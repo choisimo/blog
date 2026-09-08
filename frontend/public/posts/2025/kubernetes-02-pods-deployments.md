@@ -21,11 +21,58 @@ Pod는 K8s 최소 배포 단위, Deployment는 ReplicaSet을 통해 Pod를 선�
 - Liveness/Readiness/Startup Probe 적용
 
 ##  Pod 기본 개념
-```
-Pod
-├─ Container 1 (Main)
-├─ Container 2 (Sidecar)
-└─ Shared: Network, Storage
+```diagram
+{
+  "title": "Pod 안의 컨테이너와 공유 자원",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "pod",
+      "label": "Pod",
+      "detail": "함께 배치되는 컨테이너 묶음이다."
+    },
+    {
+      "id": "main",
+      "label": "Main Container",
+      "detail": "애플리케이션을 실행한다."
+    },
+    {
+      "id": "sidecar",
+      "label": "Sidecar Container",
+      "detail": "로그 수집 등 보조 작업을 맡는다."
+    },
+    {
+      "id": "shared",
+      "label": "공유 자원",
+      "items": [
+        "네트워크",
+        "명시적으로 마운트한 볼륨"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "to": "main",
+      "from": "pod",
+      "label": "포함"
+    },
+    {
+      "to": "sidecar",
+      "from": "pod",
+      "label": "포함"
+    },
+    {
+      "to": "shared",
+      "from": "main",
+      "label": "사용"
+    },
+    {
+      "to": "shared",
+      "from": "sidecar",
+      "label": "사용"
+    }
+  ]
+}
 ```
 상태: Pending → Running → Succeeded/Failed → Terminating
 

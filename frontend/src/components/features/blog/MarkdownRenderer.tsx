@@ -25,6 +25,8 @@ import MarkdownRenderBoundary from '@/components/molecules/MarkdownRenderBoundar
 import { MarkdownTable } from '@/components/molecules/MarkdownTable';
 import SparkInline from '@/components/molecules/SparkInline';
 import { getMarkdownSanitizeSchema } from './markdownSanitizeSchema';
+import { ArticleDiagram } from './visualization/ArticleDiagram';
+import { parseArticleDiagram } from './visualization/articleDiagram';
 import {
   ClickableImage,
   EmbeddedVideo,
@@ -1315,6 +1317,14 @@ function MarkdownRendererInner({
 
         const match = /language-([\w-]+)/.exec(codeBlockData.className || '');
         const explicitLanguage = match?.[1]?.trim().toLowerCase();
+
+        if (explicitLanguage === 'diagram') {
+          const diagram = parseArticleDiagram(codeBlockData.codeString);
+          if (diagram)
+            return (
+              <ArticleDiagram key={codeBlockData.codeString} data={diagram} />
+            );
+        }
 
         const presentation = classifyMarkdownCodeBlock(
           codeBlockData.codeString,

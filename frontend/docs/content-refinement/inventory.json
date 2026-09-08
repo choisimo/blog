@@ -1,0 +1,3192 @@
+{
+  "scope": "All year-based Markdown posts, including drafts. Heuristic candidates require manual review; absence of signals does not prove completion.",
+  "total": 281,
+  "published": 139,
+  "reviewed": 2,
+  "diagrams": 27,
+  "entries": [
+    {
+      "file": "2024/1.md",
+      "title": "[Hugo] .Summary 사용법",
+      "published": true,
+      "sha256": "c32e2367937f317e74c21bd4d509aa95b531e1b06e002e7355fb610f9603b8b5",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 0,
+          "line": 14,
+          "language": "",
+          "sample": "본문에서 \"<!--more-->\"를 표시한 지점 바로 앞까지만 Summary로 노출된다.\n템플릿에서는 \"{{ .Summary }}\"를 이용해 리스트나 카드에 요약문을 배치할 수 있다.\n"
+        }
+      ]
+    },
+    {
+      "file": "2024/2.md",
+      "title": "김치캣과 요약문 실험기",
+      "published": true,
+      "sha256": "8aa840e8b05bc63b7ddad3f291bb0a84fb704a8eb11384d422c038558faadb64",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/3.md",
+      "title": "컴공총론정리",
+      "published": true,
+      "sha256": "77131f35b70cd96e48e20e420fe08946846915bd3ce3bcaed8ea6a2a181a0293",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/4.md",
+      "title": "hugo 외부 이미지 사용하기",
+      "published": true,
+      "sha256": "b4564a0fe468ca81f5198f82a5f900ca462fb671e961aa925b02b2ec9deeca49",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/5.md",
+      "title": "조용한 속삭임",
+      "published": true,
+      "sha256": "4ac8745073ade59cb0fe4d88403e8a88ae3e62794c7bb013e22c45d81fed4d9c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/6.md",
+      "title": "마지막 시간",
+      "published": true,
+      "sha256": "efde2730e69a17841eabed98f4ef3fe403c7639d688b69b37bab2afe8d629120",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/7.md",
+      "title": "인텔 486: 컴퓨팅의 혁명",
+      "published": true,
+      "sha256": "1dbf46bf34eb96d54b43b087361d6e450b803dfff3b8b5a3ba351aa8da9db6d7",
+      "editorial": "pending",
+      "editorialSignals": [
+        "극대화"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/8.md",
+      "title": "세계 1차 대전에서 기관총의 영향",
+      "published": true,
+      "sha256": "97e09045f313a772d6794d116bd4621f59dd16724bda32672fe555aed32293a5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/9.md",
+      "title": "Nginx 설정 파일 구조 및 작성 방법",
+      "published": true,
+      "sha256": "a3f89de7b4f1ab20837c703cf7ef8e3b38da4d37fea7c3057fdc78ebe653cee1",
+      "editorial": "reviewed",
+      "editorialSignals": [],
+      "diagramCount": 1,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/_index.md",
+      "title": "영화",
+      "published": true,
+      "sha256": "785bd1d743836677aba98afde0c347f6fe97a0d64bd28a37fb3989953f06398f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/ai-personalized-learning-system.md",
+      "title": "AI 기반 맞춤형 학습 시스템 프로젝트",
+      "published": true,
+      "sha256": "c020e2454fceb740f88314d90fd27693e592f0411cb24194ce4e1f3231c50365",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히",
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/algorithm-atelier-bfs.md",
+      "title": "알고리즘 아틀리에: BFS — 5단계 직관 학습",
+      "published": false,
+      "sha256": "17ae01718ea79072873a9686ea828f0e0bff956974098ff3b9bb49a7ace922d0",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/algorithm-atelier-binary-search.md",
+      "title": "알고리즘 아틀리에: 이분 탐색 — 5단계 직관 학습",
+      "published": false,
+      "sha256": "0603b0c142002a2854053637c3cabedf3384b732444297a7b8e6e63213310fc8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/algorithm-atelier-dijkstra.md",
+      "title": "알고리즘 아틀리에: 다익스트라 — 5단계 직관 학습",
+      "published": false,
+      "sha256": "23ccfe5478227af1c44940d4c551a6422335b845d05a275ec0fa0b567a012e37",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/algorithm-atelier-dp.md",
+      "title": "알고리즘 아틀리에: 동적 계획법(DP) — 5단계 직관 학습",
+      "published": false,
+      "sha256": "4e95cd11efde90d4f599c3ecd69563c4f746d859edffb61b09cd789ca091e0e5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/algorithm-guide.md",
+      "title": "알고리즘 학습 가이드",
+      "published": false,
+      "sha256": "334028972060b881e232dcde71c4e2e5ad6523a6cb2b853b7c18f36cdf7c99d6",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히",
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/arch-linux-gui-setup-experience.md",
+      "title": "아치 리눅스 설치하면서 깨달은 GUI 환경 선택의 중요성",
+      "published": true,
+      "sha256": "e7f5b818d46d63a77c3d0efd163476f121817239d96549af5e17ff643938f71d",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/arch-linux-uefi-guide.md",
+      "title": "아치 리눅스 설치하고 예쁘게 꾸미기",
+      "published": true,
+      "sha256": "305b18b3c4cd15b3a70bc0cf44e0478c0fe03b422a85a5a5e89ddc8577bd57c0",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/bfs.md",
+      "title": "BFS (너비 우선 탐색) 완전 정복",
+      "published": false,
+      "sha256": "51fe878080e703e90723191b4b067b789338b3d219fe8db9a8daadc541658100",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/binary-search.md",
+      "title": "이진 탐색(Binary Search) 완전 정복",
+      "published": false,
+      "sha256": "ca25ba06423dba2ab9f90604c0cf4e589335e2aebf5ed15acafd7981fb046e4d",
+      "editorial": "pending",
+      "editorialSignals": [
+        "핵심입니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/blade-runner-philosophy.md",
+      "title": "블레이드 러너(Blade Runner, 1982) - 인간성의 경계를 묻는 철학적 걸작",
+      "published": true,
+      "sha256": "001f15a65735e7e292b36a576f8937f149d642df76b9b989ad3149f668a2cea5",
+      "editorial": "pending",
+      "editorialSignals": [
+        "극대화",
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/brazil-1985-review.md",
+      "title": "브라질(Brazil, 1985) - 현대 문명에 대한 철학적 절망과 저항의 서사",
+      "published": true,
+      "sha256": "ba8c90f026e897243cd53f97d024c6e6f2c9d25a1f45865acc449c8987b07e23",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/changedetection-io-guide.md",
+      "title": "ChangeDetection.io 완벽 활용 가이드",
+      "published": true,
+      "sha256": "afe906745c93b92222b753bd0c94ca5f40a554cc92a74901ebd76faf2b73de14",
+      "editorial": "pending",
+      "editorialSignals": [
+        "알아보겠습니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/coding-test-guide.md",
+      "title": "코딩테스트 완벽 대비 전략",
+      "published": false,
+      "sha256": "8988709b53879cca2332daa35a28ea0515226013a2cd2b16c4c99697e0e29e0d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/dark-city-existentialism.md",
+      "title": "다크시티(Dark City, 1998) - 실존주의 철학으로 읽는 SF 걸작",
+      "published": true,
+      "sha256": "ae719fbb75b469193abea2e9e9da0e9a58a7bbcf2d9837cd91649dcaa07d45fc",
+      "editorial": "pending",
+      "editorialSignals": [
+        "혁신적",
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/database-containerization-guide.md",
+      "title": "데이터베이스 및 애플리케이션 컨테이너화 설치 가이드",
+      "published": true,
+      "sha256": "28a7896ed8ee1c188abd220057f92c2a1bf9a3c486a42e279670f02156fbb6be",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/dfs.md",
+      "title": "깊이 우선 탐색 (DFS, Depth-First Search)",
+      "published": false,
+      "sha256": "e26473b8c877be713845b3bb4b9a2bc9d2dc28a48fa13b68c6d43b3c80cea115",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/docker-kubernetes-guide.md",
+      "title": "Docker와 Kubernetes 삽질기",
+      "published": true,
+      "sha256": "c509ff6a315e7500ccc0489da5da5a27f9979d04b8c975b08ce302fdb7e6f81c",
+      "editorial": "pending",
+      "editorialSignals": [
+        "마무리하며",
+        "중요합니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/firebase-hosting-guide.md",
+      "title": "Flutter 웹앱을 Firebase에 무료로 배포하기",
+      "published": true,
+      "sha256": "91e708113a16dbee3a4aecbc69f19d677d22cbb44487971e263a8eeb8f8e407d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/gemini-gui-dev-tool-idea.md",
+      "title": "Gemini-CLI를 GUI로? 비개발자도 쓸 수 있는 AI 개발도구 아이디어",
+      "published": true,
+      "sha256": "4527f623312935e4609afa8e3241227d285c7bff323e7aaf80245ebb0d3efab4",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/jung-psychology-cinema.md",
+      "title": "칼 융 내면 성찰에 관련된 영화들",
+      "published": true,
+      "sha256": "e580e979c7f4d60d3277b2ed47ad72acfe1e858a9c32200433bb66c60daaa645",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정",
+        "극대화"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/kmp.md",
+      "title": "KMP 알고리즘 (Knuth-Morris-Pratt)",
+      "published": false,
+      "sha256": "c736967594139110df1b1e5aba67d77d421953321cd1ab4659731a95633ab9f7",
+      "editorial": "pending",
+      "editorialSignals": [
+        "핵심입니다",
+        "중요합니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/knapsack.md",
+      "title": "배낭 문제 (Knapsack Problem)",
+      "published": false,
+      "sha256": "60e8fcd58f700a6c0f3ae579af4d4bcf399bcc5918dff78095ea8e657e205772",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/linux-networkmanager-static-ip.md",
+      "title": "NetworkManager를 사용한 Linux Static IP 설정 완벽 가이드",
+      "published": true,
+      "sha256": "b58e9d85f4493aaf15375933332497d21bdf1fe1ce2b7441af142c86da3ef0f6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/lis.md",
+      "title": "최장 증가 부분 수열 (LIS, Longest Increasing Subsequence)",
+      "published": false,
+      "sha256": "56f5b91d29aad6dfa476559b6e9d1f3beace725f36181dfe11e68996e918f3a0",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/multimodal-recommendation-system-research.md",
+      "title": "텍스트·이미지·영상을 함께 쓰는 추천 시스템 설계",
+      "published": true,
+      "sha256": "8a600b121e04ca8f8102085257af54a38680836afc66288a4f186498d558b3d3",
+      "editorial": "reviewed",
+      "editorialSignals": [],
+      "diagramCount": 6,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/nanopi-neo3-ubuntu-setup-guide.md",
+      "title": "NanoPi Neo3 우분투 설정 및 네트워크 구성 완벽 가이드",
+      "published": true,
+      "sha256": "33edbf34f813b77558e90918c3e0424ec1265e599b422eb67151cb2e33091444",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/opensource-schedule-management-analysis.md",
+      "title": "비개발자를 위한 오픈소스 스케줄 관리 도구 완전 분석",
+      "published": true,
+      "sha256": "3b62d0db3bf32860c6e0a0a4c64b2ea366be4cf5f39cb262b4e131317f42a1c2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/os-study-notes.md",
+      "title": "운영체제 공부하면서 헷갈렸던 핵심 개념들 정리",
+      "published": true,
+      "sha256": "ea1de430ce4aae4685ac83ce3eecaefa791e2dd585d6f58e6591c76847df6e67",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/prime-numbers.md",
+      "title": "소수 판별과 소인수분해 알고리즘",
+      "published": false,
+      "sha256": "d43b1e241cc743e07e30791c6ccfbddea632a597ff18966a87eefa30713f48c7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/proxmox-qdevice-voting-problem-guide.md",
+      "title": "Proxmox QDevice 투표 문제에 대해서",
+      "published": true,
+      "sha256": "efb8968359a79019ccd7c6de5e4a3051f795fc5d72c4a8d544ee8072ebbe2e6c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 13,
+          "line": 182,
+          "language": "",
+          "sample": "pvecm qdevice remove\nrm -rf /etc/corosync/qdevice/\npvecm qdevice setup 192.168.1.55 -f\n"
+        },
+        {
+          "block": 17,
+          "line": 219,
+          "language": "",
+          "sample": "cp /etc/pve/corosync.conf /root/backup/corosync.conf.$(date +%Y%m%d)\ncp -r /etc/corosync/qdevice/ /root/backup/qdevice.$(date +%Y%m%d)/\n"
+        }
+      ]
+    },
+    {
+      "file": "2024/queue.md",
+      "title": "큐(Queue) 완전 정복",
+      "published": false,
+      "sha256": "23c21128fb115defdd974a035a4e49105c69c129973bda17d9c5e567418037c0",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/quick-sort.md",
+      "title": "퀵 정렬(Quick Sort) 완전 정복",
+      "published": false,
+      "sha256": "ff7b7e813451407d04a16200c120467fab5c636279a647aa5428e0db34f3b687",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/rabin-karp.md",
+      "title": "라빈-카프 알고리즘 (Rabin-Karp Algorithm)",
+      "published": false,
+      "sha256": "930e76c49bfac539ceefc390383f19c74155961897916505428efb166beb583c",
+      "editorial": "pending",
+      "editorialSignals": [
+        "핵심입니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/react-native-springboot-mongodb-diary-app.md",
+      "title": "React Native + Spring Boot + MongoDB로 일기 앱 만들기",
+      "published": true,
+      "sha256": "4d04f26895c185cc922fa90b4974ac9f6c5bc195442a61e90f2c527ed94d0a33",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/react-nextjs-modern-web-development.md",
+      "title": "React와 Next.js로 모던 웹 개발하기",
+      "published": true,
+      "sha256": "506b6f75fb0bfb9bd1b9e45ec7e42aed678c473fe9097fbb33fe2d9f8626242d",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히",
+        "생각보다"
+      ],
+      "diagramCount": 1,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/rsync-custom-ssh-port-guide.md",
+      "title": "Rsync 커스텀 SSH 포트 사용법 완벽 가이드",
+      "published": true,
+      "sha256": "1f5247e560ee31b6126b170b84d87c44f520773bfef8e7643fba4c931ffa66b5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/stack.md",
+      "title": "스택(Stack) 완전 정복",
+      "published": false,
+      "sha256": "52bed2bb9e9d3ba81347525250a16f6569f293fb14603835c9a2335fa7af65c6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/tmux-session-management-guide.md",
+      "title": "tmux 세션 관리 완벽 가이드",
+      "published": true,
+      "sha256": "73c1ce9d2e0583f91a398813c21a5aaa4d098bf899ff3377b9195d55ca0fb166",
+      "editorial": "pending",
+      "editorialSignals": [
+        "살펴보겠습니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/vim-split-window-guide.md",
+      "title": "Vim 분할 창 사용법과 파일 간 전환 방법",
+      "published": true,
+      "sha256": "69d09c1016134f23ac88ea710e198996aae9ac7857dece4f71bbaf175f0001c5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week1-2.md",
+      "title": "1-2주차: 기초 수학 및 자료구조 복습",
+      "published": false,
+      "sha256": "029d410ed592b259f3f267a13e199b3da5e4abfb3ea4fe0d44ea05f23ae2cb19",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week11-12.md",
+      "title": "11-12주차: 고급 자료구조 및 최단경로",
+      "published": false,
+      "sha256": "cda4834839c24eb33bb3ddad7e7eabc2261422ee97c16f4ead27c154e2726e0f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week13-14.md",
+      "title": "13-14주차: 탐욕법 & 분리 집합",
+      "published": false,
+      "sha256": "11e8becdaad5fff5264332acf88b66b48d21a03f9f1f8893ca042cc0f2d07825",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week15-16.md",
+      "title": "15-16주차: 고급 DP 및 기타 주제",
+      "published": false,
+      "sha256": "2370c01f9a1ac28652b11f5641fa09994abf7161cd9f227566feb4f499bc320b",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week3-4.md",
+      "title": "3-4주차: 정렬 및 탐색 기법",
+      "published": false,
+      "sha256": "363712a396cffde1083f660460834fe6e87951967a3ee04bbaa9c00f5f295c2c",
+      "editorial": "pending",
+      "editorialSignals": [
+        "핵심입니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week5-6.md",
+      "title": "5-6주차: 재귀와 분할 정복",
+      "published": false,
+      "sha256": "030d666373d39af307f63a85a1f14861acc59334e64d9804f112be57ce19e5c8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week7-8.md",
+      "title": "7-8주차: 동적 계획법(DP) 기초",
+      "published": false,
+      "sha256": "7cc76745f03a5f52a25e20b4a33407d2b96794ede3e6c68a58aa7aef18288bef",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2024/week9-10.md",
+      "title": "9-10주차: 그래프 이론 기초",
+      "published": false,
+      "sha256": "6543c2752ab877f162cbc968353c6710c296645914d8f42fd646eccc57dc1acf",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/5g-intelligent-fabric-journal.md",
+      "title": "5G 기지국 그림자에서, 슬라이스와 에지가 만든 새로운 질서",
+      "published": true,
+      "sha256": "aa7d4539dde1153ba297b4dadea9fd7b6ae4e5dc5095af8e6a193bfa5a700be5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/6g-sentient-future-journal.md",
+      "title": "6G 연구소의 밤, 지각 있는 네트워크를 그리는 상상",
+      "published": true,
+      "sha256": "c816d77359406d4b28a4c2f768301667ad3858424298a13e2ffca033594802aa",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/AI-api-server-temporary-dev.md",
+      "title": "Kafka와 LLM 서버 사이에 버퍼 존을 둔 AI 서버 설계기",
+      "published": true,
+      "sha256": "0d7b1c5308637849deadad5ddad48c2178a446a43d14a0a84b84d2b8a84ee945",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/AdversialNeuron.md",
+      "published": true,
+      "sha256": "f6fff427f4cb436ba6d51f8ea4849b01a344b06bd32c9e79f1e3fe1af1a8ef7e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 1,
+          "line": 280,
+          "language": "",
+          "sample": "Algorithm 2: Adversarial Neuron Ablation Training\nInput: Pre-trained model f_θ, variant pairs D_train\nOutput: Learned mask m\n\n1. Initialize mask logits: w ~ N(0, 0.01)\n2. Set tempe"
+        }
+      ]
+    },
+    {
+      "file": "2025/AnimalsMind.md",
+      "title": "우리는 DNA의 꼭두각시인가: 이성의 붕괴와 야성적 충동의 역설에 대한 생각",
+      "published": true,
+      "sha256": "4ad780cda01f286b9050ea35acc15a7ed582e2c074dc5a4c8dccdd893c4cf22e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/BST-think01.md",
+      "title": "BST TreeInsertion 횟수 구하기 고민한 내용 정리",
+      "published": false,
+      "sha256": "02147f053292cc1f2b90637a131496c75a9c71fd7b5e0d9a3a5726981a4328db",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/BankRuptIn1929.md",
+      "title": "왜 Bank of America는 있는데, Bank of United States는 없을까?",
+      "published": true,
+      "sha256": "951dc31dd55cc675b0c3fbd9bba16915f3b421d4d809dc6e56c07dc49661a153",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/FutureClouding.md",
+      "title": "격자를 부수다: 폰 노이만 아키텍처의 종말과 그리드 시스템의 한계",
+      "published": true,
+      "sha256": "24094728d7b4ced1ce6b92ff225203b8acdeb1a539389b6d50ddd2b0ad28a388",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/Limitation-Of-Transformer.md",
+      "title": "트랜스포머의 한계에 대하여: 바텀업을 넘어 하향식으로",
+      "published": true,
+      "sha256": "3afe015ef5bcd33e5dabbf9a17798e71fc10f83b230b0e43af3ee7c560ca5d7a",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/QuantumLayerLLM.md",
+      "title": "양자 얽힘으로 AI의 애매모호함 해결하기: 양자 기계 학습의 미래",
+      "published": true,
+      "sha256": "b92ebe04f5ac9bd43fc3f98ee61805c72b04eaf6155fb3ac4c9e9e2fb055d79c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/QuantumShadow.md",
+      "title": "보이지 않는 나는 양자 상태인가?: 물리적 현실과 심리학적 진실의 경계",
+      "published": true,
+      "sha256": "0119329b25f00e926a5af567ade23803790605924de5e63671cd9c376108612a",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/QuantumSpaceInside.md",
+      "title": "나의 고독은 우주의 시작과 맞닿아 있었다",
+      "published": true,
+      "sha256": "f5fd6037c93536c26eb6dd4d80b5c4bb6cfd6132f36ac14479037ec05e54e3e1",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/QueryDSL.md",
+      "title": "SpringBoot 3.x.x + QueryDSL 6.x.x 사용기",
+      "published": true,
+      "sha256": "e4de2e9c0b0c544eec2ef100bb9e565ab7e70d0ba87ad5ea88cecb065e6b9951",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/ai-models-for-coding.md",
+      "title": "코딩용 AI 모델, 어떤 걸 써야 할까?",
+      "published": true,
+      "sha256": "6820ec4dd046ce14c23faa8bccc278a6f8e1639210bdeb8c0fcc43ccff5dbc3f",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-001-두-수의-합-two-sum.md",
+      "title": "[알고리즘] 두 수의 합 (Two Sum)",
+      "published": false,
+      "sha256": "1f3e4ff5a3b6cf5dda5b2bdea22861caa7fb78e3ec0cf033adb58aa307aac301",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-002-배열-회전-rotate-array.md",
+      "title": "[알고리즘] 배열 회전 (Rotate Array)",
+      "published": false,
+      "sha256": "855b537b62c4312f20fc7790f144412ebfa488e2371005b61b3ee39cbda6bab7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-003-중복-제거-remove-duplicates.md",
+      "title": "[알고리즘] 중복 제거 (Remove Duplicates)",
+      "published": false,
+      "sha256": "823843798aa071b4227ad19f1f2e712bc26f936ff933bfba2454fd22b2fb5f33",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-004-최대-부분-배열-합-kadane-s.md",
+      "title": "[알고리즘] 최대 부분 배열 합 (Kadane's)",
+      "published": false,
+      "sha256": "2d25d323cd9c4a1ce2d64946d87976e6ae39ff50075614ee6cb077563312f685",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-005-문자열-뒤집기-reverse-string.md",
+      "title": "[알고리즘] 문자열 뒤집기 (Reverse String)",
+      "published": false,
+      "sha256": "3370cc2cfeb8b4ebc17738250771b95dc00f3310c278d212b7b90331a67e7445",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-006-애너그램-판별-valid-anagram.md",
+      "title": "[알고리즘] 애너그램 판별 (Valid Anagram)",
+      "published": false,
+      "sha256": "5e79e9ee1a541416b70d0fa3ef20048875a532de9453c0d7662192e6a8b36cfc",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-007-최장-공통-접두사-lcp.md",
+      "title": "[알고리즘] 최장 공통 접두사 (LCP)",
+      "published": false,
+      "sha256": "f5cb762f0b6ae20dcc6a3cbdcd72c3ef2b0d7c0437ca30370e3845db664d834b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-008-배열-합치기-merge-sorted.md",
+      "title": "[알고리즘] 배열 합치기 (Merge Sorted)",
+      "published": false,
+      "sha256": "13811324e2c27a6eff8cdfc5ada5a6e5f5f0cf5ede687e96231c908594ba74a8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-009-문자열-압축-compression.md",
+      "title": "[알고리즘] 문자열 압축 (Compression)",
+      "published": false,
+      "sha256": "50f6e0748bf0d6358ee58aedbbc517e89e771da1ba9922dcbf71310bb803eb84",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-010-파스칼의-삼각형-pascal-s.md",
+      "title": "[알고리즘] 파스칼의 삼각형 (Pascal's)",
+      "published": false,
+      "sha256": "cf65d02e835871e93864b26f7da5ebe8c7562692d60d3df5ab6f22ebd6e10f74",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-011-연결-리스트-역순-reverse-ll.md",
+      "title": "[알고리즘] 연결 리스트 역순 (Reverse LL)",
+      "published": false,
+      "sha256": "ce7261d046b8932b023177a515907e9399b83ece393d5598a5db0b2798de22b8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-012-사이클-탐지-cycle-detection.md",
+      "title": "[알고리즘] 사이클 탐지 (Cycle Detection)",
+      "published": false,
+      "sha256": "0bdcff4c50af739f3af1eb91ce18644e0b2e0e2a3c8f79ac414d439d72e9767b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-013-두-리스트-병합-merge-lists.md",
+      "title": "[알고리즘] 두 리스트 병합 (Merge Lists)",
+      "published": false,
+      "sha256": "ca3018f7353017f1e891a1517f6b2cd27c8c904ac220b4a8a3a8bdacb5f89d07",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-014-중간-노드-middle-node.md",
+      "title": "[알고리즘] 중간 노드 (Middle Node)",
+      "published": false,
+      "sha256": "49d74f00c96be1bd9af136ef88337ead7af2b9444293f01713954cdb63036b9a",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-015-유효한-괄호-valid-parentheses.md",
+      "title": "[알고리즘] 유효한 괄호 (Valid Parentheses)",
+      "published": false,
+      "sha256": "29ef191ab1d6e26e11d4507bb704cd5f12e3c5dfa194567ec16aac50664ee8ad",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-016-최소-스택-min-stack.md",
+      "title": "[알고리즘] 최소 스택 (Min Stack)",
+      "published": false,
+      "sha256": "973a0c11bd710278b1e46dfd9445be1411ed2f8eee3c40e85c93389cfb51a0e6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-017-큐-스택-stack-using-queues.md",
+      "title": "[알고리즘] 큐→스택 (Stack using Queues)",
+      "published": false,
+      "sha256": "87f61a5213981edeb2dec3f4e31e50c597aa847fe5bd36d702248ca64a4248f3",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-018-일일-온도-daily-temperatures.md",
+      "title": "[알고리즘] 일일 온도 (Daily Temperatures)",
+      "published": false,
+      "sha256": "7037136900c64e0846d4bc7b64755bdf8d57a2143a3971f8b000334dee8ccaf7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-019-슬라이딩-윈도우-최대값.md",
+      "title": "[알고리즘] 슬라이딩 윈도우 최대값",
+      "published": false,
+      "sha256": "84706faf79e54d516b1dddbdcb9056055ede45eb499bc93837d37483d72b9811",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-020-lru-캐시-lru-cache.md",
+      "title": "[알고리즘] LRU 캐시 (LRU Cache)",
+      "published": false,
+      "sha256": "0b67f0d2dda5a429d466ed0557b78f3f24f9342ead67c98ab6a4d9521e648da2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-021-세-수의-합-3sum.md",
+      "title": "[알고리즘] 세 수의 합 (3Sum)",
+      "published": false,
+      "sha256": "4b2eadece869da08e740ebca118015e4696ee552f21f2fca30ead20a1bbf66a7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-022-물-담기-container.md",
+      "title": "[알고리즘] 물 담기 (Container)",
+      "published": false,
+      "sha256": "c53a03184b0890124e67d361fabe326039ed228f60e6742ded827a25936d792e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-023-최장-부분-문자열.md",
+      "title": "[알고리즘] 최장 부분 문자열",
+      "published": false,
+      "sha256": "689356f1abfd33ea3caed6dc77bd7db649792e4a545e5ea6f26ba24a4665fd25",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-024-부분-배열의-합-subarray-sum.md",
+      "title": "[알고리즘] 부분 배열의 합 (Subarray Sum)",
+      "published": false,
+      "sha256": "5aa71c79254044fb733722d9313aadb8cec168086ddc46dd71f85c62ae8ca3f7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-025-그룹-애너그램.md",
+      "title": "[알고리즘] 그룹 애너그램",
+      "published": false,
+      "sha256": "68410c998abd47512907ba8acd83bc8a4778e24277ce22c1a81d0684e9f0fb35",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-026-최장-연속-수열.md",
+      "title": "[알고리즘] 최장 연속 수열",
+      "published": false,
+      "sha256": "c4c90c36c6e96f78c4dcb3b5ee27c9a4378449a20536b840bbc9d7a6aa843422",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-027-과반수-원소-boyer-moore.md",
+      "title": "[알고리즘] 과반수 원소 (Boyer-Moore)",
+      "published": false,
+      "sha256": "b211c437179c4595327ef0c917b3d4e9f417ffb55b4e4d7fd101e298b5eb9209",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-028-두-배열-교집합.md",
+      "title": "[알고리즘] 두 배열 교집합",
+      "published": false,
+      "sha256": "88a279e3bddb3c94c3ec1efbca08ba3e28a7bc58ebcecca220b196085e7f9224",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-029-최소-윈도우-부분-문자열.md",
+      "title": "[알고리즘] 최소 윈도우 부분 문자열",
+      "published": false,
+      "sha256": "be6da2a6117522ca2626fc4b3aec0ef8543e5ddc8f62d73199e0b87e0d84deb8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-030-제곱수-판별.md",
+      "title": "[알고리즘] 제곱수 판별",
+      "published": false,
+      "sha256": "2b193e59ba221f6860a8eac99d5631e25a5154c03b6659bc8a3ed451546b0cdc",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-031-병합-정렬-merge-sort.md",
+      "title": "[알고리즘] 병합 정렬 (Merge Sort)",
+      "published": false,
+      "sha256": "7069ca9ee17f0a7f8f8056601c1c2ff5f00b8646affd1da44c993c4ded05874f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-032-퀵-정렬-quick-sort.md",
+      "title": "[알고리즘] 퀵 정렬 (Quick Sort)",
+      "published": false,
+      "sha256": "a27bc851e3f0fb8a20577b6eee88250a1caa9622392981a39d272d7222c71d06",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-033-k번째-큰-수-quick-select.md",
+      "title": "[알고리즘] K번째 큰 수 (Quick Select)",
+      "published": false,
+      "sha256": "d6e0f062aff85f3aa915e0cc7069ef3e24f138c3769f9827606d9b0594fd48cb",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-034-이진-탐색-binary-search.md",
+      "title": "[알고리즘] 이진 탐색 (Binary Search)",
+      "published": false,
+      "sha256": "d2947b3fb60b890d0f4fb7fc877bc38d42a9bf555409f74ba44f1d745ff8b1b8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-035-회전-배열-탐색.md",
+      "title": "[알고리즘] 회전 배열 탐색",
+      "published": false,
+      "sha256": "49e8275d02115aa74a01941cf8ff99434b5b065b1a84d3980d07ade30e45cfa2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-036-첫-마지막-위치.md",
+      "title": "[알고리즘] 첫/마지막 위치",
+      "published": false,
+      "sha256": "c64e422e4cf250edd2b9048ae30ed7d858f223c51b7fb296b67bf721604958cc",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-037-행렬-탐색-2d-matrix.md",
+      "title": "[알고리즘] 행렬 탐색 (2D Matrix)",
+      "published": false,
+      "sha256": "e9c488bddc9c914aa309b60787af24fe4faf3f7c12b0a7f6a4dd64de9632e841",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-038-제곱근-sqrt.md",
+      "title": "[알고리즘] 제곱근 (Sqrt)",
+      "published": false,
+      "sha256": "d45bea63eedacf4b197eeeab0e9b525eddbab9375c31b90685e0f76e3a4afe4b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-039-정렬-색깔-dutch-flag.md",
+      "title": "[알고리즘] 정렬 색깔 (Dutch Flag)",
+      "published": false,
+      "sha256": "b622d1ded55c689e618be7b69ff2e69ccbd99daaf689cfa9dc90d3396170996e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-040-구간-병합-merge-intervals.md",
+      "title": "[알고리즘] 구간 병합 (Merge Intervals)",
+      "published": false,
+      "sha256": "806fad8ec07e25162237065f082f4cdad94a3222d31ecfd94c359861ee67f0a0",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-041-부분-집합-subsets.md",
+      "title": "[알고리즘] 부분 집합 (Subsets)",
+      "published": false,
+      "sha256": "0735ecf1fbde60f35b895dc1dcfca0bc0f3d96736d995ff51200fc4326bd476e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-042-순열-permutations.md",
+      "title": "[알고리즘] 순열 (Permutations)",
+      "published": false,
+      "sha256": "2bf740b191700f6c4167329becf3e61b4556a394643176fe0d0a818a88a9744c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-043-조합-combinations.md",
+      "title": "[알고리즘] 조합 (Combinations)",
+      "published": false,
+      "sha256": "7efb47e2d34ed09bf519896ca4a20485895e9cabc7bd07645601b177b2854d81",
+      "editorial": "pending",
+      "editorialSignals": [
+        "핵심입니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-044-전화번호-조합.md",
+      "title": "[알고리즘] 전화번호 조합",
+      "published": false,
+      "sha256": "659234d33d4edadb0095761700bdc446279831f88e8d93b404b7c1ddcd80c020",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-045-n-queens.md",
+      "title": "[알고리즘] N-Queens",
+      "published": false,
+      "sha256": "e2b19b3d45bf5ae848d738ddbd274832250489dc66c550532079dff0387d6026",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-046-스도쿠-풀기.md",
+      "title": "[알고리즘] 스도쿠 풀기",
+      "published": false,
+      "sha256": "6518d473e7aef8c3695c98cb20b4497a9e19255481fe7fce41246922696fa89c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-047-단어-탐색-word-search.md",
+      "title": "[알고리즘] 단어 탐색 (Word Search)",
+      "published": false,
+      "sha256": "a445719ab2f9e1acb1e7185665b694a6a2e7584613bdf7adba126afb261d9063",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-048-거듭제곱-pow.md",
+      "title": "[알고리즘] 거듭제곱 (Pow)",
+      "published": false,
+      "sha256": "2a7fd9d8e6ede650e993b289b13d9b57e028dcff8d8fbfd53d549af92e813c76",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-049-괄호-생성.md",
+      "title": "[알고리즘] 괄호 생성",
+      "published": false,
+      "sha256": "d740618898ea450b2fa48dd52efbe491b2b16541eed072c781d0fd6acb152d38",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-050-섬의-개수-islands.md",
+      "title": "[알고리즘] 섬의 개수 (Islands)",
+      "published": false,
+      "sha256": "70941b76f4c71a11605aef60092b46151a86d5f479f68a9f380b3ddb724e1469",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-051-트리-순회-traversal.md",
+      "title": "[알고리즘] 트리 순회 (Traversal)",
+      "published": false,
+      "sha256": "ec3399a0fbd9d652a5e604b6a41d69daf74bb5b6ab8ecc7056f8889f9c4d9b7b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-052-최대-깊이-max-depth.md",
+      "title": "[알고리즘] 최대 깊이 (Max Depth)",
+      "published": false,
+      "sha256": "cd105d1df170fc73dd91f14d4683b6edb15b86d4b11ae1ada8447fbd961372a6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-053-대칭-트리-symmetric.md",
+      "title": "[알고리즘] 대칭 트리 (Symmetric)",
+      "published": false,
+      "sha256": "67328a5723bd43bde684cdc64afd75fdb6216c4a37d9aa462e5ff07e595da3d1",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-054-경로-합-path-sum.md",
+      "title": "[알고리즘] 경로 합 (Path Sum)",
+      "published": false,
+      "sha256": "d9a676042da02f9af732fb303c4b4088b34d35075558a702c01e0ed45de0145c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-055-bst-유효성.md",
+      "title": "[알고리즘] BST 유효성",
+      "published": false,
+      "sha256": "d2c9ac7b48e65249a3a40ea1baf7d32d1626f58ff44a7dc4e388fd549408f424",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-056-bst-k번째-kth.md",
+      "title": "[알고리즘] BST K번째 (Kth)",
+      "published": false,
+      "sha256": "8957afe9cd2d4a90aee64658251d675d293d25d1b46d81b758ef3fbaaa750bf3",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-057-최소-공통-조상-lca.md",
+      "title": "[알고리즘] 최소 공통 조상 (LCA)",
+      "published": false,
+      "sha256": "f37236cb08626c15e1a9ec7633f6437014667d4d158a49c94e4c66b033115ac9",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-058-트리-직렬화.md",
+      "title": "[알고리즘] 트리 직렬화",
+      "published": false,
+      "sha256": "e572cd27524d90b7c69a59401b02027df50e80a51cbff1c7416d07bccbf2d909",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-059-우측-뷰-right-view.md",
+      "title": "[알고리즘] 우측 뷰 (Right View)",
+      "published": false,
+      "sha256": "0777e24dd601ba50e47978b1d815179992cb52b2b4944705740b92b1f2e60e2f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-060-트리-연결리스트-flatten.md",
+      "title": "[알고리즘] 트리→연결리스트 (Flatten)",
+      "published": false,
+      "sha256": "4e92e7280eb9b512428030b317328afd26f64b22637adb9796c19a9b83d63001",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-061-힙-구현-min-heap.md",
+      "title": "[알고리즘] 힙 구현 (Min Heap)",
+      "published": false,
+      "sha256": "b6115ce76e3b557ee2a094bd2edf81f0d61ab257330d9ddd9816b973a6c323d0",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-062-top-k-빈출-요소.md",
+      "title": "[알고리즘] Top K 빈출 요소",
+      "published": false,
+      "sha256": "25113853ea62ed23df0401ed380c033143d661cb79a6c8772fa434f0af327a08",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-063-스트림-중앙값.md",
+      "title": "[알고리즘] 스트림 중앙값",
+      "published": false,
+      "sha256": "675216314c1a8d6081f43eb1f5dda7052a31ada8f733dce66238f15b8a6788ad",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-064-회의실-배정.md",
+      "title": "[알고리즘] 회의실 배정",
+      "published": false,
+      "sha256": "13ae04a3b9dc26c1dc189b941be658f4d662d04d7c926668891264a73f61dc04",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-065-그래프-표현.md",
+      "title": "[알고리즘] 그래프 표현",
+      "published": false,
+      "sha256": "c54797b941450045bc89760370c4befdf3ecf1e9a93aac7f205cd6e85bdd31d8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-066-bfs.md",
+      "title": "[알고리즘] BFS",
+      "published": false,
+      "sha256": "4d720bd2f99142e9c5757db81eeeb740988c507e191be0d45fd8f09fcb4067d6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-067-dfs.md",
+      "title": "[알고리즘] DFS",
+      "published": false,
+      "sha256": "3531aa50176c6adc6d751ccc537dc9e5f08d2db34788ca71ae1d268c412fa5ba",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-068-이진-그래프-bipartite.md",
+      "title": "[알고리즘] 이진 그래프 (Bipartite)",
+      "published": false,
+      "sha256": "f4752296fc32b1c481eeee52a14c22e969a8997865aa0501182b184ce5b6f342",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-069-그래프-복제-clone.md",
+      "title": "[알고리즘] 그래프 복제 (Clone)",
+      "published": false,
+      "sha256": "6d436945b08400489f8a5b2de2e541818098812f9d0b46e36a688966180a69d5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-070-단어-사다리-word-ladder.md",
+      "title": "[알고리즘] 단어 사다리 (Word Ladder)",
+      "published": false,
+      "sha256": "0d9c65da23a3ca1bb30527dcc62f0e846c1e4f6f0a09a479a8b2aa6bc664f9f2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-071-다익스트라-dijkstra.md",
+      "title": "[알고리즘] 다익스트라 (Dijkstra)",
+      "published": false,
+      "sha256": "a2046ddd3e18e09b5c5dfbe199fc79bb30f987783e604d85c6906fd63e7b75f9",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-072-벨만-포드-bellman-ford.md",
+      "title": "[알고리즘] 벨만-포드 (Bellman-Ford)",
+      "published": false,
+      "sha256": "9de31c44e7663c1f1a0be0ff70ce0d6651d178883225e0a88883802b2cf70519",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-073-플로이드-워셜-floyd.md",
+      "title": "[알고리즘] 플로이드-워셜 (Floyd)",
+      "published": false,
+      "sha256": "c30f1ea12951ba2a74296a50aec5ceb61891e2ef52ea8493c23f56bd88e8e952",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-074-위상-정렬-topological.md",
+      "title": "[알고리즘] 위상 정렬 (Topological)",
+      "published": false,
+      "sha256": "b49815bdf3bf53e6d5aec0ac6830cd1efb030bcfd691ec16781c20fa53fda007",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-075-크루스칼-kruskal.md",
+      "title": "[알고리즘] 크루스칼 (Kruskal)",
+      "published": false,
+      "sha256": "245a836f400f932bb2df80dc73617d60d3c996829ebe964dc08a2e59f0917ad2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-076-프림-prim.md",
+      "title": "[알고리즘] 프림 (Prim)",
+      "published": false,
+      "sha256": "a1f9cb2d944c4b53226d8db5eddd3a712d6530006b9db6066b1644db9fe4dbf3",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-077-scc-강한-연결.md",
+      "title": "[알고리즘] SCC (강한 연결)",
+      "published": false,
+      "sha256": "bef7dde79bb7a0403e012dfb7d8b956cdd02a86f9aa3a8611e8ba22bc3f28695",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-078-네트워크-지연.md",
+      "title": "[알고리즘] 네트워크 지연",
+      "published": false,
+      "sha256": "822a9e5d0f64144db0492aa1f71377e953f62798a91fe022459caa7f5c8799a3",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-079-경로-존재-여부.md",
+      "title": "[알고리즘] 경로 존재 여부",
+      "published": false,
+      "sha256": "de779350c03ed9242505a791bb9841ff122812e864e2ff84d58718092c02c5b7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-080-k-경유-최소-비용.md",
+      "title": "[알고리즘] K 경유 최소 비용",
+      "published": false,
+      "sha256": "24a3759f388d6eccc6f20cc4bd2685c3ad1f7fe0e64530093ea9329a0305106e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-081-피보나치-최적화.md",
+      "title": "[알고리즘] 피보나치 최적화",
+      "published": false,
+      "sha256": "668e42e7fda91e78ac93e3c530ee8592283917345478e8404e7ce0c98320897b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-082-계단-오르기-stairs.md",
+      "title": "[알고리즘] 계단 오르기 (Stairs)",
+      "published": false,
+      "sha256": "63ca2ec87b8adf448b243c7bd129f000a99303ba5d8d58ed1fd415ac708cdbda",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-083-동전-교환-coin-change.md",
+      "title": "[알고리즘] 동전 교환 (Coin Change)",
+      "published": false,
+      "sha256": "66d8623d386b6baba261140cb8290595d743f81dec8a5f259b125147771c99eb",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-084-0-1-배낭-knapsack.md",
+      "title": "[알고리즘] 0/1 배낭 (Knapsack)",
+      "published": false,
+      "sha256": "41603ca6dcb594421513d39e640d1c2acfc7ba8b56c23a58912e78008d524c21",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-085-lis-최장-증가-부분수열.md",
+      "title": "[알고리즘] LIS (최장 증가 부분수열)",
+      "published": false,
+      "sha256": "9d76b647fe34def472d18f6fca39ca070dbca24b61000ca247a68d49eff1eeab",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-086-lcs-최장-공통-부분수열.md",
+      "title": "[알고리즘] LCS (최장 공통 부분수열)",
+      "published": false,
+      "sha256": "a09b1bce3bb10d10d089d90818675bc5ba88aabb9101cc0bb61aefa8aece9669",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-087-편집-거리-edit-distance.md",
+      "title": "[알고리즘] 편집 거리 (Edit Distance)",
+      "published": false,
+      "sha256": "15feb8e7cb8b314a9efe8984017eb4ea898cb61d87d462c1944d3394ad40d728",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-088-집-도둑-house-robber.md",
+      "title": "[알고리즘] 집 도둑 (House Robber)",
+      "published": false,
+      "sha256": "8b1920689b5af00ff71e457f175cc975d1f4301d749dbffbef5d4c78a38c5cf5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-089-고유-경로-unique-paths.md",
+      "title": "[알고리즘] 고유 경로 (Unique Paths)",
+      "published": false,
+      "sha256": "af17cd425185bb843e3b3842465d0794d9080ef421719b36b7658b31f296bc25",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-090-단어-분리-word-break.md",
+      "title": "[알고리즘] 단어 분리 (Word Break)",
+      "published": false,
+      "sha256": "7403cac5d4b844564f284df3d9bc7f62672dff61246f22a3c8f6a16dad9ae7bc",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-091-트라이-trie.md",
+      "title": "[알고리즘] 트라이 (Trie)",
+      "published": false,
+      "sha256": "a35a7b7f88c12700c67507c06c3819cba28799166211e014563c91c151f9849a",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-092-유니온-파인드.md",
+      "title": "[알고리즘] 유니온 파인드",
+      "published": false,
+      "sha256": "be99af1ed15960bc8653312b89a84f0fa337e10db68d357501c619930f4133d8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-093-세그먼트-트리.md",
+      "title": "[알고리즘] 세그먼트 트리",
+      "published": false,
+      "sha256": "e941ee6bf38481ef37fac01bc605ae01e9aaa6b0e562eec6cb760322f4bd6b4c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-094-활동-선택-greedy.md",
+      "title": "[알고리즘] 활동 선택 (Greedy)",
+      "published": false,
+      "sha256": "e26c22a453ad8822937a06176b219d96a7d139fe73e5643a9bee1ed036f8c409",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-095-허프만-코딩.md",
+      "title": "[알고리즘] 허프만 코딩",
+      "published": false,
+      "sha256": "5d0bd977ce3b6fefaf72c3c15880a0be47e97257fe9e78d274faaf9a086cabdc",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-096-비트-조작.md",
+      "title": "[알고리즘] 비트 조작",
+      "published": false,
+      "sha256": "1d5563cadc4764eeda87ebf226a4b9c654cdec0f2b24071c9721c133c4297b10",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-097-카운팅-비트.md",
+      "title": "[알고리즘] 카운팅 비트",
+      "published": false,
+      "sha256": "d261c8d1a417239244b5e16ac73b27939896e75d60c88be2f6971c223deacf07",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-098-구간-dp-행렬-곱셈.md",
+      "title": "[알고리즘] 구간 DP (행렬 곱셈)",
+      "published": false,
+      "sha256": "15d722f3e4fa270575400308e569de399b397ce675ce3026fadb27e9107834f4",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-099-최대-사각형-maximal-square.md",
+      "title": "[알고리즘] 최대 사각형 (Maximal Square)",
+      "published": false,
+      "sha256": "2ed48ee71e1f9b48d5fc9be59d69ad103365fdc826d41875816f1467a68e6ac2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algo-100-lru-ttl-캐시-시스템.md",
+      "title": "[알고리즘] LRU+TTL 캐시 시스템",
+      "published": false,
+      "sha256": "c25fd14af0e853913e81d37a016705d1c38cfcdf2b6eba5e98a4ba155c0d2698",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algorithm-mental-simulator.md",
+      "title": "알고리즘을 메모리 영화관에서 돌려보는 밤",
+      "published": false,
+      "sha256": "0f783195f6e10c00839e95f5c6bec5c2dd697e2854a8892eaddcc72ccc6468a1",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algorithm_solv.md",
+      "title": "알고리즘의 역발상 관점",
+      "published": false,
+      "sha256": "18d768cf635808aeb1c95247de65fa868a61da97685a8503b603303caddf689a",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다",
+        "핵심입니다",
+        "살펴보겠습니다",
+        "혁신적",
+        "극대화"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/algorithms-through-my-eyes.md",
+      "title": "알고리즘 수업 노트를 다시 펼쳐 보며",
+      "published": false,
+      "sha256": "608373d38688cd1f2c3364b7f762938ab7ce6324a52bd795972ef5091bc18724",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/ansible-01-installation-setup.md",
+      "title": "Ansible 설치와 첫 Inventory 구성",
+      "published": true,
+      "sha256": "987f4909faaef150f3c635d8ba2552f30bf27a764bbd831e1a87fec9e316690d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/ansible-02-inventory-basics.md",
+      "title": "Ansible Inventory 심화: 그룹/변수/패턴",
+      "published": true,
+      "sha256": "e230011483b9b638644474189c17a7533a43130e245295f5d6ba769f886b9a0b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 2,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/ansible-03-playbook-examples.md",
+      "title": "Ansible Playbook 작성 실습 모음",
+      "published": true,
+      "sha256": "dbed8f8b22e044c2fb11972c99211f00fc87afd3e2ef2940c12cbdb8f88180a0",
+      "editorial": "pending",
+      "editorialSignals": [
+        "마무리하며"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/ansible-04-roles.md",
+      "title": "Ansible Role 설계와 재사용성",
+      "published": true,
+      "sha256": "4c1b42d6602e3fc2ed8fb323cb64f3cfe1febf2ed07e72587f40b30c6809bff1",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 1,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/arpanet-resilience-journal.md",
+      "title": "스푸트니크의 그림자 아래, 내가 본 ARPANET의 첫 호흡",
+      "published": true,
+      "sha256": "70102e956944ae29e74622ce0ba017003c1c8c340f94f1601611c0d59e7d81f6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/broadband-cdn-transition-journal.md",
+      "title": "ADSL 불빛과 CDN 랙 사이에서 보낸 2000년대의 밤",
+      "published": true,
+      "sha256": "eade44101e319a887f1e484a7f70950a41b9c0989dc4552492065304e886c182",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/ci-trigger-test.md",
+      "title": "CI Trigger Test",
+      "published": false,
+      "sha256": "064485e3fbdf196ad714c4a60bc015e2f1eace3387b4538e010e9b9d4956912b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/devops-toolchain-overview.md",
+      "title": "DevOps 시리즈 개요: Terraform · Ansible · Kafka · Kubernetes",
+      "published": true,
+      "sha256": "a954a259c1b718a988336ddc817180bbea56f672b05a538d040b57061d5cc5b9",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/dijkstra.md",
+      "title": "다익스트라 알고리즘 (Dijkstra's Algorithm)",
+      "published": false,
+      "sha256": "aa895fd2fa8baa39507ce6472b59309a25bf02adbbbe723e8ebba27d00c6f96d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/future-tech-six-insights.md",
+      "title": "제가 뇌를 리셋하게 만든 미래 기술 문서에서 발견한 6가지 깨달음",
+      "published": true,
+      "sha256": "f4bde608a534f533778e3bbe68c184cafb62be80fb5f4219e254fba6a9b9bf17",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/git-submodule-guide.md",
+      "title": "Git 서브모듈, 진짜 쓸 만한 걸까?",
+      "published": true,
+      "sha256": "c9fad4a6685256cb54f2c1c5b25723c627311686f462e63c2e8e52880a4652a1",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 2,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/grub-kernel-error-journal.md",
+      "title": "'You need to load the kernel first'와 함께한 새벽의 구조 요청",
+      "published": true,
+      "sha256": "0ab44c318dd18ee9fe353e1fe98f37c8ea57835ad69beff32bf4073029cd8b5d",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/hooks.md",
+      "title": "리액트 hooks 훑어보기",
+      "published": true,
+      "sha256": "dd3e313d87a51c585f1df3d713a6ef2e88a42f8f685e0fa7c9b5e8c0b749b670",
+      "editorial": "pending",
+      "editorialSignals": [
+        "알아보겠습니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/integration-01-devops-pipeline.md",
+      "title": "DevOps 통합 실습: Terraform · Ansible · Kubernetes · Kafka",
+      "published": true,
+      "sha256": "c06d14931ad59976519c75f343bf043b80069b4dedc43abe629685717a57d815",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 2,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/integration-02-terraform-k8s.md",
+      "title": "Terraform으로 Kubernetes 클러스터 프로비저닝",
+      "published": false,
+      "sha256": "f753deda7a23c8e047908fe5443131342a1103d798f5174ed9f58818ceb19ffb",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/integration-03-k8s-kafka.md",
+      "title": "Kubernetes에서 Kafka 운영 전략",
+      "published": false,
+      "sha256": "201c3587ebb3039159766769f72969c5e23a7f04f4e246d6339f217e62e7bc40",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/integration-04-microservices-deployment.md",
+      "title": "마이크로서비스 배포 전략 (이벤트 기반)",
+      "published": false,
+      "sha256": "19d5eb22cdd59e0a24731a0e7d82883689c391162e2b00212677e49df5c71bb4",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-concurrency-journal.md",
+      "title": "스레드 덤프와 데드락 다이어그램, 자바 동시성의 밤을 기록하다",
+      "published": true,
+      "sha256": "8e9aebf93c51ec6de3db8528bf0ba3526d45c5df40f448220432d08093bd46e2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-gc-journal.md",
+      "title": "Stop-the-world의 숨결을 들으며, GC와 화해한 나의 기록",
+      "published": true,
+      "sha256": "7ab4169d6767e44e5763b5755fb1239b3621cca424ab7644ee6ecc8a58a83e59",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-generics-journal.md",
+      "title": "타입 변수와 야생의 캐스팅: 제네릭을 길들이던 내 기록",
+      "published": true,
+      "sha256": "5983f51c565feae83e7f9b32f993e35b80a23d654225575f9cac479aa14ca1ad",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-memory-model-journal.md",
+      "title": "Happens-before를 붙잡기까지, 자바 메모리 모델을 해부한 내 여정",
+      "published": true,
+      "sha256": "b1b8aecfa3e8b385e1a331bedae6b87c7d5f8f6594cdefefd81efa481bd2ca96",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-oop-superchallenge.md",
+      "title": "JVM 메모리 지도 들고 자바 OOP 문제를 풀어본 기록",
+      "published": true,
+      "sha256": "90cd78deb5b05ac3072204608ecf47d71dd4bab5ecfb6e894a699d2c29248e70",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-static-polymorphism-masterclass.md",
+      "title": "static 키워드와 다형성으로 밤을 지새운 어느 개발자의 기록",
+      "published": true,
+      "sha256": "f914f9a74cb3d609062ecc277a56bbf0d1afbcda9e9ad394cea9383b671450aa",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 2,
+          "line": 63,
+          "language": "",
+          "sample": "+---------------------+      클래스 로딩 시점\n| Method Area         |\n|  - Resource.class   |\n|  - static sharedCount -> 1\n+---------------------+\n          |\n          | new Resource()\n "
+        },
+        {
+          "block": 9,
+          "line": 263,
+          "language": "",
+          "sample": "[클래스 로딩 시점]\n  BaseConfig.class 로딩 -> S1 실행\n  DerivedConfig.class 로딩 -> S2 실행\n\n[main 시작]\n  M1 출력\n  new DerivedConfig()\n    super() 호출 -> C1\n    자식 생성자 -> C2\n  M2 출력\n"
+        },
+        {
+          "block": 11,
+          "line": 333,
+          "language": "",
+          "sample": "Counter.shared = 3\nChildCounter.shared = 120\nAfter reset -> Counter.shared = 0\nAfter reset -> ChildCounter.shared = 50\n"
+        }
+      ]
+    },
+    {
+      "file": "2025/java-stream-api-journal.md",
+      "title": "람다와 파이프라인 사이, 스트림 API에 빠져들던 밤",
+      "published": true,
+      "sha256": "ea958a38b46b5e3d89313760843d76185a98a2ae6ff78aa1f03309e21f18ef80",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/java-through-my-bytecode-journal.md",
+      "title": "바이트코드 기차를 타고 자바 세계를 일주한 날",
+      "published": true,
+      "sha256": "5f79c6c1907c333d9318ef4aabbd4406f1007da0894d0144986bd3bf0b74316f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/k8s-overview.md",
+      "title": "쿠버네티스 기본 구조",
+      "published": true,
+      "sha256": "14aa4914a5f6fef98e211bfe9ee9db9dc47d5747f95b9d0445493f4fde7c9aaf",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kafka-01-concepts-architecture.md",
+      "title": "Kafka 핵심 개념과 아키텍처",
+      "published": true,
+      "sha256": "b4602ae58301929667111f0627ade42265b2534906a77e8692e8778da2d675cb",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 2,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kafka-02-installation-setup.md",
+      "title": "Kafka 로컬 설치: Docker & 네이티브",
+      "published": true,
+      "sha256": "67cbea1f7f0fb06b4d57d3548d5ad10c16f832812a1642c9453c010d79ecfe28",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kafka-03-producer-consumer.md",
+      "title": "Kafka Producer/Consumer 실습과 신뢰성 패턴",
+      "published": false,
+      "sha256": "719fa7f3e7a0e7c70e34a886fbb0d0508d03337755c3923499a3f5e29b6f8242",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kafka-04-topics-partitions.md",
+      "title": "Kafka 토픽·파티션·스토리지 관리",
+      "published": false,
+      "sha256": "650bf420e1b5cbde1166a620bd0a54dae8c213efebe4a46d5615c234f3d0349a",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kubernetes-01-cluster-setup.md",
+      "title": "Kubernetes 로컬 클러스터 설치 (minikube·kind·Docker Desktop)",
+      "published": true,
+      "sha256": "73335c943d4a064bebadbab8067573c8807e0d7ce5a2de886badfc44b2cdd486",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kubernetes-02-pods-deployments.md",
+      "title": "Kubernetes Pod와 Deployment 핵심 실습",
+      "published": true,
+      "sha256": "325805f470981aeb1860348ecd48399db24c4b10a38b361dc2b08cecd37f9125",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 1,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kubernetes-03-services-networking.md",
+      "title": "Kubernetes Service와 네트워킹",
+      "published": false,
+      "sha256": "f5ae0ec3b31cab47761009ceb891eeb649cdc586f25a5cea702620795e17af95",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kubernetes-04-configmap-secret.md",
+      "title": "Kubernetes ConfigMap & Secret 활용",
+      "published": false,
+      "sha256": "1ce443c9a46e07182c641d65992de3101ec27a80419572b25851ebd362943a49",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/kubernetes-05-statefulset-storage.md",
+      "title": "Kubernetes StatefulSet과 스토리지",
+      "published": false,
+      "sha256": "4c138f7a094e285067d93981c2ada0370b7c820c91752dfa5a57f4e34b3c6519",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/latest.md",
+      "title": "최신 게시글",
+      "published": true,
+      "sha256": "00880520c463d697bfc79a293caf7f74ea9e9dd8f82aadfca1a16b5e8aa5e907",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/linux-device-mount-journal.md",
+      "title": "언마운트 이후에도 /dev/sda1이 남아있는 이유를 이해한 밤",
+      "published": true,
+      "sha256": "0d7695a69689c221578f3d19d9fa4e0ed303cc4339cb97cff80179d0e2ccdac5",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/lte-cloud-native-journal.md",
+      "title": "4G 신호와 클라우드 콘솔 사이, 앱 경제를 실감한 나의 하루",
+      "published": true,
+      "sha256": "2eff2bac7414b7fa3fa2a32d08cd2a5c28345e0321d501425b8b9883644ddb55",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/memory-management-study.md",
+      "title": "메모리 관리 공부하다가 깨달은 페이징 시스템의 진짜 장점",
+      "published": true,
+      "sha256": "b7e0364737872ad9d6c8818c74f7299405921dd14e1c41e04367d0524e957772",
+      "editorial": "pending",
+      "editorialSignals": [
+        "획기적",
+        "생각보다",
+        "극대화"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/middle-east-ai-conflicts.md",
+      "title": "중동 지역 AI 도입으로 생긴 새로운 갈등들을 보면서 드는 생각",
+      "published": true,
+      "sha256": "b303dea4b43d80870e5db4f4cad2ce84d0e39966327d495c958b70ba4afd97ae",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/mole-observation-diary.md",
+      "title": "두더지에 대해서..",
+      "published": true,
+      "sha256": "807396b8c44e3e539dd566beb488ad3e7b1f5a37a504a5c57751c00b304b7174",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/nat-gateway-bottleneck-journal.md",
+      "title": "네트워크 병목과 NAT 게이트웨이의 한계: 한 CS 학생의 속마음",
+      "published": true,
+      "sha256": "78d12129db91170d6eb933068ae01d1628a89332e2190b2fd841ebb8edd32f98",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/network-evolution-history.md",
+      "title": "네트워크 발전의 역사: ARPANET에서 5G/6G까지",
+      "published": true,
+      "sha256": "1f389111ae7a5dfbab37e41f948a5eeadb1bd39d727aacefa10eefb67c3ede19",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/network-evolution-intro-journal.md",
+      "title": "네트워크 연표를 다시 걷기 전, 내가 세운 질문들",
+      "published": true,
+      "sha256": "23a5ce9cd766e2b47c1913493b767be46f081fdb8a50ad139907397bb5b1b6dc",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/path-new-friend-essay.md",
+      "title": "PATH에 새 친구를 초대하는 방법",
+      "published": true,
+      "sha256": "29c8ec882597698465f372144c4e1374210480a9085456eb60e6fe8ad3c36c5d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/proxmox-thin-provision.md",
+      "title": "ZFS 풀 앞에서 멈춰 선 Proxmox, 그 밤의 기록",
+      "published": true,
+      "sha256": "9941ed2efa27617a1dfb7002bd586251be18afccd47ee918d60cdd5c468f125b",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히",
+        "마무리하며"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/python-ai-chatbot-development.md",
+      "title": "Python으로 AI 챗봇 만들기",
+      "published": true,
+      "sha256": "22310a33455299e1ebe0f86e7c7df5686d75c95c25b50759408c5729ee95155d",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/shell-powertools-journal.md",
+      "title": "awk와 sed, 그리고 xargs에 빚진 작은 승리들",
+      "published": true,
+      "sha256": "81e0bb6c29036b83f0ca8aa9f454cf6d4a11a0b1290203273be4f3a3fc912ba2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/sorting-algorithms-masterclass.md",
+      "title": "정렬 알고리즘 완전 정복: 버블 정렬부터 힙 정렬까지",
+      "published": false,
+      "sha256": "e0a90c4154f14ca5a4e5173c9f5ac5885834d793a0498b9c7dfa2a675c26a37d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 2,
+          "line": 102,
+          "language": "text",
+          "sample": "Selection_Sort(A[], n):\n    for i from 0 to n-2:\n        minIndex ← i\n        for j from i+1 to n-1:\n            if (A[j] < A[minIndex])\n                minIndex ← j\n        swap A"
+        },
+        {
+          "block": 4,
+          "line": 153,
+          "language": "text",
+          "sample": "Insertion_Sort(A[], n):\n    for i from 1 to n-1:\n        key ← A[i]\n        j ← i - 1\n        while (j ≥ 0 and A[j] > key):\n            A[j + 1] ← A[j]\n            j ← j - 1\n      "
+        },
+        {
+          "block": 6,
+          "line": 206,
+          "language": "text",
+          "sample": "Merge(A[], p, q, r):\n    i ← p; j ← q + 1; t ← 0\n    while (i ≤ q and j ≤ r):\n        if (A[i] < A[j]) tmp[t++] ← A[i++]\n        else tmp[t++] ← A[j++]\n    while (i ≤ q): tmp[t++] "
+        },
+        {
+          "block": 8,
+          "line": 286,
+          "language": "text",
+          "sample": "Quick_Sort(A[], p, r):\n    if (p < r):\n        q ← partition(A, p, r)\n        Quick_Sort(A, p, q - 1)\n        Quick_Sort(A, q + 1, r)\n\npartition(A, p, r):\n    pivot ← A[r]\n    i ← "
+        },
+        {
+          "block": 10,
+          "line": 363,
+          "language": "text",
+          "sample": "percolateDown(A[], k, n):\n    child ← 2k + 1\n    while (child ≤ n - 1):\n        right ← 2k + 2\n        if (right ≤ n - 1 and A[child] < A[right])\n            child ← right\n        "
+        }
+      ]
+    },
+    {
+      "file": "2025/sorting-algorithms-pseudocode-analysis.md",
+      "title": "정렬 알고리즘 수도 코드 완전 해부: 라인별 분석",
+      "published": false,
+      "sha256": "e32972e050e5c0384a051bd9486208c5f71006ccbf1e0773683233c2160aab10",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 1,
+          "line": 55,
+          "language": "text",
+          "sample": "Selection_Sort(A[], n):\n    for i from 0 to n-2:\n        minIndex ← i\n        for j from i+1 to n-1:\n            if (A[j] < A[minIndex])\n                minIndex ← j\n        swap A"
+        },
+        {
+          "block": 2,
+          "line": 92,
+          "language": "text",
+          "sample": "Insertion_Sort(A[], n):\n    for i from 1 to n-1:\n        key ← A[i]\n        j ← i - 1\n        while (j ≥ 0 and A[j] > key):\n            A[j + 1] ← A[j]\n            j ← j - 1\n      "
+        },
+        {
+          "block": 3,
+          "line": 132,
+          "language": "text",
+          "sample": "Merge(A[], p, q, r):\n    i ← p; j ← q + 1; t ← 0\n    while (i ≤ q and j ≤ r):\n        if (A[i] < A[j]) tmp[t++] ← A[i++]\n        else tmp[t++] ← A[j++]\n    while (i ≤ q): tmp[t++] "
+        },
+        {
+          "block": 4,
+          "line": 175,
+          "language": "text",
+          "sample": "Quick_Sort(A[], p, r):\n    if (p < r):\n        q ← partition(A, p, r)\n        Quick_Sort(A, p, q - 1)\n        Quick_Sort(A, q + 1, r)\n\npartition(A, p, r):\n    pivot ← A[r]\n    i ← "
+        },
+        {
+          "block": 5,
+          "line": 237,
+          "language": "text",
+          "sample": "percolateDown(A[], k, n):\n    child ← 2k + 1\n    while (child ≤ n - 1):\n        right ← 2k + 2\n        if (right ≤ n - 1 and A[child] < A[right])\n            child ← right\n        "
+        }
+      ]
+    },
+    {
+      "file": "2025/spring-boot-realtime-communication.md",
+      "title": "SSE와 WebSocket 사이에서, 나의 실시간 통신 여정을 적다",
+      "published": true,
+      "sha256": "4f8aa9ac1239171be2d7bd6fdaa15524b9ea44bc7b304bd6b722792ee9c04286",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/tcpip-revolution-journal.md",
+      "title": "TCP/IP 깃발 아래, 내가 본 인터넷의 탄생",
+      "published": true,
+      "sha256": "034f4172f71665de33da77bea4a8cfeae7220e526a4c185d15fb619f7a66c92b",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/terraform-01-basic-setup.md",
+      "title": "Terraform 기본 설정과 첫 리소스",
+      "published": true,
+      "sha256": "99fd9d63089e72a369558b698f97644cfec36b2486299a6c4e5adbeb3c5e0817",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 2,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/terraform-02-aws-ec2-example.md",
+      "title": "Terraform로 AWS EC2 배포 실습",
+      "published": true,
+      "sha256": "66a6936561b2078b8d2e93384a492839ee5533b6541adb8606dce2c27f255265",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 1,
+      "diagramCandidates": [
+        {
+          "block": 10,
+          "line": 203,
+          "language": "",
+          "sample": "VPC → Internet Gateway → Subnet\n                     ↓\nSecurity Group ← EC2 Instance → Route Table\n"
+        }
+      ]
+    },
+    {
+      "file": "2025/terraform-03-state-management.md",
+      "title": "Terraform 상태 관리와 모듈화",
+      "published": true,
+      "sha256": "2978c9b547e9ad36ec6e97285b3e7845216198f73f3e48c8759b84ba8dd967d8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 2,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/terraform-04-variables-outputs.md",
+      "title": "Terraform 변수와 출력 고급 패턴",
+      "published": true,
+      "sha256": "e7c28feb368f031d2029d1361db7c8a8fc0d497a1a000b15cb0d9a7596e7a5a4",
+      "editorial": "pending",
+      "editorialSignals": [
+        "극대화"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/web-commercialization-journal.md",
+      "title": "모자이크를 띄운 날, 월드 와이드 웹이 손에 들어왔다",
+      "published": true,
+      "sha256": "2ac3a58edfa2151476bb55e22681eb5f75dea967cfca3a3d7215cce8fe230ab7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/wine-clipboard-bridge-journal.md",
+      "title": "Wayland 위에서 Wine 카카오톡이 복붙을 잃어버린 날",
+      "published": true,
+      "sha256": "07938c68222e3493cd9572a8f41e3205cf08cb9fb36fcf06f8165bce20bf879c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2025/감동을_잃어버린_그대들에게.md",
+      "title": "감동을 잃어버린 그대들에게",
+      "published": true,
+      "sha256": "4db982bf7184ceeb2d4d6240d186e118c59252b0051ef6a59a69f2edd24e740e",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/Algorithm.md",
+      "title": "Algorithm",
+      "published": true,
+      "sha256": "a2f29ca72fd6ef9155941bc69a1d4efee182848c2819bc167dce0542c8eb48f2",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/Container Network Interface.md",
+      "title": "Container Network Interface",
+      "published": true,
+      "sha256": "8298a95b9fd5fdae1276e629c2685316806efb45b094b02fca90eda18f47d091",
+      "editorial": "pending",
+      "editorialSignals": [
+        "살펴보겠습니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/Immutable_infra.md",
+      "title": "Immutable Infra",
+      "published": true,
+      "sha256": "40f551c0add22221ef39d158c9e9d33f1b51be64d811abad21df97468e002719",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-gemini-3-0-pro-high-reasoning.md",
+      "title": "[Arena 상세] Gemini_3.0_pro_high_reasoning 분석",
+      "published": true,
+      "sha256": "51ddb811eaf6cbe67acc015c9815904e406894ede9f8e9dcbb52174045ceab07",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-glm-5.md",
+      "title": "[Arena 상세] GLM-5 분석",
+      "published": true,
+      "sha256": "a078fbacf55a861aecb88d52e2c0362be2759fa1ea3a236ea588f5e80640958d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-gpt-5-2-high-reasoning.md",
+      "title": "[Arena 상세] GPT-5.2_High_Reasoning 분석",
+      "published": true,
+      "sha256": "fd1eaf6797c3b3172e420234e3d3c6ebd0594dd5ab0740f57bb25ec13ff856ff",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-gpt-5-3-codex-x-high.md",
+      "title": "[Arena 상세] GPT-5.3-codex-x-high 분석",
+      "published": true,
+      "sha256": "9dfbe56760faa64e0c6144dc3cc20967cd9a877f4a3b663ee0c0231e461521f7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-grok-fast-1.md",
+      "title": "[Arena 상세] Grok_Fast_1 분석",
+      "published": true,
+      "sha256": "b826981bc2f2733b2b14eb396d0f36256b23e91543d6f943b0805d601108d56d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-kimi-2-5.md",
+      "title": "[Arena 상세] Kimi_2.5 분석",
+      "published": true,
+      "sha256": "298a0cf3c00984568fddd5850d8caf62eb86763104ffc31a067e912299297ee3",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-minimax-2-5.md",
+      "title": "[Arena 상세] MiniMax2.5 분석",
+      "published": true,
+      "sha256": "e753fde0fd1cba0098eec01042cda93038c478df03849c7c15993804fc4a67c7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-opus-4-6.md",
+      "title": "[Arena 상세] Opus4.6 분석",
+      "published": true,
+      "sha256": "f85a50c674800c48214af2b2dd30a8dddbae61332821a0e8d4c4bac2601b65cc",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-overview-and-comparison.md",
+      "title": "AI Agent Arena 2026: 10개 AI Provider Server 종합 분석",
+      "published": true,
+      "sha256": "5c1fd796883c890eebf633c8df15c557a6cdd126870e99a383d2c1f7d5c107d7",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-sonnet-4-6.md",
+      "title": "[Arena 상세] sonnet_4.6 분석",
+      "published": true,
+      "sha256": "b302359219373ca4a8bbeb29a37ffda8d7c899a3e88ba1c0fa69cc268d9954de",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-agent-arena-2026-swe-1-5.md",
+      "title": "[Arena 상세] SWE_1.5 분석",
+      "published": true,
+      "sha256": "f30ec63dcbc15708a62e718bea285e3356e8a44722d5df4e64fb2614642ce236",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/ai-usage-habitual-search-inertia-report.md",
+      "title": "AI 활용 안일화와 검색창 고착 구조 분석 보고서 첨부",
+      "published": true,
+      "sha256": "f8bed61c45ad1991774788efc75e5242f349380e7cedfb0b6932bfa57a567b5c",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/algorithm-1.md",
+      "title": "[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각",
+      "published": true,
+      "sha256": "0bab6cdcbfe41c6a0aef312ca4ad1bf05ea0ab940cb5b0d653aa29fd118f4dd5",
+      "editorial": "pending",
+      "editorialSignals": [
+        "중요합니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/algorithm-2.md",
+      "title": "[알고리즘 1부] 시간 복잡도라는 숫자에 매몰된 착각",
+      "published": true,
+      "sha256": "2078626de4361d4be04740b703a0af26e210a7a3ad779a44ba6e3403a7bf9883",
+      "editorial": "pending",
+      "editorialSignals": [
+        "중요합니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/alone.md",
+      "title": "혼자라는 이름의 계절",
+      "published": true,
+      "sha256": "74ba3511eea2624f04ab364422aecb1f339a9583c0fe9a4a49fb96f55c6c0af8",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/argocd-github-dns-failure.md",
+      "title": "ArgoCD에서 GitHub 연결이 실패했을 때, 진짜 원인은 SSH가 아니라 DNS였다",
+      "published": true,
+      "sha256": "c46c78805fc5e60d95c0ff8a73489f71f87123edb603b5b551f55cdf3bd34458",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/awk-1.md",
+      "title": "awk 시스템 처리 원리",
+      "published": true,
+      "sha256": "ab1b477dbda080dc8d551e3164019fd326c300e26cf78aac950989916b8a4e27",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/c-lang-1.md",
+      "title": "[C 언어 1부] 배열은 왜 단순한 변수 묶음이 아닐까?",
+      "published": true,
+      "sha256": "7fccd9a30154551ff3731fc1b2ea1c6312b8ae553a7a046466bd062b9e160fab",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/c-lang-2.md",
+      "title": "[C 언어 2부] 같은 함수 안의 지역변수와 포인터는 메모리에서 어떻게 연결될까?",
+      "published": true,
+      "sha256": "3497670acce825e9787026ec9cdf12c25320066847c194e5a2f855ecff091e27",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/current-crowd.md",
+      "title": "무속, 사이비 : 자유의 환상과 개인화의 비극",
+      "published": true,
+      "sha256": "f27000cd878fa70f40cfc9ed2f9b4ece46f42ea98d76334fd07e40c52ba3c23d",
+      "editorial": "pending",
+      "editorialSignals": [
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/draft-continuation-test.md",
+      "title": "Pipeline Draft Continuation",
+      "published": false,
+      "sha256": "6903692903655fb10f38a83247365582a11539779725ad195903954e2b72304f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/git-history-rewrite-reset-rebase-reflog.md",
+      "title": "force push 이후 커밋 해시가 전부 바뀌는 이유: reset, rebase, reflog로 복구까지",
+      "published": true,
+      "sha256": "213e0862b4eb414a6e12f54fce678c3648893071cc8be9a4668c7908709c408f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 0,
+          "line": 33,
+          "language": "text",
+          "sample": "A -- B -- C -- D\n"
+        },
+        {
+          "block": 1,
+          "line": 39,
+          "language": "text",
+          "sample": "A -- B -- C -- D\n          \\\n           C' -- D'\n"
+        },
+        {
+          "block": 3,
+          "line": 82,
+          "language": "text",
+          "sample": "A -- B -- C (main)\n"
+        },
+        {
+          "block": 4,
+          "line": 88,
+          "language": "text",
+          "sample": "A -- B (main)\n      \\\n       C\n"
+        },
+        {
+          "block": 5,
+          "line": 102,
+          "language": "text",
+          "sample": "A -- B -- C (main)\n      \\\n       D -- E (feature)\n"
+        },
+        {
+          "block": 6,
+          "line": 110,
+          "language": "text",
+          "sample": "A -- B -- C (main)\n            \\\n             D' -- E' (feature)\n"
+        },
+        {
+          "block": 7,
+          "line": 147,
+          "language": "text",
+          "sample": "원격: A -- B -- C -- D\n로컬: A -- B -- C' -- D'\n"
+        }
+      ]
+    },
+    {
+      "file": "2026/haircut.md",
+      "title": "누구나 외롭다.",
+      "published": true,
+      "sha256": "f963ee65a19fc8bf9b468d6c8be10e794710069f8e56284b153799e461ec7411",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/hedgefunds_transcation_manage.md",
+      "title": "초고속 결제 엔진에서 원자성은 어떻게 유지되는가?",
+      "published": true,
+      "sha256": "60d886d5925ee8cbb7c2b865a8e89e74c01734d27fc5d5cac2c3754ffe866022",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/hsp.md",
+      "title": "약점으로 오해되는 예민함, HSP",
+      "published": true,
+      "sha256": "f6119c1815b781607f9b100b358ae74e28d85c07abd7f0de77eef64f5f69ee5c",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/io-redirection-pipeline.md",
+      "title": "모든 것은 파일이다",
+      "published": true,
+      "sha256": "2503cc2871c64b6172be66c055ce617301fe2047392a129f617cb7ebc6ec64bd",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/java-object-dispatch.md",
+      "title": "Java는 왜 단순한 객체지향 언어가 아닐까?",
+      "published": true,
+      "sha256": "ad363ab5942e260d0bd882cdfc72e955321a273bec07ee062544104275601a9f",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 11,
+          "line": 223,
+          "language": "text",
+          "sample": "현재 상태:\na의 선언 타입 = A\na의 실제 객체 = B\n\n입력:\na.g()\n\n1단계:\ng()는 A에만 정의되어 있다.\nB는 g()를 오버라이딩하지 않았다.\n따라서 실행되는 메서드 본문은 A.g()다.\n\n2단계:\nA.g() 내부에서 f(\"a\")를 호출한다.\n\n3단계:\nA.g()가 컴파일될 당시,\nA 클래스 안에는 f(O"
+        },
+        {
+          "block": 15,
+          "line": 301,
+          "language": "text",
+          "sample": "요청 A: currentUser = \"alice\"\n요청 B: currentUser = \"bob\"\n요청 A: currentUser 읽기 → \"bob\"\n"
+        }
+      ]
+    },
+    {
+      "file": "2026/k8s-start.md",
+      "title": "[쿠버네티스-1] 이데아와 현실의 끝없는 투쟁",
+      "published": true,
+      "sha256": "0911e61b694f773c50d9f5ceaf8011846703d70ced72bdf782bdb962181efea4",
+      "editorial": "pending",
+      "editorialSignals": [
+        "완벽히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/knowledge.md",
+      "title": "AI 에 대한 이해",
+      "published": true,
+      "sha256": "6abff6be80f68b418c740a1eb282c17cf1305abc5849ea5e333263a7d412527c",
+      "editorial": "pending",
+      "editorialSignals": [
+        "완벽히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/limitation_of_bestcases.md",
+      "title": "베스트 프랙티스가 병목으로 바뀌는 순간: 싱글톤, Nginx, SAGA를 다시 보는 일",
+      "published": true,
+      "sha256": "1e3db2dcea81fa734935a8486e3d03ddfb1675ee345e5dfff943127ebc59d626",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/nobel1-kursk-tanks.md",
+      "title": "쿠르스크 초원의 전차전",
+      "published": true,
+      "sha256": "cf42c5a4dcce67339da769d4d3afbbe2ea2a32ebc6b9fd232804c48c18ec08c2",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/personalized-readability-ux.md",
+      "title": "개인화된 가독성: 텍스트를 넘어 이해를 설계하다",
+      "published": true,
+      "sha256": "1e2cecbba89225ae21f335feec4d2e7277d0dbd19141b8d14b1068b88dad8c55",
+      "editorial": "pending",
+      "editorialSignals": [
+        "중요합니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/proxmox-network-add.md",
+      "title": "Proxmox 네트워크 추가하기",
+      "published": true,
+      "sha256": "d1a968c214e081b44c254b23c87d85397c3ca9aedd1d2edc6871a28ec09ac70a",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/proxmox-opnsense-vlan-104-guide.md",
+      "title": "Proxmox & OPNsense VLAN 추가 및 설정 가이드",
+      "published": true,
+      "sha256": "4333cc62d4b494b117c2450bfb2124410a4997b8f84c8b0502e27d34f5b507b6",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/python-1.md",
+      "title": "[파이썬 1부] 파이썬의 변수 조회는 단순한 딕셔너리 검색일까?",
+      "published": true,
+      "sha256": "c59249667be719e95587e0ed5683f4eb9e90c5ba0ffce243ea470ca8a569d3e4",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 0,
+          "line": 39,
+          "language": "text",
+          "sample": "source text\n→ tokenizer\n→ PEG parser\n→ AST\n→ symbol table\n→ instruction sequence 생성\n→ CFG 구성 및 최적화\n→ assembler\n→ CodeObject(bytecode, consts, names, stacksize, exception table...)\n"
+        }
+      ]
+    },
+    {
+      "file": "2026/python-2.md",
+      "title": "[파이썬 2부] 파이썬의 모든 것은 객체이다.",
+      "published": true,
+      "sha256": "c2273c52e006df5564fe5958b2bf9c61f5e02df374af92aca1c243c3290d4c1d",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 0,
+          "line": 52,
+          "language": "text",
+          "sample": "Data descriptor → Instance dict (__dict__) → Non-data descriptor → Class variable → __getattr__()\n"
+        }
+      ]
+    },
+    {
+      "file": "2026/python-3.md",
+      "title": "[파이썬 3부] 동적 객체와 타협하는 방법",
+      "published": true,
+      "sha256": "085565b0fa8f3a40c547ae43301d19a9f03ffad2b71fcc36a06ab5f2122d24c1",
+      "editorial": "pending",
+      "editorialSignals": [
+        "살펴보겠습니다"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/remote-server-think.md",
+      "title": "게으름의 미학",
+      "published": true,
+      "sha256": "ab6973d07a1e53a3c16ddc7c02d5e1c5cefca135590227d9ef4f155d61dca713",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/shellscript-analyze-1.md",
+      "title": "쉘 스크립트의 공백: 리눅스 철학이 숨겨진 한 줄의 코드",
+      "published": true,
+      "sha256": "ab4d2cf0da17f2b152e35131a1db0f4ec3aea1975e263ad7c265eb4224f48244",
+      "editorial": "pending",
+      "editorialSignals": [
+        "솔직히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/sprintboot-1.md",
+      "title": "[스프링 서버 1부] Servlet Filter와 Spring Security는 어디서 요청을 가로채는가? 1편",
+      "published": true,
+      "sha256": "45bc199c671142d5c3efc525dd50be5a689afde010de140218911abe8554284e",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/teleport-config.md",
+      "title": "Teleport 설치와 서버 관리 가이드",
+      "published": true,
+      "sha256": "58b93c4684bfd182ef901a327e44f461ba3c7f8865509a78c97b606d1ec7d9d5",
+      "editorial": "pending",
+      "editorialSignals": [
+        "중요합니다"
+      ],
+      "diagramCount": 3,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/teleport.md",
+      "title": "리눅스, fork에서 io_uring까지, OS가 선택한 타협",
+      "published": true,
+      "sha256": "da78448144f70b8f7939c28af4bce490104dfcbba351bd7ef5021bf5132744ea",
+      "editorial": "pending",
+      "editorialSignals": [
+        "숨은 영웅",
+        "핵심입니다",
+        "여정"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": [
+        {
+          "block": 5,
+          "line": 138,
+          "language": "",
+          "sample": "[부모 task_struct]              [자식 task_struct] — fork 직후\n  pid: 1001                       pid: 1002         (새로 할당)\n  ppid: 1000                      ppid: 1001        (부모의 pid)\n "
+        },
+        {
+          "block": 6,
+          "line": 151,
+          "language": "",
+          "sample": "Shell (pid: 100)\n  │\n  ├─ fork() → Child1 (pid: 101)  [황금 틈]\n  │     pipe() → pipefd[0](읽기), pipefd[1](쓰기)\n  │     dup2(pipefd[1], STDOUT_FILENO)  ← stdout을 파이프 쓰기로 교체\n  │     exec"
+        },
+        {
+          "block": 12,
+          "line": 290,
+          "language": "",
+          "sample": "참조 열: 1, 2, 3, 4, 2, 3, 1, 5  /  프레임 수: 3\n\n시점  참조  프레임 상태  폴트?\n4     4     [4, 2, 3]    ✓  ← 1을 교체 (다음 참조는 시점 7로 가장 먼 미래)\n7     1     [1, 2, 3]    ✓  ← 4를 교체 (이후 참조 없음)\n"
+        },
+        {
+          "block": 13,
+          "line": 306,
+          "language": "",
+          "sample": "페이지 우선순위 (낮을수록 먼저 교체):\n  R=0, D=0  클래스 0: 최근 미사용 & 미수정  → 최우선 교체 대상\n  R=0, D=1  클래스 1: 최근 미사용 & 수정됨  (스왑 기록 필요)\n  R=1, D=0  클래스 2: 최근 사용 & 미수정\n  R=1, D=1  클래스 3: 최근 사용 & 수정됨    → 최"
+        },
+        {
+          "block": 14,
+          "line": 320,
+          "language": "",
+          "sample": "[Active 리스트]  ←→  [Inactive 리스트]\n  자주 참조됨             참조 빈도 낮음\n  (보호 대상)            (교체 후보)\n\n흐름:\n  새 페이지      → Inactive 리스트에 추가\n  재참조 시      → Active 리스트로 '승격'(Promotion)\n  Active"
+        },
+        {
+          "block": 15,
+          "line": 334,
+          "language": "",
+          "sample": "Active(anon):    890123 kB  ← 스택·힙 중 활성 (스왑 보호)\nInactive(anon):  234567 kB  ← 스왑 1순위 후보\nActive(file):    344444 kB  ← 파일 캐시 중 활성\nInactive(file):  333323 kB  ← 메모리 압박 시 드롭 대상\n"
+        },
+        {
+          "block": 20,
+          "line": 435,
+          "language": "",
+          "sample": "[I/O 모델 진화 연대기]\n1970s  Blocking I/O          → 단순하나 확장 불가\n1983   select()  BSD 4.2     → 다중 FD 감시, O(n) 스캔\n1994   poll()    POSIX        → select 개선, 여전히 O(n)\n2002   epoll     Linu"
+        },
+        {
+          "block": 21,
+          "line": 450,
+          "language": "",
+          "sample": "프로세스 ──── read(fd) ───→ 커널\n              [블로킹]       (디스크/네트워크 I/O 완료 대기)\n         ←── 데이터 반환 ───\n"
+        },
+        {
+          "block": 22,
+          "line": 471,
+          "language": "",
+          "sample": "epoll_fd = epoll_create1(0)              ← 커널에 감시 테이블 생성\nepoll_ctl(epoll_fd, EPOLL_CTL_ADD, ...)  ← O(log N), red-black 트리 등록\nn = epoll_wait(epoll_fd, events, ...)    ← 블로킹, 준비된 FD"
+        },
+        {
+          "block": 23,
+          "line": 484,
+          "language": "",
+          "sample": "[사용자 공간]                  [커널 공간]\n  SQ Ring (제출 큐) ←공유 메모리→  SQ Ring 처리\n  CQ Ring (완료 큐) ←공유 메모리→  CQ Ring 채우기\n"
+        }
+      ]
+    },
+    {
+      "file": "2026/understanding-ssm-and-mamba.md",
+      "title": "Understanding State Space Models and Mamba",
+      "published": true,
+      "sha256": "e452208ab775ccc38ea4aeb6f53d523eefa032690a1b7fd3087ff6ecc7c5e954",
+      "editorial": "pending",
+      "editorialSignals": [
+        "생각보다",
+        "완벽히"
+      ],
+      "diagramCount": 0,
+      "diagramCandidates": []
+    },
+    {
+      "file": "2026/vim-architecture-functionality-commands-integration.md",
+      "title": "Vim Architecture, Functionality, Commands, and Integration",
+      "published": true,
+      "sha256": "84b23cd2861a0349cec8b5315bc86152a39dcc386c9442741c8ca01297b8a124",
+      "editorial": "pending",
+      "editorialSignals": [],
+      "diagramCount": 1,
+      "diagramCandidates": []
+    }
+  ]
+}

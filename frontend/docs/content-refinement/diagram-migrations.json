@@ -1,0 +1,191 @@
+[
+  {
+    "file": "2024/multimodal-recommendation-system-research.md",
+    "originalLine": 148,
+    "originalBlock": 8,
+    "original": "[처리 파이프라인]\n원시 텍스트 --> 토큰화 --> Word2Vec 임베딩 --> 벡터 인덱싱 DB  \n     │                  │                 │  \n     └─IPC Queue1◄─┘         └─IPC Queue2─► 코사인 유사도 계산\n",
+    "title": "프로세스를 분리한 벡터 검색 파이프라인"
+  },
+  {
+    "file": "2024/multimodal-recommendation-system-research.md",
+    "originalLine": 129,
+    "originalBlock": 7,
+    "original": "[추천 의사결정 프로세스]\nStart  \n├── 콘텐츠 유형?  \n│   ├── 텍스트: TF-IDF + LSA 분석\n│   ├── 이미지: CNN 특징 매칭\n│   └── 영상: 프레임 분석 + 음성 처리\n├── 사용자 신규 여부?  \n│   ├── 신규: 인기 급상승 콘텐츠\n│   └── 기존: 행동 이력 기반\n└── 디바이스 환경?  \n    ├── 모바일: 짧은 형식 콘텐츠\n    └── 데스크톱: 심층 분석 콘텐츠\n",
+    "title": "추천 정책을 나누는 세 가지 기준"
+  },
+  {
+    "file": "2024/multimodal-recommendation-system-research.md",
+    "originalLine": 103,
+    "originalBlock": 6,
+    "original": "[추천 엔진 처리 흐름]\n  1. 데이터 수집  \n     │--> 사용자 행동 로그\n     │--> 콘텐츠 메타데이터\n     └--> 실시간 상호작용 스트림\n  2. 특징 공학  \n     │--> 텍스트: BERT 임베딩\n     │--> 이미지: CNN 특징 추출\n     └--> 영상: 키프레임 샘플링\n  3. 모델 연계  \n     │--> 협업 필터링(SVD)\n     │--> 콘텐츠 기반(Word2Vec)\n     └--> 하이브리드(NeuMF)\n  4. 추천 생성  \n     │--> 다단계 순위 결정\n     │--> 다양성 제어(MMR)\n     └--> 실시간 A/B 테스트\n  5. 피드백 루프  \n     │--> 암시적 피드백(시청 시간)\n     │--> 명시적 피드백(좋아요)\n     └--> 사용자 설문 조사\n",
+    "title": "추천 엔진 처리 흐름"
+  },
+  {
+    "file": "2024/multimodal-recommendation-system-research.md",
+    "originalLine": 40,
+    "originalBlock": 2,
+    "original": "[영상 추천 프로세스]\n프레임 샘플링 --> 오디오 트랜스크립트 생성 --> 키프레임 특징 추출  \n       │               │\n       │               └--> 텍스트 임베딩과 결합  \n       └--> 3D CNN으로 동작 패턴 분석 --> 사용자 시청 완료율과 연계\n",
+    "title": "영상의 시각·음성 정보 처리"
+  },
+  {
+    "file": "2024/multimodal-recommendation-system-research.md",
+    "originalLine": 29,
+    "originalBlock": 1,
+    "original": "[이미지 처리 아키텍처]\n이미지 입력 --> CNN 특징 추출(VGG16/ResNet) --> 특징 벡터 DB 저장  \n       │\n       └--> 유클리드 거리 기반 유사 이미지 검색 --> 사용자 클릭 스트림과 결합\n",
+    "title": "이미지 특징과 행동 로그 결합"
+  },
+  {
+    "file": "2024/multimodal-recommendation-system-research.md",
+    "originalLine": 18,
+    "originalBlock": 0,
+    "original": "[텍스트 처리 파이프라인]\n웹 페이지 텍스트 --> 토큰화 --> TF-IDF/Word2Vec 임베딩 --> 잠재 의미 분석(LSA)\n       │\n       └--> 사용자 검색 이력과의 코사인 유사도 계산\n",
+    "title": "텍스트에서 추천 후보까지"
+  },
+  {
+    "file": "2024/9.md",
+    "originalLine": 16,
+    "originalBlock": 0,
+    "original": "/etc/nginx/\n├── nginx.conf          # 메인 설정 파일\n├── sites-available/    # 사용 가능한 가상 호스트 설정 파일\n└── sites-enabled/      # 활성화된 가상 호스트 설정 파일 (심볼릭 링크로 연결됨)\n",
+    "title": "/etc/nginx/ 디렉터리 구성"
+  },
+  {
+    "file": "2024/react-nextjs-modern-web-development.md",
+    "originalLine": 122,
+    "originalBlock": 3,
+    "original": "pages/\n  index.js       -> 홈페이지 (/)\n  about.js       -> 어바웃 페이지 (/about)\n  blog/\n    index.js     -> 블로그 메인 (/blog)\n    [id].js      -> 개별 블로그 글 (/blog/1, /blog/2, ...)\n",
+    "title": "pages/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/git-submodule-guide.md",
+    "originalLine": 227,
+    "originalBlock": 17,
+    "original": "# 프로덕션 설정을 별도 저장소로 관리\napi-server/\n├── src/\n├── config/              # 서브모듈 (private repo)\n│   ├── database.yml\n│   ├── secrets.yml\n│   └── ...\n└── app.js\n",
+    "title": "api-server/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/git-submodule-guide.md",
+    "originalLine": 213,
+    "originalBlock": 16,
+    "original": "# 메인 프로젝트 구조\nmy-website/\n├── src/\n├── components/          # 서브모듈\n│   ├── Button/\n│   ├── Modal/\n│   └── ...\n└── package.json\n",
+    "title": "my-website/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/integration-01-devops-pipeline.md",
+    "originalLine": 30,
+    "originalBlock": 1,
+    "original": "devops-pipeline/\n├── terraform/\n│   ├── main.tf / variables.tf / outputs.tf\n│   └── modules/{vpc,ec2,security}\n├── ansible/\n│   ├── inventory/hosts.yml\n│   ├── playbooks/full-setup.yml\n│   └── roles/{docker,kubernetes,monitoring}\n├── kubernetes/\n│   ├── kafka/{namespace,statefulset들}\n│   ├── microservices/{order,payment,notification}\n│   └── monitoring/{prometheus,grafana}\n└── apps/{order-service,payment-service,notification-service}\n",
+    "title": "devops-pipeline/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/integration-01-devops-pipeline.md",
+    "originalLine": 22,
+    "originalBlock": 0,
+    "original": "1단계 Terraform: VPC, Subnets, EC2(K8s Nodes), SG\n2단계 Ansible: Docker 설치, kubeadm 초기화, 모니터링 도구 배포\n3단계 Kubernetes: Kafka StatefulSet + Microservices + Service\n4단계 Streaming: 주문 → 결제 → 알림 이벤트 흐름\n",
+    "title": "인프라에서 이벤트 처리까지"
+  },
+  {
+    "file": "2025/ansible-02-inventory-basics.md",
+    "originalLine": 179,
+    "originalBlock": 8,
+    "original": "inventory/\n  prod/\n    hosts.yml\n    group_vars/\n  stage/\n    hosts.yml\n    group_vars/\n",
+    "title": "inventory/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/ansible-02-inventory-basics.md",
+    "originalLine": 105,
+    "originalBlock": 3,
+    "original": "inventory/\n  hosts.yml\n  group_vars/\n    all.yml\n    prod.yml\n    web.yml\n  host_vars/\n    web1.yml\n",
+    "title": "inventory/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/ansible-04-roles.md",
+    "originalLine": 19,
+    "originalBlock": 0,
+    "original": "roles/\n  webserver/\n    tasks/\n      main.yml\n    handlers/\n      main.yml\n    templates/\n    files/\n    defaults/\n      main.yml\n    vars/\n      main.yml\n    meta/\n      main.yml\n",
+    "title": "roles/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/terraform-01-basic-setup.md",
+    "originalLine": 146,
+    "originalBlock": 13,
+    "original": "output/\n├── logs/\n│   ├── app.log\n│   └── error.log\n└── data/\n    └── config.json\n",
+    "title": "output/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/terraform-01-basic-setup.md",
+    "originalLine": 38,
+    "originalBlock": 2,
+    "original": "project/\n├── main.tf          # 주요 리소스 정의\n├── variables.tf     # 변수 선언\n├── outputs.tf       # 출력 값 정의\n├── terraform.tfvars # 변수 값 설정\n└── .terraform/      # 플러그인 & 상태 (자동 생성)\n",
+    "title": "project/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/terraform-02-aws-ec2-example.md",
+    "originalLine": 39,
+    "originalBlock": 2,
+    "original": "02-aws-ec2/\n├── main.tf\n├── variables.tf\n├── outputs.tf\n├── terraform.tfvars\n└── userdata.sh\n",
+    "title": "02-aws-ec2/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/terraform-03-state-management.md",
+    "originalLine": 139,
+    "originalBlock": 7,
+    "original": "live/\n  prod/\n    network/\n    compute/\n  stage/\n    network/\nmodules/\n  vpc/\n  ecs-service/\n",
+    "title": "live/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/terraform-03-state-management.md",
+    "originalLine": 86,
+    "originalBlock": 2,
+    "original": "modules/\n  vpc/\n    main.tf\n    variables.tf\n    outputs.tf\n",
+    "title": "modules/ 디렉터리 구성"
+  },
+  {
+    "file": "2026/teleport-config.md",
+    "originalLine": 378,
+    "originalBlock": 18,
+    "original": "/opt/teleport/\n├── docker-compose.yml\n├── config/\n│   └── teleport.yaml\n├── data/\n└── logs/\n",
+    "title": "/opt/teleport/ 디렉터리 구성"
+  },
+  {
+    "file": "2026/teleport-config.md",
+    "originalLine": 150,
+    "originalBlock": 8,
+    "original": "외부 18080 -> Nginx 80  -> HTTP 접속 시 https://teleport.example.net:18443 으로 리다이렉트\n외부 18443 -> Nginx 443 -> Teleport 8443 으로 SSL passthrough\n내부 3025 -> Teleport Auth join\n내부 3024 -> Teleport reverse tunnel\n",
+    "title": "Nginx를 거치는 포트 연결"
+  },
+  {
+    "file": "2026/teleport-config.md",
+    "originalLine": 106,
+    "originalBlock": 7,
+    "original": "[인터넷]\n    |\n    v\n[your-domain.com]\n    |\n    v\n[Teleport Proxy/Auth 서버]\n  - 443  : Web UI, tsh login, HTTPS\n  - 3025 : Auth join\n  - 3024 : Reverse tunnel\n    |\n    +--> [대상 서버 1] teleport node agent\n    +--> [대상 서버 2] teleport node agent\n    +--> [대상 서버 3] teleport node agent\n",
+    "title": "Teleport 접속 구조"
+  },
+  {
+    "file": "2026/vim-architecture-functionality-commands-integration.md",
+    "originalLine": 57,
+    "originalBlock": 0,
+    "original": "~/.vim/\n├── autoload/        # 자동 로딩 스크립트\n├── plugin/          # 플러그인 스크립트\n├── ftplugin/        # 파일타입별 설정\n├── colors/          # 컬러스킴\n├── syntax/          # 구문 강조\n└── after/           # 후처리 설정\n",
+    "title": "~/.vim/ 디렉터리 구성"
+  },
+  {
+    "file": "2025/kafka-01-concepts-architecture.md",
+    "originalLine": 56,
+    "originalBlock": 2,
+    "original": "Offset | Timestamp | Key | Value | Headers\n",
+    "title": "메시지를 읽을 때 보는 정보"
+  },
+  {
+    "file": "2025/kafka-01-concepts-architecture.md",
+    "originalLine": 22,
+    "originalBlock": 0,
+    "original": "Kafka Cluster\n  Broker 1  Broker 2  Broker 3\n  ├─ Topic-A (P0,P1,P2)\n  └─ Topic-B (P0,P1,P2)\nProducer → (Partitions) ← Consumer Group(s)\n",
+    "title": "Kafka 메시지 전달 구조"
+  },
+  {
+    "file": "2025/kubernetes-02-pods-deployments.md",
+    "originalLine": 24,
+    "originalBlock": 0,
+    "original": "Pod\n├─ Container 1 (Main)\n├─ Container 2 (Sidecar)\n└─ Shared: Network, Storage\n",
+    "title": "Pod 안의 컨테이너와 공유 자원"
+  }
+]

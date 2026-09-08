@@ -19,28 +19,189 @@ Terraform, Ansible, Kubernetes, Kafka를 통합하여 완전한 DevOps 파이프
 - IaC + 설정 자동화 + 컨테이너 오케스트레이션 + 스트리밍 통합
 
 ##  전체 아키텍처 개괄
-```
-1단계 Terraform: VPC, Subnets, EC2(K8s Nodes), SG
-2단계 Ansible: Docker 설치, kubeadm 초기화, 모니터링 도구 배포
-3단계 Kubernetes: Kafka StatefulSet + Microservices + Service
-4단계 Streaming: 주문 → 결제 → 알림 이벤트 흐름
+```diagram
+{
+  "title": "인프라에서 이벤트 처리까지",
+  "kind": "flow",
+  "nodes": [
+    {
+      "id": "terraform",
+      "label": "Terraform",
+      "items": [
+        "VPC",
+        "Subnets",
+        "EC2 · Kubernetes 노드",
+        "Security Group"
+      ]
+    },
+    {
+      "id": "ansible",
+      "label": "Ansible",
+      "items": [
+        "Docker 설치",
+        "kubeadm 초기화",
+        "모니터링 도구 배포"
+      ]
+    },
+    {
+      "id": "kubernetes",
+      "label": "Kubernetes",
+      "items": [
+        "Kafka StatefulSet",
+        "Microservices",
+        "Service"
+      ]
+    },
+    {
+      "id": "streaming",
+      "label": "이벤트 처리",
+      "items": [
+        "주문",
+        "결제",
+        "알림"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "to": "ansible",
+      "from": "terraform"
+    },
+    {
+      "to": "kubernetes",
+      "from": "ansible"
+    },
+    {
+      "to": "streaming",
+      "from": "kubernetes"
+    }
+  ]
+}
 ```
 
 ##  프로젝트 구조 (요약)
-```
-devops-pipeline/
-├── terraform/
-│   ├── main.tf / variables.tf / outputs.tf
-│   └── modules/{vpc,ec2,security}
-├── ansible/
-│   ├── inventory/hosts.yml
-│   ├── playbooks/full-setup.yml
-│   └── roles/{docker,kubernetes,monitoring}
-├── kubernetes/
-│   ├── kafka/{namespace,statefulset들}
-│   ├── microservices/{order,payment,notification}
-│   └── monitoring/{prometheus,grafana}
-└── apps/{order-service,payment-service,notification-service}
+```diagram
+{
+  "title": "devops-pipeline/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "devops-pipeline/"
+    },
+    {
+      "id": "n1",
+      "label": "terraform/"
+    },
+    {
+      "id": "n2",
+      "label": "main.tf / variables.tf / outputs.tf"
+    },
+    {
+      "id": "n3",
+      "label": "modules/{vpc,ec2,security}"
+    },
+    {
+      "id": "n4",
+      "label": "ansible/"
+    },
+    {
+      "id": "n5",
+      "label": "inventory/hosts.yml"
+    },
+    {
+      "id": "n6",
+      "label": "playbooks/full-setup.yml"
+    },
+    {
+      "id": "n7",
+      "label": "roles/{docker,kubernetes,monitoring}"
+    },
+    {
+      "id": "n8",
+      "label": "kubernetes/"
+    },
+    {
+      "id": "n9",
+      "label": "kafka/{namespace,statefulset들}"
+    },
+    {
+      "id": "n10",
+      "label": "microservices/{order,payment,notification}"
+    },
+    {
+      "id": "n11",
+      "label": "monitoring/{prometheus,grafana}"
+    },
+    {
+      "id": "n12",
+      "label": "apps/{order-service,payment-service,notification-service}"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n4",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n4",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n7",
+      "from": "n4",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n8",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n9",
+      "from": "n8",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n10",
+      "from": "n8",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n11",
+      "from": "n8",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n12",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 ##  Terraform 핵심 (발췌)

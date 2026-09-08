@@ -1,6 +1,25 @@
 {
-  "total": 279,
+  "total": 281,
   "items": [
+    {
+      "path": "/posts/2026/ai-usage-habitual-search-inertia-report.md",
+      "year": "2026",
+      "slug": "ai-usage-habitual-search-inertia-report",
+      "title": "AI 활용 안일화와 검색창 고착 구조 분석 보고서 첨부",
+      "description": "AI 활용 안일화 및 검색창 고착 현상을 정리한 분석 보고서 PDF 첨부글입니다.",
+      "snippet": "AI 활용 안일화 및 검색창 고착 현상을 정리한 분석 보고서 PDF 첨부글입니다.",
+      "date": "2026-07-21",
+      "tags": [
+        "AI",
+        "PDF",
+        "Analysis"
+      ],
+      "category": "AI",
+      "author": "Admin",
+      "readingTime": "1 min read",
+      "published": true,
+      "url": "/blog/2026/ai-usage-habitual-search-inertia-report"
+    },
     {
       "path": "/posts/2026/knowledge.md",
       "year": "2026",
@@ -21,6 +40,30 @@
       "readingTime": "18 min read",
       "published": true,
       "url": "/blog/2026/knowledge"
+    },
+    {
+      "path": "/posts/2026/java-object-dispatch.md",
+      "year": "2026",
+      "slug": "java-object-dispatch",
+      "title": "Java는 왜 단순한 객체지향 언어가 아닐까?",
+      "description": "Java를 문법 목록이 아니라, 코드가 실행 시점에 상태와 책임을 어떻게 분리하는지 보여주는 구조로 다시 본다.",
+      "snippet": "Java를 문법 목록이 아니라, 코드가 실행 시점에 상태와 책임을 어떻게 분리하는지 보여주는 구조로 다시 본다.",
+      "date": "2026-06-10",
+      "tags": [
+        "Java",
+        "객체지향",
+        "JVM",
+        "상속",
+        "다형성",
+        "static",
+        "런타임"
+      ],
+      "category": "Programming Language",
+      "author": "Admin",
+      "readingTime": "10 min read",
+      "published": true,
+      "coverImage": "/images/2026/java-object-dispatch/1.png",
+      "url": "/blog/2026/java-object-dispatch"
     },
     {
       "path": "/posts/2026/argocd-github-dns-failure.md",
@@ -5380,9 +5423,9 @@
       "path": "/posts/2024/multimodal-recommendation-system-research.md",
       "year": "2024",
       "slug": "multimodal-recommendation-system-research",
-      "title": "웹 기반 다중 모달 추천 시스템 연구",
-      "description": "텍스트, 이미지, 영상 데이터를 종합적으로 처리하는 하이브리드 추천 시스템의 알고리즘 설계와 구현 방법에 대한 심화 연구입니다.",
-      "snippet": "텍스트, 이미지, 영상 데이터를 종합적으로 처리하는 하이브리드 추천 시스템의 알고리즘 설계와 구현 방법에 대한 심화 연구입니다.",
+      "title": "텍스트·이미지·영상을 함께 쓰는 추천 시스템 설계",
+      "description": "콘텐츠별 특징 추출, 추천 후보 생성, 사용자 피드백을 연결하는 설계와 검증할 항목을 정리했다.",
+      "snippet": "콘텐츠별 특징 추출, 추천 후보 생성, 사용자 피드백을 연결하는 설계와 검증할 항목을 정리했다.",
       "date": "2024-09-20",
       "tags": [
         "추천 시스템",
@@ -5395,7 +5438,7 @@
       ],
       "category": "AI",
       "author": "Admin",
-      "readingTime": "2 min read",
+      "readingTime": "4 min read",
       "published": true,
       "url": "/blog/2024/multimodal-recommendation-system-research"
     },
@@ -5520,7 +5563,7 @@
       ],
       "category": "기술",
       "author": "Admin",
-      "readingTime": "3 min read",
+      "readingTime": "2 min read",
       "published": true,
       "url": "/blog/2024/9"
     },
@@ -5922,14 +5965,16 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-06-22T01:48:08.355Z",
+  "generatedAt": "2026-09-08T00:01:02.957Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
+    "AI": 5,
     "ai": 1,
+    "Programming Language": 1,
     "Kubernetes": 2,
     "Mindset": 1,
     "기술": 26,
@@ -5945,7 +5990,6 @@
     "Guide": 1,
     "Essay": 1,
     "algorithm": 1,
-    "AI": 4,
     "문학": 1,
     "Tech & Philosophy": 5,
     "Fiction": 1,

@@ -102,15 +102,83 @@ all:
 
 어느 순간부터 저는 변수들을 파일로 분리하지 않으면 혼란이 생긴다는 사실을 깨달았습니다. 그래서 `group_vars`와 `host_vars`를 디렉터리로 나누고, 각 그룹과 호스트가 사용하는 설정을 별도 YAML 파일에 옮겨 적었습니다.
 
-```text
-inventory/
-  hosts.yml
-  group_vars/
-    all.yml
-    prod.yml
-    web.yml
-  host_vars/
-    web1.yml
+```diagram
+{
+  "title": "inventory/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "inventory/"
+    },
+    {
+      "id": "n1",
+      "label": "hosts.yml"
+    },
+    {
+      "id": "n2",
+      "label": "group_vars/"
+    },
+    {
+      "id": "n3",
+      "label": "all.yml"
+    },
+    {
+      "id": "n4",
+      "label": "prod.yml"
+    },
+    {
+      "id": "n5",
+      "label": "web.yml"
+    },
+    {
+      "id": "n6",
+      "label": "host_vars/"
+    },
+    {
+      "id": "n7",
+      "label": "web1.yml"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n7",
+      "from": "n6",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 `group_vars/prod.yml`에는 공통 사용자와 로깅 레벨을 담았고, `group_vars/web.yml`에는 웹 서버만의 타임아웃 값을, `host_vars/web1.yml`에는 특정 헤더 값을 지정했습니다.
@@ -176,14 +244,74 @@ compose:
 
 프로덕션과 스테이징을 어떻게 분리할지도 늘 고민거리였습니다. 세 가지 전략을 번갈아 적용했습니다. 첫 번째는 단일 레포 안에서 `inventory/prod`와 `inventory/stage` 디렉터리를 나누는 방식입니다. 두 번째는 동적 인벤토리를 쓰되 태그 조건으로 환경을 구분하는 방법입니다. 마지막으로는 규제가 강한 환경에서 쓰는 완전 별도 레포 전략입니다. 환경마다 접근 권한이 다를 때 유용합니다.
 
-```text
-inventory/
-  prod/
-    hosts.yml
-    group_vars/
-  stage/
-    hosts.yml
-    group_vars/
+```diagram
+{
+  "title": "inventory/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "inventory/"
+    },
+    {
+      "id": "n1",
+      "label": "prod/"
+    },
+    {
+      "id": "n2",
+      "label": "hosts.yml"
+    },
+    {
+      "id": "n3",
+      "label": "group_vars/"
+    },
+    {
+      "id": "n4",
+      "label": "stage/"
+    },
+    {
+      "id": "n5",
+      "label": "hosts.yml"
+    },
+    {
+      "id": "n6",
+      "label": "group_vars/"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n4",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n4",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 CI 파이프라인을 구성할 때는 `ENV` 변수를 전달해 적절한 디렉터리를 선택하고, `ansible-playbook -i inventory/${ENV}/hosts.yml site.yml` 명령으로 원하는 환경만 조준합니다. 이렇게 흐름을 정리해 두면, 누군가 실수로 잘못된 환경에 배포하는 상황을 미리 막을 수 있습니다.

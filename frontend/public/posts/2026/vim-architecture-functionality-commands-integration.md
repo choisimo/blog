@@ -54,14 +54,80 @@ Vim의 핵심 아키텍처는 **모드(Mode)** 기반 설계입니다:
 
 ### 3. 플러그인 아키텍처
 
-```
-~/.vim/
-├── autoload/        # 자동 로딩 스크립트
-├── plugin/          # 플러그인 스크립트
-├── ftplugin/        # 파일타입별 설정
-├── colors/          # 컬러스킴
-├── syntax/          # 구문 강조
-└── after/           # 후처리 설정
+```diagram
+{
+  "title": "~/.vim/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "~/.vim/"
+    },
+    {
+      "id": "n1",
+      "label": "autoload/",
+      "detail": "자동 로딩 스크립트"
+    },
+    {
+      "id": "n2",
+      "label": "plugin/",
+      "detail": "플러그인 스크립트"
+    },
+    {
+      "id": "n3",
+      "label": "ftplugin/",
+      "detail": "파일타입별 설정"
+    },
+    {
+      "id": "n4",
+      "label": "colors/",
+      "detail": "컬러스킴"
+    },
+    {
+      "id": "n5",
+      "label": "syntax/",
+      "detail": "구문 강조"
+    },
+    {
+      "id": "n6",
+      "label": "after/",
+      "detail": "후처리 설정"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 **플러그인 관리자**: vim-plug, Vundle, Pathogen
