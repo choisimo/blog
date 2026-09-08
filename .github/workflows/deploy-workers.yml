@@ -2,6 +2,12 @@ name: Deploy Cloudflare Workers
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Deploy workers or inspect the admin Access configuration'
+        type: choice
+        options: [deploy, inspect-admin-access]
+        default: deploy
   push:
     branches: [main]
     paths:
@@ -14,7 +20,21 @@ permissions:
   contents: read
 
 jobs:
+  inspect-admin-access:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'inspect-admin-access'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Inspect Access applications and runtime configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/inspect-admin-access.mjs
   build-matrix:
+    if: github.event_name != 'workflow_dispatch' || inputs.operation != 'inspect-admin-access'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}

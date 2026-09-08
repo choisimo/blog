@@ -508,6 +508,11 @@
         "boundaryId": "gateway",
         "owner": "worker",
         "path": "/api/v1/gateway"
+      },
+      {
+        "boundaryId": "agent",
+        "owner": "worker",
+        "path": "/api/v1/agent"
       }
     ]
   },
