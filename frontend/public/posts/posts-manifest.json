@@ -1,6 +1,30 @@
 {
-  "total": 281,
+  "total": 282,
   "items": [
+    {
+      "path": "/posts/2026/organizing-intelligence-era.md",
+      "year": "2026",
+      "slug": "organizing-intelligence-era",
+      "title": "지능을 소유하던 시대에서 지능을 조직하는 시대로",
+      "description": "AI·에이전트·로보틱스가 바꾸는 지식, 노동, 교육과 개인의 확장. 지능을 소유하는 능력에서 지능을 조직하고 검증하는 능력으로 이동하는 시대를 살펴봅니다.",
+      "snippet": "AI·에이전트·로보틱스가 바꾸는 지식, 노동, 교육과 개인의 확장. 지능을 소유하는 능력에서 지능을 조직하고 검증하는 능력으로 이동하는 시대를 살펴봅니다.",
+      "date": "2026-09-08",
+      "tags": [
+        "AI",
+        "AGI",
+        "에이전트",
+        "로보틱스",
+        "컴퓨터공학",
+        "노동",
+        "교육"
+      ],
+      "category": "AI",
+      "author": "nodove",
+      "readingTime": "65 min read",
+      "published": true,
+      "coverImage": "/images/2026/organizing-intelligence-era/cover-ink-editorial.png",
+      "url": "/blog/2026/organizing-intelligence-era"
+    },
     {
       "path": "/posts/2026/ai-usage-habitual-search-inertia-report.md",
       "year": "2026",
@@ -5965,14 +5989,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-09-08T00:01:02.957Z",
+  "generatedAt": "2026-09-08T13:42:08.431Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
-    "AI": 5,
+    "AI": 6,
     "ai": 1,
     "Programming Language": 1,
     "Kubernetes": 2,

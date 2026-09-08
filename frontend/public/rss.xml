@@ -5,8 +5,23 @@
     <description>A blog about technology, programming, and web development</description>
     <link>https://noblog.nodove.com</link>
     <atom:link href="https://noblog.nodove.com/rss.xml" rel="self" type="application/rss+xml"/>
-    <lastBuildDate>Tue, 08 Sep 2026 00:01:03 GMT</lastBuildDate>
+    <lastBuildDate>Tue, 08 Sep 2026 13:42:08 GMT</lastBuildDate>
     <language>en-US</language>
+    <item>
+      <title>지능을 소유하던 시대에서 지능을 조직하는 시대로</title>
+      <description>AI·에이전트·로보틱스가 바꾸는 지식, 노동, 교육과 개인의 확장. 지능을 소유하는 능력에서 지능을 조직하고 검증하는 능력으로 이동하는 시대를 살펴봅니다.</description>
+      <link>https://noblog.nodove.com/blog/2026/organizing-intelligence-era</link>
+      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/organizing-intelligence-era</guid>
+      <pubDate>Tue, 08 Sep 2026 00:00:00 GMT</pubDate>
+      <category>AI</category>
+      <category>AI</category>
+      <category>AGI</category>
+      <category>에이전트</category>
+      <category>로보틱스</category>
+      <category>컴퓨터공학</category>
+      <category>노동</category>
+      <category>교육</category>
+    </item>
     <item>
       <title>AI 활용 안일화와 검색창 고착 구조 분석 보고서 첨부</title>
       <description>AI 활용 안일화 및 검색창 고착 현상을 정리한 분석 보고서 PDF 첨부글입니다.</description>
@@ -276,17 +291,6 @@
       <category>Nginx</category>
       <category>SAGA</category>
       <category>Design for Failure</category>
-    </item>
-    <item>
-      <title>awk 시스템 처리 원리</title>
-      <description>awk 시스템 레벨에서의 처리 원리를 아주 간단하게 살펴봅시다.</description>
-      <link>https://noblog.nodove.com/blog/2026/awk-1</link>
-      <guid isPermaLink="true">https://noblog.nodove.com/blog/2026/awk-1</guid>
-      <pubDate>Fri, 06 Mar 2026 00:00:00 GMT</pubDate>
-      <category>Linux, awk, memory</category>
-      <category>record</category>
-      <category>interpreter</category>
-      <category>awk</category>
     </item>
   </channel>
 </rss>
