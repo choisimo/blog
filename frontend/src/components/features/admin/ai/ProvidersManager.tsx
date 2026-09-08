@@ -350,12 +350,12 @@ export function ProvidersManager() {
   return (
     <Card className={["ui-admin-section ui-admin-providersmanager", ("ui-panel")].filter(Boolean).join(' ')}>
       <CardHeader className="ui-panel-header">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="ui-panel-title">AI Providers</CardTitle>
             <CardDescription className="ui-description">Manage AI service providers and their API configurations</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="ui-control" data-ui-variant="outline" variant="outline">

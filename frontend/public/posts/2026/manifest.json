@@ -14,6 +14,7 @@
     "ai-agent-arena-2026-overview-and-comparison.md",
     "ai-agent-arena-2026-sonnet-4-6.md",
     "ai-agent-arena-2026-swe-1-5.md",
+    "ai-usage-habitual-search-inertia-report.md",
     "algorithm-1.md",
     "algorithm-2.md",
     "alone.md",
@@ -28,6 +29,7 @@
     "hedgefunds_transcation_manage.md",
     "hsp.md",
     "io-redirection-pipeline.md",
+    "java-object-dispatch.md",
     "k8s-start.md",
     "knowledge.md",
     "limitation_of_bestcases.md",
@@ -50,7 +52,7 @@
     "opnsense-policy-step-simulator.html",
     "vim-simulator.html"
   ],
-  "generatedAt": "2026-06-22T01:48:08.309Z",
-  "totalFiles": 45,
+  "generatedAt": "2026-09-08T00:01:02.898Z",
+  "totalFiles": 47,
   "excludedFiles": 0
 }

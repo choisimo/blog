@@ -1,0 +1,2547 @@
+{
+  "scope": "Real AdminDashboard/PromptsManager/LogViewer in test-only React harness; requests use fixtures, no production authentication or API writes.",
+  "results": [
+    {
+      "section": "prompts",
+      "theme": "light",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 305,
+      "panelWidth": 277,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "Refresh",
+          "x": 25.5,
+          "width": 254,
+          "height": 44,
+          "right": 279.5
+        },
+        {
+          "name": "Reset",
+          "x": 29,
+          "width": 69.609375,
+          "height": 44,
+          "right": 98.609375
+        },
+        {
+          "name": "Save",
+          "x": 103.859375,
+          "width": 64.46875,
+          "height": 44,
+          "right": 168.328125
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 25.5,
+          "width": 254,
+          "height": 652.875,
+          "right": 279.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "light",
+      "width": 375,
+      "viewport": 375,
+      "documentWidth": 360,
+      "panelWidth": 332,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 56.875,
+          "right": 180
+        },
+        {
+          "name": "Refresh",
+          "x": 25.5,
+          "width": 309,
+          "height": 44,
+          "right": 334.5
+        },
+        {
+          "name": "Reset",
+          "x": 29,
+          "width": 69.609375,
+          "height": 44,
+          "right": 98.609375
+        },
+        {
+          "name": "Save",
+          "x": 103.859375,
+          "width": 63.984375,
+          "height": 44,
+          "right": 167.84375
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 25.5,
+          "width": 309,
+          "height": 652.875,
+          "right": 334.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "light",
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 753,
+      "panelWidth": 713,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "Refresh",
+          "x": 31.5,
+          "width": 132,
+          "height": 44,
+          "right": 163.5
+        },
+        {
+          "name": "Reset",
+          "x": 579.15625,
+          "width": 69.609375,
+          "height": 44,
+          "right": 648.765625
+        },
+        {
+          "name": "Save",
+          "x": 654.015625,
+          "width": 63.984375,
+          "height": 44,
+          "right": 718
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 185.5,
+          "width": 536,
+          "height": 658.96875,
+          "right": 721.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "light",
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "panelWidth": 739,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "Refresh",
+          "x": 258.25,
+          "width": 141.5,
+          "height": 44,
+          "right": 399.75
+        },
+        {
+          "name": "Reset",
+          "x": 826.625,
+          "width": 71.984375,
+          "height": 44,
+          "right": 898.609375
+        },
+        {
+          "name": "Save",
+          "x": 904.234375,
+          "width": 64.765625,
+          "height": 44,
+          "right": 969
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 423.25,
+          "width": 549.5,
+          "height": 660.21875,
+          "right": 972.75
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "light",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "panelWidth": 1139,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "Refresh",
+          "x": 266.25,
+          "width": 141.5,
+          "height": 44,
+          "right": 407.75
+        },
+        {
+          "name": "Reset",
+          "x": 1233.03125,
+          "width": 71.984375,
+          "height": 44,
+          "right": 1305.015625
+        },
+        {
+          "name": "Save",
+          "x": 1310.640625,
+          "width": 66.359375,
+          "height": 44,
+          "right": 1377
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 431.25,
+          "width": 949.5,
+          "height": 660.21875,
+          "right": 1380.75
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "dark",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 305,
+      "panelWidth": 277,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "Refresh",
+          "x": 25.5,
+          "width": 254,
+          "height": 44,
+          "right": 279.5
+        },
+        {
+          "name": "Reset",
+          "x": 29,
+          "width": 69.609375,
+          "height": 44,
+          "right": 98.609375
+        },
+        {
+          "name": "Save",
+          "x": 103.859375,
+          "width": 64.21875,
+          "height": 44,
+          "right": 168.078125
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 25.5,
+          "width": 254,
+          "height": 652.875,
+          "right": 279.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "dark",
+      "width": 375,
+      "viewport": 375,
+      "documentWidth": 360,
+      "panelWidth": 332,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 56.875,
+          "right": 180
+        },
+        {
+          "name": "Refresh",
+          "x": 25.5,
+          "width": 309,
+          "height": 44,
+          "right": 334.5
+        },
+        {
+          "name": "Reset",
+          "x": 29,
+          "width": 69.609375,
+          "height": 44,
+          "right": 98.609375
+        },
+        {
+          "name": "Save",
+          "x": 103.859375,
+          "width": 63.984375,
+          "height": 44,
+          "right": 167.84375
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 25.5,
+          "width": 309,
+          "height": 652.875,
+          "right": 334.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "dark",
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 753,
+      "panelWidth": 713,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "Refresh",
+          "x": 31.5,
+          "width": 132,
+          "height": 44,
+          "right": 163.5
+        },
+        {
+          "name": "Reset",
+          "x": 579.15625,
+          "width": 69.609375,
+          "height": 44,
+          "right": 648.765625
+        },
+        {
+          "name": "Save",
+          "x": 654.015625,
+          "width": 63.984375,
+          "height": 44,
+          "right": 718
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 185.5,
+          "width": 536,
+          "height": 658.96875,
+          "right": 721.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "dark",
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "panelWidth": 739,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "Refresh",
+          "x": 258.25,
+          "width": 141.5,
+          "height": 44,
+          "right": 399.75
+        },
+        {
+          "name": "Reset",
+          "x": 825.9375,
+          "width": 71.984375,
+          "height": 44,
+          "right": 897.921875
+        },
+        {
+          "name": "Save",
+          "x": 903.546875,
+          "width": 65.453125,
+          "height": 44,
+          "right": 969
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 423.25,
+          "width": 549.5,
+          "height": 660.21875,
+          "right": 972.75
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "dark",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "panelWidth": 1139,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "Refresh",
+          "x": 266.25,
+          "width": 141.5,
+          "height": 44,
+          "right": 407.75
+        },
+        {
+          "name": "Reset",
+          "x": 1233.03125,
+          "width": 71.984375,
+          "height": 44,
+          "right": 1305.015625
+        },
+        {
+          "name": "Save",
+          "x": 1310.640625,
+          "width": 66.359375,
+          "height": 44,
+          "right": 1377
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 431.25,
+          "width": 949.5,
+          "height": 660.21875,
+          "right": 1380.75
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "terminal",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 305,
+      "panelWidth": 277,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 152.5,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 290
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 15,
+          "width": 137.5,
+          "height": 56.875,
+          "right": 152.5
+        },
+        {
+          "name": "Refresh",
+          "x": 25.5,
+          "width": 254,
+          "height": 44,
+          "right": 279.5
+        },
+        {
+          "name": "Reset",
+          "x": 29,
+          "width": 74.265625,
+          "height": 44,
+          "right": 103.265625
+        },
+        {
+          "name": "Save",
+          "x": 108.515625,
+          "width": 64.5625,
+          "height": 44,
+          "right": 173.078125
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 25.5,
+          "width": 254,
+          "height": 534,
+          "right": 279.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "terminal",
+      "width": 375,
+      "viewport": 375,
+      "documentWidth": 360,
+      "panelWidth": 332,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 56.875,
+          "right": 180
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 56.875,
+          "right": 345
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 44,
+          "right": 180
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 44,
+          "right": 345
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 56.875,
+          "right": 180
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 180,
+          "width": 165,
+          "height": 56.875,
+          "right": 345
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 15,
+          "width": 165,
+          "height": 56.875,
+          "right": 180
+        },
+        {
+          "name": "Refresh",
+          "x": 25.5,
+          "width": 309,
+          "height": 44,
+          "right": 334.5
+        },
+        {
+          "name": "Reset",
+          "x": 29,
+          "width": 74.265625,
+          "height": 44,
+          "right": 103.265625
+        },
+        {
+          "name": "Save",
+          "x": 108.515625,
+          "width": 64.453125,
+          "height": 44,
+          "right": 172.96875
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 25.5,
+          "width": 309,
+          "height": 534,
+          "right": 334.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "terminal",
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 753,
+      "panelWidth": 713,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 44,
+          "right": 174
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 21,
+          "width": 153,
+          "height": 56.875,
+          "right": 174
+        },
+        {
+          "name": "Refresh",
+          "x": 31.5,
+          "width": 132,
+          "height": 44,
+          "right": 163.5
+        },
+        {
+          "name": "Reset",
+          "x": 574.03125,
+          "width": 74.265625,
+          "height": 44,
+          "right": 648.296875
+        },
+        {
+          "name": "Save",
+          "x": 653.546875,
+          "width": 64.453125,
+          "height": 44,
+          "right": 718
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 185.5,
+          "width": 536,
+          "height": 540.09375,
+          "right": 721.5
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "terminal",
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "panelWidth": 739,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 44,
+          "right": 411
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 247,
+          "width": 164,
+          "height": 57.875,
+          "right": 411
+        },
+        {
+          "name": "Refresh",
+          "x": 258.25,
+          "width": 141.5,
+          "height": 44,
+          "right": 399.75
+        },
+        {
+          "name": "Reset",
+          "x": 820.4375,
+          "width": 76.640625,
+          "height": 44,
+          "right": 897.078125
+        },
+        {
+          "name": "Save",
+          "x": 902.703125,
+          "width": 66.296875,
+          "height": 44,
+          "right": 969
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 423.25,
+          "width": 549.5,
+          "height": 541.34375,
+          "right": 972.75
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "prompts",
+      "theme": "terminal",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "panelWidth": 1139,
+      "controls": [
+        {
+          "name": "default 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "research 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "coding 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "blog 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 44,
+          "right": 419
+        },
+        {
+          "name": "article 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "terminal 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "performance 프롬프트 설정",
+          "x": 255,
+          "width": 164,
+          "height": 57.875,
+          "right": 419
+        },
+        {
+          "name": "Refresh",
+          "x": 266.25,
+          "width": 141.5,
+          "height": 44,
+          "right": 407.75
+        },
+        {
+          "name": "Reset",
+          "x": 1227.90625,
+          "width": 76.640625,
+          "height": 44,
+          "right": 1304.546875
+        },
+        {
+          "name": "Save",
+          "x": 1310.171875,
+          "width": 66.828125,
+          "height": 44,
+          "right": 1377
+        },
+        {
+          "name": "검증 중인 새 문장\n\nresize 뒤에도 유지됩니다.",
+          "x": 431.25,
+          "width": 949.5,
+          "height": 541.34375,
+          "right": 1380.75
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "light",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 305,
+      "panelWidth": 277,
+      "controls": [
+        {
+          "name": "all",
+          "x": 30,
+          "width": 49,
+          "height": 44,
+          "right": 79
+        },
+        {
+          "name": "error",
+          "x": 79,
+          "width": 49,
+          "height": 44,
+          "right": 128
+        },
+        {
+          "name": "warn",
+          "x": 128,
+          "width": 49,
+          "height": 44,
+          "right": 177
+        },
+        {
+          "name": "info",
+          "x": 177,
+          "width": 49,
+          "height": 44,
+          "right": 226
+        },
+        {
+          "name": "debug",
+          "x": 226,
+          "width": 49,
+          "height": 44,
+          "right": 275
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 29,
+          "width": 145,
+          "height": 48,
+          "right": 174
+        },
+        {
+          "name": "Pause log stream",
+          "x": 181,
+          "width": 44,
+          "height": 44,
+          "right": 225
+        },
+        {
+          "name": "Clear logs",
+          "x": 232,
+          "width": 44,
+          "height": 44,
+          "right": 276
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 29,
+          "width": 44,
+          "height": 44,
+          "right": 73
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 15,
+          "width": 275,
+          "height": 120.75,
+          "right": 290
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "light",
+      "width": 375,
+      "viewport": 375,
+      "documentWidth": 360,
+      "panelWidth": 332,
+      "controls": [
+        {
+          "name": "all",
+          "x": 30,
+          "width": 60,
+          "height": 44,
+          "right": 90
+        },
+        {
+          "name": "error",
+          "x": 90,
+          "width": 60,
+          "height": 44,
+          "right": 150
+        },
+        {
+          "name": "warn",
+          "x": 150,
+          "width": 60,
+          "height": 44,
+          "right": 210
+        },
+        {
+          "name": "info",
+          "x": 210,
+          "width": 60,
+          "height": 44,
+          "right": 270
+        },
+        {
+          "name": "debug",
+          "x": 270,
+          "width": 60,
+          "height": 44,
+          "right": 330
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 29,
+          "width": 149,
+          "height": 48,
+          "right": 178
+        },
+        {
+          "name": "Pause log stream",
+          "x": 185,
+          "width": 44,
+          "height": 44,
+          "right": 229
+        },
+        {
+          "name": "Clear logs",
+          "x": 236,
+          "width": 44,
+          "height": 44,
+          "right": 280
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 287,
+          "width": 44,
+          "height": 44,
+          "right": 331
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 15,
+          "width": 330,
+          "height": 88.8125,
+          "right": 345
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "light",
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 753,
+      "panelWidth": 713,
+      "controls": [
+        {
+          "name": "all",
+          "x": 173.71875,
+          "width": 44,
+          "height": 44,
+          "right": 217.71875
+        },
+        {
+          "name": "error",
+          "x": 217.71875,
+          "width": 44.078125,
+          "height": 44,
+          "right": 261.796875
+        },
+        {
+          "name": "warn",
+          "x": 261.796875,
+          "width": 44.578125,
+          "height": 44,
+          "right": 306.375
+        },
+        {
+          "name": "info",
+          "x": 306.375,
+          "width": 44,
+          "height": 44,
+          "right": 350.375
+        },
+        {
+          "name": "debug",
+          "x": 350.375,
+          "width": 52.53125,
+          "height": 44,
+          "right": 402.90625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 410.90625,
+          "width": 154.09375,
+          "height": 44,
+          "right": 565
+        },
+        {
+          "name": "Pause log stream",
+          "x": 572,
+          "width": 44,
+          "height": 44,
+          "right": 616
+        },
+        {
+          "name": "Clear logs",
+          "x": 623,
+          "width": 44,
+          "height": 44,
+          "right": 667
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 674,
+          "width": 44,
+          "height": 44,
+          "right": 718
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 21,
+          "width": 711,
+          "height": 44,
+          "right": 732
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "light",
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "panelWidth": 739,
+      "controls": [
+        {
+          "name": "all",
+          "x": 402.21875,
+          "width": 44,
+          "height": 44,
+          "right": 446.21875
+        },
+        {
+          "name": "error",
+          "x": 446.21875,
+          "width": 45.078125,
+          "height": 44,
+          "right": 491.296875
+        },
+        {
+          "name": "warn",
+          "x": 491.296875,
+          "width": 45.578125,
+          "height": 44,
+          "right": 536.875
+        },
+        {
+          "name": "info",
+          "x": 536.875,
+          "width": 44,
+          "height": 44,
+          "right": 580.875
+        },
+        {
+          "name": "debug",
+          "x": 580.875,
+          "width": 53.53125,
+          "height": 44,
+          "right": 634.40625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 642.90625,
+          "width": 171.59375,
+          "height": 44,
+          "right": 814.5
+        },
+        {
+          "name": "Pause log stream",
+          "x": 822,
+          "width": 44,
+          "height": 44,
+          "right": 866
+        },
+        {
+          "name": "Clear logs",
+          "x": 873.5,
+          "width": 44,
+          "height": 44,
+          "right": 917.5
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 925,
+          "width": 44,
+          "height": 44,
+          "right": 969
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 247,
+          "width": 737,
+          "height": 44,
+          "right": 984
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "light",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "panelWidth": 1139,
+      "controls": [
+        {
+          "name": "all",
+          "x": 410.21875,
+          "width": 44,
+          "height": 44,
+          "right": 454.21875
+        },
+        {
+          "name": "error",
+          "x": 454.21875,
+          "width": 45.078125,
+          "height": 44,
+          "right": 499.296875
+        },
+        {
+          "name": "warn",
+          "x": 499.296875,
+          "width": 45.578125,
+          "height": 44,
+          "right": 544.875
+        },
+        {
+          "name": "info",
+          "x": 544.875,
+          "width": 44,
+          "height": 44,
+          "right": 588.875
+        },
+        {
+          "name": "debug",
+          "x": 588.875,
+          "width": 53.53125,
+          "height": 44,
+          "right": 642.40625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 650.90625,
+          "width": 571.59375,
+          "height": 44,
+          "right": 1222.5
+        },
+        {
+          "name": "Pause log stream",
+          "x": 1230,
+          "width": 44,
+          "height": 44,
+          "right": 1274
+        },
+        {
+          "name": "Clear logs",
+          "x": 1281.5,
+          "width": 44,
+          "height": 44,
+          "right": 1325.5
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 1333,
+          "width": 44,
+          "height": 44,
+          "right": 1377
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 255,
+          "width": 1137,
+          "height": 44,
+          "right": 1392
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "dark",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 305,
+      "panelWidth": 277,
+      "controls": [
+        {
+          "name": "all",
+          "x": 30,
+          "width": 49,
+          "height": 44,
+          "right": 79
+        },
+        {
+          "name": "error",
+          "x": 79,
+          "width": 49,
+          "height": 44,
+          "right": 128
+        },
+        {
+          "name": "warn",
+          "x": 128,
+          "width": 49,
+          "height": 44,
+          "right": 177
+        },
+        {
+          "name": "info",
+          "x": 177,
+          "width": 49,
+          "height": 44,
+          "right": 226
+        },
+        {
+          "name": "debug",
+          "x": 226,
+          "width": 49,
+          "height": 44,
+          "right": 275
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 29,
+          "width": 145,
+          "height": 48,
+          "right": 174
+        },
+        {
+          "name": "Pause log stream",
+          "x": 181,
+          "width": 44,
+          "height": 44,
+          "right": 225
+        },
+        {
+          "name": "Clear logs",
+          "x": 232,
+          "width": 44,
+          "height": 44,
+          "right": 276
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 29,
+          "width": 44,
+          "height": 44,
+          "right": 73
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 15,
+          "width": 275,
+          "height": 120.75,
+          "right": 290
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "dark",
+      "width": 375,
+      "viewport": 375,
+      "documentWidth": 360,
+      "panelWidth": 332,
+      "controls": [
+        {
+          "name": "all",
+          "x": 30,
+          "width": 60,
+          "height": 44,
+          "right": 90
+        },
+        {
+          "name": "error",
+          "x": 90,
+          "width": 60,
+          "height": 44,
+          "right": 150
+        },
+        {
+          "name": "warn",
+          "x": 150,
+          "width": 60,
+          "height": 44,
+          "right": 210
+        },
+        {
+          "name": "info",
+          "x": 210,
+          "width": 60,
+          "height": 44,
+          "right": 270
+        },
+        {
+          "name": "debug",
+          "x": 270,
+          "width": 60,
+          "height": 44,
+          "right": 330
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 29,
+          "width": 149,
+          "height": 48,
+          "right": 178
+        },
+        {
+          "name": "Pause log stream",
+          "x": 185,
+          "width": 44,
+          "height": 44,
+          "right": 229
+        },
+        {
+          "name": "Clear logs",
+          "x": 236,
+          "width": 44,
+          "height": 44,
+          "right": 280
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 287,
+          "width": 44,
+          "height": 44,
+          "right": 331
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 15,
+          "width": 330,
+          "height": 88.8125,
+          "right": 345
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "dark",
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 753,
+      "panelWidth": 713,
+      "controls": [
+        {
+          "name": "all",
+          "x": 173.71875,
+          "width": 44,
+          "height": 44,
+          "right": 217.71875
+        },
+        {
+          "name": "error",
+          "x": 217.71875,
+          "width": 44.078125,
+          "height": 44,
+          "right": 261.796875
+        },
+        {
+          "name": "warn",
+          "x": 261.796875,
+          "width": 44.578125,
+          "height": 44,
+          "right": 306.375
+        },
+        {
+          "name": "info",
+          "x": 306.375,
+          "width": 44,
+          "height": 44,
+          "right": 350.375
+        },
+        {
+          "name": "debug",
+          "x": 350.375,
+          "width": 52.53125,
+          "height": 44,
+          "right": 402.90625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 410.90625,
+          "width": 154.09375,
+          "height": 44,
+          "right": 565
+        },
+        {
+          "name": "Pause log stream",
+          "x": 572,
+          "width": 44,
+          "height": 44,
+          "right": 616
+        },
+        {
+          "name": "Clear logs",
+          "x": 623,
+          "width": 44,
+          "height": 44,
+          "right": 667
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 674,
+          "width": 44,
+          "height": 44,
+          "right": 718
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 21,
+          "width": 711,
+          "height": 44,
+          "right": 732
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "dark",
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "panelWidth": 739,
+      "controls": [
+        {
+          "name": "all",
+          "x": 402.21875,
+          "width": 44,
+          "height": 44,
+          "right": 446.21875
+        },
+        {
+          "name": "error",
+          "x": 446.21875,
+          "width": 45.078125,
+          "height": 44,
+          "right": 491.296875
+        },
+        {
+          "name": "warn",
+          "x": 491.296875,
+          "width": 45.578125,
+          "height": 44,
+          "right": 536.875
+        },
+        {
+          "name": "info",
+          "x": 536.875,
+          "width": 44,
+          "height": 44,
+          "right": 580.875
+        },
+        {
+          "name": "debug",
+          "x": 580.875,
+          "width": 53.53125,
+          "height": 44,
+          "right": 634.40625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 642.90625,
+          "width": 171.59375,
+          "height": 44,
+          "right": 814.5
+        },
+        {
+          "name": "Pause log stream",
+          "x": 822,
+          "width": 44,
+          "height": 44,
+          "right": 866
+        },
+        {
+          "name": "Clear logs",
+          "x": 873.5,
+          "width": 44,
+          "height": 44,
+          "right": 917.5
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 925,
+          "width": 44,
+          "height": 44,
+          "right": 969
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 247,
+          "width": 737,
+          "height": 44,
+          "right": 984
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "dark",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "panelWidth": 1139,
+      "controls": [
+        {
+          "name": "all",
+          "x": 410.21875,
+          "width": 44,
+          "height": 44,
+          "right": 454.21875
+        },
+        {
+          "name": "error",
+          "x": 454.21875,
+          "width": 45.078125,
+          "height": 44,
+          "right": 499.296875
+        },
+        {
+          "name": "warn",
+          "x": 499.296875,
+          "width": 45.578125,
+          "height": 44,
+          "right": 544.875
+        },
+        {
+          "name": "info",
+          "x": 544.875,
+          "width": 44,
+          "height": 44,
+          "right": 588.875
+        },
+        {
+          "name": "debug",
+          "x": 588.875,
+          "width": 53.53125,
+          "height": 44,
+          "right": 642.40625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 650.90625,
+          "width": 571.59375,
+          "height": 44,
+          "right": 1222.5
+        },
+        {
+          "name": "Pause log stream",
+          "x": 1230,
+          "width": 44,
+          "height": 44,
+          "right": 1274
+        },
+        {
+          "name": "Clear logs",
+          "x": 1281.5,
+          "width": 44,
+          "height": 44,
+          "right": 1325.5
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 1333,
+          "width": 44,
+          "height": 44,
+          "right": 1377
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 255,
+          "width": 1137,
+          "height": 44,
+          "right": 1392
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 255,
+          "width": 1137,
+          "height": 44,
+          "right": 1392
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "terminal",
+      "width": 320,
+      "viewport": 320,
+      "documentWidth": 305,
+      "panelWidth": 277,
+      "controls": [
+        {
+          "name": "all",
+          "x": 30,
+          "width": 49,
+          "height": 44,
+          "right": 79
+        },
+        {
+          "name": "error",
+          "x": 79,
+          "width": 49,
+          "height": 44,
+          "right": 128
+        },
+        {
+          "name": "warn",
+          "x": 128,
+          "width": 49,
+          "height": 44,
+          "right": 177
+        },
+        {
+          "name": "info",
+          "x": 177,
+          "width": 49,
+          "height": 44,
+          "right": 226
+        },
+        {
+          "name": "debug",
+          "x": 226,
+          "width": 49,
+          "height": 44,
+          "right": 275
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 29,
+          "width": 145,
+          "height": 48,
+          "right": 174
+        },
+        {
+          "name": "Pause log stream",
+          "x": 181,
+          "width": 44,
+          "height": 44,
+          "right": 225
+        },
+        {
+          "name": "Clear logs",
+          "x": 232,
+          "width": 44,
+          "height": 44,
+          "right": 276
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 29,
+          "width": 44,
+          "height": 44,
+          "right": 73
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 15,
+          "width": 275,
+          "height": 120.75,
+          "right": 290
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "terminal",
+      "width": 375,
+      "viewport": 375,
+      "documentWidth": 360,
+      "panelWidth": 332,
+      "controls": [
+        {
+          "name": "all",
+          "x": 30,
+          "width": 60,
+          "height": 44,
+          "right": 90
+        },
+        {
+          "name": "error",
+          "x": 90,
+          "width": 60,
+          "height": 44,
+          "right": 150
+        },
+        {
+          "name": "warn",
+          "x": 150,
+          "width": 60,
+          "height": 44,
+          "right": 210
+        },
+        {
+          "name": "info",
+          "x": 210,
+          "width": 60,
+          "height": 44,
+          "right": 270
+        },
+        {
+          "name": "debug",
+          "x": 270,
+          "width": 60,
+          "height": 44,
+          "right": 330
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 29,
+          "width": 149,
+          "height": 48,
+          "right": 178
+        },
+        {
+          "name": "Pause log stream",
+          "x": 185,
+          "width": 44,
+          "height": 44,
+          "right": 229
+        },
+        {
+          "name": "Clear logs",
+          "x": 236,
+          "width": 44,
+          "height": 44,
+          "right": 280
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 287,
+          "width": 44,
+          "height": 44,
+          "right": 331
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 15,
+          "width": 330,
+          "height": 88.8125,
+          "right": 345
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "terminal",
+      "width": 768,
+      "viewport": 768,
+      "documentWidth": 753,
+      "panelWidth": 713,
+      "controls": [
+        {
+          "name": "all",
+          "x": 191.96875,
+          "width": 44,
+          "height": 44,
+          "right": 235.96875
+        },
+        {
+          "name": "error",
+          "x": 235.96875,
+          "width": 53.015625,
+          "height": 44,
+          "right": 288.984375
+        },
+        {
+          "name": "warn",
+          "x": 288.984375,
+          "width": 45.203125,
+          "height": 44,
+          "right": 334.1875
+        },
+        {
+          "name": "info",
+          "x": 334.1875,
+          "width": 45.203125,
+          "height": 44,
+          "right": 379.390625
+        },
+        {
+          "name": "debug",
+          "x": 379.390625,
+          "width": 53.015625,
+          "height": 44,
+          "right": 432.40625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 440.40625,
+          "width": 124.59375,
+          "height": 44,
+          "right": 565
+        },
+        {
+          "name": "Pause log stream",
+          "x": 572,
+          "width": 44,
+          "height": 44,
+          "right": 616
+        },
+        {
+          "name": "Clear logs",
+          "x": 623,
+          "width": 44,
+          "height": 44,
+          "right": 667
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 674,
+          "width": 44,
+          "height": 44,
+          "right": 718
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 21,
+          "width": 711,
+          "height": 44,
+          "right": 732
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "terminal",
+      "width": 1024,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "panelWidth": 739,
+      "controls": [
+        {
+          "name": "all",
+          "x": 420.46875,
+          "width": 44,
+          "height": 44,
+          "right": 464.46875
+        },
+        {
+          "name": "error",
+          "x": 464.46875,
+          "width": 54.015625,
+          "height": 44,
+          "right": 518.484375
+        },
+        {
+          "name": "warn",
+          "x": 518.484375,
+          "width": 46.203125,
+          "height": 44,
+          "right": 564.6875
+        },
+        {
+          "name": "info",
+          "x": 564.6875,
+          "width": 46.203125,
+          "height": 44,
+          "right": 610.890625
+        },
+        {
+          "name": "debug",
+          "x": 610.890625,
+          "width": 54.015625,
+          "height": 44,
+          "right": 664.90625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 673.40625,
+          "width": 141.09375,
+          "height": 44,
+          "right": 814.5
+        },
+        {
+          "name": "Pause log stream",
+          "x": 822,
+          "width": 44,
+          "height": 44,
+          "right": 866
+        },
+        {
+          "name": "Clear logs",
+          "x": 873.5,
+          "width": 44,
+          "height": 44,
+          "right": 917.5
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 925,
+          "width": 44,
+          "height": 44,
+          "right": 969
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 247,
+          "width": 737,
+          "height": 44,
+          "right": 984
+        }
+      ],
+      "statePreserved": true
+    },
+    {
+      "section": "logs",
+      "theme": "terminal",
+      "width": 1440,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "panelWidth": 1139,
+      "controls": [
+        {
+          "name": "all",
+          "x": 428.46875,
+          "width": 44,
+          "height": 44,
+          "right": 472.46875
+        },
+        {
+          "name": "error",
+          "x": 472.46875,
+          "width": 54.015625,
+          "height": 44,
+          "right": 526.484375
+        },
+        {
+          "name": "warn",
+          "x": 526.484375,
+          "width": 46.203125,
+          "height": 44,
+          "right": 572.6875
+        },
+        {
+          "name": "info",
+          "x": 572.6875,
+          "width": 46.203125,
+          "height": 44,
+          "right": 618.890625
+        },
+        {
+          "name": "debug",
+          "x": 618.890625,
+          "width": 54.015625,
+          "height": 44,
+          "right": 672.90625
+        },
+        {
+          "name": "서비스 로그 검색",
+          "x": 681.40625,
+          "width": 541.09375,
+          "height": 44,
+          "right": 1222.5
+        },
+        {
+          "name": "Pause log stream",
+          "x": 1230,
+          "width": 44,
+          "height": 44,
+          "right": 1274
+        },
+        {
+          "name": "Clear logs",
+          "x": 1281.5,
+          "width": 44,
+          "height": 44,
+          "right": 1325.5
+        },
+        {
+          "name": "Reconnect log stream",
+          "x": 1333,
+          "width": 44,
+          "height": 44,
+          "right": 1377
+        },
+        {
+          "name": "09:00:00.000INFOdesign-verification화면 검증",
+          "x": 255,
+          "width": 1137,
+          "height": 44,
+          "right": 1392
+        }
+      ],
+      "statePreserved": true
+    }
+  ]
+}

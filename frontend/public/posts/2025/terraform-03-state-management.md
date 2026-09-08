@@ -83,12 +83,56 @@ terraform workspace list
 ### 모듈 구조 예시
 디렉터리 레이아웃(모듈 repo 또는 `modules/` 폴더):
 
-```
-modules/
-  vpc/
-    main.tf
-    variables.tf
-    outputs.tf
+```diagram
+{
+  "title": "modules/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "modules/"
+    },
+    {
+      "id": "n1",
+      "label": "vpc/"
+    },
+    {
+      "id": "n2",
+      "label": "main.tf"
+    },
+    {
+      "id": "n3",
+      "label": "variables.tf"
+    },
+    {
+      "id": "n4",
+      "label": "outputs.tf"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n1",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 `modules/vpc/variables.tf`
@@ -136,16 +180,87 @@ module "vpc" {
 
 ## 폴더 전략과 상태 키 네이밍
 - 예시 레이아웃
-```
-live/
-  prod/
-    network/
-    compute/
-  stage/
-    network/
-modules/
-  vpc/
-  ecs-service/
+```diagram
+{
+  "title": "live/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "live/"
+    },
+    {
+      "id": "n1",
+      "label": "prod/"
+    },
+    {
+      "id": "n2",
+      "label": "network/"
+    },
+    {
+      "id": "n3",
+      "label": "compute/"
+    },
+    {
+      "id": "n4",
+      "label": "stage/"
+    },
+    {
+      "id": "n5",
+      "label": "network/"
+    },
+    {
+      "id": "n6",
+      "label": "modules/"
+    },
+    {
+      "id": "n7",
+      "label": "vpc/"
+    },
+    {
+      "id": "n8",
+      "label": "ecs-service/"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n4",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n7",
+      "from": "n6",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n8",
+      "from": "n6",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 - 백엔드 키 예: `prod/network/terraform.tfstate`, `stage/network/terraform.tfstate`
 - CI에서 워크스페이스/디렉터리/변수를 조합해 일관된 배포 파이프라인을 구성합니다.

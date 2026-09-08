@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { SmilePlus } from 'lucide-react';
+import { SmilePlus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
 import {
@@ -43,6 +43,7 @@ const DEFAULT_REMOVE_REACTION_LABEL = 'Remove reaction';
 const DEFAULT_CLOSE_PICKER_LABEL = 'Close reactions';
 const DEFAULT_REACT_LABEL = 'React';
 const DEFAULT_PICKER_LABEL = 'Choose reaction';
+const EMPTY_REACTIONS: ReactionCount[] = [];
 
 function normalizeReactionText(value: unknown, fallback = ''): string {
   if (typeof value !== 'string' && typeof value !== 'number') return fallback;
@@ -95,7 +96,7 @@ function normalizeReactionCounts(
 
 export default function CommentReactions({
   commentId,
-  initialReactions = [],
+  initialReactions = EMPTY_REACTIONS,
   isTerminal = false,
   compact = false,
   labelledTrigger = false,
@@ -160,8 +161,18 @@ export default function CommentReactions({
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setIsPickerOpen(false);
+      containerRef.current?.querySelector<HTMLButtonElement>('button[aria-expanded]')?.focus();
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isPickerOpen]);
 
   // Cleanup timeout on unmount
@@ -261,7 +272,7 @@ export default function CommentReactions({
       role='group'
       aria-label={safePickerLabel}
       className={cn(
-        'flex items-center gap-1',
+        'grid grid-cols-4 gap-1',
         variant === 'terminal' ? 'px-1' : 'gap-0.5'
       )}
     >
@@ -278,14 +289,14 @@ export default function CommentReactions({
             variant === 'terminal'
               ? [
                   'text-lg border',
-                  isMobile ? 'w-9 h-9' : 'w-7 h-7',
+                  'h-11 w-11',
                   userReactions.has(emoji)
                     ? 'bg-primary/30 border-primary/50 scale-105'
                     : 'bg-transparent border-transparent hover:bg-primary/20 hover:border-primary/30',
                 ]
               : [
                   'text-base',
-                  isMobile ? 'w-9 h-9' : 'w-7 h-7',
+                  'h-11 w-11',
                   userReactions.has(emoji)
                     ? 'bg-primary/20 ring-1 ring-primary/30 scale-105'
                     : 'hover:scale-110 hover:bg-primary/10',
@@ -309,7 +320,7 @@ export default function CommentReactions({
         aria-label={safeLabel}
         title={safeTitle}
         className={cn(
-          'relative inline-flex items-center gap-1.5',
+          'ui-reactions relative inline-flex flex-wrap items-center gap-1.5',
           compact ? 'mt-1.5' : 'mt-2',
           className
         )}
@@ -326,7 +337,7 @@ export default function CommentReactions({
             aria-label={`${userReactions.has(emoji as ReactionEmoji) ? safeRemoveReactionLabel : safeAddReactionLabel}: ${emoji}`}
             aria-pressed={userReactions.has(emoji as ReactionEmoji)}
             className={cn(
-              'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono transition-all border',
+              'inline-flex min-h-11 min-w-11 justify-center items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono transition-all border',
               userReactions.has(emoji as ReactionEmoji)
                 ? 'bg-primary/20 border-primary/40 text-primary'
                 : 'bg-black/50 border-primary/20 hover:border-primary/40 hover:bg-primary/10 text-muted-foreground',
@@ -348,10 +359,8 @@ export default function CommentReactions({
           className={cn(
             'inline-flex items-center justify-center rounded transition-all text-xs font-mono',
             labelledTrigger
-              ? 'min-h-10 px-3'
-              : isMobile
-                ? 'w-7 h-7'
-                : 'w-6 h-6',
+              ? 'min-h-11 gap-2 px-3'
+              : 'h-11 w-11',
             // Subtle by default, more visible on hover/open
             isPickerOpen || isHovered
               ? 'bg-primary/20 border border-primary/40 text-primary opacity-100'
@@ -366,14 +375,8 @@ export default function CommentReactions({
           )}
           title={isPickerOpen ? safeClosePickerLabel : safeAddReactionLabel}
         >
-          {labelledTrigger && <SmilePlus aria-hidden='true' className='h-3.5 w-3.5' />}
-          {isPickerOpen
-            ? labelledTrigger
-              ? safeClosePickerLabel
-              : '×'
-            : labelledTrigger
-              ? safeReactLabel
-              : '+'}
+          {isPickerOpen ? <X aria-hidden='true' className='h-4 w-4' /> : <SmilePlus aria-hidden='true' className='h-4 w-4' />}
+          {labelledTrigger && (isPickerOpen ? safeClosePickerLabel : safeReactLabel)}
         </button>
 
         {/* Floating emoji picker - appears on hover/click */}
@@ -404,7 +407,7 @@ export default function CommentReactions({
       aria-label={safeLabel}
       title={safeTitle}
       className={cn(
-        'relative inline-flex flex-wrap items-center gap-1.5',
+        'ui-reactions relative inline-flex flex-wrap items-center gap-1.5',
         compact ? 'mt-1.5' : 'mt-2',
         className
       )}
@@ -421,7 +424,7 @@ export default function CommentReactions({
           aria-label={`${userReactions.has(emoji as ReactionEmoji) ? safeRemoveReactionLabel : safeAddReactionLabel}: ${emoji}`}
           aria-pressed={userReactions.has(emoji as ReactionEmoji)}
           className={cn(
-            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border',
+            'inline-flex min-h-11 min-w-11 justify-center items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border',
             userReactions.has(emoji as ReactionEmoji)
               ? 'bg-primary/10 border-primary/30 text-primary shadow-sm'
               : 'bg-background/50 border-border/50 hover:border-primary/30 hover:bg-primary/5 text-muted-foreground',
@@ -443,9 +446,9 @@ export default function CommentReactions({
         className={cn(
           'inline-flex items-center justify-center transition-all text-xs',
           labelledTrigger
-            ? 'min-h-10 rounded-md px-3 font-medium'
+            ? 'min-h-11 gap-2 rounded-md px-3 font-medium'
             : 'rounded-full',
-          !labelledTrigger && (isMobile ? 'w-7 h-7' : 'w-6 h-6'),
+          !labelledTrigger && 'h-11 w-11',
           isPickerOpen || isHovered
             ? 'bg-primary/10 border border-primary/30 text-primary opacity-100'
             : hasReactions
@@ -459,8 +462,8 @@ export default function CommentReactions({
         )}
         title={isPickerOpen ? safeClosePickerLabel : safeAddReactionLabel}
       >
-        {labelledTrigger && <SmilePlus aria-hidden='true' className='h-3.5 w-3.5' />}
-        {labelledTrigger ? safeReactLabel : '+'}
+        {isPickerOpen ? <X aria-hidden='true' className='h-4 w-4' /> : <SmilePlus aria-hidden='true' className='h-4 w-4' />}
+        {labelledTrigger && (isPickerOpen ? safeClosePickerLabel : safeReactLabel)}
       </button>
 
       {/* Floating emoji picker - pill style */}

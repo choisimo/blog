@@ -1,0 +1,249 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "networkPolicy": "Only local static files and GET public-config fixture allowed. All other API/external HTTP and all WebSocket connections blocked.",
+  "results": [
+    {
+      "case": "chat-light-320",
+      "header": {
+        "width": 318,
+        "scrollWidth": 318,
+        "children": [
+          {
+            "label": "대화 옵션",
+            "x": 215.25,
+            "right": 259.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "label": "창 닫기",
+            "x": 261,
+            "right": 305,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      },
+      "backgroundScroll": {
+        "before": 0,
+        "after": 0
+      },
+      "childBackgroundScroll": {
+        "before": 0,
+        "after": 0
+      },
+      "tabContainment": true,
+      "childEscapeOnly": true,
+      "childFocusRestored": true,
+      "actualOpenerRestored": true,
+      "shortcutEscapeRestored": true,
+      "shortcutDoesNotOpenMemo": true,
+      "pageErrors": [],
+      "blockedRequests": [
+        {
+          "method": "GET",
+          "path": "/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        },
+        {
+          "method": "GET",
+          "path": "/css2"
+        },
+        {
+          "method": "GET",
+          "path": "/turndown/dist/turndown.js"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/analytics/heartbeat"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/analytics/editor-picks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/site-content/home_ai_cta"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/anonymous"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/chat/live/rooms"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/anonymous"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/chat/live/rooms"
+        }
+      ]
+    },
+    {
+      "case": "chat-dark-320",
+      "header": {
+        "width": 318,
+        "scrollWidth": 318,
+        "children": [
+          {
+            "label": "대화 옵션",
+            "x": 215.25,
+            "right": 259.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "label": "창 닫기",
+            "x": 261,
+            "right": 305,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      },
+      "backgroundScroll": {
+        "before": 0,
+        "after": 0
+      },
+      "childBackgroundScroll": {
+        "before": 0,
+        "after": 0
+      },
+      "tabContainment": true,
+      "childEscapeOnly": true,
+      "childFocusRestored": true,
+      "actualOpenerRestored": true,
+      "shortcutEscapeRestored": true,
+      "shortcutDoesNotOpenMemo": true,
+      "pageErrors": [],
+      "blockedRequests": [
+        {
+          "method": "GET",
+          "path": "/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        },
+        {
+          "method": "GET",
+          "path": "/css2"
+        },
+        {
+          "method": "GET",
+          "path": "/turndown/dist/turndown.js"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/analytics/heartbeat"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/analytics/editor-picks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/site-content/home_ai_cta"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/anonymous"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/chat/live/rooms"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/anonymous"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/chat/live/rooms"
+        }
+      ]
+    },
+    {
+      "case": "shell-terminal-320",
+      "suggestionBounds": {
+        "x": 11.5,
+        "y": 113.25,
+        "width": 297,
+        "height": 164.390625
+      },
+      "backgroundScroll": {
+        "before": 0,
+        "after": 0
+      },
+      "suggestionEscapePreserved": true,
+      "secondEscapeCloses": true,
+      "headerEscapeCloses": true,
+      "tabContainment": true,
+      "openerRestored": true,
+      "realTerminal": {
+        "initialized": true,
+        "disconnected": true,
+        "tabContainment": true,
+        "inputEscapeKeepsOpen": true,
+        "headerEscapeCloses": true,
+        "openerRestored": true
+      },
+      "terminalChatHeader": {
+        "width": 318,
+        "scrollWidth": 318,
+        "children": [
+          {
+            "label": "대화 옵션",
+            "x": 215.25,
+            "right": 259.25,
+            "width": 44,
+            "height": 44
+          },
+          {
+            "label": "창 닫기",
+            "x": 261,
+            "right": 305,
+            "width": 44,
+            "height": 44
+          }
+        ]
+      },
+      "shortcutDoesNotOpenMemo": true,
+      "pageErrors": [],
+      "blockedRequests": [
+        {
+          "method": "GET",
+          "path": "/npm/pretendard@latest/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        },
+        {
+          "method": "GET",
+          "path": "/css2"
+        },
+        {
+          "method": "GET",
+          "path": "/turndown/dist/turndown.js"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/analytics/heartbeat"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/analytics/editor-picks"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/site-content/home_ai_cta"
+        },
+        {
+          "method": "POST",
+          "path": "/api/v1/auth/anonymous"
+        },
+        {
+          "method": "GET",
+          "path": "/api/v1/chat/live/rooms"
+        }
+      ]
+    }
+  ],
+  "failures": []
+}

@@ -61,7 +61,7 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
-  const AI_MEMO_ASSET_VERSION = '20260501-memo-editor-redesign';
+  const AI_MEMO_ASSET_VERSION = '20260908-memo-discussion-ux';
   const CATALYST_PROMPT_MAX_LENGTH = 160;
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
   const MAX_BLOCK_PAYLOAD_CHARS = 6000;
@@ -1985,7 +1985,7 @@
           <div class="versions-panel">
             <div class="versions-header">
               <strong>버전 기록</strong>
-              <button id="versionsClose" class="btn-close" aria-label="닫기">✕</button>
+              <button id="versionsClose" class="btn-close" aria-label="닫기"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
             </div>
             <div id="versionsList" class="versions-list">
               <div class="versions-empty">로딩 중...</div>
@@ -2004,45 +2004,50 @@
             <div class="spacer"></div>
             <button id="memoHelp" class="header-help" type="button" aria-label="도움말">도움말</button>
             <div class="window-controls" aria-label="창 제어">
-              <button id="windowMinimize" class="window-control" type="button" title="최소화" aria-label="최소화">—</button>
-              <button id="windowRestore" class="window-control" type="button" title="복원" aria-label="복원">▣</button>
-              <button id="windowFull" class="window-control" type="button" title="전체 화면" aria-label="전체 화면" aria-pressed="false">⛶</button>
-              <button id="close" class="close" type="button" aria-label="닫기">✕</button>
+              <button id="windowMinimize" class="window-control" type="button" title="최소화" aria-label="최소화"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/></svg></button>
+              <button id="windowRestore" class="window-control" type="button" title="복원" aria-label="복원"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="14" height="14" rx="2"/><path d="M7 7V3h14v14h-4"/></svg></button>
+              <button id="windowFull" class="window-control" type="button" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
+              <button id="close" class="close" type="button" aria-label="닫기"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
             </div>
           </div>
           <div class="memo-toolbar">
             <div class="toolbar-group format-group" role="toolbar" aria-label="서식">
-              <button id="memoBold" class="toolbar-btn" title="Bold (Ctrl+B)" aria-label="Bold"><span class="icon">B</span></button>
-              <button id="memoItalic" class="toolbar-btn" title="Italic (Ctrl+I)" aria-label="Italic"><span class="icon italic">I</span></button>
-              <button id="memoCode" class="toolbar-btn" title="Inline code" aria-label="Inline code"><span class="icon mono">{}</span></button>
+              <button id="memoBold" class="toolbar-btn" title="Bold (Ctrl+B)" aria-label="Bold"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 12h8a4 4 0 0 1 0 8H6V4h7a4 4 0 0 1 0 8"/></svg></button>
+              <button id="memoItalic" class="toolbar-btn" title="Italic (Ctrl+I)" aria-label="Italic"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19 4h-9m4 16H5M15 4 9 20"/></svg></button>
+              <button id="memoCode" class="toolbar-btn" title="Inline code" aria-label="Inline code"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></svg></button>
             </div>
+            <details class="memo-disclosure memo-format-tools">
+              <summary><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>추가 도구</span></summary>
+              <div class="memo-format-options">
             <div class="toolbar-divider"></div>
             <div class="toolbar-group heading-group" role="toolbar" aria-label="제목">
-              <button id="memoH1" class="toolbar-btn" title="제목 1 (#)" aria-label="Heading 1"><span class="icon">H1</span></button>
-              <button id="memoH2" class="toolbar-btn" title="제목 2 (##)" aria-label="Heading 2"><span class="icon">H2</span></button>
-              <button id="memoH3" class="toolbar-btn" title="제목 3 (###)" aria-label="Heading 3"><span class="icon">H3</span></button>
+              <button id="memoH1" class="toolbar-btn" title="제목 1 (#)" aria-label="Heading 1"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 5v14M14 5v14M4 12h10m4-3 3-2v12"/></svg></button>
+              <button id="memoH2" class="toolbar-btn" title="제목 2 (##)" aria-label="Heading 2"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 5v14M12 5v14M3 12h9m4-3a3 3 0 0 1 6 0c0 3-6 4-6 7h6"/></svg></button>
+              <button id="memoH3" class="toolbar-btn" title="제목 3 (###)" aria-label="Heading 3"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 5v14M12 5v14M3 12h9m4-6h3a3 3 0 0 1 0 6h-2m2 0a3 3 0 0 1 0 6h-3"/></svg></button>
             </div>
             <div class="toolbar-divider"></div>
             <div class="toolbar-group list-group" role="toolbar" aria-label="목록">
-              <button id="memoUl" class="toolbar-btn" title="글머리 기호 (-)" aria-label="Bullet list"><span class="icon">•─</span></button>
-              <button id="memoOl" class="toolbar-btn" title="번호 목록 (1.)" aria-label="Numbered list"><span class="icon">1.</span></button>
+              <button id="memoUl" class="toolbar-btn" title="글머리 기호 (-)" aria-label="Bullet list"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></button>
+              <button id="memoOl" class="toolbar-btn" title="번호 목록 (1.)" aria-label="Numbered list"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 6h11M10 12h11M10 18h11M3 4h1v6M2 10h4m-4 5a2 2 0 0 1 4 0c0 2-4 2-4 5h4"/></svg></button>
               <button id="memoQuote" class="toolbar-btn" title="인용문 (>)" aria-label="Quote"><span class="icon">❝</span></button>
             </div>
             <div class="toolbar-divider"></div>
             <div class="toolbar-group insert-group" role="toolbar" aria-label="삽입">
-              <button id="memoLink" class="toolbar-btn" title="링크" aria-label="Link"><span class="icon">↗</span></button>
-              <button id="memoCodeBlock" class="toolbar-btn" title="코드 블록" aria-label="Code block"><span class="icon mono">&#96;&#96;&#96;</span></button>
+              <button id="memoLink" class="toolbar-btn" title="링크" aria-label="Link"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2 3 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0"/></svg></button>
+              <button id="memoCodeBlock" class="toolbar-btn" title="코드 블록" aria-label="Code block"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></svg></button>
             </div>
             <div class="toolbar-spacer"></div>
             <div class="toolbar-group action-group" role="toolbar" aria-label="동작">
-              <button id="addSelection" class="toolbar-btn action" type="button" title="선택한 텍스트 추가" aria-label="선택 추가"><span class="icon">✂</span><span class="label">선택</span></button>
-              <button id="addBlock" class="toolbar-btn action" type="button" title="블록 선택 모드" aria-label="블록 추가"><span class="icon">▢</span><span class="label">블록</span></button>
+              <button id="addSelection" class="toolbar-btn action" type="button" title="선택한 텍스트 추가" aria-label="선택 추가"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="m8 8 12 12M8 16 20 4"/></svg><span class="label">선택</span></button>
+              <button id="addBlock" class="toolbar-btn action" type="button" title="블록 선택 모드" aria-label="블록 추가"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="4 3"/></svg><span class="label">블록</span></button>
             </div>
             <div class="toolbar-divider"></div>
             <div class="toolbar-group ai-group" role="toolbar" aria-label="AI 기능">
-              <button id="aiSummary" class="toolbar-btn ai" type="button" title="AI로 요약 생성" aria-label="AI 요약"><span class="icon">✦</span><span class="label">요약</span></button>
-              <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst" aria-expanded="false" aria-controls="catalystBox"><span class="icon">⚡</span><span class="label">Catalyst</span></button>
+              <button id="aiSummary" class="toolbar-btn ai" type="button" title="AI로 요약 생성" aria-label="AI 요약"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3 3 6 6 3-6 3-3 6-3-6-6-3 6-3Zm7-2v4m-2-2h4"/></svg><span class="label">요약</span></button>
+              <button id="catalyst" class="toolbar-btn ai primary" type="button" title="Catalyst 프롬프트" aria-label="Catalyst" aria-expanded="false" aria-controls="catalystBox"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m13 2-9 12h7l-1 8 10-12h-7Z"/></svg><span class="label">Catalyst</span></button>
             </div>
+              </div>
+            </details>
           </div>
           <div class="tabs" role="tablist" aria-label="메모 패널">
             <button class="tab" type="button" data-tab="memo" role="tab">작성</button>
@@ -2055,7 +2060,7 @@
             <div class="memo-editor-shell">
               <div id="codeMode" class="code-mode" hidden>
                 <div class="code-mode-main">
-                  <div class="code-mode-badge" aria-hidden="true">{ }</div>
+                  <div class="code-mode-badge" aria-hidden="true"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></svg></div>
                   <div class="code-mode-copy">
                     <strong>Code Mode</strong>
                     <span id="codeModeStatus">코드 감지됨</span>
@@ -2238,26 +2243,17 @@
                 <span class="status-dot"></span>
                 <span class="status-text">Ready</span>
               </div>
-              <div class="footer-actions">
-                <button id="memoSync" class="footer-btn" type="button" title="클라우드 동기화" aria-label="클라우드 동기화" data-tooltip="클라우드 동기화">
-                  <span class="btn-icon">☁</span>
-                </button>
-                <button id="memoVersions" class="footer-btn" type="button" title="버전 기록" aria-label="버전 기록" data-tooltip="버전 기록">
-                  <span class="btn-icon">⏱</span>
-                </button>
-                <button id="memoToGraph" class="footer-btn" type="button" title="그래프에 추가" aria-label="그래프에 추가" data-tooltip="그래프에 추가">
-                  <span class="btn-icon">◉</span>
-                </button>
-                <button id="download" class="footer-btn" type="button" title="다운로드" aria-label="메모 다운로드" data-tooltip="메모 다운로드">
-                  <span class="btn-icon">↓</span>
-                </button>
-                <button id="memoFull" class="footer-btn" type="button" title="전체화면" aria-label="전체화면" data-tooltip="전체화면 전환">
-                  <span class="btn-icon">⛶</span>
-                </button>
-                <button id="memoClear" class="footer-btn danger" type="button" title="지우기" aria-label="지우기" data-tooltip="메모 지우기">
-                  <span class="btn-icon">✕</span>
-                </button>
-              </div>
+              <details class="memo-disclosure memo-more-actions">
+                <summary><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg><span>메모 관리</span></summary>
+                <div class="footer-actions" role="group" aria-label="메모 관리 작업">
+                  <button id="memoSync" class="footer-btn" type="button" aria-label="클라우드 동기화"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 18a5 5 0 1 1 1-10 7 7 0 0 1 13 4 3 3 0 0 1-1 6M12 12v9m-3-3 3 3 3-3"/></svg><span>클라우드 동기화</span></button>
+                  <button id="memoVersions" class="footer-btn" type="button" aria-label="버전 기록"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 11a9 9 0 1 1 2 7M3 4v7h7m2-4v5l3 2"/></svg><span>버전 기록</span></button>
+                  <button id="memoToGraph" class="footer-btn" type="button" aria-label="그래프에 추가"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5" cy="6" r="3"/><circle cx="19" cy="6" r="3"/><circle cx="12" cy="19" r="3"/><path d="M8 6h8M6 9l5 7m7-7-5 7"/></svg><span>그래프에 추가</span></button>
+                  <button id="download" class="footer-btn" type="button" aria-label="메모 다운로드"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg><span>메모 다운로드</span></button>
+                  <button id="memoFull" class="footer-btn" type="button" aria-label="전체화면"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg><span>전체화면</span></button>
+                  <button id="memoClear" class="footer-btn danger" type="button" aria-label="지우기"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 6 12 12M6 18 18 6"/></svg><span>지우기</span></button>
+                </div>
+              </details>
             </div>
             <div class="footer-primary-actions">
               <button id="memoDraft" class="save-btn secondary" type="button">지금 저장</button>
@@ -3391,6 +3387,12 @@
 
       updateOpen() {
         const isOpen = this.$panel.classList.contains('open');
+        const wasOpen = this.state.isOpen;
+        if (isOpen && !wasOpen) {
+          const active = document.activeElement;
+          this._returnFocusElement = active instanceof HTMLElement && active !== this
+            ? active : null;
+        }
         LS.set(KEYS.isOpen, isOpen);
         this.state.isOpen = isOpen;
 
@@ -3404,6 +3406,15 @@
           });
         } else {
           this.restoreBodyScroll();
+          if (wasOpen) {
+            const target = this._returnFocusElement;
+            this._returnFocusElement = null;
+            if (target?.isConnected && target.getClientRects().length) {
+              target.focus({ preventScroll: true });
+            } else {
+              document.getElementById('main-content')?.focus({ preventScroll: true });
+            }
+          }
         }
       }
 
@@ -4229,15 +4240,34 @@
           this.proposeNewVersion()
         );
 
+      // Native disclosures preserve keyboard navigation and keep secondary actions discoverable.
+      const disclosures = [...this.shadowRoot.querySelectorAll('.memo-disclosure')];
+      this.shadowRoot.addEventListener('click', event => {
+        for (const disclosure of disclosures) {
+          if (!disclosure.contains(event.target)) disclosure.open = false;
+          else if (event.target.closest('button')) disclosure.open = false;
+        }
+      });
+      this.shadowRoot.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const disclosure = disclosures.find(item => item.open);
+        if (!disclosure) return;
+        event.preventDefault();
+        disclosure.open = false;
+        disclosure.querySelector('summary').focus();
+      });
+
       this.bindWindowInteractions();
 
        // keyboard: Esc to close + editor shortcuts
         window.addEventListener('keydown', e => {
+         if (e.defaultPrevented) return;
          if (e.key === 'Escape' && this.$panel.classList.contains('open')) {
            this.$panel.classList.remove('open');
            this.updateOpen();
          }
-         if (e.altKey && (e.key === 'm' || e.key === 'M')) {
+         if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'm' || e.key === 'M')) {
+           e.preventDefault();
            this.$panel.classList.toggle('open');
            this.updateOpen();
          }

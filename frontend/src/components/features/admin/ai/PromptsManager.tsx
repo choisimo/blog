@@ -262,19 +262,20 @@ export function PromptsManager() {
 
   return (
     <div className={["ui-admin-section ui-admin-promptsmanager", ("flex gap-0 border border-ui-line dark:border-ui-line rounded-lg overflow-hidden min-h-[500px]")].filter(Boolean).join(' ')}>
-      <div className="w-44 shrink-0 border-r border-ui-line dark:border-ui-line bg-ui-soft dark:bg-ui-surface/50 flex flex-col">
+      <nav aria-label="프롬프트 모드" className="ui-prompts-navigation w-44 shrink-0 border-r border-ui-line dark:border-ui-line bg-ui-soft dark:bg-ui-surface/50 flex flex-col">
         <div className="px-3 py-2.5 border-b border-ui-line dark:border-ui-line">
           <p className="text-xs font-semibold text-ui-muted dark:text-ui-muted uppercase tracking-wider">
             Modes
           </p>
         </div>
-        <div className="flex-1 overflow-y-auto py-1">
+        <div className="ui-prompts-modes flex-1 overflow-y-auto py-1">
           {prompts.map((p) => (
             <button
               key={p.mode}
               type="button"
               onClick={() => selectMode(p.mode)}
               disabled={isBusy}
+              aria-pressed={selectedMode === p.mode}
               className={`w-full flex items-center justify-between px-3 py-2 text-xs text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50 ${
                 selectedMode === p.mode
                   ? "bg-ui-surface dark:bg-ui-surface text-ui-text dark:text-ui-text font-medium border-r-2 border-ui-line dark:border-ui-line"
@@ -299,16 +300,16 @@ export function PromptsManager() {
             Refresh
           </button>
         </div>
-      </div>
+      </nav>
 
       <div className="flex-1 flex flex-col min-w-0">
         {activePrompt ? (
           <>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm font-medium text-ui-text dark:text-ui-text">
+            <div className="ui-prompts-editor-header flex items-center justify-between px-4 py-2.5 border-b border-ui-line dark:border-ui-line bg-ui-surface dark:bg-ui-surface shrink-0">
+              <div className="ui-prompts-editor-heading flex items-center gap-2 min-w-0">
+                <h2 id="prompt-editor-title" className="text-sm font-medium text-ui-text dark:text-ui-text">
                   {activePrompt.label}
-                </span>
+                </h2>
                 <span className="font-mono text-xs text-ui-muted dark:text-ui-muted bg-ui-soft dark:bg-ui-surface px-1.5 py-0.5 rounded border border-ui-line dark:border-ui-line">
                   {activePrompt.mode}
                 </span>
@@ -350,6 +351,7 @@ export function PromptsManager() {
 
             <div className="flex-1 p-3 bg-ui-surface dark:bg-ui-surface">
               <textarea
+                aria-labelledby="prompt-editor-title"
                 value={editedText}
                 onChange={(e) => {
                   setEditedText(e.target.value);

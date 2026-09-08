@@ -968,7 +968,7 @@
 }
 
 /* Terminal link styles */
-.terminal a:not(.no-terminal-style) {
+.terminal a:not(.no-terminal-style, .ui-control, .ui-primary-button) {
   color: hsl(var(--terminal-link));
   text-decoration: underline;
   text-decoration-style: dotted;
@@ -976,7 +976,7 @@
   transition: all 0.15s ease;
 }
 
-.terminal a:not(.no-terminal-style):hover {
+.terminal a:not(.no-terminal-style, .ui-control, .ui-primary-button):hover {
   color: hsl(var(--terminal-link-hover));
   text-decoration-style: solid;
 }
@@ -1449,47 +1449,36 @@
    ============================================ */
 
 /* 기본 테마 카드/컨테이너 스타일 */
-:not(.terminal) .card,
-:not(.terminal) [class*='Card'] {
-  @apply transition-all duration-200;
+:root:not(.terminal) .card,
+:root:not(.terminal) [class*='Card'] {
+  transition: transform 180ms var(--ui-ease), opacity 180ms var(--ui-ease);
 }
 
-:not(.terminal) .card:hover,
-:not(.terminal) [class*='Card']:hover {
+:root:not(.terminal) .card:hover,
+:root:not(.terminal) [class*='Card']:hover {
   @apply shadow-lg;
 }
 
-/* 기본 테마 버튼 최소 터치 타겟 */
-:not(.terminal) button,
-:not(.terminal) [role='button'],
-:not(.terminal) a[href] {
+/* Keep controls usable in every theme without overriding component sizing. */
+:where(button, [role='button']) {
   min-height: 44px;
   min-width: 44px;
 }
 
-/* 예외: 인라인 링크와 작은 아이콘 버튼 */
-:not(.terminal) a:not([class*='btn']):not([class*='Button']),
-:not(.terminal) .inline-link,
-:not(.terminal) [class*='icon-only'] {
-  min-height: unset;
-  min-width: unset;
-}
-
 /* 기본 테마 인풋 필드 스타일링 */
-:not(.terminal) input[type='text'],
-:not(.terminal) input[type='email'],
-:not(.terminal) input[type='password'],
-:not(.terminal) input[type='search'],
-:not(.terminal) textarea,
-:not(.terminal) select {
-  @apply transition-all duration-200;
+:root:not(.terminal) input[type='text'],
+:root:not(.terminal) input[type='email'],
+:root:not(.terminal) input[type='password'],
+:root:not(.terminal) input[type='search'],
+:root:not(.terminal) textarea,
+:root:not(.terminal) select {
   font-size: 16px; /* iOS 줌 방지 */
 }
 
 /* 기본 테마 포커스 스타일 */
-:not(.terminal) input:focus,
-:not(.terminal) textarea:focus,
-:not(.terminal) select:focus {
+:root:not(.terminal) input:focus,
+:root:not(.terminal) textarea:focus,
+:root:not(.terminal) select:focus {
   @apply ring-2 ring-primary/30 border-primary;
 }
 
@@ -1534,7 +1523,7 @@
 .light textarea,
 .light select {
   background: hsl(var(--card));
-  border-color: hsl(var(--border));
+  border-color: hsl(var(--ui-line-strong));
 }
 
 :root:not(.dark):not(.terminal) input:focus,
@@ -1552,18 +1541,16 @@
 :root:not(.dark):not(.terminal) textarea::placeholder,
 .light input::placeholder,
 .light textarea::placeholder {
-  color: hsl(220 9% 55%);
+  color: hsl(var(--ui-muted));
   opacity: 1;
 }
 
 /* Light 테마 버튼 hover/active 상태 강화 */
-:root:not(.dark):not(.terminal) button:hover,
-.light button:hover {
+:where(:root:not(.dark):not(.terminal), .light) :where(button:hover) {
   background-color: hsl(var(--accent));
 }
 
-:root:not(.dark):not(.terminal) button:active,
-.light button:active {
+:where(:root:not(.dark):not(.terminal), .light) :where(button:active) {
   transform: translateY(1px);
 }
 
@@ -1703,7 +1690,7 @@
 }
 
 .dark .bg-primary:hover {
-  background: hsl(226 70% 55%);
+  background: hsl(var(--primary));
 }
 
 /* Dark 테마 모달/다이얼로그 */
@@ -1920,18 +1907,17 @@
 
 /* Primary button: ensure text is always readable */
 .btn-primary,
-button[class*='bg-primary']:not([class*='bg-primary/']) {
+button[class~='bg-primary'] {
   color: hsl(var(--primary-foreground)) !important;
 }
 
 /* Terminal theme primary buttons - Dark text on bright neon green */
 .terminal .btn-primary,
-.terminal button[class*='bg-primary']:not([class*='bg-primary/']),
-.terminal a[class*='bg-primary']:not([class*='bg-primary/']),
-.terminal button[class*='terminal-active'],
-.terminal [class*='terminal-active'] {
+.terminal button[class~='bg-primary'],
+.terminal a[class~='bg-primary'],
+.terminal [class~='terminal-active'] {
   background-color: hsl(var(--primary));
-  color: hsl(210 50% 2%) !important; /* Force dark text on neon green */
+  color: hsl(var(--ui-on-accent)) !important;
   font-weight: 600;
 }
 
@@ -1953,9 +1939,9 @@ button[class*='bg-primary']:not([class*='bg-primary/']) {
 }
 
 /* Terminal active tabs - ensure contrast */
-.terminal [data-state='active'][class*='bg-primary'],
-.terminal button[data-state='active'][class*='terminal'] {
-  color: hsl(210 50% 2%) !important; /* Dark text on neon green */
+.terminal [data-state='active'][class~='bg-primary'],
+.terminal button[data-state='active'][class~='terminal-active'] {
+  color: hsl(var(--ui-on-accent)) !important;
 }
 
 /* Destructive buttons - ensure red text is visible on dark backgrounds */
@@ -1964,23 +1950,21 @@ button[class*='bg-primary']:not([class*='bg-primary/']) {
   --destructive-text: 0 70% 60%; /* Slightly brighter red for dark mode */
 }
 
-.terminal button[class*='bg-destructive']:not([class*='bg-destructive/']) {
-  color: hsl(0 0% 100%) !important; /* White text on red background */
+.terminal button[class~='bg-destructive'] {
+  color: hsl(var(--destructive-foreground)) !important;
 }
 
 /* Secondary buttons in terminal theme */
-.terminal button[class*='bg-secondary']:not([class*='bg-secondary/']) {
+.terminal button[class~='bg-secondary'] {
   color: hsl(var(--secondary-foreground));
 }
 
-/* Ghost and outline buttons should have visible text */
-.terminal button[class*='ghost'],
-.terminal button[class*='outline'] {
+/* Match actual variants, never the focus-visible:outline-none utility. */
+.terminal button:is(.btn-ghost, .btn-outline) {
   color: hsl(var(--foreground));
 }
 
-.terminal button[class*='ghost']:hover,
-.terminal button[class*='outline']:hover {
+.terminal button:is(.btn-ghost, .btn-outline):hover {
   color: hsl(var(--primary));
 }
 

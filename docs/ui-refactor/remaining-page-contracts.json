@@ -2103,8 +2103,13 @@
       "file": "frontend/src/components/features/projects/ProjectCard.tsx",
       "name": "safePreviewLabel",
       "before": "2f698f1b2ebd4896352182d6b91e81ac12e0eb8feab88840acbf8b3e8d8e6e12",
-      "after": "0edeeb564080e41ac8bba1cf04bca9b8fdeedcfcdb476810f50ebb7cda47411c",
-      "reason": "Project record presentation consolidated: same URL/text sanitizers, readable descriptions, source-derived status, six tags plus explicit expansion, Korean action labels. No synthetic project data."
+      "after": "01f8e4e11e2ac47d97d1a21169a7a8b911ed35e537e1ac37ecbb6950e5c52683",
+      "reason": "Use the visit label for real external links, including mobile embed navigation, while retaining preview labels for desktop embeds and the console. The accessible action name now describes what clicking actually does.",
+      "tests": [
+        "frontend/src/components/features/projects/ProjectCard.test.tsx",
+        "frontend/src/test/ProjectCard.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/secondary-pages.md"
     },
     {
       "file": "frontend/src/components/features/projects/ProjectModal.tsx",
@@ -2203,6 +2208,473 @@
       "before": "d736d96d3cf1364df0e042d55fca36d4b85e749272630c868714f3274c136406",
       "after": "df34827ccf50f9442b80a8bdc196b1475c35e4a22ba819d9d0752741535ffe8b",
       "reason": "RICH-03: preserve the same target and sticky offset while respecting prefers-reduced-motion; only scroll animation mode changes from unconditional smooth to smooth-or-auto."
+    },
+    {
+      "file": "frontend/src/components/features/insight-workspace/InsightWorkspacePage.tsx",
+      "name": "selectStackItem",
+      "before": "568d1aa9d6aebe4022a53a691f7a88b0e2fae341f658b31267f6412c1569911a",
+      "after": "ef613ca7a64509a743ee56c088294a0b92636397b9e2c87918ae1a18b3040733",
+      "reason": "Selecting a stack item with a corresponding graph node now selects that node and uses the existing switchPane inspector transition, so the selected item is visible and focused on mobile. Unmapped items still do nothing.",
+      "tests": [
+        "frontend/e2e/site-design.spec.ts",
+        "frontend/src/components/features/insight-workspace/InsightWorkspacePage.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/workspaces.md"
+    },
+    {
+      "file": "frontend/src/components/molecules/AdminSubtabs.tsx",
+      "name": "moveToTab",
+      "before": "0c24b42f674f1ae8aea09d7a98257ff2a24e7130b4259bb7e9218aaab6db8297",
+      "after": "3831aa390aa69f57a45a43297c5981753a32a0b55545edf4b78c99e5ea3b3f8a",
+      "reason": "Preserve tab selection and keyboard traversal, but focus only a connected next button with preventScroll and reveal it horizontally in its own tab list; this avoids page-level vertical jumps and clipped active tabs.",
+      "tests": [
+        "frontend/src/components/molecules/AdminSubtabs.test.tsx",
+        "frontend/src/test/AdminSubtabs.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/components/molecules/AdminSubtabs.tsx",
+      "name": "focusNextButton",
+      "before": "38768e327da683d3c41dbfb9fe35eb17c2dbb0e147bc8fccf5843fa057ba291d",
+      "after": "13d31fa26464f1b40ca6ce2dc35300a0782d7b11fde098d1dd988bd16ba6d417",
+      "reason": "Guard deferred focus against an unmounted tab list, prevent browser scrolling the page while focusing, and explicitly scroll only the horizontal list enough to reveal the chosen tab.",
+      "tests": [
+        "frontend/src/components/molecules/AdminSubtabs.test.tsx",
+        "frontend/src/test/AdminSubtabs.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/components/organisms/Footer.tsx",
+      "name": "handleSubscribe",
+      "before": "335ddafc6fe43fd3916fdb9efab3e8b142f9f05c58cffb6644b824b827e3546f",
+      "after": "4208f1f04175cd76d2b948cecefadde1f41967adfc34af6fd4b91cb3372c0e98",
+      "reason": "Validate and trim the subscription email before sending the existing POST; show a persistent Korean recovery message without raw provider details, preserve the address on failure, and clear stale feedback when the user edits it. Successful and already-subscribed responses keep their existing distinct outcomes.",
+      "tests": [
+        "frontend/src/components/organisms/Footer.test.tsx",
+        "frontend/e2e/site-design.spec.ts"
+      ]
+    },
+    {
+      "file": "frontend/src/components/organisms/Footer.tsx",
+      "name": "response",
+      "before": "2b217c06792488dc12fe98a38c0456601f25d34b727ff2d1af96200337cbaab0",
+      "after": "16ea0e26fa7a850de63774c6c8314417c0533bbca1f5be56d5ef9dc88a6317e5",
+      "reason": "The subscription request keeps its endpoint, POST method and JSON shape, but sends the validated trimmed email instead of the raw field value.",
+      "tests": [
+        "frontend/src/components/organisms/Footer.test.tsx",
+        "frontend/e2e/site-design.spec.ts"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/About.tsx",
+      "name": "linkedinHref",
+      "before": "ad16ddf5124ebce68c339a98ad247ae2b543311d346dee6995f82ad5d540c53c",
+      "after": "c215a49c1b7414ecc3e921720d80e683ad9a904291aca0623f65f504f5feec65",
+      "reason": "Show a LinkedIn social link only when the configured, normalized URL has a profile path; the current LinkedIn homepage is not presented as an author profile. No profile URL is invented.",
+      "tests": [
+        "frontend/src/test/About.test.tsx",
+        "frontend/src/test/aboutLinks.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/secondary-pages.md"
+    },
+    {
+      "file": "frontend/src/pages/public/About.tsx",
+      "name": "handleChange",
+      "before": "9862e2fc0be097ff64a77201f4c6df1acdcf8bc0665a8b1b843707d21efdd34d",
+      "after": "ad4ea5ac456ed11e491b7b0f940f8e65831ff1176015d7f9f3bc183e21fa62cb",
+      "reason": "Clear stale submission success/error feedback when contact input changes while preserving the entered field data, so the message describes the current attempt.",
+      "tests": [
+        "frontend/src/test/About.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/secondary-pages.md"
+    },
+    {
+      "file": "frontend/src/pages/public/About.tsx",
+      "name": "handleSubmit",
+      "before": "05220b193735f33cb106aeb133c3dc8ce00124317bd515070f0c6f8e54f6f144",
+      "after": "dfa18aa8abb5161d998d9c067bca6848d55c43d9f08e9631c1f6a09df0abf1b0",
+      "reason": "Keep sendContactMessage and its existing payload, prevent resubmission while pending, and replace provider-specific toast feedback with persistent in-form success/error. Only success clears submitted input; failure retains it for retry.",
+      "tests": [
+        "frontend/src/test/About.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/secondary-pages.md"
+    },
+    {
+      "file": "frontend/src/pages/public/About.tsx",
+      "name": "result",
+      "before": "65d6745acfd92f8bb0785d8e59a4546e32c607ca1569ddeb48e468f293a2afbc",
+      "after": null,
+      "reason": "Remove the unused contact provider result binding. Await completion remains the success boundary; provider implementation details are no longer exposed in the user-facing confirmation.",
+      "tests": [
+        "frontend/src/test/About.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/secondary-pages.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "pageParam",
+      "before": "d13e3a0fbc51de9512fd3e7658549c20410a581a5b2f992fe3907337c45f64c7",
+      "after": "5280a3e11f4f8a298e5e1042c23c15f20595bdd22f36c82eb6dde8c260b6678f",
+      "reason": "Parse and validate the URL page as a positive safe integer, preventing NaN/partial integer values from becoming request page state.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "initialCategory",
+      "before": "c669d83f63a91e0c133b7ec3a5ce65f948e6e4e49c45fcaf60c42cfa7b03b913",
+      "after": null,
+      "reason": "Remove duplicated initial category state; category is derived from URL on every navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "initialPage",
+      "before": "b8443a3fd89911b1fdce7b396875323afd11dce171f000f434b9d211c44bf170",
+      "after": null,
+      "reason": "Remove duplicated initial page state; a validated currentPage is derived from URL on every navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "parsed",
+      "before": "bf30fa02da262e2a2238854424d2198a3efb570c12137880bfeb9cff7e69cbe9",
+      "after": null,
+      "reason": "Remove the superseded parseInt temporary; Number plus safe-integer validation now owns page normalization.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "syncStateFromParams",
+      "before": "0171d8a8fec3522a03fbc6d911614b471a6890586fdc578f961a289d8d51b798",
+      "after": null,
+      "reason": "Remove the redundant URL-to-local-state synchronization callback; URL now owns category, tags, query, sorting and page together.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "paramsCategory",
+      "before": "d4b70da1507d474fd39ec630a24a099ff5031d47c63e9a3215d8717394f16c79",
+      "after": null,
+      "reason": "Remove the synchronization effect temporary because category is derived directly from URL.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "paramsPageRaw",
+      "before": "9ba9d58d074a9277fd23378799112cde227225474ad869035e8fddae40fe33ec",
+      "after": null,
+      "reason": "Remove the synchronization effect temporary because page is derived directly from URL.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "paramsPage",
+      "before": "24aba39419d45ddc828cf5a21ca21d7eaa85993447f7aa56a884d2e79d9122b8",
+      "after": null,
+      "reason": "Remove the synchronization effect temporary, including its NaN propagation path; page normalization occurs at the component boundary.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "loadPage",
+      "before": "8328fecbec579540d9c1d7006ab6572a58af1434fe382c137ab26c1195af013a",
+      "after": "43c50078059de528d8acba69abe43150a68a174587687679575caf9f69d3d48a",
+      "reason": "Keep the same getPostsPage read contract and cancellation guard; localize failure messaging, make retry retain current filters and wait until query debounce settles before requesting. Opt into transport/JSON failure propagation from the real post adapter so the existing retry UI is reached; retry retains category, repeated tags, query, sort and current page. Temporary outages are no longer cached as empty pages.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "loadMeta",
+      "before": "7bf26982ba97594ec0b7fdf1d5e37acce206ec77332491425a0e287e81b4d14f",
+      "after": "3ee1ed7abbfcecbb7746319229fc23f8e92cf24fc65f4339a23f033c07d7f33d",
+      "reason": "Expose metadata loading/failure and retry states; remove the redundant page-size-one total read because its stored count was never rendered. Opt into category/tag manifest failures so filter metadata can show the existing unavailable state and retry instead of reporting a successfully empty vocabulary.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handleTagToggle",
+      "before": "fb25dd6d8476756403929ca1352c62f2c0976ff33b7b79d45b88131a90a3a7de",
+      "after": "32830d34ce0c09073abe1aaa3f4e9a84049306ad1974c3fba32065fc96957f72",
+      "reason": "Persist selected tags as repeated tag parameters and reset page to one, so home tag links and browser history actually apply filters.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handleClearTagFilters",
+      "before": "07b475744bd53fac15c198d7f1244cff739ec7b9e778b64139c79803cd5cb625",
+      "after": "e71cd04031be92ff620b15308f91e53e3ba7e147400ca677ea82ee5315365456",
+      "reason": "Remove only tag parameters and reset page; preserve query/category/sort.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "clearFilters",
+      "before": "423b3e8ca88c7df222455ae14a8b053b4e78db6127c5e641a3227c8748e234d5",
+      "after": "3de71548945d8dd6389149e20f274e6868feeb0e4d2c113885456aac8f8a286e",
+      "reason": "Clear the URL source of truth; redundant local setters are unnecessary and could race navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handleCategoryChange",
+      "before": "9b27f65a3102b9cc0957f7cc35a64c76f925954e43be2f8ffaf81e3b483f696f",
+      "after": "ef81d4898076aefa4fdab80819f20a47c45c4b8c88db1e6b8b92597b5c373ada",
+      "reason": "Use the shared URL filter update to preserve other filters and reset pagination.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handlePageChange",
+      "before": "e1371d8edb28db741ef734ede9b91877ff5ec8f50505aa9af3b510752b3579d3",
+      "after": "546991e073de467cb5c033ce53b3a438aeebb7077ec633daf10fd07c66d60b46",
+      "reason": "Update URL page directly and honor prefers-reduced-motion for scroll-to-top navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "featuredPost",
+      "before": "1b8c2a50c2f6c2dc79a148723801e8934c01d4a8cceaf90316c34cc3f4f1467f",
+      "after": "f000186c58713deff90ba62051297873c9157847d20255acb9381b18857da046",
+      "reason": "Show editorial lead only on the first, unfiltered latest-order page; filtered results use one uniform result list.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "spotlightPosts",
+      "before": "5ebdfea26866b4613c61b96d10b794eba01a0294302328877eb0272b7945c20d",
+      "after": "c3fd89150af73e97bf2b7ba5ab05aeb5663253486eb31c72d9f5bb7157a1e156",
+      "reason": "Keep spotlight items exclusive to the unfiltered first latest-order page, preventing duplicated small result sets.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "listPosts",
+      "before": "217c443a995dfcceff131f77166f51806e52a22af90055051a731e9b4f4bbfb5",
+      "after": "bd4e847c94aea7404665f4ee769c8943eb581ee419406386c2acf8d242ce057b",
+      "reason": "On editorial pages render only posts after lead/spotlights; for filtered or sorted pages render every result once.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "loadLatest",
+      "before": "bbd5d970bcaafa0874d49943d7204868dca832e974a07e8ede3497701a036f68",
+      "after": "95f2b772864e98f146226f0e131decfc3752d4f77f9289c3ffe13d12b32d9067",
+      "reason": "Localize the recoverable latest-post failure message; the same paginated content read and cancellation guard remain. Opt into actual manifest request/JSON failures so latest-post errors reach the existing inline retry; successful empty catalogs still show empty state.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "loadFeatured",
+      "before": "959a60748e07c55f07e634cce6e431f4e2c2c0216ee82725e78c27f719acbb13",
+      "after": "b79da3d42a774bbda6acd6507e67bbb7475e4a655ef5a5061191954b141857e3",
+      "reason": "Keep the existing analytics → curated → latest fallback order, guard all late updates after unmount, and distinguish failure of the final fallback from a real empty result. Keep the analytics/config/latest recommendation fallback order but opt the latest-post fallback into real manifest errors, allowing the existing recommendation retry when every source is unavailable.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "handleSearchFocus",
+      "before": "96b408b3c3d44ae5a9a7ed5c37c8c5387644283031bc2fadb5ed439962ae35ca",
+      "after": "b362670918f6ac4ad883ee115297943aec52e7e17cda18bb5665bc0846c50b88",
+      "reason": "Track a pending search load, mark it ready only after success, expose loading/error states and allow explicit retries after failure instead of permanently marking a failed load as loaded. Opt into actual service manifest failures so a failed lazy search load stays retryable and cannot become a cached successful empty index. Retrying preserves the entered query.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "posts",
+      "before": "e2f7a5a1a0cedd1cb0486cb1dc05d63761e6c3e8e6123dba7a43dd08a0a7dccd",
+      "after": null,
+      "reason": "The temporary awaited posts variable is replaced by the fulfilled promise callback in handleSearchFocus; the same getPosts result is stored after success.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "categories",
+      "before": "7da3ada9870738ee872ad481b2ee06cc8bb0376736fe8cd697d226275b502953",
+      "after": "3aec90d43e165bcd983a14b9377cb095c4284a39253cee5f67329e6452e3538f",
+      "reason": "Only show real returned category counts; a successful empty response must not invent six categories with zero posts.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "fallbackEntries",
+      "before": "870b95d8f00f814d27092b8d4a06ed5fbc96e327e9961b511615607592d2e38a",
+      "after": null,
+      "reason": "Remove fabricated zero-count categories; HomeCategoryStrip already implements truthful loading/error/empty states.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "sourceEntries",
+      "before": "2d1e1576c9bb479bdd61d3ec8ec63562e4392fc138b714e178a1f8e904249f89",
+      "after": null,
+      "reason": "Remove selection of fabricated fallback categories; real sorted API entries are mapped directly.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "visibleSearchResults",
+      "before": "d373a184bfd5f6a69c6858be1e1d1f987faf8705aa6590ac6f5f4739a95f7a7d",
+      "after": "bd4d4f19ff615b0d9260ad3800c2d6089d8ffcda395525234a6c3e9197887fec",
+      "reason": "Sanitize and count every match before limiting the visible preview to nine cards; provide a link carrying the search query to the full listing.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "res",
+      "before": "e51fb2f5f3f5cf417c921871416b7df49065ba9e81b81d6a385fd8510af88c1a",
+      "after": "b8edfaf113cacc8262d43ec10944e20697ebced72ad538ad3e8fc2f52fa3295f",
+      "reason": "Request the existing filtered page with the explicit throwOnError read option; payload, URL filters, sorting and page size stay unchanged.",
+      "tests": [
+        "frontend/src/test/postDiscoveryFailure.test.ts",
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "res",
+      "before": "7ddf3362821281ba620feac85a8e01b654368a6b27a41f47e422b90d01bb8b9f",
+      "after": "346c0a6ac31135f183d794ea79851548e4e9259ac998c9493cbb036dbb1c32c8",
+      "reason": "Pass the explicit throwOnError read option to the unchanged first-page latest query so transport failure and a valid empty response remain distinguishable.",
+      "tests": [
+        "frontend/src/test/postDiscoveryFailure.test.ts",
+        "frontend/src/pages/public/Index.search.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "loadCategoryCounts",
+      "before": "7b099ff9c900b65566d364285b03341bfb0794cee7bdc1b2689375b9ade46baf",
+      "after": "8dd2c819c8277f30950bbeef11e7559c77db1011204b95eefd4b9a9765b9d1bd",
+      "reason": "Opt into manifest failures so the category strip receives its existing error state instead of a false successful empty count map.",
+      "tests": [
+        "frontend/src/test/postDiscoveryFailure.test.ts",
+        "frontend/src/pages/public/Index.search.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "counts",
+      "before": "c46e505204c72efe05c357252af0d654a42fabf539448b7ab8115254d742f210",
+      "after": "4cc887e9e65b9f5a45911b4ea1d08ee74301e92c7d42454900efbbbc115aae92",
+      "reason": "Read category counts with throwOnError enabled for the existing category-strip error boundary; successful count values are unchanged.",
+      "tests": [
+        "frontend/src/test/postDiscoveryFailure.test.ts",
+        "frontend/src/pages/public/Index.search.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "loadPopularTags",
+      "before": "b9bb25fa89db384cc2003c616e3846a2b81f5b95d9878d96cc8a47c5cb4e8d5b",
+      "after": "4e373dfb82d317b338cecf977f7dee975d2e6d380f08cdd920794eaeb50e3daa",
+      "reason": "Opt into manifest failure propagation and retain the existing caught-error behavior of omitting popular tags; successful tags and order are unchanged.",
+      "tests": [
+        "frontend/src/test/postDiscoveryFailure.test.ts",
+        "frontend/src/pages/public/Index.search.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "tags",
+      "before": "dc103fa2e73f54f9202856def9c35ebfaf078d0f37faec43f55f9a980c84ac00",
+      "after": "6dc061c327e8c2a6118871da07ace3dfee03f6a96fc300a1ad5b62ddafa2ffc7",
+      "reason": "Use the explicit discovery failure option when reading popular tags, leaving all existing tag aggregation unchanged.",
+      "tests": [
+        "frontend/src/test/postDiscoveryFailure.test.ts",
+        "frontend/src/pages/public/Index.search.test.tsx"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
     }
   ]
 }

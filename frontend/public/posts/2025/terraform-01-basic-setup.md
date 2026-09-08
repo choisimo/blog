@@ -35,13 +35,70 @@ choco install terraform
 ```
 
 ## ️ 기본 프로젝트 구조
-```
-project/
-├── main.tf          # 주요 리소스 정의
-├── variables.tf     # 변수 선언
-├── outputs.tf       # 출력 값 정의
-├── terraform.tfvars # 변수 값 설정
-└── .terraform/      # 플러그인 & 상태 (자동 생성)
+```diagram
+{
+  "title": "project/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "project/"
+    },
+    {
+      "id": "n1",
+      "label": "main.tf",
+      "detail": "주요 리소스 정의"
+    },
+    {
+      "id": "n2",
+      "label": "variables.tf",
+      "detail": "변수 선언"
+    },
+    {
+      "id": "n3",
+      "label": "outputs.tf",
+      "detail": "출력 값 정의"
+    },
+    {
+      "id": "n4",
+      "label": "terraform.tfvars",
+      "detail": "변수 값 설정"
+    },
+    {
+      "id": "n5",
+      "label": ".terraform/",
+      "detail": "플러그인 & 상태 (자동 생성)"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 ## ️ 첫 번째 예제: local_file 리소스 생성
@@ -143,13 +200,65 @@ output "file_content" { value = data.local_file.existing.content }
 ##  실습 과제
 
 ### 과제 1: 디렉토리 구조 생성
-```
-output/
-├── logs/
-│   ├── app.log
-│   └── error.log
-└── data/
-    └── config.json
+```diagram
+{
+  "title": "output/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "output/"
+    },
+    {
+      "id": "n1",
+      "label": "logs/"
+    },
+    {
+      "id": "n2",
+      "label": "app.log"
+    },
+    {
+      "id": "n3",
+      "label": "error.log"
+    },
+    {
+      "id": "n4",
+      "label": "data/"
+    },
+    {
+      "id": "n5",
+      "label": "config.json"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n4",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 힌트:

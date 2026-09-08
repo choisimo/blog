@@ -119,13 +119,69 @@ React만 쓰다가 Next.js를 처음 써봤을 때 충격이었다. 설정할 �
 
 기존에는 react-router 써서 라우팅 설정을 별도로 해야 했는데, Next.js는 파일 구조만으로 라우팅이 된다.
 
-```
-pages/
-  index.js       -> 홈페이지 (/)
-  about.js       -> 어바웃 페이지 (/about)
-  blog/
-    index.js     -> 블로그 메인 (/blog)
-    [id].js      -> 개별 블로그 글 (/blog/1, /blog/2, ...)
+```diagram
+{
+  "title": "pages/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "pages/"
+    },
+    {
+      "id": "n1",
+      "label": "index.js",
+      "detail": "홈페이지 (/)"
+    },
+    {
+      "id": "n2",
+      "label": "about.js",
+      "detail": "어바웃 페이지 (/about)"
+    },
+    {
+      "id": "n3",
+      "label": "blog/"
+    },
+    {
+      "id": "n4",
+      "label": "index.js",
+      "detail": "블로그 메인 (/blog)"
+    },
+    {
+      "id": "n5",
+      "label": "[id].js",
+      "detail": "개별 블로그 글 (/blog/1, /blog/2, ...)"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n3",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n3",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 이게 얼마나 편한지 모른다. 새 페이지 만들고 싶으면 그냥 파일 하나 만들면 끝이니까.

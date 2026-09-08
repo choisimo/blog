@@ -13,10 +13,7 @@ const K8S_PROBE_INDENTED_EXCERPT = [
   '    readinessProbe: 이는 실패하더라도 프로세스를 살려두되, API Server에 즉각 보고하여 Service의 iptables 라우팅 타겟 목록에서 이 Pod의 IP를 파내버린다. "심장은 뛰지만 트래픽을 받을 정신은 없는" 상태를 사회망으로부터 완벽히 격리하는 섬세한 장치다.',
 ].join('\n');
 
-const K8S_PROBE_PANEL_TEXT = K8S_PROBE_INDENTED_EXCERPT.replace(
-  /^ {4}/gm,
-  ''
-);
+const K8S_PROBE_PANEL_TEXT = K8S_PROBE_INDENTED_EXCERPT.replace(/^ {4}/gm, '');
 
 function getRequiredElement(container: HTMLElement, selector: string) {
   const element = container.querySelector<HTMLElement>(selector);
@@ -52,6 +49,28 @@ function renderMarkdown(
 }
 
 describe('MarkdownRenderer code blocks', () => {
+  it('renders an explicit diagram as a figure while malformed diagrams retain their source', () => {
+    const diagram = {
+      title: '데이터 처리',
+      kind: 'flow',
+      nodes: [{ id: 'read', label: '입력 읽기' }],
+      edges: [],
+    };
+    const { container, unmount } = renderMarkdown(
+      `\`\`\`diagram\n${JSON.stringify(diagram)}\n\`\`\``
+    );
+    expect(
+      screen.getByRole('figure', { name: '데이터 처리' })
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('.article-code-card')
+    ).not.toBeInTheDocument();
+    unmount();
+    renderMarkdown('```diagram\n{"broken":true}\n```');
+    expect(screen.queryByRole('figure')).not.toBeInTheDocument();
+    expect(screen.getByText('{"broken":true}')).toBeInTheDocument();
+  });
+
   it('renders the k8s probe indented prose block as a readable text panel', () => {
     const { container } = renderMarkdown(K8S_PROBE_INDENTED_EXCERPT, {
       postPath: '2026/k8s-start',
@@ -61,9 +80,13 @@ describe('MarkdownRenderer code blocks', () => {
 
     expect(textPanel).toBeInTheDocument();
     expect(textPanel.textContent).toBe(K8S_PROBE_PANEL_TEXT);
-    expect(container.querySelector('.article-code-card')).not.toBeInTheDocument();
+    expect(
+      container.querySelector('.article-code-card')
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId('code-copy-btn')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('code-collapse-toggle')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('code-collapse-toggle')
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/^code$/i)).not.toBeInTheDocument();
   });
 
@@ -76,9 +99,9 @@ describe('MarkdownRenderer code blocks', () => {
     expect(screen.queryByTestId('markdown-text-panel')).not.toBeInTheDocument();
     expect(screen.getByTestId('code-copy-btn')).toBeInTheDocument();
     expect(screen.getByText(/shell/i)).toBeInTheDocument();
-    expect(container.querySelector('.article-code-highlighter')).toHaveTextContent(
-      'pvecm qdevice remove'
-    );
+    expect(
+      container.querySelector('.article-code-highlighter')
+    ).toHaveTextContent('pvecm qdevice remove');
   });
 
   it('renders unlabeled code-like snippets as full code blocks', () => {
@@ -143,9 +166,14 @@ describe('MarkdownRenderer code blocks', () => {
       container,
       '.article-flow > .article-media-frame[data-layout="wide"]'
     );
-    const codeCard = getRequiredElement(container, '.article-flow > .article-code-card');
+    const codeCard = getRequiredElement(
+      container,
+      '.article-flow > .article-code-card'
+    );
     expect(paragraph.matches('.article-flow > .article-readable')).toBe(true);
-    expect(mediaFrame.matches('.article-flow > .article-media-frame')).toBe(true);
+    expect(mediaFrame.matches('.article-flow > .article-media-frame')).toBe(
+      true
+    );
     expect(codeCard.matches('.article-flow > .article-code-card')).toBe(true);
     expect(paragraph.nextElementSibling).toBe(mediaFrame);
     expect(mediaFrame.nextElementSibling).toBe(codeCard);
@@ -175,13 +203,17 @@ describe('MarkdownRenderer code blocks', () => {
     expect(textPanel).not.toHaveClass('overscroll-x-contain');
     expect(textPanel.matches('.article-flow > .article-text-panel')).toBe(true);
     expect(textPanel).not.toHaveAttribute('tabindex');
-    expect(container.querySelector('.article-code-card')).not.toBeInTheDocument();
+    expect(
+      container.querySelector('.article-code-card')
+    ).not.toBeInTheDocument();
     expect(
       container.querySelector('.article-code-highlighter')
     ).not.toBeInTheDocument();
     expect(textPanel.querySelector('code')).not.toBeInTheDocument();
     expect(screen.queryByTestId('code-copy-btn')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('code-collapse-toggle')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('code-collapse-toggle')
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/^text$/i)).not.toBeInTheDocument();
   });
 
@@ -225,7 +257,9 @@ describe('MarkdownRenderer code blocks', () => {
   });
 
   it('renders strong and emphasis with semantic tags and strengthened article classes', () => {
-    renderMarkdown('Body **strong copy** and *emphasized copy* keep `code` plain.');
+    renderMarkdown(
+      'Body **strong copy** and *emphasized copy* keep `code` plain.'
+    );
 
     const strong = screen.getByText('strong copy', { selector: 'strong' });
     const emphasis = screen.getByText('emphasized copy', { selector: 'em' });

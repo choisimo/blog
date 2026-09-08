@@ -86,6 +86,16 @@ describe('CommentReactions', () => {
     expect(setUserReactionsMock).toHaveBeenCalledWith('comment-1', new Set(['👍']));
   });
 
+  it('closes the reaction picker with Escape and restores trigger focus', () => {
+    render(<CommentReactions commentId='comment-1' labelledTrigger />);
+    const trigger = screen.getByRole('button', { name: 'Add reaction' });
+    fireEvent.click(trigger);
+    screen.getByRole('button', { name: 'Add reaction: 👍' }).focus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+  });
+
   it('removes an existing user reaction', async () => {
     getUserReactionsMock.mockReturnValue(new Set(['👍']));
 

@@ -1,0 +1,79 @@
+{
+  "scope": "Local design review and improvements; not a production deployment or full legacy suite certification.",
+  "unit": {
+    "publicCommonData": {
+      "files": 47,
+      "passed": 190
+    },
+    "overlay": {
+      "files": 16,
+      "passed": 53
+    },
+    "playground": {
+      "passed": 8
+    }
+  },
+  "sourceContracts": {
+    "passed": 148
+  },
+  "readingContracts": {
+    "passed": 38
+  },
+  "typeCheck": {
+    "exitCode": 0
+  },
+  "lint": {
+    "exitCode": 0,
+    "errors": 0,
+    "existingWarnings": 74
+  },
+  "build": {
+    "command": "./node_modules/.bin/vite build --config config/vite.config.ts",
+    "exitCode": 0,
+    "fullPrePostBuildPipeline": false
+  },
+  "playwright": {
+    "command": "playwright test --config config/playwright.design.config.ts",
+    "baseURL": "http://127.0.0.1:4174",
+    "passed": 38
+  },
+  "administratorBrowser": {
+    "cases": 216,
+    "kind": "isolated actual React components and local fixtures"
+  },
+  "knownLegacyFailures": {
+    "administratorComparison": {
+      "passed": 40,
+      "failed": 8,
+      "sameFailureNamesAndFirstMessagesWithOriginalFeatureSources": true
+    },
+    "separatelyObserved": [
+      "LogViewer resumed stream append",
+      "PostEditorWorkspace pending autosave after draft deletion"
+    ]
+  },
+  "additionalPublicBrowser": {
+    "cases": 52,
+    "failures": 0,
+    "baseURL": "http://127.0.0.1:4174",
+    "evidence": "public-review-browser-results.json"
+  },
+  "overlayBrowser": {
+    "cases": 3,
+    "failures": 0,
+    "baseURL": "http://127.0.0.1:4173",
+    "evidence": "overlay-browser-results.json"
+  },
+  "primaryLinkContrast": {
+    "cases": 3,
+    "failures": 0,
+    "baseURL": "http://127.0.0.1:4173",
+    "evidence": "public-primary-link-contrast-results.json"
+  },
+  "projectsDock": {
+    "cases": 8,
+    "failures": 0,
+    "baseURL": "http://127.0.0.1:4173",
+    "evidence": "projects-dock-browser-results.json"
+  }
+}

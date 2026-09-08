@@ -23,14 +23,38 @@ function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e
 test('31 original route elements, order, redirects and auth wrappers are unchanged',()=>{
  assert.equal(baseline.routeInventory.length,31);assert.deepEqual(routes(text('frontend/src/App.tsx')),baseline.routeInventory);
 });
-const lifecycleAmendments=JSON.parse(text('docs/ui-refactor/lifecycle-amendments.json')).changes;
+const amendmentRecord=JSON.parse(text('docs/ui-refactor/lifecycle-amendments.json'));
+const lifecycleAmendments=amendmentRecord.changes;
+// A declaration can change only through an explicit record tied to its original
+// baseline and real regression-test files. Unlisted declarations stay immutable.
+const declarationAmendments=new Map();
+for(const amendment of amendmentRecord.declarationAmendments??[]){
+ const {file,name,before,after,reason,tests}=amendment;
+ const key=`${file}:${name}`;
+ assert.ok(!declarationAmendments.has(key),`duplicate declaration amendment: ${key}`);
+ assert.ok(Object.hasOwn(baseline.declarations[file]??{},name),`unknown baseline declaration: ${key}`);
+ assert.equal(before,baseline.declarations[file][name],`original baseline changed: ${key}`);
+ assert.match(after,/^[a-f0-9]{64}$/,`invalid amended digest: ${key}`);
+ assert.ok(typeof reason==='string'&&reason.trim().length>0,`missing change reason: ${key}`);
+ assert.ok(Array.isArray(tests)&&tests.length>0,`missing regression evidence: ${key}`);
+ for(const testFile of tests){
+  assert.ok(typeof testFile==='string'&&/\.(test|spec)\.[cm]?[jt]sx?$/.test(testFile),`not a test file: ${testFile}`);
+  const absolute=path.resolve(root,testFile),relative=path.relative(root,absolute);
+  assert.ok(!relative.startsWith('..')&&!path.isAbsolute(relative),`test outside repository: ${testFile}`);
+  assert.ok(fs.existsSync(absolute)&&fs.statSync(absolute).isFile(),`missing regression test: ${testFile}`);
+ }
+ declarationAmendments.set(key,amendment);
+}
 for(const [file,value] of Object.entries(baseline.effects)) test(`lifecycle/data effects preserved or explicitly amended: ${file}`,()=>{
  const expected=[...value]; for(const change of lifecycleAmendments.filter(c=>c.file===file)){
   assert.equal(expected[change.index],change.before);assert.ok(change.reason);expected[change.index]=change.after;
  }
  assert.deepEqual(effects(text(file)),expected);
 });
-for(const [file,value] of Object.entries(baseline.declarations)) for(const [name,digest] of Object.entries(value)) test(`preserved original contract: ${name} in ${path.basename(file)}`,()=>assert.equal(decls(text(file),[name])[name],digest));
+for(const [file,value] of Object.entries(baseline.declarations)) for(const [name,digest] of Object.entries(value)) test(`preserved or explicitly amended contract: ${name} in ${path.basename(file)}`,()=>{
+ const amendment=declarationAmendments.get(`${file}:${name}`);
+ assert.equal(decls(text(file),[name])[name],amendment?amendment.after:digest);
+});
 for(const [file,digest]of Object.entries(baseline.packageHashes))test(`no dependency/lockfile rewrite: ${file}`,()=>{
  if(file === 'frontend/package.json') {
   // Reading verification adds scripts; installed dependencies must still match

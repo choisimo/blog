@@ -1,0 +1,305 @@
+{
+  "schema": 1,
+  "note": "Proposal only. Merge these explicit amendments into the existing root docs/ui-refactor files; do not change original baseline hashes. Each reason documents an intentional user-requested discovery improvement.",
+  "lifecycleChanges": [
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "index": 0,
+      "before": "e0c03bc0ef359f5c0024879564d43369082aaf3c167c74073debdcc77ce6e828",
+      "after": "d3288b5287668b69c8d7ccac40c97bef4c2a7dd03881df5542b5b9778bce5227",
+      "reason": "Expose latest/recommendation failure and explicit retry state; keep service read order and add cancellation guards to every recommendation completion. The mount effect reruns only for the explicit loadAttempt retry action.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    }
+  ],
+  "declarationAmendments": [
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "loadLatest",
+      "before": "bbd5d970bcaafa0874d49943d7204868dca832e974a07e8ede3497701a036f68",
+      "after": "47a6114ecefe303db39513509a6f43dcede78198a9f679b34d87a952c21b9ecd",
+      "reason": "Localize the recoverable latest-post failure message; the same paginated content read and cancellation guard remain.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "loadFeatured",
+      "before": "959a60748e07c55f07e634cce6e431f4e2c2c0216ee82725e78c27f719acbb13",
+      "after": "627b0bdf81f2a579becb12934c48d1add8129e746bd2d05048caa64f30f2579c",
+      "reason": "Keep the existing analytics → curated → latest fallback order, guard all late updates after unmount, and distinguish failure of the final fallback from a real empty result.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "handleSearchFocus",
+      "before": "96b408b3c3d44ae5a9a7ed5c37c8c5387644283031bc2fadb5ed439962ae35ca",
+      "after": "9a1afa633c52ae444d6598a3eabaf461ab72e0b8cc13228c30782a58c692bb0e",
+      "reason": "Track a pending search load, mark it ready only after success, expose loading/error states and allow explicit retries after failure instead of permanently marking a failed load as loaded.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "posts",
+      "before": "e2f7a5a1a0cedd1cb0486cb1dc05d63761e6c3e8e6123dba7a43dd08a0a7dccd",
+      "after": null,
+      "reason": "The temporary awaited posts variable is replaced by the fulfilled promise callback in handleSearchFocus; the same getPosts result is stored after success.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "categories",
+      "before": "7da3ada9870738ee872ad481b2ee06cc8bb0376736fe8cd697d226275b502953",
+      "after": "3aec90d43e165bcd983a14b9377cb095c4284a39253cee5f67329e6452e3538f",
+      "reason": "Only show real returned category counts; a successful empty response must not invent six categories with zero posts.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "fallbackEntries",
+      "before": "870b95d8f00f814d27092b8d4a06ed5fbc96e327e9961b511615607592d2e38a",
+      "after": null,
+      "reason": "Remove fabricated zero-count categories; HomeCategoryStrip already implements truthful loading/error/empty states.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "sourceEntries",
+      "before": "2d1e1576c9bb479bdd61d3ec8ec63562e4392fc138b714e178a1f8e904249f89",
+      "after": null,
+      "reason": "Remove selection of fabricated fallback categories; real sorted API entries are mapped directly.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "visibleSearchResults",
+      "before": "d373a184bfd5f6a69c6858be1e1d1f987faf8705aa6590ac6f5f4739a95f7a7d",
+      "after": "bd4d4f19ff615b0d9260ad3800c2d6089d8ffcda395525234a6c3e9197887fec",
+      "reason": "Sanitize and count every match before limiting the visible preview to nine cards; provide a link carrying the search query to the full listing.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "pageParam",
+      "before": "d13e3a0fbc51de9512fd3e7658549c20410a581a5b2f992fe3907337c45f64c7",
+      "after": "5280a3e11f4f8a298e5e1042c23c15f20595bdd22f36c82eb6dde8c260b6678f",
+      "reason": "Parse and validate the URL page as a positive safe integer, preventing NaN/partial integer values from becoming request page state.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "initialCategory",
+      "before": "c669d83f63a91e0c133b7ec3a5ce65f948e6e4e49c45fcaf60c42cfa7b03b913",
+      "after": null,
+      "reason": "Remove duplicated initial category state; category is derived from URL on every navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "initialPage",
+      "before": "b8443a3fd89911b1fdce7b396875323afd11dce171f000f434b9d211c44bf170",
+      "after": null,
+      "reason": "Remove duplicated initial page state; a validated currentPage is derived from URL on every navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "parsed",
+      "before": "bf30fa02da262e2a2238854424d2198a3efb570c12137880bfeb9cff7e69cbe9",
+      "after": null,
+      "reason": "Remove the superseded parseInt temporary; Number plus safe-integer validation now owns page normalization.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "syncStateFromParams",
+      "before": "0171d8a8fec3522a03fbc6d911614b471a6890586fdc578f961a289d8d51b798",
+      "after": null,
+      "reason": "Remove the redundant URL-to-local-state synchronization callback; URL now owns category, tags, query, sorting and page together.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "paramsCategory",
+      "before": "d4b70da1507d474fd39ec630a24a099ff5031d47c63e9a3215d8717394f16c79",
+      "after": null,
+      "reason": "Remove the synchronization effect temporary because category is derived directly from URL.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "paramsPageRaw",
+      "before": "9ba9d58d074a9277fd23378799112cde227225474ad869035e8fddae40fe33ec",
+      "after": null,
+      "reason": "Remove the synchronization effect temporary because page is derived directly from URL.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "paramsPage",
+      "before": "24aba39419d45ddc828cf5a21ca21d7eaa85993447f7aa56a884d2e79d9122b8",
+      "after": null,
+      "reason": "Remove the synchronization effect temporary, including its NaN propagation path; page normalization occurs at the component boundary.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "loadPage",
+      "before": "8328fecbec579540d9c1d7006ab6572a58af1434fe382c137ab26c1195af013a",
+      "after": "59d52f497743b3dd32daf03bd6e9a9c8af64a27662bd243c4b252600000c4975",
+      "reason": "Keep the same getPostsPage read contract and cancellation guard; localize failure messaging, make retry retain current filters and wait until query debounce settles before requesting.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "loadMeta",
+      "before": "7bf26982ba97594ec0b7fdf1d5e37acce206ec77332491425a0e287e81b4d14f",
+      "after": "37592473c526b7d29aa1d9f888ac0993e32c3332c3a5fadcd3d8125b84a4ce13",
+      "reason": "Expose metadata loading/failure and retry states; remove the redundant page-size-one total read because its stored count was never rendered.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handleTagToggle",
+      "before": "fb25dd6d8476756403929ca1352c62f2c0976ff33b7b79d45b88131a90a3a7de",
+      "after": "32830d34ce0c09073abe1aaa3f4e9a84049306ad1974c3fba32065fc96957f72",
+      "reason": "Persist selected tags as repeated tag parameters and reset page to one, so home tag links and browser history actually apply filters.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handleClearTagFilters",
+      "before": "07b475744bd53fac15c198d7f1244cff739ec7b9e778b64139c79803cd5cb625",
+      "after": "e71cd04031be92ff620b15308f91e53e3ba7e147400ca677ea82ee5315365456",
+      "reason": "Remove only tag parameters and reset page; preserve query/category/sort.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "clearFilters",
+      "before": "423b3e8ca88c7df222455ae14a8b053b4e78db6127c5e641a3227c8748e234d5",
+      "after": "3de71548945d8dd6389149e20f274e6868feeb0e4d2c113885456aac8f8a286e",
+      "reason": "Clear the URL source of truth; redundant local setters are unnecessary and could race navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handleCategoryChange",
+      "before": "9b27f65a3102b9cc0957f7cc35a64c76f925954e43be2f8ffaf81e3b483f696f",
+      "after": "ef81d4898076aefa4fdab80819f20a47c45c4b8c88db1e6b8b92597b5c373ada",
+      "reason": "Use the shared URL filter update to preserve other filters and reset pagination.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "handlePageChange",
+      "before": "e1371d8edb28db741ef734ede9b91877ff5ec8f50505aa9af3b510752b3579d3",
+      "after": "546991e073de467cb5c033ce53b3a438aeebb7077ec633daf10fd07c66d60b46",
+      "reason": "Update URL page directly and honor prefers-reduced-motion for scroll-to-top navigation.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "featuredPost",
+      "before": "1b8c2a50c2f6c2dc79a148723801e8934c01d4a8cceaf90316c34cc3f4f1467f",
+      "after": "f000186c58713deff90ba62051297873c9157847d20255acb9381b18857da046",
+      "reason": "Show editorial lead only on the first, unfiltered latest-order page; filtered results use one uniform result list.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "spotlightPosts",
+      "before": "5ebdfea26866b4613c61b96d10b794eba01a0294302328877eb0272b7945c20d",
+      "after": "c3fd89150af73e97bf2b7ba5ab05aeb5663253486eb31c72d9f5bb7157a1e156",
+      "reason": "Keep spotlight items exclusive to the unfiltered first latest-order page, preventing duplicated small result sets.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Blog.tsx",
+      "name": "listPosts",
+      "before": "217c443a995dfcceff131f77166f51806e52a22af90055051a731e9b4f4bbfb5",
+      "after": "bd4e847c94aea7404665f4ee769c8943eb581ee419406386c2acf8d242ce057b",
+      "reason": "On editorial pages render only posts after lead/spotlights; for filtered or sorted pages render every result once.",
+      "tests": [
+        "frontend/src/pages/public/Blog.discovery.test.tsx"
+      ]
+    }
+  ]
+}

@@ -239,11 +239,11 @@ function LogRow({ entry }: { entry: LogEntry }) {
     >
       <button
         type="button"
-        className={`w-full flex items-start gap-2 px-3 py-2 text-left ${hasContext ? "cursor-pointer" : "cursor-default"}  `}
+        className={`ui-log-row w-full flex items-start gap-2 px-3 py-2 text-left ${hasContext ? "cursor-pointer" : "cursor-default"}  `}
         onClick={() => hasContext && setExpanded((v) => !v)}
         disabled={!hasContext}
       >
-        <span className="font-mono text-xs text-ui-muted whitespace-nowrap pt-0.5 w-[160px] shrink-0">
+        <span className="ui-log-timestamp font-mono text-xs text-ui-muted whitespace-nowrap pt-0.5 w-[160px] shrink-0">
           {new Date(timestamp).toLocaleTimeString("en-US", {
             hour12: false,
             hour: "2-digit",
@@ -260,11 +260,11 @@ function LogRow({ entry }: { entry: LogEntry }) {
           {level.toUpperCase()}
         </span>
         {service && (
-          <span className="text-xs font-mono text-ui-muted bg-ui-soft px-1 py-0.5 rounded shrink-0">
+          <span className="ui-log-service text-xs font-mono text-ui-muted bg-ui-soft px-1 py-0.5 rounded shrink-0">
             {service}
           </span>
         )}
-        <span className="text-xs text-ui-text flex-1 break-all">
+        <span className="ui-log-message text-xs text-ui-text flex-1 break-all">
           {message}
         </span>
         {hasContext && (
@@ -360,25 +360,26 @@ export function LogViewer() {
 
   return (
     <div className={["ui-admin-section ui-admin-logviewer", ("bg-ui-surface border border-ui-line rounded-lg overflow-hidden")].filter(Boolean).join(' ')}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-ui-line">
+      <div className="ui-log-header flex items-center justify-between px-4 py-3 border-b border-ui-line">
         <div className="flex items-center gap-2">
           <span
             className={`h-2 w-2 rounded-full shrink-0 ${connected ? "bg-emerald-500" : "bg-ui-text"}  `}
           />
-          <span className="text-xs font-semibold text-ui-text">
+          <h2 className="text-xs font-semibold text-ui-text">
             Server Logs
-          </span>
+          </h2>
           <span className="font-mono text-xs text-ui-muted">
             ({filtered.length})
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex border border-ui-line rounded-md overflow-hidden">
+        <div className="ui-log-controls flex items-center gap-2">
+          <div className="ui-log-levels flex border border-ui-line rounded-md overflow-hidden" role="group" aria-label="로그 수준">
             {(["all", "error", "warn", "info", "debug"] as const).map((l) => (
               <button
                 key={l}
                 type="button"
                 onClick={() => setLevelFilter(l)}
+                aria-pressed={levelFilter === l}
                 className={`px-2 py-1 text-xs transition-colors ${
                   levelFilter === l
                     ? "bg-ui-text text-white"
@@ -391,6 +392,7 @@ export function LogViewer() {
           </div>
           <input
             type="text"
+            aria-label="서비스 로그 검색"
             placeholder="service..."
             value={serviceFilter}
             onChange={(e) => setServiceFilter(e.target.value)}
@@ -399,6 +401,7 @@ export function LogViewer() {
           <button
             type="button"
             onClick={() => setPaused((v) => !v)}
+            aria-pressed={paused}
             aria-label={pauseToggleLabel}
             title={pauseToggleLabel}
             className="h-7 w-7 flex items-center justify-center rounded-md border border-ui-line text-ui-muted hover:text-ui-text hover:bg-ui-soft transition-colors"
@@ -432,7 +435,7 @@ export function LogViewer() {
           </button>
         </div>
       </div>
-      <div className="h-[500px] overflow-y-auto font-mono bg-ui-surface">
+      <div className="ui-log-stream h-[500px] overflow-y-auto font-mono bg-ui-surface" role="region" aria-label="서버 로그 목록" tabIndex={0}>
         {filtered.length === 0 ? (
           <div
             className={`flex items-center justify-center h-full text-xs ${

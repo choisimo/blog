@@ -17,27 +17,30 @@ describe('CommentInputModal', () => {
     );
     const onClose = vi.fn();
 
-    const { container } = render(
+    render(
       <CommentInputModal
         isOpen
         onClose={onClose}
         onSubmit={onSubmit}
         isTerminal={false}
+        authorLabel='Name'
+        contentLabel='Comment'
+        websiteShowLabel='Add website (optional)'
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), {
       target: { value: '  Ada  ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add website (optional)' }));
     fireEvent.change(screen.getByPlaceholderText('https://example.com'), {
       target: { value: '  https://example.com  ' },
     });
-    fireEvent.change(screen.getByLabelText('Comment'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Comment/ }), {
       target: { value: '  First comment  ' },
     });
 
-    const form = container.querySelector('#comment-form');
+    const form = screen.getByRole('dialog').querySelector('form');
     expect(form).not.toBeNull();
 
     fireEvent.submit(form as HTMLFormElement);
@@ -47,7 +50,7 @@ describe('CommentInputModal', () => {
     expect(onSubmit).toHaveBeenCalledWith({
       author: 'Ada',
       content: 'First comment',
-      website: 'https://example.com',
+      website: 'https://example.com/',
     });
 
     resolveSubmit?.();
@@ -61,23 +64,26 @@ describe('CommentInputModal', () => {
       .mockResolvedValueOnce(undefined);
     const onClose = vi.fn();
 
-    const { container } = render(
+    render(
       <CommentInputModal
         isOpen
         onClose={onClose}
         onSubmit={onSubmit}
         isTerminal={false}
+        authorLabel='Name'
+        contentLabel='Comment'
+        websiteShowLabel='Add website (optional)'
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), {
       target: { value: 'Ada' },
     });
-    fireEvent.change(screen.getByLabelText('Comment'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Comment/ }), {
       target: { value: 'Retry this' },
     });
 
-    const form = container.querySelector('#comment-form');
+    const form = screen.getByRole('dialog').querySelector('form');
     expect(form).not.toBeNull();
 
     fireEvent.submit(form as HTMLFormElement);
@@ -94,27 +100,30 @@ describe('CommentInputModal', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const onClose = vi.fn();
 
-    const { container } = render(
+    render(
       <CommentInputModal
         isOpen
         onClose={onClose}
         onSubmit={onSubmit}
         isTerminal={false}
+        authorLabel='Name'
+        contentLabel='Comment'
+        websiteShowLabel='Add website (optional)'
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Name'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), {
       target: { value: ' Ada\u0000\nLovelace ' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add website (optional)' }));
     fireEvent.change(screen.getByPlaceholderText('https://example.com'), {
       target: { value: 'https://user:pass@example.com/profile' },
     });
-    fireEvent.change(screen.getByLabelText('Comment'), {
+    fireEvent.change(screen.getByRole('textbox', { name: /^Comment/ }), {
       target: { value: ' First\r\ncomment\u0000body ' },
     });
 
-    fireEvent.submit(container.querySelector('#comment-form') as HTMLFormElement);
+    fireEvent.submit(screen.getByRole('dialog').querySelector('form') as HTMLFormElement);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({
       author: 'Ada Lovelace',

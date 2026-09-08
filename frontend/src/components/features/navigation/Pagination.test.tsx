@@ -29,7 +29,9 @@ describe('Pagination', () => {
       'Page controls'
     );
     expect(screen.getByRole('button', { name: 'First' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Previous' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Last' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pg 2' })).toHaveAttribute(
@@ -47,11 +49,7 @@ describe('Pagination', () => {
   it('clamps current page and ignores attempts to move beyond the last page', () => {
     const onPageChange = vi.fn();
     render(
-      <Pagination
-        currentPage={99}
-        totalPages={5}
-        onPageChange={onPageChange}
-      />
+      <Pagination currentPage={99} totalPages={5} onPageChange={onPageChange} />
     );
 
     expect(screen.getByRole('button', { name: 'Page 5' })).toHaveAttribute(
@@ -98,5 +96,27 @@ describe('Pagination', () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('opens only the selected quick jump and preserves input focus while typing', () => {
+    const onPageChange = vi.fn();
+    render(
+      <Pagination
+        currentPage={6}
+        totalPages={20}
+        onPageChange={onPageChange}
+        showQuickJump
+      />
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: 'Jump to page' })[0]);
+    const input = screen.getByRole('spinbutton', { name: 'Page number' });
+    input.focus();
+    fireEvent.change(input, { target: { value: '1' } });
+    expect(screen.getByRole('spinbutton', { name: 'Page number' })).toBe(input);
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: '12' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onPageChange).toHaveBeenCalledWith(12);
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 });

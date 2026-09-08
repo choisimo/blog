@@ -1,0 +1,119 @@
+{
+  "site": "https://noblog.nodove.com",
+  "checkedAt": "2026-09-07T21:41:22.907Z",
+  "apiResponses": [
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/sess-1788817291540-9g7v5i/task",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/sess-1788817291357-1aoj9m/lens-feed",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/sess-1788817291357-1aoj9m/thought-feed",
+      "status": 200
+    }
+  ],
+  "screenshots": [
+    "analysis-desktop.png",
+    "prism-desktop.png",
+    "thoughts-desktop.png",
+    "analysis-mobile-light.png",
+    "analysis-mobile-dark.png",
+    "projects-empty-desktop.png",
+    "prism-ready-desktop.png",
+    "prism-evidence-desktop.png"
+  ],
+  "discussionTopComposeAbsent": true,
+  "designPanelPresent": true,
+  "desktopGrid": "206px 206px 206px",
+  "prism": {
+    "checkedAt": "2026-09-07T21:44:00.057Z",
+    "ready": true,
+    "evidenceToggle": true,
+    "position": "2",
+    "total": "4",
+    "text": "한다: 웹 UI, 짧은 수명의 인증서, 세션 녹화, RBAC.\n문구상으로 \"한데 묶어서\"가 명시되어 있어, 구성요소의 단순 병렬 나열이 아니라 통합 구성이 핵심임을 보여준다.\n통합은 단일한 관리 인터페이스와 동작 규칙을 만들기 위한 신호로 읽을 수 있다.\n이 흐름은 앞서의 \"키 분산 피로\"라는 문제를, 접근/인증/기록/권한 통제의 하나의 체계로 바꾸려는 1페이지의 연속성에 맞는다.\n통합설계\n기능묶음\n운영단순화\nExplorer\n분석 근거\n클릭해 근거 보기\n1페이지 연속: 기능 하나로 묶는 설계 관점\n\n자세히 살펴보기\n\n같은 도구 안에서 4종 기능을 묶는다는 표현은, 사용자 입장에서 학습 곡선과 운영 절차를 통합하려는 의도를 드러낸다. 웹 UI는 접근성을 높이고, 짧은 수명의 인증서는 자격 증명의 유효성을 관리하며, 세션 녹화는 사건 추적을 돕고, RBAC는 권한 정책을 정합적으로 적용한다. 원문에서의 결론은 단순히 기능을 늘리는 것이 아니라, 분산 관리의 복잡성을 정리해주는 방향으로 기능을 한 세트로 제시하는 것이다.\n\n뒷받침하는 요점\n\n원문은 Teleport이 제공한다는 네 가지 축을 명시한다: 웹 UI, 짧은 수명의 인증서, 세션 녹화, RBAC.\n문구상으로 \"한데 묶어서\"가 명시되어 있어, 구성요소의 단순 병렬 나열이 아니라 통합 구성이 핵심임을 보여준다.\n통합은 단일한 관리 인터페이스와 동작 규칙을 만들기 위한 신호로 읽을 수 있다.\n이 흐름은 앞서의 \"키 분산 피로\"라는 문제를, 접근/인증/기록/권한 통제의 하나의 체계로 바꾸려는 1페이지의 연속성에 맞는다.\n통합설계\n기능묶음\n운영단순화\n관점 2 / 4"
+  },
+  "chain": {
+    "cards": 4,
+    "text": "인증서는 접근 자격을 영구 보관물이 아니라 시간 경과로 사라지는 상태로 바꾼다. 즉, 유출·도용이 발생해도 피해 범위를 제한하고, 권한 변경 후의 정합성 회복 속도를 높인다.\n\n영구 키가 남겨지는 환경에서 회수 시간은 얼마나 길어지는가\n인증서 만료 주기를 짧게 잡을 때 운영 부담과 보안 이득의 균형은 어디인가\n긴급 권한 회수 상황에서 갱신 절차가 어떤 순서로 단순해지는가\n권한 상실이 빠른 것이 어떤 사고 확산을 실제로 막는가\n인증\n최소권한\n회수속도\n04\nrbac session trace\nRBAC와 세션 녹화가 함께 줄 수 있는 운영 통찰은 무엇인가\n\n허가만 기록하는 체계에서 행위까지 추적하는 체계로\n\nRBAC는 누가 어떤 자원에 접근할 수 있는지를 정리하고, 세션 녹화는 그 접근이 실제로 어떻게 수행되었는지를 남긴다. 두 요소가 결합하면 정책 준수 여부를 넘어서 운영 행위의 근거를 축적할 수 있다.\n\n허가된 사용자라도 실제 세션에서 예외 동작이 없는지 어떻게 확인할 수 있는가\n문제 발생 후 조사에서 필요한 근거는 단순 로그보다 무엇이 더 필요한가\nRBAC 변경과 세션 기록을 함께 볼 때 오탐/미탐이 어떻게 줄어드는가\n교육용 사례로 활용할 때 규정 준수의 설득력이 왜 높아지는가\nrbac\n세션녹화\n컴플라이언스\n아래로 내려 더 많은 질문을 살펴보세요."
+  },
+  "closeReturnsFocus": true,
+  "mobile_light": {
+    "bounds": {
+      "x": 16,
+      "y": 452.484375,
+      "width": 343,
+      "height": 482.453125
+    },
+    "cards": [
+      {
+        "x": 29,
+        "y": 584.984375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 663.375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 741.765625,
+        "width": 317,
+        "height": 70.390625
+      }
+    ],
+    "background": "rgb(255, 255, 255)"
+  },
+  "mobile_dark": {
+    "bounds": {
+      "x": 16,
+      "y": 452.484375,
+      "width": 343,
+      "height": 482.453125
+    },
+    "cards": [
+      {
+        "x": 29,
+        "y": 584.984375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 663.375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 741.765625,
+        "width": 317,
+        "height": 70.390625
+      }
+    ],
+    "background": "rgb(26, 32, 41)"
+  },
+  "loadedAssets": [
+    "https://noblog.nodove.com/assets/MarkdownRenderer-B2ylfZ93.js",
+    "https://noblog.nodove.com/assets/MarkdownRenderer-mE15GhEt.css"
+  ],
+  "completed": true,
+  "projectCount": 0,
+  "projectsEmptyStateVerified": true,
+  "mergeCommit": "ddc105ec51759d351ab101fa1145cd3ec306d501",
+  "deployment": "https://github.com/choisimo/blog/actions/runs/34163777651"
+}

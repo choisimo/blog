@@ -62,11 +62,11 @@ describe('ThemeToggle', () => {
 
     render(<ThemeToggle />);
 
-    expect(screen.getByRole('button', { name: /System/ })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: /System/ })).toHaveAttribute(
       'aria-checked',
       'true'
     );
-    expect(screen.getByRole('button', { name: /Terminal/ })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: /Terminal/ })).toHaveAttribute(
       'aria-checked',
       'false'
     );
@@ -75,7 +75,7 @@ describe('ThemeToggle', () => {
   it('only emits allowlisted theme values from menu options', () => {
     render(<ThemeToggle />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Terminal/ }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Terminal/ }));
 
     expect(themeMocks.setTheme).toHaveBeenCalledWith('terminal');
   });
@@ -108,12 +108,12 @@ describe('ThemeToggle', () => {
     expect(
       screen.getByRole('button', { name: 'Switch theme' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Terminal/ })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: /Terminal/ })).toHaveAttribute(
       'aria-checked',
       'true'
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Light/ }));
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Light/ }));
 
     expect(themeMocks.setTheme).toHaveBeenCalledWith('light');
     expect(container.textContent).not.toContain('Hidden');
@@ -137,12 +137,12 @@ describe('ThemeToggle', () => {
     expect(
       screen.getByRole('button', { name: 'Toggle theme' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Light/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Dark/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /System/ })).toHaveAttribute(
+    expect(screen.getByRole('menuitemradio', { name: /Light/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: /Dark/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: /System/ })).toHaveAttribute(
       'aria-checked',
       'true'
     );
-    expect(screen.getByRole('button', { name: /Terminal/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: /Terminal/ })).toBeInTheDocument();
   });
 });

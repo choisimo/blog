@@ -56,7 +56,8 @@ export function Footer() {
   const handleSubscribe = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!email || !email.includes('@')) {
+    const normalizedEmail = email.trim();
+    if (!FOOTER_EMAIL_PATTERN.test(normalizedEmail)) {
       setStatus('error');
       setMessage('유효한 이메일 주소를 입력해주세요.');
       return;
@@ -70,13 +71,13 @@ export function Footer() {
       const response = await fetch(`${baseUrl}/api/v1/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalizedEmail }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to subscribe');
+        throw new Error('구독을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.');
       }
 
       setStatus('success');
@@ -86,9 +87,9 @@ export function Footer() {
         setMessage('확인 이메일을 발송했습니다. 메일함을 확인해주세요!');
         setEmail('');
       }
-    } catch (err) {
+    } catch {
       setStatus('error');
-      setMessage(err instanceof Error ? err.message : '구독 처리 중 오류가 발생했습니다.');
+      setMessage('구독을 완료하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');
     }
   };
 
@@ -122,13 +123,13 @@ export function Footer() {
               <label htmlFor="footer-subscribe-email" className="ui-footer__label">이메일 주소</label>
               <div className="ui-footer__form-row">
                 <input id="footer-subscribe-email" type="email" autoComplete="email" value={email}
-                  onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" disabled={status === 'loading'}
-                  aria-invalid={status === 'error' && (!email || !email.includes('@'))} aria-describedby="footer-subscribe-help footer-subscribe-status"
+                  onChange={(e) => { setEmail(e.target.value); setStatus('idle'); setMessage(''); }} placeholder="email@example.com" disabled={status === 'loading'}
+                  required maxLength={254} aria-invalid={status === 'error' && !FOOTER_EMAIL_PATTERN.test(email.trim())} aria-describedby="footer-subscribe-help footer-subscribe-status"
                   className="ui-footer__input" />
                 <Button type="submit" disabled={status === 'loading'} variant="outline" className="ui-footer__submit">
-                  {status === 'loading' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />Processing...</>
-                    : status === 'success' ? <><CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />Subscribed!</>
-                      : 'Subscribe'}
+                  {status === 'loading' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />신청 중…</>
+                    : status === 'success' ? <><CheckCircle className="mr-2 h-4 w-4" aria-hidden="true" />신청 완료</>
+                      : '구독하기'}
                 </Button>
               </div>
               <p id="footer-subscribe-status" role={status === 'error' ? 'alert' : 'status'} aria-live={status === 'error' ? 'assertive' : 'polite'}

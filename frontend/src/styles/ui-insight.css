@@ -88,6 +88,14 @@
 .ui-insight-stack-disclosure[open] > summary::before { content:'−'; }
 .ui-insight-stack-disclosure > summary span { margin-left:auto; color:hsl(var(--ui-muted)); font-size:13px; }
 .ui-insight-stack-disclosure > section { border:0; border-top:1px solid hsl(var(--ui-line)); border-radius:0; box-shadow:none; }
+.ui-insight-workspace .ui-insight-stack-item { display:grid; grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:auto auto; gap:8px; height:auto; min-height:120px; }
+.ui-insight-workspace .ui-insight-stack-select { grid-column:1; grid-row:1; min-width:0; padding-right:0; }
+.ui-insight-stack-select > div { min-width:0; }
+.ui-insight-stack-select svg { flex-shrink:0; }
+.ui-insight-workspace .ui-insight-stack-action { position:static; width:44px; height:44px; min-width:44px; min-height:44px; }
+.ui-insight-stack-remove { grid-column:2; grid-row:1; }
+.ui-insight-stack-pin { grid-column:2; grid-row:2; }
+.ui-insight-stack-meta { grid-column:1; grid-row:2; align-self:center; margin-top:0; min-width:0; }
 @media(min-width:1720px) { .ui-insight-workspace { --ui-inspector-width:400px; } }
 @media(max-width:1199px) and (min-width:1024px) { .ui-insight-workspace { --ui-inspector-width:320px; } }
 @media(max-width:1023px) {

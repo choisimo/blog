@@ -36,13 +36,65 @@ Default output format: json
 ```
 
 ##  프로젝트 구조
-```
-02-aws-ec2/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── terraform.tfvars
-└── userdata.sh
+```diagram
+{
+  "title": "02-aws-ec2/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "02-aws-ec2/"
+    },
+    {
+      "id": "n1",
+      "label": "main.tf"
+    },
+    {
+      "id": "n2",
+      "label": "variables.tf"
+    },
+    {
+      "id": "n3",
+      "label": "outputs.tf"
+    },
+    {
+      "id": "n4",
+      "label": "terraform.tfvars"
+    },
+    {
+      "id": "n5",
+      "label": "userdata.sh"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n0",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 ##  variables.tf

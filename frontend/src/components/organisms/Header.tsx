@@ -105,6 +105,7 @@ export function Header() {
   const [searchSheetOpen, setSearchSheetOpen] = useState(false);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
+  const searchPanel = useRef<HTMLDivElement>(null);
   const menuOpenedAtPath = useRef("");
   const location = useLocation();
   const { theme, setTheme, isTerminal } = useTheme();
@@ -213,16 +214,16 @@ export function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="ui-preferences-menu">
                   <DropdownMenuLabel>언어 설정</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => setLanguage("ko")}>
+                  <DropdownMenuItem role="menuitemradio" aria-checked={language === "ko"} onClick={() => setLanguage("ko")}>
                     <Globe className="mr-2 h-4 w-4" aria-hidden="true" />한국어{language === "ko" && <span className="ml-auto">✓</span>}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLanguage("en")}>
+                  <DropdownMenuItem role="menuitemradio" aria-checked={language === "en"} onClick={() => setLanguage("en")}>
                     <Globe className="mr-2 h-4 w-4" aria-hidden="true" />English{language === "en" && <span className="ml-auto">✓</span>}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>테마 설정</DropdownMenuLabel>
                   {themeOptions.map(({ value, label, icon: Icon }) => (
-                    <DropdownMenuItem key={value} onClick={() => setTheme(value)}>
+                    <DropdownMenuItem key={value} role="menuitemradio" aria-checked={theme === value} onClick={() => setTheme(value)}>
                       <Icon className="mr-2 h-4 w-4" aria-hidden="true" />{label}{theme === value && <span className="ml-auto">✓</span>}
                     </DropdownMenuItem>
                   ))}
@@ -263,7 +264,14 @@ export function Header() {
         </SheetContent>
       </Sheet>
       <Sheet open={searchSheetOpen} onOpenChange={setSearchSheetOpen}>
-        <SheetContent side="top" className="ui-search-sheet" aria-describedby={undefined}
+        <SheetContent ref={searchPanel} side="top" className="ui-search-sheet" aria-describedby={undefined}
+          onOpenAutoFocus={(event) => {
+            const input = searchPanel.current?.querySelector<HTMLInputElement>('input');
+            if (input) {
+              event.preventDefault();
+              input.focus({ preventScroll: true });
+            }
+          }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             const target = searchTrigger.current;

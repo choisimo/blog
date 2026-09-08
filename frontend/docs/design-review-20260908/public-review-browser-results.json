@@ -1,0 +1,1640 @@
+{
+  "baseURL": "http://127.0.0.1:4174",
+  "networkPolicy": "Local static GETs and explicit local manifest fixtures only; external HTTP, API calls and WebSockets blocked.",
+  "results": [
+    {
+      "case": "light-320-/400",
+      "finalPath": "/400",
+      "title": "요청 형식이 올바르지 않습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "이전 페이지",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/401",
+      "finalPath": "/401",
+      "title": "인증이 필요합니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 823.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 144.8125,
+          "right": 268.90625,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/403",
+      "finalPath": "/403",
+      "title": "이 페이지에 접근할 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 144.8125,
+          "right": 268.90625,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/404",
+      "finalPath": "/404",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/429",
+      "finalPath": "/429",
+      "title": "요청이 너무 빠르게 반복되고 있습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/500",
+      "finalPath": "/500",
+      "title": "서버 처리 중 오류가 발생했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/503",
+      "finalPath": "/503",
+      "title": "서비스가 잠시 불안정합니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/admin/unknown",
+      "finalPath": "/admin/unknown",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/insight/unknown",
+      "finalPath": "/insight/unknown",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 748.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/admin/auth/callback",
+      "finalPath": "/admin/auth/callback",
+      "title": "인증을 완료하지 못했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "noblog",
+          "x": 35,
+          "right": 114.328125,
+          "width": 79.328125,
+          "height": 44
+        },
+        {
+          "name": "관리자 로그인으로 돌아가기",
+          "x": 35,
+          "right": 195.84375,
+          "width": 160.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-320-/admin/auth/callback#error=Provider%20denied",
+      "finalPath": "/admin/auth/callback",
+      "title": "인증을 완료하지 못했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "noblog",
+          "x": 35,
+          "right": 114.328125,
+          "width": 79.328125,
+          "height": 44
+        },
+        {
+          "name": "관리자 로그인으로 돌아가기",
+          "x": 35,
+          "right": 195.84375,
+          "width": 160.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "light-header-search-390",
+      "input": {
+        "fontSize": 16,
+        "height": 48
+      },
+      "primary": {
+        "before": {
+          "background": "rgb(36, 86, 188)",
+          "color": "rgb(255, 255, 255)"
+        },
+        "hover": {
+          "background": "rgb(36, 86, 188)",
+          "color": "rgb(255, 255, 255)"
+        }
+      },
+      "openerRestored": true,
+      "pageErrors": []
+    },
+    {
+      "case": "dark-320-/400",
+      "finalPath": "/400",
+      "title": "요청 형식이 올바르지 않습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "이전 페이지",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/401",
+      "finalPath": "/401",
+      "title": "인증이 필요합니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 823.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 144.8125,
+          "right": 268.90625,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/403",
+      "finalPath": "/403",
+      "title": "이 페이지에 접근할 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 144.8125,
+          "right": 268.90625,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/404",
+      "finalPath": "/404",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/429",
+      "finalPath": "/429",
+      "title": "요청이 너무 빠르게 반복되고 있습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/500",
+      "finalPath": "/500",
+      "title": "서버 처리 중 오류가 발생했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/503",
+      "finalPath": "/503",
+      "title": "서비스가 잠시 불안정합니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 858.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/admin/unknown",
+      "finalPath": "/admin/unknown",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/insight/unknown",
+      "finalPath": "/insight/unknown",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 748.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 144.8125,
+          "right": 282.921875,
+          "width": 138.109375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 189.515625,
+          "width": 87.625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 213.515625,
+          "right": 283.359375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/admin/auth/callback",
+      "finalPath": "/admin/auth/callback",
+      "title": "인증을 완료하지 못했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "noblog",
+          "x": 35,
+          "right": 114.328125,
+          "width": 79.328125,
+          "height": 44
+        },
+        {
+          "name": "관리자 로그인으로 돌아가기",
+          "x": 35,
+          "right": 195.84375,
+          "width": 160.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-320-/admin/auth/callback#error=Provider%20denied",
+      "finalPath": "/admin/auth/callback",
+      "title": "인증을 완료하지 못했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "noblog",
+          "x": 35,
+          "right": 114.328125,
+          "width": 79.328125,
+          "height": 44
+        },
+        {
+          "name": "관리자 로그인으로 돌아가기",
+          "x": 35,
+          "right": 195.84375,
+          "width": 160.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "dark-header-search-390",
+      "input": {
+        "fontSize": 16,
+        "height": 48
+      },
+      "primary": {
+        "before": {
+          "background": "rgb(175, 201, 255)",
+          "color": "rgb(20, 35, 61)"
+        },
+        "hover": {
+          "background": "rgb(175, 201, 255)",
+          "color": "rgb(20, 35, 61)"
+        }
+      },
+      "openerRestored": true,
+      "pageErrors": []
+    },
+    {
+      "case": "terminal-320-/400",
+      "finalPath": "/400",
+      "title": "요청 형식이 올바르지 않습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 1012.78125
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "이전 페이지",
+          "x": 20,
+          "right": 162.703125,
+          "width": 142.703125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/401",
+      "finalPath": "/401",
+      "title": "인증이 필요합니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 891.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 144.8125,
+          "right": 268.90625,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/403",
+      "finalPath": "/403",
+      "title": "이 페이지에 접근할 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 926.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 144.8125,
+          "right": 268.90625,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/404",
+      "finalPath": "/404",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 982.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 20,
+          "right": 162.703125,
+          "width": 142.703125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/429",
+      "finalPath": "/429",
+      "title": "요청이 너무 빠르게 반복되고 있습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 926.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/500",
+      "finalPath": "/500",
+      "title": "서버 처리 중 오류가 발생했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 956.78125
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/503",
+      "finalPath": "/503",
+      "title": "서비스가 잠시 불안정합니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 926.390625
+      },
+      "controls": [
+        {
+          "name": "새로고침",
+          "x": 20,
+          "right": 144.09375,
+          "width": 124.09375,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 156.09375,
+          "right": 268.90625,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/admin/unknown",
+      "finalPath": "/admin/unknown",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 872.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 20,
+          "right": 162.703125,
+          "width": 142.703125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/insight/unknown",
+      "finalPath": "/insight/unknown",
+      "title": "페이지를 찾을 수 없습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 872.390625
+      },
+      "controls": [
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 132.8125,
+          "width": 112.8125,
+          "height": 44
+        },
+        {
+          "name": "블로그 보기",
+          "x": 20,
+          "right": 162.703125,
+          "width": 142.703125,
+          "height": 44
+        },
+        {
+          "name": "홈으로",
+          "x": 20,
+          "right": 77.890625,
+          "width": 57.890625,
+          "height": 44
+        },
+        {
+          "name": "글 목록 보기",
+          "x": 101.890625,
+          "right": 199.296875,
+          "width": 97.40625,
+          "height": 44
+        },
+        {
+          "name": "문의하기",
+          "x": 20,
+          "right": 89.84375,
+          "width": 69.84375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/admin/auth/callback",
+      "finalPath": "/admin/auth/callback",
+      "title": "인증을 완료하지 못했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "noblog",
+          "x": 35,
+          "right": 117.8125,
+          "width": 82.8125,
+          "height": 44
+        },
+        {
+          "name": "관리자 로그인으로 돌아가기",
+          "x": 35,
+          "right": 206.359375,
+          "width": 171.359375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-320-/admin/auth/callback#error=Provider%20denied",
+      "finalPath": "/admin/auth/callback",
+      "title": "인증을 완료하지 못했습니다",
+      "scrollWidth": 305,
+      "main": {
+        "x": 0,
+        "right": 305,
+        "width": 305,
+        "height": 800
+      },
+      "controls": [
+        {
+          "name": "noblog",
+          "x": 35,
+          "right": 117.8125,
+          "width": 82.8125,
+          "height": 44
+        },
+        {
+          "name": "관리자 로그인으로 돌아가기",
+          "x": 35,
+          "right": 206.359375,
+          "width": 171.359375,
+          "height": 44
+        }
+      ]
+    },
+    {
+      "case": "terminal-header-search-390",
+      "input": {
+        "fontSize": 16,
+        "height": 48
+      },
+      "primary": {
+        "before": {
+          "background": "rgb(141, 226, 177)",
+          "color": "rgb(16, 37, 26)"
+        },
+        "hover": {
+          "background": "rgb(141, 226, 177)",
+          "color": "rgb(16, 37, 26)"
+        }
+      },
+      "openerRestored": true,
+      "pageErrors": []
+    },
+    {
+      "case": "alias-/bad-request",
+      "target": "/400"
+    },
+    {
+      "case": "alias-/unauthorized",
+      "target": "/401"
+    },
+    {
+      "case": "alias-/forbidden",
+      "target": "/403"
+    },
+    {
+      "case": "alias-/too-many-requests",
+      "target": "/429"
+    },
+    {
+      "case": "alias-/error",
+      "target": "/500"
+    },
+    {
+      "case": "alias-/server-error",
+      "target": "/500"
+    },
+    {
+      "case": "alias-/maintenance",
+      "target": "/503"
+    },
+    {
+      "case": "alias-/contact",
+      "target": "/about"
+    },
+    {
+      "case": "blog-manifest-recovery-light",
+      "manifestRequests": 7,
+      "realService": true,
+      "recovered": true,
+      "queryPreserved": true,
+      "pageErrors": []
+    },
+    {
+      "case": "home-manifest-recovery-light",
+      "manifestRequests": 9,
+      "realService": true,
+      "recovered": true,
+      "queryPreserved": true,
+      "pageErrors": []
+    },
+    {
+      "case": "blog-manifest-recovery-terminal",
+      "manifestRequests": 7,
+      "realService": true,
+      "recovered": true,
+      "queryPreserved": true,
+      "pageErrors": []
+    },
+    {
+      "case": "home-manifest-recovery-terminal",
+      "manifestRequests": 9,
+      "realService": true,
+      "recovered": true,
+      "queryPreserved": true,
+      "pageErrors": []
+    },
+    {
+      "case": "latest-home-light-1440",
+      "screenshot": "latest-home-light-1440.png",
+      "pageErrors": []
+    },
+    {
+      "case": "latest-blog-terminal-320",
+      "screenshot": "latest-blog-terminal-320.png",
+      "pageErrors": []
+    },
+    {
+      "case": "latest-projects-light-1440",
+      "screenshot": "latest-projects-light-1440.png",
+      "projectSummary": "68개 저장소",
+      "pageErrors": []
+    },
+    {
+      "case": "latest-about-terminal-320",
+      "screenshot": "latest-about-terminal-320.png",
+      "pageErrors": []
+    }
+  ],
+  "failures": []
+}

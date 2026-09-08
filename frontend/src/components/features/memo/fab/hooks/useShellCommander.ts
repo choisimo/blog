@@ -68,6 +68,7 @@ export function useShellCommander({
   const [shellLogs, setShellLogs] = useState<ShellLog[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const dismissedSuggestionsForRef = useRef<string | null>(null);
   const shellInputRef = useRef<HTMLInputElement>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
@@ -509,6 +510,7 @@ export function useShellCommander({
   const selectSuggestion = useCallback((suggestion: string) => {
     const normalizedSuggestion = normalizeShellCommandInput(suggestion);
     if (!normalizedSuggestion) return;
+    dismissedSuggestionsForRef.current = normalizedSuggestion;
     setShellInput(normalizedSuggestion);
     setSuggestions([]);
     setSelectedSuggestionIndex(-1);
@@ -548,6 +550,7 @@ export function useShellCommander({
           return;
         }
         if (e.key === "Escape") {
+          dismissedSuggestionsForRef.current = shellInput;
           setSuggestions([]);
           setSelectedSuggestionIndex(-1);
           return;
@@ -575,7 +578,11 @@ export function useShellCommander({
 
   // Update suggestions when input changes
   useEffect(() => {
-    const newSuggestions = generateSuggestions(shellInput);
+    // Parent callbacks can change without a new input. Keep an explicit
+    // dismissal until the user edits the command instead of reopening it.
+    const dismissed = dismissedSuggestionsForRef.current === shellInput;
+    if (!dismissed) dismissedSuggestionsForRef.current = null;
+    const newSuggestions = dismissed ? [] : generateSuggestions(shellInput);
     setSuggestions((prev) => {
       if (
         prev.length === newSuggestions.length &&

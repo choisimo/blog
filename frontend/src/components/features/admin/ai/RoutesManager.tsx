@@ -501,7 +501,7 @@ export function RoutesManager() {
   return (
     <Card className={["ui-admin-section ui-admin-routesmanager", ("ui-panel")].filter(Boolean).join(' ')}>
       <CardHeader className="ui-panel-header">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <CardTitle className="ui-panel-title">Routing Rules</CardTitle>
             <CardDescription className="ui-description">Configure model routing and fallback strategies</CardDescription>

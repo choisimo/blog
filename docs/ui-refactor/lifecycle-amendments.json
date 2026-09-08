@@ -7,6 +7,48 @@
       "before": "33989a009588b0989b12128efc11082599a63c0f0dfcb6f6d71c3628541fa35d",
       "after": "15e7a72eb5ae355f94539638f08aaad37d454a0f2cb4f89ebc34b52a823432a7",
       "reason": "Suppress/remove global floating assistants on admin routes while leaving Insight memo bridge mounted."
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "index": 0,
+      "before": "e0c03bc0ef359f5c0024879564d43369082aaf3c167c74073debdcc77ce6e828",
+      "after": "95e5b8ec6ae1334b15e63693937881c5e0d6a861cdbad77a23d38e5c96e13327",
+      "reason": "Expose latest/recommendation failure and explicit retry state; keep service read order and add cancellation guards to every recommendation completion. The mount effect reruns only for the explicit loadAttempt retry action. The discovery reads explicitly propagate real manifest transport/JSON failures into these existing boundaries, preserving successful empty responses and non-discovery adapter fallback behavior.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ]
+    }
+  ],
+  "declarationAmendments": [
+    {
+      "file": "frontend/src/components/organisms/Footer.tsx",
+      "name": "handleSubscribe",
+      "before": "335ddafc6fe43fd3916fdb9efab3e8b142f9f05c58cffb6644b824b827e3546f",
+      "after": "4208f1f04175cd76d2b948cecefadde1f41967adfc34af6fd4b91cb3372c0e98",
+      "reason": "Validate and trim the subscription email before sending the existing POST; show a persistent Korean recovery message without raw provider details, preserve the address on failure, and clear stale feedback when the user edits it. Successful and already-subscribed responses keep their existing distinct outcomes.",
+      "tests": [
+        "frontend/src/components/organisms/Footer.test.tsx",
+        "frontend/e2e/site-design.spec.ts"
+      ]
+    },
+    {
+      "file": "frontend/src/pages/public/Index.tsx",
+      "name": "handleSearchFocus",
+      "before": "96b408b3c3d44ae5a9a7ed5c37c8c5387644283031bc2fadb5ed439962ae35ca",
+      "after": "b362670918f6ac4ad883ee115297943aec52e7e17cda18bb5665bc0846c50b88",
+      "reason": "Track a pending search load, mark it ready only after success, expose loading/error states and allow explicit retries after failure instead of permanently marking a failed load as loaded. Opt into actual service manifest failures so a failed lazy search load stays retryable and cannot become a cached successful empty index. Retrying preserves the entered query.",
+      "tests": [
+        "frontend/src/pages/public/Index.search.test.tsx",
+        "frontend/src/pages/public/Index.test.tsx",
+        "frontend/src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "frontend/src/components/features/home/HomeCategoryStrip.test.tsx",
+        "frontend/src/test/postDiscoveryFailure.test.ts"
+      ],
+      "documentation": "frontend/docs/design-review-20260908/discovery-failure.md"
     }
   ]
 }

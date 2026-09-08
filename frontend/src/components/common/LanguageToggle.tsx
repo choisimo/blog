@@ -59,17 +59,18 @@ export function LanguageToggle({ labels }: LanguageToggleProps = {}) {
           <Globe className='h-4 w-4' />
         </TouchIconButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align='end' className='w-32 text-sm'>
+      <DropdownMenuContent align='end' className='ui-preferences-menu w-32 text-sm'>
         {(Object.keys(DEFAULT_LABELS) as SupportedLanguage[]).map(lang => (
           <DropdownMenuItem
             key={lang}
+            role='menuitemradio'
             onSelect={() => setLanguage(lang)}
             aria-checked={safeLanguage === lang}
             className='flex items-center justify-between'
           >
             <span>{displayLabels[lang]}</span>
             {safeLanguage === lang && (
-              <span className='text-primary text-xs'>•</span>
+              <span aria-hidden='true' className='text-primary text-xs'>•</span>
             )}
           </DropdownMenuItem>
         ))}

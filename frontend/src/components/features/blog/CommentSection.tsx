@@ -560,145 +560,151 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
       >
         <div
           className={cn(
-            'flex flex-wrap items-start justify-between gap-4 pb-4',
+            'ui-discussion-header flex flex-col gap-5 pb-5',
             isTerminal
               ? 'border-b border-border'
               : 'border-b border-border/50 dark:border-white/10'
           )}
         >
-          <div className='flex min-w-0 items-start gap-3'>
-            <span
-              className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border',
-                isTerminal
-                  ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-primary/15 bg-primary/10 text-primary'
-              )}
-            >
-              <MessageCircle
-                aria-hidden='true'
-                className={cn('h-5 w-5', isTerminal && 'terminal-glow')}
-              />
-            </span>
-            <div className='min-w-0'>
-              <h2
+          <div className='ui-discussion-title-row'>
+            <div className='flex min-w-0 items-start gap-3'>
+              <span
                 className={cn(
-                  'text-lg font-semibold tracking-normal',
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border',
                   isTerminal
-                    ? 'font-mono text-primary terminal-glow'
-                    : 'text-foreground dark:text-white'
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-primary/15 bg-primary/10 text-primary'
                 )}
               >
-                {isTerminal ? '>_ Discussion' : 'Discussion'}
-              </h2>
-              <p
-                className={cn(
-                  'mt-1 max-w-2xl text-sm leading-relaxed',
-                  isTerminal
-                    ? 'font-mono text-muted-foreground'
-                    : 'text-muted-foreground dark:text-white/60'
-                )}
-              >
-                {isTerminal
-                  ? '// saved thread for humans, agents, and follow-up context'
-                  : '질문, 보충, 반박, AI 응답이 저장되는 글 하단 토론장'}
-              </p>
+                <MessageCircle
+                  aria-hidden='true'
+                  className={cn('h-5 w-5', isTerminal && 'terminal-glow')}
+                />
+              </span>
+              <div className='min-w-0'>
+                <h2
+                  className={cn(
+                    'text-lg font-semibold tracking-normal',
+                    isTerminal
+                      ? 'font-mono text-primary terminal-glow'
+                      : 'text-foreground dark:text-white'
+                  )}
+                >
+                  {isTerminal ? '>_ Discussion' : 'Discussion'}
+                </h2>
+                <p
+                  className={cn(
+                    'mt-1 max-w-2xl text-sm leading-relaxed',
+                    isTerminal
+                      ? 'font-mono text-muted-foreground'
+                      : 'text-muted-foreground dark:text-white/60'
+                  )}
+                >
+                  {isTerminal
+                    ? '// saved thread for humans, agents, and follow-up context'
+                    : '질문이나 의견을 남기고 함께 이야기해 보세요.'}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className='flex flex-wrap items-center justify-start gap-2 sm:justify-end'>
-            <span
-              className={cn(
-                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
-                isTerminal
-                  ? 'border-primary/25 bg-primary/10 font-mono text-primary'
-                  : 'border-border/70 bg-background/70 text-foreground dark:border-white/10 dark:bg-white/5 dark:text-white'
-              )}
-            >
-              <Users aria-hidden='true' className='h-3.5 w-3.5' />
-              {isTerminal
-                ? `ALL:${discussionCounts.total}`
-                : `전체 ${discussionCounts.total}`}
-            </span>
-            <span
-              className={cn(
-                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
-                isTerminal
-                  ? 'border-primary/20 bg-background/30 font-mono text-muted-foreground'
-                  : 'border-border/60 bg-background/60 text-muted-foreground dark:border-white/10 dark:bg-white/5'
-              )}
-            >
-              <User aria-hidden='true' className='h-3.5 w-3.5' />
-              {isTerminal
-                ? `H:${discussionCounts.human}`
-                : `사람 ${discussionCounts.human}`}
-            </span>
-            <span
-              className={cn(
-                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
-                isTerminal
-                  ? 'border-violet-400/30 bg-violet-400/10 font-mono text-violet-300'
-                  : 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
-              )}
-            >
-              <Bot aria-hidden='true' className='h-3.5 w-3.5' />
-              {isTerminal
-                ? `AI:${discussionCounts.ai}`
-                : `AI ${discussionCounts.ai}`}
-            </span>
-            <span
-              className={cn(
-                'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
-                error
-                  ? 'border-destructive/30 bg-destructive/10 text-destructive'
-                  : isTerminal
+          <div className='ui-discussion-overview'>
+            <div className='ui-discussion-counts' role='group' aria-label='댓글 통계'>
+              <span
+                className={cn(
+                  'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                  isTerminal
+                    ? 'border-primary/25 bg-primary/10 font-mono text-primary'
+                    : 'border-border/70 bg-background/70 text-foreground dark:border-white/10 dark:bg-white/5 dark:text-white'
+                )}
+              >
+                <Users aria-hidden='true' className='h-3.5 w-3.5' />
+                {isTerminal
+                  ? `ALL:${discussionCounts.total}`
+                  : `전체 ${discussionCounts.total}`}
+              </span>
+              <span
+                className={cn(
+                  'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                  isTerminal
                     ? 'border-primary/20 bg-background/30 font-mono text-muted-foreground'
                     : 'border-border/60 bg-background/60 text-muted-foreground dark:border-white/10 dark:bg-white/5'
-              )}
-            >
-              <Radio aria-hidden='true' className={cn('h-3.5 w-3.5', !error && 'text-primary')} />
-              {streamStatusLabel}
-            </span>
-
-            {featureFlags.aiEnabled && (
-              <button
-                type='button'
-                onClick={handleToggleAiDiscussion}
-                aria-pressed={aiDiscussionEnabled}
-                aria-label={aiDiscussionEnabled ? safeAiAutoOnLabel : safeAiAutoOffLabel}
-                className={cn(
-                  'inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-[0.98]',
-                  isTerminal
-                    ? aiDiscussionEnabled
-                      ? 'border-primary/40 bg-primary/20 font-mono text-primary'
-                      : 'border-border bg-muted/40 font-mono text-muted-foreground hover:border-primary/50 hover:text-primary'
-                    : aiDiscussionEnabled
-                      ? 'border-violet-500/30 bg-violet-500/15 text-violet-700 dark:text-violet-300'
-                      : 'border-border/60 bg-muted/50 text-muted-foreground hover:border-violet-500/30 hover:text-violet-700 dark:hover:text-violet-300'
                 )}
-                title={
-                  aiDiscussionEnabled
-                    ? '댓글 작성 후 AI 자동 응답 끄기'
-                    : '댓글 작성 후 AI 자동 응답 켜기'
-                }
               >
-                <Bot
-                  aria-hidden='true'
-                  className={cn(
-                    'h-3.5 w-3.5',
-                    aiDiscussionEnabled && 'animate-pulse'
-                  )}
-                />
+                <User aria-hidden='true' className='h-3.5 w-3.5' />
                 {isTerminal
-                  ? aiDiscussionEnabled
-                    ? 'AUTO:ON'
-                    : 'AUTO:OFF'
-                  : aiDiscussionEnabled
-                    ? safeAiAutoOnLabel
-                    : safeAiAutoOffLabel}
-                {aiDiscussionEnabled && <Sparkles aria-hidden='true' className='h-3 w-3' />}
-              </button>
-            )}
+                  ? `H:${discussionCounts.human}`
+                  : `사람 ${discussionCounts.human}`}
+              </span>
+              <span
+                className={cn(
+                  'inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium',
+                  isTerminal
+                    ? 'border-violet-400/30 bg-violet-400/10 font-mono text-violet-300'
+                    : 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                )}
+              >
+                <Bot aria-hidden='true' className='h-3.5 w-3.5' />
+                {isTerminal
+                  ? `AI:${discussionCounts.ai}`
+                  : `AI ${discussionCounts.ai}`}
+              </span>
+            </div>
+            <div className='ui-discussion-settings'>
+              <span
+                className={cn(
+                  'ui-discussion-connection inline-flex items-center gap-1.5 text-xs',
+                  error
+                    ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                    : isTerminal
+                      ? 'border-primary/20 bg-background/30 font-mono text-muted-foreground'
+                      : 'border-border/60 bg-background/60 text-muted-foreground dark:border-white/10 dark:bg-white/5'
+                )}
+              >
+                <Radio aria-hidden='true' className={cn('h-3.5 w-3.5', !error && 'text-primary')} />
+                {streamStatusLabel}
+              </span>
+
+              {featureFlags.aiEnabled && (
+                <button
+                  type='button'
+                  onClick={handleToggleAiDiscussion}
+                  aria-pressed={aiDiscussionEnabled}
+                  aria-label={aiDiscussionEnabled ? safeAiAutoOnLabel : safeAiAutoOffLabel}
+                  className={cn(
+                    'inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-[0.98]',
+                    isTerminal
+                      ? aiDiscussionEnabled
+                        ? 'border-primary/40 bg-primary/20 font-mono text-primary'
+                        : 'border-border bg-muted/40 font-mono text-muted-foreground hover:border-primary/50 hover:text-primary'
+                      : aiDiscussionEnabled
+                        ? 'border-violet-500/30 bg-violet-500/15 text-violet-700 dark:text-violet-300'
+                        : 'border-border/60 bg-muted/50 text-muted-foreground hover:border-violet-500/30 hover:text-violet-700 dark:hover:text-violet-300'
+                  )}
+                  title={
+                    aiDiscussionEnabled
+                      ? '댓글 작성 후 AI 자동 응답 끄기'
+                      : '댓글 작성 후 AI 자동 응답 켜기'
+                  }
+                >
+                  <Bot
+                    aria-hidden='true'
+                    className={cn(
+                      'h-3.5 w-3.5',
+                      aiDiscussionEnabled && 'animate-pulse'
+                    )}
+                  />
+                  {isTerminal
+                    ? aiDiscussionEnabled
+                      ? 'AUTO:ON'
+                      : 'AUTO:OFF'
+                    : aiDiscussionEnabled
+                      ? safeAiAutoOnLabel
+                      : safeAiAutoOffLabel}
+                  {aiDiscussionEnabled && <Sparkles aria-hidden='true' className='h-3 w-3' />}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -745,7 +751,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
           {commentList.length > 0 && (
             <ul
               className={cn(
-                'space-y-2.5',
+                'space-y-5',
                 isTerminal && 'ml-2 border-l-2 border-primary/25'
               )}
             >
@@ -780,26 +786,26 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                           )
                     )}
                   >
-                    <div className='flex gap-3'>
-                      {!isTerminal && (
-                        <span
-                          className={cn(
-                            'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
-                            aiComment
-                              ? 'border-violet-500/20 bg-violet-500/10'
-                              : 'border-primary/15 bg-primary/10'
-                          )}
-                        >
-                          {aiComment ? (
-                            <Bot aria-hidden='true' className='h-4 w-4 text-violet-600 dark:text-violet-300' />
-                          ) : (
-                            <User aria-hidden='true' className='h-4 w-4 text-primary' />
-                          )}
-                        </span>
-                      )}
+                    <div className='ui-discussion-card-layout'>
+                      <header className='ui-discussion-card-heading'>
+                        {!isTerminal && (
+                          <span
+                            className={cn(
+                              'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border',
+                              aiComment
+                                ? 'border-violet-500/20 bg-violet-500/10'
+                                : 'border-primary/15 bg-primary/10'
+                            )}
+                          >
+                            {aiComment ? (
+                              <Bot aria-hidden='true' className='h-4 w-4 text-violet-600 dark:text-violet-300' />
+                            ) : (
+                              <User aria-hidden='true' className='h-4 w-4 text-primary' />
+                            )}
+                          </span>
+                        )}
 
-                      <div className='min-w-0 flex-1'>
-                        <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                        <div className='ui-discussion-author flex flex-wrap items-center gap-x-2 gap-y-1'>
                           <span
                             className={cn(
                               'font-semibold',
@@ -843,23 +849,9 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                                 : safeRoleLabel}
                           </span>
 
-                          {aiComment && (
-                            <span
-                              className={cn(
-                                'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                                isTerminal
-                                  ? 'border-violet-400/25 bg-background/30 font-mono text-violet-200'
-                                  : 'border-violet-500/15 bg-background/60 text-violet-700/80 dark:text-violet-200/80'
-                              )}
-                          >
-                              <Sparkles aria-hidden='true' className='h-3 w-3' />
-                              {isTerminal ? 'auto' : '자동 응답'}
-                            </span>
-                          )}
-
                           <span
                             className={cn(
-                              'text-xs',
+                              'ui-discussion-date text-xs',
                               isTerminal
                                 ? 'font-mono text-muted-foreground'
                                 : 'text-muted-foreground/80 dark:text-white/50'
@@ -869,10 +861,11 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                             {idx + 1}
                           </span>
                         </div>
-
+                      </header>
+                      <div className='ui-discussion-message'>
                         <div
                           className={cn(
-                            'mt-2 max-w-none break-words leading-relaxed',
+                            'max-w-none break-words leading-relaxed',
                             isTerminal
                               ? 'font-mono text-foreground'
                               : 'prose prose-sm dark:prose-invert prose-p:my-2 prose-p:text-foreground/90 dark:prose-p:text-white/85'
@@ -901,44 +894,46 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                           </a>
                         )}
 
-                        <div className='mt-3 flex flex-wrap items-center gap-1.5'>
-                          <button
-                            type='button'
-                            className={actionButtonClass}
-                            onClick={() =>
-                              openComposer({ mode: 'reply', target: comment })
-                            }
-                            aria-label={`${safeReplyLabel}: ${safeAuthor}`}
-                            title={safeReplyLabel}
-                          >
-                            <Reply aria-hidden='true' className='h-3.5 w-3.5' />
-                            {safeReplyLabel}
-                          </button>
-                          <button
-                            type='button'
-                            className={actionButtonClass}
-                            onClick={() =>
-                              openComposer({ mode: 'quote', target: comment })
-                            }
-                            aria-label={`${safeQuoteLabel}: ${safeAuthor}`}
-                            title={safeQuoteLabel}
-                          >
-                            <Quote aria-hidden='true' className='h-3.5 w-3.5' />
-                            {safeQuoteLabel}
-                          </button>
-                          {featureFlags.aiEnabled && (
+                        <div className='ui-discussion-actions'>
+                          <div className='ui-discussion-replies'>
                             <button
                               type='button'
                               className={actionButtonClass}
-                              onClick={() => handleAskAi(comment)}
-                              disabled={aiResponding}
-                              aria-label={`${safeAskAiLabel}: ${safeAuthor}`}
-                              title={safeAskAiLabel}
+                              onClick={() =>
+                                openComposer({ mode: 'reply', target: comment })
+                              }
+                              aria-label={`${safeReplyLabel}: ${safeAuthor}`}
+                              title={safeReplyLabel}
                             >
-                              <Sparkles aria-hidden='true' className='h-3.5 w-3.5' />
-                              {safeAskAiLabel}
+                              <Reply aria-hidden='true' className='h-3.5 w-3.5' />
+                              {safeReplyLabel}
                             </button>
-                          )}
+                            <button
+                              type='button'
+                              className={actionButtonClass}
+                              onClick={() =>
+                                openComposer({ mode: 'quote', target: comment })
+                              }
+                              aria-label={`${safeQuoteLabel}: ${safeAuthor}`}
+                              title={safeQuoteLabel}
+                            >
+                              <Quote aria-hidden='true' className='h-3.5 w-3.5' />
+                              {safeQuoteLabel}
+                            </button>
+                            {featureFlags.aiEnabled && (
+                              <button
+                                type='button'
+                                className={actionButtonClass}
+                                onClick={() => handleAskAi(comment)}
+                                disabled={aiResponding}
+                                aria-label={`${safeAskAiLabel}: ${safeAuthor}`}
+                                title={safeAskAiLabel}
+                              >
+                                <Sparkles aria-hidden='true' className='h-3.5 w-3.5' />
+                                {safeAskAiLabel}
+                              </button>
+                            )}
+                          </div>
                           {comment.id && (
                             <CommentReactions
                               commentId={comment.id}
@@ -948,7 +943,7 @@ ${ragContext ? '위의 관련 지식을 참고하여 ' : ''}${safeUserName}님�
                               isTerminal={isTerminal}
                               compact
                               labelledTrigger
-                              className='!mt-0'
+                              className='ui-discussion-reactions !mt-0'
                             />
                           )}
                         </div>

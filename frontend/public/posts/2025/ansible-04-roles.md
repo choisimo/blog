@@ -16,21 +16,137 @@ Playbook을 몇 편 쓰다 보면 자연스럽게 “이제는 구조를 정리�
 
 처음 Role을 만들면서 저는 항상 아래 구조부터 떠올립니다.
 
-```text
-roles/
-  webserver/
-    tasks/
-      main.yml
-    handlers/
-      main.yml
-    templates/
-    files/
-    defaults/
-      main.yml
-    vars/
-      main.yml
-    meta/
-      main.yml
+```diagram
+{
+  "title": "roles/ 디렉터리 구성",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "n0",
+      "label": "roles/"
+    },
+    {
+      "id": "n1",
+      "label": "webserver/"
+    },
+    {
+      "id": "n2",
+      "label": "tasks/"
+    },
+    {
+      "id": "n3",
+      "label": "main.yml"
+    },
+    {
+      "id": "n4",
+      "label": "handlers/"
+    },
+    {
+      "id": "n5",
+      "label": "main.yml"
+    },
+    {
+      "id": "n6",
+      "label": "templates/"
+    },
+    {
+      "id": "n7",
+      "label": "files/"
+    },
+    {
+      "id": "n8",
+      "label": "defaults/"
+    },
+    {
+      "id": "n9",
+      "label": "main.yml"
+    },
+    {
+      "id": "n10",
+      "label": "vars/"
+    },
+    {
+      "id": "n11",
+      "label": "main.yml"
+    },
+    {
+      "id": "n12",
+      "label": "meta/"
+    },
+    {
+      "id": "n13",
+      "label": "main.yml"
+    }
+  ],
+  "edges": [
+    {
+      "to": "n1",
+      "from": "n0",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n2",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n3",
+      "from": "n2",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n4",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n5",
+      "from": "n4",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n6",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n7",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n8",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n9",
+      "from": "n8",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n10",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n11",
+      "from": "n10",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n12",
+      "from": "n1",
+      "label": "하위 항목"
+    },
+    {
+      "to": "n13",
+      "from": "n12",
+      "label": "하위 항목"
+    }
+  ],
+  "caption": "폴더와 파일의 포함 관계. 카드 아래에 하위 항목을 표시했다."
+}
 ```
 
 `tasks`는 오늘 할 일 목록, `handlers`는 변화가 생겼을 때 불러낼 비상 연락망, `templates`와 `files`는 우리가 미리 준비한 선물 보따리, `defaults`와 `vars`는 서로 약속한 기본값이었습니다. meta는 아직 낯설지만, 언젠가 다른 Role과 친구를 맺어야 할 때 꼭 필요하다는 사실을 금방 깨달았습니다.

@@ -19,12 +19,83 @@ Apache Kafka는 고성능 분산 이벤트 스트리밍 플랫폼으로 실시�
 - 메시지 저장/전송 메커니즘 흐름 이해
 
 ##  전체 아키텍처 (요약)
-```
-Kafka Cluster
-  Broker 1  Broker 2  Broker 3
-  ├─ Topic-A (P0,P1,P2)
-  └─ Topic-B (P0,P1,P2)
-Producer → (Partitions) ← Consumer Group(s)
+```diagram
+{
+  "title": "Kafka 메시지 전달 구조",
+  "kind": "structure",
+  "nodes": [
+    {
+      "id": "producer",
+      "label": "Producer",
+      "detail": "토픽의 파티션에 메시지를 발행한다."
+    },
+    {
+      "id": "cluster",
+      "label": "Kafka Cluster",
+      "detail": "브로커가 파티션과 복제본을 나누어 저장한다.",
+      "items": [
+        "Broker 1",
+        "Broker 2",
+        "Broker 3"
+      ]
+    },
+    {
+      "id": "a",
+      "label": "Topic A",
+      "items": [
+        "Partition 0",
+        "Partition 1",
+        "Partition 2"
+      ]
+    },
+    {
+      "id": "b",
+      "label": "Topic B",
+      "items": [
+        "Partition 0",
+        "Partition 1",
+        "Partition 2"
+      ]
+    },
+    {
+      "id": "consumer",
+      "label": "Consumer Groups",
+      "detail": "각 그룹이 독립적으로 메시지를 읽고 처리 위치를 관리한다."
+    }
+  ],
+  "edges": [
+    {
+      "to": "a",
+      "from": "producer",
+      "label": "발행"
+    },
+    {
+      "to": "b",
+      "from": "producer",
+      "label": "발행"
+    },
+    {
+      "to": "a",
+      "from": "cluster",
+      "label": "저장"
+    },
+    {
+      "to": "b",
+      "from": "cluster",
+      "label": "저장"
+    },
+    {
+      "to": "consumer",
+      "from": "a",
+      "label": "읽기"
+    },
+    {
+      "to": "consumer",
+      "from": "b",
+      "label": "읽기"
+    }
+  ]
+}
 ```
 
 ##  핵심 개념
@@ -53,8 +124,39 @@ Group 내에서 Partition을 분배 처리. 다른 Group은 독립 소비.
 Rebalancing 시 Partition 재할당.
 
 ##  메시지 구성
-```
-Offset | Timestamp | Key | Value | Headers
+```diagram
+{
+  "title": "메시지를 읽을 때 보는 정보",
+  "kind": "compare",
+  "nodes": [
+    {
+      "id": "offset",
+      "label": "Offset",
+      "detail": "파티션 안에서 메시지의 위치를 나타낸다."
+    },
+    {
+      "id": "timestamp",
+      "label": "Timestamp",
+      "detail": "메시지의 시간 정보다."
+    },
+    {
+      "id": "key",
+      "label": "Key",
+      "detail": "파티션 선택 등에 사용하는 키다."
+    },
+    {
+      "id": "value",
+      "label": "Value",
+      "detail": "전달할 데이터다."
+    },
+    {
+      "id": "headers",
+      "label": "Headers",
+      "detail": "부가 메타데이터다."
+    }
+  ],
+  "edges": []
+}
 ```
 Offset은 Partition 내 일련번호. Consumer는 __consumer_offsets에 커밋.
 

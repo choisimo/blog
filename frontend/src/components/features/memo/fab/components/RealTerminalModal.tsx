@@ -5,31 +5,33 @@
  * via the terminal gateway WebSocket.
  */
 
-import { useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { Terminal, X, Wifi, WifiOff, Loader2, RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useRealTerminal, type TerminalStatus } from "../hooks/useRealTerminal";
+import { useRef, useEffect, useCallback } from 'react';
+import { OverlayDialog } from '@/components/molecules/OverlayDialog';
+import { Terminal, X, Wifi, WifiOff, Loader2, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useRealTerminal, type TerminalStatus } from '../hooks/useRealTerminal';
 
 // Dynamic imports for xterm to avoid SSR issues
-let XTerm: typeof import("@xterm/xterm").Terminal | null = null;
-let FitAddon: typeof import("@xterm/addon-fit").FitAddon | null = null;
-let WebLinksAddon: typeof import("@xterm/addon-web-links").WebLinksAddon | null = null;
+let XTerm: typeof import('@xterm/xterm').Terminal | null = null;
+let FitAddon: typeof import('@xterm/addon-fit').FitAddon | null = null;
+let WebLinksAddon:
+  | typeof import('@xterm/addon-web-links').WebLinksAddon
+  | null = null;
 
 // Load xterm modules dynamically
 const loadXterm = async () => {
   if (!XTerm) {
     const [xtermModule, fitModule, webLinksModule] = await Promise.all([
-      import("@xterm/xterm"),
-      import("@xterm/addon-fit"),
-      import("@xterm/addon-web-links"),
+      import('@xterm/xterm'),
+      import('@xterm/addon-fit'),
+      import('@xterm/addon-web-links'),
     ]);
     XTerm = xtermModule.Terminal;
     FitAddon = fitModule.FitAddon;
     WebLinksAddon = webLinksModule.WebLinksAddon;
-    
+
     // Import CSS
-    await import("@xterm/xterm/css/xterm.css");
+    await import('@xterm/xterm/css/xterm.css');
   }
   return { XTerm, FitAddon, WebLinksAddon };
 };
@@ -37,19 +39,21 @@ const loadXterm = async () => {
 type RealTerminalModalProps = {
   isOpen: boolean;
   onClose: () => void;
+  onReturnFocus?: () => void;
   viewportHeight: string;
   onSwitchToVirtual?: () => void;
 };
 
 const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
-const REAL_TERMINAL_CONTROL_TEXT_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const REAL_TERMINAL_CONTROL_TEXT_PATTERN =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
-function normalizeRealTerminalText(value: unknown, fallback = ""): string {
-  if (typeof value !== "string") return fallback;
+function normalizeRealTerminalText(value: unknown, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
   const normalized = value
-    .replace(ANSI_ESCAPE_PATTERN, "")
-    .replace(REAL_TERMINAL_CONTROL_TEXT_PATTERN, "")
-    .replace(/\s+/g, " ")
+    .replace(ANSI_ESCAPE_PATTERN, '')
+    .replace(REAL_TERMINAL_CONTROL_TEXT_PATTERN, '')
+    .replace(/\s+/g, ' ')
     .trim();
   return normalized || fallback;
 }
@@ -58,43 +62,43 @@ const StatusIndicator = ({ status }: { status: TerminalStatus }) => {
   const statusConfig = {
     disconnected: {
       icon: WifiOff,
-      text: "Disconnected",
-      className: "text-muted-foreground",
+      text: 'Disconnected',
+      className: 'text-muted-foreground',
     },
     connecting: {
       icon: Loader2,
-      text: "Connecting...",
-      className: "text-yellow-500 animate-spin",
+      text: 'Connecting...',
+      className: 'text-yellow-500 animate-spin',
     },
     connected: {
       icon: Wifi,
-      text: "Connected",
-      className: "text-primary",
+      text: 'Connected',
+      className: 'text-primary',
     },
     error: {
       icon: WifiOff,
-      text: "Error",
-      className: "text-destructive",
+      text: 'Error',
+      className: 'text-destructive',
     },
   };
 
   const config = statusConfig[status];
   const Icon = config.icon;
-  const liveMode = status === "error" ? "assertive" : "polite";
+  const liveMode = status === 'error' ? 'assertive' : 'polite';
 
   return (
     <div
       aria-label={`Terminal status: ${config.text}`}
       aria-live={liveMode}
-      className={cn("flex items-center gap-1.5", config.className)}
-      role={status === "error" ? "alert" : "status"}
+      className={cn('flex items-center gap-1.5', config.className)}
+      role={status === 'error' ? 'alert' : 'status'}
     >
       <Icon
-        aria-hidden="true"
-        className={cn("h-3.5 w-3.5", status === "connecting" && "animate-spin")}
-        focusable="false"
+        aria-hidden='true'
+        className={cn('h-3.5 w-3.5', status === 'connecting' && 'animate-spin')}
+        focusable='false'
       />
-      <span className="text-xs font-mono">{config.text}</span>
+      <span className='text-xs font-mono'>{config.text}</span>
     </div>
   );
 };
@@ -102,12 +106,17 @@ const StatusIndicator = ({ status }: { status: TerminalStatus }) => {
 export function RealTerminalModal({
   isOpen,
   onClose,
+  onReturnFocus,
   viewportHeight,
   onSwitchToVirtual,
 }: RealTerminalModalProps) {
   const terminalContainerRef = useRef<HTMLDivElement>(null);
-  const terminalInstanceRef = useRef<InstanceType<typeof import("@xterm/xterm").Terminal> | null>(null);
-  const fitAddonRef = useRef<InstanceType<typeof import("@xterm/addon-fit").FitAddon> | null>(null);
+  const terminalInstanceRef = useRef<InstanceType<
+    typeof import('@xterm/xterm').Terminal
+  > | null>(null);
+  const fitAddonRef = useRef<InstanceType<
+    typeof import('@xterm/addon-fit').FitAddon
+  > | null>(null);
   const xtermLoadedRef = useRef(false);
 
   const handleData = useCallback((data: string) => {
@@ -116,19 +125,12 @@ export function RealTerminalModal({
     }
   }, []);
 
-  const {
-    status,
-    error,
-    isAvailable,
-    connect,
-    disconnect,
-    send,
-    resize,
-  } = useRealTerminal({
-    cols: 80,
-    rows: 24,
-    onData: handleData,
-  });
+  const { status, error, isAvailable, connect, disconnect, send, resize } =
+    useRealTerminal({
+      cols: 80,
+      rows: 24,
+      onData: handleData,
+    });
   const safeError = normalizeRealTerminalText(error);
 
   // Initialize xterm when modal opens
@@ -140,43 +142,52 @@ export function RealTerminalModal({
     let mounted = true;
 
     const initTerminal = async () => {
-      const { XTerm: TerminalClass, FitAddon: FitAddonClass, WebLinksAddon: WebLinksAddonClass } =
-        await loadXterm();
+      const {
+        XTerm: TerminalClass,
+        FitAddon: FitAddonClass,
+        WebLinksAddon: WebLinksAddonClass,
+      } = await loadXterm();
 
-      if (!mounted || !terminalContainerRef.current || !TerminalClass || !FitAddonClass) {
+      if (
+        !mounted ||
+        !terminalContainerRef.current ||
+        !TerminalClass ||
+        !FitAddonClass
+      ) {
         return;
       }
 
       // Create terminal instance
       const term = new TerminalClass({
         theme: {
-          background: "hsl(224 71.4% 4.1%)", // Match terminal theme
-          foreground: "#e4e4e7",
-          cursor: "hsl(142.1 70.6% 45.3%)", // Primary color
-          cursorAccent: "#000",
-          selectionBackground: "rgba(142, 255, 142, 0.3)",
-          black: "#18181b",
-          red: "#f87171",
-          green: "#4ade80",
-          yellow: "#facc15",
-          blue: "#60a5fa",
-          magenta: "#c084fc",
-          cyan: "#22d3ee",
-          white: "#e4e4e7",
-          brightBlack: "#52525b",
-          brightRed: "#fca5a5",
-          brightGreen: "#86efac",
-          brightYellow: "#fde047",
-          brightBlue: "#93c5fd",
-          brightMagenta: "#d8b4fe",
-          brightCyan: "#67e8f9",
-          brightWhite: "#fafafa",
+          background: 'hsl(224 71.4% 4.1%)', // Match terminal theme
+          foreground: '#e4e4e7',
+          cursor: 'hsl(142.1 70.6% 45.3%)', // Primary color
+          cursorAccent: '#000',
+          selectionBackground: 'rgba(142, 255, 142, 0.3)',
+          black: '#18181b',
+          red: '#f87171',
+          green: '#4ade80',
+          yellow: '#facc15',
+          blue: '#60a5fa',
+          magenta: '#c084fc',
+          cyan: '#22d3ee',
+          white: '#e4e4e7',
+          brightBlack: '#52525b',
+          brightRed: '#fca5a5',
+          brightGreen: '#86efac',
+          brightYellow: '#fde047',
+          brightBlue: '#93c5fd',
+          brightMagenta: '#d8b4fe',
+          brightCyan: '#67e8f9',
+          brightWhite: '#fafafa',
         },
-        fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, Monaco, monospace',
+        fontFamily:
+          '"JetBrains Mono", "Fira Code", "SF Mono", Menlo, Monaco, monospace',
         fontSize: 13,
         lineHeight: 1.3,
         cursorBlink: true,
-        cursorStyle: "block",
+        cursorStyle: 'block',
         scrollback: 5000,
         tabStopWidth: 4,
         allowTransparency: true,
@@ -202,7 +213,7 @@ export function RealTerminalModal({
       }, 0);
 
       // Handle user input
-      term.onData((data) => {
+      term.onData(data => {
         send(data);
       });
 
@@ -218,10 +229,14 @@ export function RealTerminalModal({
       if (isAvailable) {
         connect();
       } else {
-        term.writeln("\x1b[33m터미널 서비스에 연결할 수 없습니다.\x1b[0m");
-        term.writeln("\x1b[90m로그인이 필요하거나 서비스가 준비되지 않았습니다.\x1b[0m");
-        term.writeln("");
-        term.writeln('\x1b[90m"Virtual Shell" 버튼을 눌러 가상 쉘을 사용하세요.\x1b[0m');
+        term.writeln('\x1b[33m터미널 서비스에 연결할 수 없습니다.\x1b[0m');
+        term.writeln(
+          '\x1b[90m로그인이 필요하거나 서비스가 준비되지 않았습니다.\x1b[0m'
+        );
+        term.writeln('');
+        term.writeln(
+          '\x1b[90m"Virtual Shell" 버튼을 눌러 가상 쉘을 사용하세요.\x1b[0m'
+        );
       }
     };
 
@@ -242,8 +257,8 @@ export function RealTerminalModal({
       }
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [isOpen]);
 
   // Cleanup on unmount or close
@@ -263,7 +278,7 @@ export function RealTerminalModal({
   const handleReconnect = useCallback(() => {
     if (terminalInstanceRef.current) {
       terminalInstanceRef.current.clear();
-      terminalInstanceRef.current.writeln("\x1b[33m재연결 중...\x1b[0m");
+      terminalInstanceRef.current.writeln('\x1b[33m재연결 중...\x1b[0m');
     }
     disconnect();
     setTimeout(connect, 500);
@@ -271,97 +286,120 @@ export function RealTerminalModal({
 
   if (!isOpen) return null;
 
-  return createPortal(
-    <div
-      aria-label="Real Linux terminal"
-      aria-modal="true"
-      className="fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200"
-      role="dialog"
-      style={{ height: viewportHeight }}
+  return (
+    <OverlayDialog
+      open={isOpen}
+      onClose={onClose}
+      onReturnFocus={onReturnFocus}
+      label='Real Linux terminal'
+      layer='var(--z-terminal-modal)'
+      onEscapeKeyDown={event => {
+        // Escape belongs to the active terminal program, including editors such as vim.
+        if (
+          event.target instanceof Node &&
+          terminalContainerRef.current?.contains(event.target)
+        )
+          event.preventDefault();
+      }}
     >
-      {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border/50 bg-[hsl(var(--terminal-code-bg))]">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Terminal aria-hidden="true" className="h-4 w-4 text-primary" focusable="false" />
-            <span className="font-mono text-xs text-primary font-medium">
-              LINUX SHELL
-            </span>
-          </div>
-          <StatusIndicator status={status} />
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Reconnect button */}
-          {status !== "connecting" && (
-            <button
-              type="button"
-              onClick={handleReconnect}
-              aria-label="Reconnect terminal"
-              className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded"
-              title="Reconnect"
-            >
-              <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" focusable="false" />
-            </button>
-          )}
-
-          {/* Switch to virtual shell */}
-          {onSwitchToVirtual && (
-            <button
-              type="button"
-              onClick={onSwitchToVirtual}
-              aria-label="Switch to virtual shell"
-              className={cn(
-                "px-2 py-1 font-mono text-[10px] uppercase tracking-wider",
-                "bg-primary/10 border border-primary/30 rounded",
-                "text-primary/80 hover:text-primary hover:bg-primary/20",
-                "transition-colors"
-              )}
-            >
-              Virtual Shell
-            </button>
-          )}
-
-          {/* Close button */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 text-muted-foreground hover:text-primary transition-colors"
-            aria-label="Close real terminal"
-          >
-            <X aria-hidden="true" className="h-4 w-4" focusable="false" />
-          </button>
-        </div>
-      </div>
-
-      {/* Error banner */}
-      {safeError && (
-        <div
-          aria-label="Terminal error"
-          aria-live="assertive"
-          className="flex-shrink-0 px-3 py-2 bg-destructive/10 border-b border-destructive/30 text-destructive text-xs font-mono"
-          role="alert"
-        >
-          {safeError}
-        </div>
-      )}
-
-      {/* Terminal container */}
       <div
-        ref={terminalContainerRef}
-        aria-label="터미널 세션"
-        className="flex-1 min-h-0 p-2 bg-[hsl(224_71.4%_4.1%)]"
-        role="application"
-      />
+        aria-label='Real Linux terminal'
+        aria-modal='true'
+        className='fixed inset-0 z-[var(--z-terminal-modal)] flex flex-col bg-background/95 backdrop-blur-sm animate-in fade-in-0 duration-200'
+        role='dialog'
+        style={{ height: viewportHeight }}
+      >
+        {/* Header */}
+        <div className='flex-shrink-0 flex items-center justify-between px-3 py-2 border-b border-border/50 bg-[hsl(var(--terminal-code-bg))]'>
+          <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-2'>
+              <Terminal
+                aria-hidden='true'
+                className='h-4 w-4 text-primary'
+                focusable='false'
+              />
+              <span className='font-mono text-xs text-primary font-medium'>
+                LINUX SHELL
+              </span>
+            </div>
+            <StatusIndicator status={status} />
+          </div>
 
-      {/* Footer hints */}
-      <div className="flex-shrink-0 px-3 py-1.5 border-t border-border/30 bg-[hsl(var(--terminal-code-bg))]">
-        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground/60">
-          <span>Ctrl+C: interrupt | Ctrl+D: exit | Ctrl+L: clear</span>
-          <span>Docker sandbox environment</span>
+          <div className='flex items-center gap-2'>
+            {/* Reconnect button */}
+            {status !== 'connecting' && (
+              <button
+                type='button'
+                onClick={handleReconnect}
+                aria-label='Reconnect terminal'
+                className='p-1.5 text-muted-foreground hover:text-primary transition-colors rounded'
+                title='Reconnect'
+              >
+                <RefreshCw
+                  aria-hidden='true'
+                  className='h-3.5 w-3.5'
+                  focusable='false'
+                />
+              </button>
+            )}
+
+            {/* Switch to virtual shell */}
+            {onSwitchToVirtual && (
+              <button
+                type='button'
+                onClick={onSwitchToVirtual}
+                aria-label='Switch to virtual shell'
+                className={cn(
+                  'px-2 py-1 font-mono text-[10px] uppercase tracking-wider',
+                  'bg-primary/10 border border-primary/30 rounded',
+                  'text-primary/80 hover:text-primary hover:bg-primary/20',
+                  'transition-colors'
+                )}
+              >
+                Virtual Shell
+              </button>
+            )}
+
+            {/* Close button */}
+            <button
+              type='button'
+              onClick={onClose}
+              className='p-1.5 text-muted-foreground hover:text-primary transition-colors'
+              aria-label='Close real terminal'
+            >
+              <X aria-hidden='true' className='h-4 w-4' focusable='false' />
+            </button>
+          </div>
+        </div>
+
+        {/* Error banner */}
+        {safeError && (
+          <div
+            aria-label='Terminal error'
+            aria-live='assertive'
+            className='flex-shrink-0 px-3 py-2 bg-destructive/10 border-b border-destructive/30 text-destructive text-xs font-mono'
+            role='alert'
+          >
+            {safeError}
+          </div>
+        )}
+
+        {/* Terminal container */}
+        <div
+          ref={terminalContainerRef}
+          aria-label='터미널 세션'
+          className='flex-1 min-h-0 p-2 bg-[hsl(224_71.4%_4.1%)]'
+          role='application'
+        />
+
+        {/* Footer hints */}
+        <div className='flex-shrink-0 px-3 py-1.5 border-t border-border/30 bg-[hsl(var(--terminal-code-bg))]'>
+          <div className='flex items-center justify-between text-[10px] font-mono text-muted-foreground/60'>
+            <span>Ctrl+C: interrupt | Ctrl+D: exit | Ctrl+L: clear</span>
+            <span>Docker sandbox environment</span>
+          </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </OverlayDialog>
   );
 }

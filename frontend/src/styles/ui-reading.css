@@ -184,7 +184,7 @@
   max-width: var(--article-readable-max);
   margin-inline: auto;
 }
-.ui-article .ui-article-body .article-flow :is(p, li) {
+.ui-article .ui-article-body .article-flow :is(p, li):not(:where(.not-prose, .not-prose *)) {
   font-size: inherit;
   line-height: inherit;
   text-align: start;
@@ -197,7 +197,7 @@
 .ui-article .ui-article-body .article-flow > div.article-readable > p {
   margin: 0;
 }
-.ui-article .ui-article-body .article-flow :is(h1, h2, h3, h4, h5, h6) {
+.ui-article .ui-article-body .article-flow :is(h1, h2, h3, h4, h5, h6):not(:where(.not-prose, .not-prose *)) {
   text-align: start;
   color: hsl(var(--ui-text));
   font-family: var(--ui-font);
@@ -208,17 +208,17 @@
   scroll-margin-top: var(--ui-reading-offset);
   text-shadow: none;
 }
-.ui-article .ui-article-body .article-flow h1 {
+.ui-article .ui-article-body .article-flow h1:not(:where(.not-prose, .not-prose *)) {
   font-size: 1.9em;
   margin-block: 1.8em .7em;
 }
-.ui-article .ui-article-body .article-flow h2 {
+.ui-article .ui-article-body .article-flow h2:not(:where(.not-prose, .not-prose *)) {
   font-size: 1.55em;
   margin-block: 1.8em .75em;
   padding-bottom: .5em;
   border-bottom: 1px solid hsl(var(--ui-line));
 }
-.ui-article .ui-article-body .article-flow h3 {
+.ui-article .ui-article-body .article-flow h3:not(:where(.not-prose, .not-prose *)) {
   font-size: 1.2em;
   margin-block: 1.5em .65em;
 }

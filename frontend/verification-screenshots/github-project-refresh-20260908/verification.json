@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "count": 68,
+  "originals": 59,
+  "forks": 9,
+  "empty": 2,
+  "checks": [
+    "every repository rendered",
+    "all current and pinned source links",
+    "fork and original filters",
+    "empty repository filter",
+    "combined search and tag",
+    "CBT corrected description search",
+    "alphabetical sort",
+    "card/list switch",
+    "empty search and reset",
+    "mobile overflow",
+    "no page errors"
+  ],
+  "screenshots": "/home/nodove/workspace/blog/frontend/verification-screenshots/github-project-refresh-20260908"
+}

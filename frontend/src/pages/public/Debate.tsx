@@ -105,18 +105,18 @@ export default function Debate() {
             <div className="ui-field-group">
               <label htmlFor="debate-topic">주제</label>
               <Input className="ui-input" id="debate-topic" value={title} maxLength={MAX_TOPIC_TITLE_LENGTH}
-                onChange={event => setTitle(sanitizePlainText(event.target.value, MAX_TOPIC_TITLE_LENGTH))}
+                onChange={event => setTitle(event.target.value)}
                 placeholder="다른 관점으로 살펴보고 싶은 주제" />
             </div>
             <div className="ui-field-group">
               <label htmlFor="debate-context">맥락</label>
               <Textarea id="debate-context" value={context} maxLength={MAX_TOPIC_CONTEXT_LENGTH}
-                onChange={event => setContext(sanitizeContextText(event.target.value))}
+                onChange={event => setContext(event.target.value)}
                 aria-describedby="debate-context-help" className="ui-textarea ui-debate-context"
                 placeholder="참고할 배경이나 읽고 있던 문단을 입력하세요." />
               <div className="ui-field-help" id="debate-context-help">
                 <span>주제 또는 맥락 중 하나를 입력하면 열 수 있습니다.</span>
-                <span>{context.length.toLocaleString()} / {MAX_TOPIC_CONTEXT_LENGTH.toLocaleString()}</span>
+                <span className="ui-field-count">{context.length.toLocaleString()} / {MAX_TOPIC_CONTEXT_LENGTH.toLocaleString()}</span>
               </div>
             </div>
             <div className="ui-form-actions">
@@ -129,10 +129,9 @@ export default function Debate() {
           <aside className="ui-context-note">
             <h2>맥락을 함께 남겨주세요</h2>
             <p>주제와 관련된 배경을 입력하면 상담실에서 같은 맥락을 이어갈 수 있습니다.</p>
-            <p>글 안의 prism·chain 흐름과는 분리된 작업공간입니다.</p>
-            <details><summary>링크로 주제 열기</summary>
-              <p><code>/debate?topic=...&amp;context=...</code></p>
-              <p>기존 mode·intent 진입 값은 그대로 지원합니다.</p>
+            <p>고민하는 선택지나 궁금한 점을 구체적으로 남기면 다양한 관점으로 살펴볼 수 있습니다.</p>
+            <details><summary>어떤 내용을 적으면 좋을까요?</summary>
+              <p>예: “개인 프로젝트에 어떤 데이터베이스를 쓸지 고민 중입니다. 예상 사용자 수와 관리에 쓸 수 있는 시간을 함께 고려하고 싶어요.”</p>
             </details>
           </aside>
         </section>

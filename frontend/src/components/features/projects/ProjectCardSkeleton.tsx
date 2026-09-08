@@ -1,6 +1,7 @@
 interface ProjectCardSkeletonProps {
   label?: string;
   title?: string;
+  presentation?: 'card' | 'list';
 }
 
 const PROJECT_SKELETON_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/g;
@@ -20,18 +21,37 @@ function normalizeProjectSkeletonText(value: unknown, fallback = ''): string {
   return normalized || fallback;
 }
 
-function normalizeOptionalProjectSkeletonText(value: unknown): string | undefined {
+function normalizeOptionalProjectSkeletonText(
+  value: unknown
+): string | undefined {
   return normalizeProjectSkeletonText(value) || undefined;
 }
 
 export function ProjectCardSkeleton({
   label = DEFAULT_PROJECT_SKELETON_LABEL,
   title,
+  presentation = 'card',
 }: ProjectCardSkeletonProps = {}) {
-  const safeLabel = normalizeProjectSkeletonText(label, DEFAULT_PROJECT_SKELETON_LABEL);
+  const safeLabel = normalizeProjectSkeletonText(
+    label,
+    DEFAULT_PROJECT_SKELETON_LABEL
+  );
   const safeTitle = normalizeOptionalProjectSkeletonText(title);
 
-  return <div role="status" aria-busy="true" aria-label={safeLabel} title={safeTitle} className="ui-project-item ui-project-item--skeleton">
-    <div className="ui-project-item-content" aria-hidden="true"><span /><span /><span /><span /></div>
-  </div>;
+  return (
+    <div
+      role='status'
+      aria-busy='true'
+      aria-label={safeLabel}
+      title={safeTitle}
+      className={`ui-project-item ui-project-item--${presentation} ui-project-item--skeleton`}
+    >
+      <div className='ui-project-item-content' aria-hidden='true'>
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+    </div>
+  );
 }

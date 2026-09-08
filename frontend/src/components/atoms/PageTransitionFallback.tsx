@@ -25,7 +25,7 @@ export function PageTransitionFallback({
   return (
     <div
       className={cn(
-        'min-h-screen flex flex-col items-center justify-center gap-4 bg-background animate-route-fade-in',
+        'ui-route-loading flex flex-col items-center justify-center gap-4 bg-background',
         className
       )}
       role="status"
@@ -70,12 +70,12 @@ export function PageTransitionFallback({
       <div
         className={cn(
           'flex gap-1.5',
-          isTerminal ? 'font-mono text-xs text-primary/50' : 'hidden'
+          isTerminal ? 'font-mono text-sm text-muted-foreground' : 'text-sm text-muted-foreground'
         )}
         aria-hidden="true"
       >
-        <span>loading</span>
-        <span className="terminal-cursor" />
+        <span>{sanitizedLabel}</span>
+        {isTerminal && <span className="terminal-cursor" />}
       </div>
     </div>
   );
