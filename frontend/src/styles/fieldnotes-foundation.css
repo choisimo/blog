@@ -349,7 +349,7 @@
 .fn-error-page h1 { font:400 clamp(26px,3.5vw,38px)/1.4 var(--fn-serif); }
 /* Motion is never required to reach a control or to read the page. */
 @media (prefers-reduced-motion:reduce) {
-  .fn-app *, .fn-app *::before, .fn-app *::after { scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important; }
+  .fn-app *, .fn-app *::before, .fn-app *::after { scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:0s!important; }
 }
 @media(max-width:1200px) {
   .fn-edition { display:none; }
