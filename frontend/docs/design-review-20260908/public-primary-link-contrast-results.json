@@ -1,0 +1,61 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "networkPolicy": "Local static GETs and explicit local manifest fixtures only; external HTTP, API calls and WebSockets blocked.",
+  "results": [
+    {
+      "case": "primary-link-light-320",
+      "primaryLink": {
+        "before": {
+          "background": "rgb(36, 86, 188)",
+          "color": "rgb(255, 255, 255)"
+        },
+        "hover": {
+          "background": "rgb(36, 86, 188)",
+          "color": "rgb(255, 255, 255)"
+        },
+        "ratios": {
+          "normal": 6.704344999487113,
+          "hover": 6.704344999487113
+        }
+      },
+      "pageErrors": []
+    },
+    {
+      "case": "primary-link-dark-320",
+      "primaryLink": {
+        "before": {
+          "background": "rgb(175, 201, 255)",
+          "color": "rgb(20, 35, 61)"
+        },
+        "hover": {
+          "background": "rgb(175, 201, 255)",
+          "color": "rgb(20, 35, 61)"
+        },
+        "ratios": {
+          "normal": 9.436304597571926,
+          "hover": 9.436304597571926
+        }
+      },
+      "pageErrors": []
+    },
+    {
+      "case": "primary-link-terminal-320",
+      "primaryLink": {
+        "before": {
+          "background": "rgb(141, 226, 177)",
+          "color": "rgb(16, 37, 26)"
+        },
+        "hover": {
+          "background": "rgb(141, 226, 177)",
+          "color": "rgb(16, 37, 26)"
+        },
+        "ratios": {
+          "normal": 10.48418199185497,
+          "hover": 10.48418199185497
+        }
+      },
+      "pageErrors": []
+    }
+  ],
+  "failures": []
+}

@@ -1,0 +1,108 @@
+{
+  "site": "https://noblog.nodove.com",
+  "checkedAt": "2026-09-07T21:41:22.907Z",
+  "apiResponses": [
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/sess-1788817291540-9g7v5i/task",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/sess-1788817291357-1aoj9m/lens-feed",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/sess-1788817291357-1aoj9m/thought-feed",
+      "status": 200
+    }
+  ],
+  "screenshots": [
+    "analysis-desktop.png",
+    "prism-desktop.png",
+    "thoughts-desktop.png",
+    "analysis-mobile-light.png",
+    "analysis-mobile-dark.png"
+  ],
+  "discussionTopComposeAbsent": true,
+  "designPanelPresent": true,
+  "desktopGrid": "206px 206px 206px",
+  "prism": {
+    "cards": 0,
+    "text": "AI와 함께 읽기\n\n이 문단에서 생각을 넓혀보세요\n핵심 파악\n문단의 요점과 핵심 메시지를 정리해요.\n시작하기\n다각도 분석\n서로 다른 관점과 근거를 비교해요.\n선택됨\n더 생각해보기\n새로운 질문을 따라 생각을 확장해요.\n시작하기\n\n다양한 관점을 살펴보고 있어요\n\n문단의 주장과 근거를 정리하고 있습니다."
+  },
+  "chain": {
+    "cards": 4,
+    "text": "인증서는 접근 자격을 영구 보관물이 아니라 시간 경과로 사라지는 상태로 바꾼다. 즉, 유출·도용이 발생해도 피해 범위를 제한하고, 권한 변경 후의 정합성 회복 속도를 높인다.\n\n영구 키가 남겨지는 환경에서 회수 시간은 얼마나 길어지는가\n인증서 만료 주기를 짧게 잡을 때 운영 부담과 보안 이득의 균형은 어디인가\n긴급 권한 회수 상황에서 갱신 절차가 어떤 순서로 단순해지는가\n권한 상실이 빠른 것이 어떤 사고 확산을 실제로 막는가\n인증\n최소권한\n회수속도\n04\nrbac session trace\nRBAC와 세션 녹화가 함께 줄 수 있는 운영 통찰은 무엇인가\n\n허가만 기록하는 체계에서 행위까지 추적하는 체계로\n\nRBAC는 누가 어떤 자원에 접근할 수 있는지를 정리하고, 세션 녹화는 그 접근이 실제로 어떻게 수행되었는지를 남긴다. 두 요소가 결합하면 정책 준수 여부를 넘어서 운영 행위의 근거를 축적할 수 있다.\n\n허가된 사용자라도 실제 세션에서 예외 동작이 없는지 어떻게 확인할 수 있는가\n문제 발생 후 조사에서 필요한 근거는 단순 로그보다 무엇이 더 필요한가\nRBAC 변경과 세션 기록을 함께 볼 때 오탐/미탐이 어떻게 줄어드는가\n교육용 사례로 활용할 때 규정 준수의 설득력이 왜 높아지는가\nrbac\n세션녹화\n컴플라이언스\n아래로 내려 더 많은 질문을 살펴보세요."
+  },
+  "closeReturnsFocus": true,
+  "mobile_light": {
+    "bounds": {
+      "x": 16,
+      "y": 452.484375,
+      "width": 343,
+      "height": 482.453125
+    },
+    "cards": [
+      {
+        "x": 29,
+        "y": 584.984375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 663.375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 741.765625,
+        "width": 317,
+        "height": 70.390625
+      }
+    ],
+    "background": "rgb(255, 255, 255)"
+  },
+  "mobile_dark": {
+    "bounds": {
+      "x": 16,
+      "y": 452.484375,
+      "width": 343,
+      "height": 482.453125
+    },
+    "cards": [
+      {
+        "x": 29,
+        "y": 584.984375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 663.375,
+        "width": 317,
+        "height": 70.390625
+      },
+      {
+        "x": 29,
+        "y": 741.765625,
+        "width": 317,
+        "height": 70.390625
+      }
+    ],
+    "background": "rgb(26, 32, 41)"
+  },
+  "loadedAssets": [
+    "https://noblog.nodove.com/assets/MarkdownRenderer-B2ylfZ93.js",
+    "https://noblog.nodove.com/assets/MarkdownRenderer-mE15GhEt.css"
+  ],
+  "completed": true
+}

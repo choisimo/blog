@@ -1,0 +1,26 @@
+{
+  "scope": "Actual AdminDashboard and AdminSubtabs with MemoryRouter/API fixtures; vertical document height stabilized only for keyboard and resize checks.",
+  "results": [
+    {
+      "name": "375px direct Prompts route",
+      "label": "Prompts",
+      "scrollLeft": 419,
+      "scrollY": 0,
+      "visible": true
+    },
+    {
+      "name": "ArrowLeft keeps selected Traces visible without vertical jump",
+      "label": "Traces",
+      "scrollLeft": 418,
+      "scrollY": 100,
+      "visible": true
+    },
+    {
+      "name": "1440px to 320px reveals active Prompts after resize",
+      "label": "Prompts",
+      "scrollLeft": 474,
+      "scrollY": 100,
+      "visible": true
+    }
+  ]
+}

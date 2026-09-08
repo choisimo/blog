@@ -1,0 +1,269 @@
+{
+  "scope": "Existing 10 administrator feature unit files. Baseline uses the current test/environment with only the ten changed feature TSX sources replaced from HEAD by a read-only Vite pre-transform; production files are never reverted. This isolates the class, aria-label and label/id edits, not every change in the shared worktree.",
+  "baselineCommit": "4a24b57b5cb2930293cef4b1689bfffb0884f9d3",
+  "current": {
+    "tests": 48,
+    "passed": 40,
+    "failed": 8,
+    "files": [
+      {
+        "path": "src/components/features/admin/ConfigManager.test.tsx",
+        "passed": 3,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/ai/ModelsManager.test.tsx",
+        "passed": 2,
+        "failed": 2,
+        "failures": [
+          {
+            "name": "ModelsManager filters polluted model and provider selectors before model actions",
+            "message": "TestingLibraryElementError: Found multiple elements with the role \"button\" and name `/Test/i`"
+          },
+          {
+            "name": "ModelsManager keeps the delete confirmation open and shows backend errors when deletion fails",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Delete/i`"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/ai/Playground.test.tsx",
+        "passed": 6,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/ai/ProvidersManager.test.tsx",
+        "passed": 3,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "ProvidersManager keeps the delete confirmation open and shows backend errors when deletion fails",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Delete/i`"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/ai/RoutesManager.test.tsx",
+        "passed": 2,
+        "failed": 2,
+        "failures": [
+          {
+            "name": "RoutesManager filters polluted route and model selectors before route actions",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Set as Default/i`"
+          },
+          {
+            "name": "RoutesManager keeps the delete confirmation open and shows backend errors when deletion fails",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Delete/i`"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/ai/TraceViewer.test.tsx",
+        "passed": 4,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/ai/UsageMonitor.test.tsx",
+        "passed": 3,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/rag/RAGManager.test.tsx",
+        "passed": 7,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "RAGManager normalizes polluted RAG search result display metadata",
+            "message": "Error: Found multiple elements with the text: Untitled"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/secrets/AuditLogViewer.test.tsx",
+        "passed": 4,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "AuditLogViewer resets pagination offset when the action filter changes",
+            "message": "AssertionError: expected \"spy\" to be called with arguments: [ { action: 'deleted', …(2) } ]"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/secrets/SecretsListManager.test.tsx",
+        "passed": 6,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "SecretsListManager normalizes create-secret selector fields before submitting payloads",
+            "message": "AssertionError: expected \"spy\" to be called with arguments: [ ObjectContaining{…} ]"
+          }
+        ]
+      }
+    ]
+  },
+  "baseline": {
+    "tests": 48,
+    "passed": 40,
+    "failed": 8,
+    "files": [
+      {
+        "path": "src/components/features/admin/ConfigManager.test.tsx",
+        "passed": 3,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/ai/ModelsManager.test.tsx",
+        "passed": 2,
+        "failed": 2,
+        "failures": [
+          {
+            "name": "ModelsManager filters polluted model and provider selectors before model actions",
+            "message": "TestingLibraryElementError: Found multiple elements with the role \"button\" and name `/Test/i`"
+          },
+          {
+            "name": "ModelsManager keeps the delete confirmation open and shows backend errors when deletion fails",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Delete/i`"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/ai/Playground.test.tsx",
+        "passed": 6,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/ai/ProvidersManager.test.tsx",
+        "passed": 3,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "ProvidersManager keeps the delete confirmation open and shows backend errors when deletion fails",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Delete/i`"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/ai/RoutesManager.test.tsx",
+        "passed": 2,
+        "failed": 2,
+        "failures": [
+          {
+            "name": "RoutesManager filters polluted route and model selectors before route actions",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Set as Default/i`"
+          },
+          {
+            "name": "RoutesManager keeps the delete confirmation open and shows backend errors when deletion fails",
+            "message": "Error: Unable to find role=\"menuitem\" and name `/Delete/i`"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/ai/TraceViewer.test.tsx",
+        "passed": 4,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/ai/UsageMonitor.test.tsx",
+        "passed": 3,
+        "failed": 0,
+        "failures": []
+      },
+      {
+        "path": "src/components/features/admin/rag/RAGManager.test.tsx",
+        "passed": 7,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "RAGManager normalizes polluted RAG search result display metadata",
+            "message": "Error: Found multiple elements with the text: Untitled"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/secrets/AuditLogViewer.test.tsx",
+        "passed": 4,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "AuditLogViewer resets pagination offset when the action filter changes",
+            "message": "AssertionError: expected \"spy\" to be called with arguments: [ { action: 'deleted', …(2) } ]"
+          }
+        ]
+      },
+      {
+        "path": "src/components/features/admin/secrets/SecretsListManager.test.tsx",
+        "passed": 6,
+        "failed": 1,
+        "failures": [
+          {
+            "name": "SecretsListManager normalizes create-secret selector fields before submitting payloads",
+            "message": "AssertionError: expected \"spy\" to be called with arguments: [ ObjectContaining{…} ]"
+          }
+        ]
+      }
+    ]
+  },
+  "transformationEvidence": "The failing ModelsManager and SecretsListManager DOM contains the new accessible search names in the current run and omits them in the baseline run.",
+  "initialDefaultReporterUnhandledError": "One Radix Select candidate?.scrollIntoView is not a function (jsdom) was also reported in the initial current run; the JSON reporter does not expose an unhandled error field.",
+  "sourceHashes": [
+    {
+      "path": "frontend/src/components/features/admin/ConfigManager.tsx",
+      "baselineSha256": "f4cafbc5137f798d341e443b16fa4c4201d7ef6ec8d8dfe661de8ac090d8109c",
+      "currentSha256": "e73f3f9b2127d48e22586bf78f8836df6eb518d2963e617d3b0d44cd1d25ba8a"
+    },
+    {
+      "path": "frontend/src/components/features/admin/ai/ModelsManager.tsx",
+      "baselineSha256": "52f31f9f8d8977a8b9f5b50742ca72caf26dbcb59616d32d955ea5d81aaa6500",
+      "currentSha256": "009217bb804c0d6ea7d18ba083382d1fae6b0e32331682a364412c78ee97247e"
+    },
+    {
+      "path": "frontend/src/components/features/admin/ai/Playground.tsx",
+      "baselineSha256": "3927634f511778a52084ca0ebc23d378bf8b0fdd10d69bc0300fef02cff8e19e",
+      "currentSha256": "0255a083b27aca968d274b2595ca862e32f1d0f96fee88a787c8fe6711647b0f"
+    },
+    {
+      "path": "frontend/src/components/features/admin/ai/ProvidersManager.tsx",
+      "baselineSha256": "cd9e63d74efcd7f5b62ce48727348629cf0e15c87ba89bdcec24ad55ba2b17bb",
+      "currentSha256": "5a473b212cd1177b088fa89974f7e3f4c92b63c187dde6d500f973aee39219db"
+    },
+    {
+      "path": "frontend/src/components/features/admin/ai/RoutesManager.tsx",
+      "baselineSha256": "9a72bc526c409f560d84dbe82c128347510e586940c684380c3b6e60bb5b8222",
+      "currentSha256": "2714ae5af08929a55dc1031105c5fbc6cb945db450272a8ef9e5c8fde3dd755d"
+    },
+    {
+      "path": "frontend/src/components/features/admin/ai/TraceViewer.tsx",
+      "baselineSha256": "42e7be099f50790b18e79733a77b2d5ac0fc877f5f02322cad1f366fbbf92f41",
+      "currentSha256": "b433b0d1b0635afc5bf2b1c6b876173c8b734aadff53ea08bedd4f9286682f71"
+    },
+    {
+      "path": "frontend/src/components/features/admin/ai/UsageMonitor.tsx",
+      "baselineSha256": "9d7f72672a279dc9fc3c7f42bb1ed5360fb6e5e088c286f6f310ae23c5a55474",
+      "currentSha256": "22de0e74ef94fcd97d5392c5b894c551d9b5e3b38fe531c80a422afa4f020fbf"
+    },
+    {
+      "path": "frontend/src/components/features/admin/rag/RAGManager.tsx",
+      "baselineSha256": "8261e16e44edfdb8a2862276aa15ee0c5ab8ed02a4e0c33904e80b95e04c9389",
+      "currentSha256": "dc4d5a656758de5dcada753b7e930e28ca0bdaae2bf2a1f35b9e014867fee222"
+    },
+    {
+      "path": "frontend/src/components/features/admin/secrets/AuditLogViewer.tsx",
+      "baselineSha256": "2f169d71db2e058ddbebc9a92d6f5737d7e439fdb78d837717953d2993e0b019",
+      "currentSha256": "178bbc5c238feeff4499ac0dc8e4a5f8130aa0c208544bc62593f14242b6c688"
+    },
+    {
+      "path": "frontend/src/components/features/admin/secrets/SecretsListManager.tsx",
+      "baselineSha256": "9db043d0bb47f99ae5ce18203bfa494b43ff82c74f431c62623fb032af193fa4",
+      "currentSha256": "ed0ea46ec224e04d1fccc807df06fcce0897171c1d1fccd4ea37b08a52e426a9"
+    }
+  ],
+  "identicalFailureNamesAndFirstMessages": true
+}

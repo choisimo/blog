@@ -1,0 +1,842 @@
+{
+  "scope": "Real React components in a test-only harness; production authentication and live API are not exercised.",
+  "results": [
+    {
+      "surface": "admin",
+      "theme": "light",
+      "width": 375,
+      "compact": true,
+      "viewport": 375,
+      "documentWidth": 360,
+      "editor": {
+        "width": 332,
+        "height": 1095
+      },
+      "write": {
+        "width": 300,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "light",
+      "width": 768,
+      "compact": true,
+      "viewport": 768,
+      "documentWidth": 753,
+      "editor": {
+        "width": 713,
+        "height": 948
+      },
+      "write": {
+        "width": 677,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "light",
+      "width": 1024,
+      "compact": true,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "editor": {
+        "width": 739,
+        "height": 951
+      },
+      "write": {
+        "width": 703,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "light",
+      "width": 1280,
+      "compact": true,
+      "viewport": 1280,
+      "documentWidth": 1265,
+      "editor": {
+        "width": 979,
+        "height": 920
+      },
+      "write": {
+        "width": 935,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "light",
+      "width": 1440,
+      "compact": false,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "editor": {
+        "width": 1139,
+        "height": 1001
+      },
+      "write": {
+        "width": 377,
+        "height": 540
+      },
+      "preview": {
+        "width": 377,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 892
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "admin",
+      "theme": "light",
+      "width": 1920,
+      "compact": false,
+      "viewport": 1920,
+      "documentWidth": 1905,
+      "editor": {
+        "width": 1619,
+        "height": 1001
+      },
+      "write": {
+        "width": 617,
+        "height": 540
+      },
+      "preview": {
+        "width": 617,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 892
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "admin",
+      "theme": "light",
+      "shortViewport": "1280x420",
+      "clientHeight": 356,
+      "scrollHeight": 631,
+      "overflow": "auto",
+      "lastNavigationItemReachable": true
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "width": 375,
+      "compact": true,
+      "viewport": 375,
+      "documentWidth": 360,
+      "editor": {
+        "width": 332,
+        "height": 1095
+      },
+      "write": {
+        "width": 300,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "width": 768,
+      "compact": true,
+      "viewport": 768,
+      "documentWidth": 753,
+      "editor": {
+        "width": 713,
+        "height": 948
+      },
+      "write": {
+        "width": 677,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "width": 1024,
+      "compact": true,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "editor": {
+        "width": 739,
+        "height": 951
+      },
+      "write": {
+        "width": 703,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "width": 1280,
+      "compact": true,
+      "viewport": 1280,
+      "documentWidth": 1265,
+      "editor": {
+        "width": 979,
+        "height": 920
+      },
+      "write": {
+        "width": 935,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "width": 1440,
+      "compact": false,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "editor": {
+        "width": 1139,
+        "height": 1001
+      },
+      "write": {
+        "width": 377,
+        "height": 540
+      },
+      "preview": {
+        "width": 377,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 892
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "width": 1920,
+      "compact": false,
+      "viewport": 1920,
+      "documentWidth": 1905,
+      "editor": {
+        "width": 1619,
+        "height": 1001
+      },
+      "write": {
+        "width": 617,
+        "height": 540
+      },
+      "preview": {
+        "width": 617,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 892
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "admin",
+      "theme": "dark",
+      "shortViewport": "1280x420",
+      "clientHeight": 356,
+      "scrollHeight": 631,
+      "overflow": "auto",
+      "lastNavigationItemReachable": true
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "width": 375,
+      "compact": true,
+      "viewport": 375,
+      "documentWidth": 360,
+      "editor": {
+        "width": 332,
+        "height": 1095
+      },
+      "write": {
+        "width": 300,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "width": 768,
+      "compact": true,
+      "viewport": 768,
+      "documentWidth": 753,
+      "editor": {
+        "width": 713,
+        "height": 949
+      },
+      "write": {
+        "width": 677,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "width": 1024,
+      "compact": true,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "editor": {
+        "width": 739,
+        "height": 951
+      },
+      "write": {
+        "width": 703,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "width": 1280,
+      "compact": true,
+      "viewport": 1280,
+      "documentWidth": 1265,
+      "editor": {
+        "width": 979,
+        "height": 920
+      },
+      "write": {
+        "width": 935,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "width": 1440,
+      "compact": false,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "editor": {
+        "width": 1139,
+        "height": 1023
+      },
+      "write": {
+        "width": 377,
+        "height": 540
+      },
+      "preview": {
+        "width": 377,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 892
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "width": 1920,
+      "compact": false,
+      "viewport": 1920,
+      "documentWidth": 1905,
+      "editor": {
+        "width": 1619,
+        "height": 1001
+      },
+      "write": {
+        "width": 617,
+        "height": 540
+      },
+      "preview": {
+        "width": 617,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 892
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "admin",
+      "theme": "terminal",
+      "shortViewport": "1280x420",
+      "clientHeight": 356,
+      "scrollHeight": 631,
+      "overflow": "auto",
+      "lastNavigationItemReachable": true
+    },
+    {
+      "surface": "standalone",
+      "theme": "light",
+      "width": 375,
+      "compact": true,
+      "viewport": 375,
+      "documentWidth": 360,
+      "editor": {
+        "width": 332,
+        "height": 1061
+      },
+      "write": {
+        "width": 300,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "light",
+      "width": 768,
+      "compact": true,
+      "viewport": 768,
+      "documentWidth": 753,
+      "editor": {
+        "width": 697,
+        "height": 952
+      },
+      "write": {
+        "width": 661,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "light",
+      "width": 1024,
+      "compact": true,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "editor": {
+        "width": 953,
+        "height": 913
+      },
+      "write": {
+        "width": 917,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "light",
+      "width": 1280,
+      "compact": false,
+      "viewport": 1280,
+      "documentWidth": 1265,
+      "editor": {
+        "width": 1209,
+        "height": 1000
+      },
+      "write": {
+        "width": 428,
+        "height": 540
+      },
+      "preview": {
+        "width": 428,
+        "height": 540
+      },
+      "tools": {
+        "width": 310,
+        "height": 885
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "light",
+      "width": 1440,
+      "compact": false,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "editor": {
+        "width": 1369,
+        "height": 1008
+      },
+      "write": {
+        "width": 492,
+        "height": 540
+      },
+      "preview": {
+        "width": 492,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 893
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "light",
+      "width": 1920,
+      "compact": false,
+      "viewport": 1920,
+      "documentWidth": 1905,
+      "editor": {
+        "width": 1849,
+        "height": 1008
+      },
+      "write": {
+        "width": 732,
+        "height": 540
+      },
+      "preview": {
+        "width": 732,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 893
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "dark",
+      "width": 375,
+      "compact": true,
+      "viewport": 375,
+      "documentWidth": 360,
+      "editor": {
+        "width": 332,
+        "height": 1061
+      },
+      "write": {
+        "width": 300,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "dark",
+      "width": 768,
+      "compact": true,
+      "viewport": 768,
+      "documentWidth": 753,
+      "editor": {
+        "width": 697,
+        "height": 952
+      },
+      "write": {
+        "width": 661,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "dark",
+      "width": 1024,
+      "compact": true,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "editor": {
+        "width": 953,
+        "height": 913
+      },
+      "write": {
+        "width": 917,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "dark",
+      "width": 1280,
+      "compact": false,
+      "viewport": 1280,
+      "documentWidth": 1265,
+      "editor": {
+        "width": 1209,
+        "height": 1000
+      },
+      "write": {
+        "width": 428,
+        "height": 540
+      },
+      "preview": {
+        "width": 428,
+        "height": 540
+      },
+      "tools": {
+        "width": 310,
+        "height": 885
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "dark",
+      "width": 1440,
+      "compact": false,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "editor": {
+        "width": 1369,
+        "height": 1008
+      },
+      "write": {
+        "width": 492,
+        "height": 540
+      },
+      "preview": {
+        "width": 492,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 893
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "dark",
+      "width": 1920,
+      "compact": false,
+      "viewport": 1920,
+      "documentWidth": 1905,
+      "editor": {
+        "width": 1849,
+        "height": 1008
+      },
+      "write": {
+        "width": 732,
+        "height": 540
+      },
+      "preview": {
+        "width": 732,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 893
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "terminal",
+      "width": 375,
+      "compact": true,
+      "viewport": 375,
+      "documentWidth": 360,
+      "editor": {
+        "width": 332,
+        "height": 1082
+      },
+      "write": {
+        "width": 300,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "terminal",
+      "width": 768,
+      "compact": true,
+      "viewport": 768,
+      "documentWidth": 753,
+      "editor": {
+        "width": 697,
+        "height": 952
+      },
+      "write": {
+        "width": 661,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "terminal",
+      "width": 1024,
+      "compact": true,
+      "viewport": 1024,
+      "documentWidth": 1009,
+      "editor": {
+        "width": 953,
+        "height": 913
+      },
+      "write": {
+        "width": 917,
+        "height": 420
+      },
+      "preview": null,
+      "tools": null,
+      "draftPreserved": true,
+      "paneSwitches": "write/preview/tools verified"
+    },
+    {
+      "surface": "standalone",
+      "theme": "terminal",
+      "width": 1280,
+      "compact": false,
+      "viewport": 1280,
+      "documentWidth": 1265,
+      "editor": {
+        "width": 1209,
+        "height": 1000
+      },
+      "write": {
+        "width": 428,
+        "height": 540
+      },
+      "preview": {
+        "width": 428,
+        "height": 540
+      },
+      "tools": {
+        "width": 310,
+        "height": 885
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "terminal",
+      "width": 1440,
+      "compact": false,
+      "viewport": 1440,
+      "documentWidth": 1425,
+      "editor": {
+        "width": 1369,
+        "height": 1008
+      },
+      "write": {
+        "width": 492,
+        "height": 540
+      },
+      "preview": {
+        "width": 492,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 893
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    },
+    {
+      "surface": "standalone",
+      "theme": "terminal",
+      "width": 1920,
+      "compact": false,
+      "viewport": 1920,
+      "documentWidth": 1905,
+      "editor": {
+        "width": 1849,
+        "height": 1008
+      },
+      "write": {
+        "width": 732,
+        "height": 540
+      },
+      "preview": {
+        "width": 732,
+        "height": 540
+      },
+      "tools": {
+        "width": 334,
+        "height": 893
+      },
+      "draftPreserved": true,
+      "paneSwitches": "wide split visible"
+    }
+  ]
+}

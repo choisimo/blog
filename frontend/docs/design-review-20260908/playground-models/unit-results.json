@@ -1,0 +1,40 @@
+{
+  "scope": "Post-review Playground model inventory presentation, loading/error/empty distinction, existing payload tests, label/keyboard selection.",
+  "tests": 8,
+  "passed": 8,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "Playground shows playground load errors without also showing history empty state",
+      "status": "passed"
+    },
+    {
+      "name": "Playground shows model load errors in the playground panel",
+      "status": "passed"
+    },
+    {
+      "name": "Playground shows loading before an empty enabled-model inventory",
+      "status": "passed"
+    },
+    {
+      "name": "Playground names each model checkbox from its visible model and provider and supports keyboard selection",
+      "status": "passed"
+    },
+    {
+      "name": "Playground shows template load errors without also showing the template empty state",
+      "status": "passed"
+    },
+    {
+      "name": "Playground labels history and template icon controls",
+      "status": "passed"
+    },
+    {
+      "name": "Playground filters polluted model, history, and template selectors before UI actions",
+      "status": "passed"
+    },
+    {
+      "name": "Playground enforces the five model comparison limit in the run payload",
+      "status": "passed"
+    }
+  ]
+}

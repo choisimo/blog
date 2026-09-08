@@ -1,0 +1,278 @@
+[
+  {
+    "label": "public-common-data",
+    "executedCommand": "vitest run --config config/vite.config.ts src/components/common/LanguageToggle.test.tsx src/components/common/ThemeToggle.test.tsx src/components/atoms/PageTransitionFallback.test.tsx src/pages/public/Debate.test.tsx src/components/organisms/Footer.test.tsx src/test/reading src/test/ImageLightbox.test.tsx src/components/features/blog/ImageLightbox.test.tsx src/test/MarkdownRenderer.codeblocks.test.tsx src/test/Smoke.test.tsx src/test/apiBase.test.ts src/test/runtimeConfig.test.tsx src/test/runtimeConfig.test.ts src/test/MarkdownRenderer.test.tsx src/components/molecules/ChatMarkdown.test.tsx src/services/discovery/rag.test.ts src/services/discovery/ai.timeout.test.ts src/components/features/home src/pages/public/Index.search.test.tsx src/pages/public/Blog.discovery.test.tsx src/pages/public/Index.test.tsx src/components/features/search/SearchBar.test.tsx src/test/SearchBar.test.tsx src/components/features/navigation/Pagination.test.tsx src/test/Pagination.test.tsx src/test/Projects.test.tsx src/test/ProjectCard.test.tsx src/test/ProjectModal.test.tsx src/test/projectsData.test.ts src/test/aboutLinks.test.ts src/test/errorStatusPage.test.tsx src/test/About.test.tsx src/components/features/projects src/components/molecules/AdminSubtabs.test.tsx src/test/AdminSubtabs.test.tsx src/components/features/insight-workspace/InsightWorkspacePage.test.ts src/components/features/admin/ai/PromptsManager.test.tsx src/test/postDiscoveryFailure.test.ts src/test/postServiceManifest.test.ts src/test/postsData.test.ts src/test/PostService.prefetch.test.ts --maxWorkers=2",
+    "files": [
+      {
+        "file": "src/test/reading/reading-images.test.tsx",
+        "tests": 9
+      },
+      {
+        "file": "src/components/organisms/Footer.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/pages/public/Blog.discovery.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "src/test/About.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/test/postDiscoveryFailure.test.ts",
+        "tests": 6
+      },
+      {
+        "file": "src/components/features/blog/ImageLightbox.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "src/components/common/ThemeToggle.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "src/test/postServiceManifest.test.ts",
+        "tests": 3
+      },
+      {
+        "file": "src/test/MarkdownRenderer.codeblocks.test.tsx",
+        "tests": 11
+      },
+      {
+        "file": "src/components/features/navigation/Pagination.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "src/pages/public/Index.search.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/common/LanguageToggle.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "src/components/features/admin/ai/PromptsManager.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/test/Pagination.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/test/reading/reading-surfaces.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/molecules/ChatMarkdown.test.tsx",
+        "tests": 6
+      },
+      {
+        "file": "src/test/AdminSubtabs.test.tsx",
+        "tests": 6
+      },
+      {
+        "file": "src/test/ProjectModal.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/test/PostService.prefetch.test.ts",
+        "tests": 2
+      },
+      {
+        "file": "src/test/SearchBar.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/test/Smoke.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/projects/TagFilter.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "src/components/features/home/HomeLatestPostsSection.test.tsx",
+        "tests": 1
+      },
+      {
+        "file": "src/pages/public/Index.test.tsx",
+        "tests": 1
+      },
+      {
+        "file": "src/pages/public/Debate.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/search/SearchBar.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "src/components/features/home/HomeCategoryStrip.test.tsx",
+        "tests": 1
+      },
+      {
+        "file": "src/test/ImageLightbox.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/projects/ProjectCard.test.tsx",
+        "tests": 6
+      },
+      {
+        "file": "src/components/features/projects/ProjectModal.test.tsx",
+        "tests": 5
+      },
+      {
+        "file": "src/test/ProjectCard.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/test/MarkdownRenderer.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/atoms/PageTransitionFallback.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/molecules/AdminSubtabs.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "src/components/features/home/HomeEditorPicksSection.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/projects/ProjectCardSkeleton.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/home/HomeMarkdownCta.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/services/discovery/rag.test.ts",
+        "tests": 27
+      },
+      {
+        "file": "src/test/runtimeConfig.test.ts",
+        "tests": 5
+      },
+      {
+        "file": "src/services/discovery/ai.timeout.test.ts",
+        "tests": 1
+      },
+      {
+        "file": "src/test/postsData.test.ts",
+        "tests": 3
+      },
+      {
+        "file": "src/test/apiBase.test.ts",
+        "tests": 2
+      },
+      {
+        "file": "src/test/projectsData.test.ts",
+        "tests": 2
+      },
+      {
+        "file": "src/test/errorStatusPage.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/test/aboutLinks.test.ts",
+        "tests": 3
+      },
+      {
+        "file": "src/test/Projects.test.tsx",
+        "tests": 1
+      },
+      {
+        "file": "src/components/features/insight-workspace/InsightWorkspacePage.test.ts",
+        "tests": 5
+      }
+    ],
+    "summary": [
+      "47 passed (47)",
+      "190 passed (190)",
+      "05:23:33",
+      "38.36s (transform 3.91s, setup 3.14s, collect 19.09s, tests 10.47s, environment 26.17s, prepare 5.23s)"
+    ]
+  },
+  {
+    "label": "overlay-fab-chat",
+    "executedCommand": "vitest run --config config/vite.config.ts src/components/molecules/OverlayDialog.test.tsx src/components/features/memo/fab src/components/features/chat/widget/index.test.tsx src/components/features/chat/widget/components/ChatDialogs.test.tsx --maxWorkers=2",
+    "files": [
+      {
+        "file": "src/components/features/memo/fab/components/RealTerminalModal.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/useOverlayFocusReturn.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/memo/fab/components/ShellModal.test.tsx",
+        "tests": 4
+      },
+      {
+        "file": "src/components/molecules/OverlayDialog.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/memo/fab/components/ShellComponents.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/chat/widget/components/ChatDialogs.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/useRealTerminal.test.ts",
+        "tests": 5
+      },
+      {
+        "file": "src/components/features/memo/fab/components/DefaultDock.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/useShellCommander.test.ts",
+        "tests": 5
+      },
+      {
+        "file": "src/components/features/memo/fab/components/TerminalDock.test.tsx",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/usePostsManifest.test.ts",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/useFabState.test.ts",
+        "tests": 5
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/useSelectedBlockActions.test.ts",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/memo/fab/hooks/useVirtualFS.test.ts",
+        "tests": 3
+      },
+      {
+        "file": "src/components/features/memo/fab/index.test.tsx",
+        "tests": 2
+      },
+      {
+        "file": "src/components/features/chat/widget/index.test.tsx",
+        "tests": 3
+      }
+    ],
+    "summary": [
+      "16 passed (16)",
+      "53 passed (53)",
+      "05:25:12",
+      "22.10s (transform 2.01s, setup 1.85s, collect 10.43s, tests 4.98s, environment 16.26s, prepare 3.13s)"
+    ]
+  }
+]

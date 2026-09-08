@@ -1,0 +1,281 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 305,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 305,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 305,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 48.75,
+      "y": 412.0625,
+      "width": 125.890625,
+      "height": 89.75
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 375,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 48.75,
+      "y": 411.96875,
+      "width": 125.890625,
+      "height": 89.75
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "light",
+    "width": 1440,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 1425,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1425,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1425,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 779.984375,
+      "y": 328.75,
+      "width": 128.140625,
+      "height": 89.875
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "dark",
+    "width": 320,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 305,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 305,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 305,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 48.75,
+      "y": 412.0625,
+      "width": 125.890625,
+      "height": 89.75
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 375,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 48.75,
+      "y": 411.96875,
+      "width": 125.890625,
+      "height": 89.75
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1440,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 1425,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1425,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1425,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 779.984375,
+      "y": 328.75,
+      "width": 128.140625,
+      "height": 89.875
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "terminal",
+    "width": 320,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 305,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 305,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 305,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 76.75,
+      "y": 434.65625,
+      "width": 150.609375,
+      "height": 91.5
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "terminal",
+    "width": 390,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 375,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 76.75,
+      "y": 434.65625,
+      "width": 150.609375,
+      "height": 91.5
+    },
+    "pageErrors": []
+  },
+  {
+    "theme": "terminal",
+    "width": 1440,
+    "positions": [
+      {
+        "x": 0,
+        "y": 65,
+        "width": 1425,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1425,
+        "height": 3
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "width": 1425,
+        "height": 3
+      }
+    ],
+    "pickerBox": {
+      "x": 770.125,
+      "y": 344,
+      "width": 153,
+      "height": 91.75
+    },
+    "pageErrors": []
+  }
+]

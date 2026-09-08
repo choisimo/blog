@@ -1,0 +1,193 @@
+{
+  "scope": "Actual Playground Models panel with isolated local API fixtures; loading, error/retry, empty and populated keyboard selection at 320px in light/terminal. No model execution or writes.",
+  "results": [
+    {
+      "state": "loading",
+      "theme": "light",
+      "width": 320,
+      "modelRequests": 1,
+      "text": "Models\n0/5 selected\n\nLoading models…",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "Loading models…",
+          "x": 39,
+          "right": 266,
+          "width": 227,
+          "height": 31.5
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "error",
+      "theme": "light",
+      "width": 320,
+      "modelRequests": 2,
+      "text": "Models\n0/5 selected\n\nUnable to load models. Please try again.\n\nRetry models",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "Unable to load models. Please try again.",
+          "x": 46,
+          "right": 259,
+          "width": 213,
+          "height": 35
+        },
+        {
+          "text": "Retry models",
+          "x": 46,
+          "right": 154.203125,
+          "width": 108.203125,
+          "height": 44
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "empty",
+      "theme": "light",
+      "width": 320,
+      "modelRequests": 1,
+      "text": "Models\n0/5 selected\n\nNo enabled models available. Add or enable a model in the Models tab.",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "No enabled models available. Add or enable a model in the Models tab.",
+          "x": 39,
+          "right": 266,
+          "width": 227,
+          "height": 49
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "populated",
+      "theme": "light",
+      "width": 320,
+      "modelRequests": 1,
+      "text": "Models\n1/5 selected\nWriting model with a deliberately long display name\nLocal fixture provider with a long name",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "Writing model with a deliberately long display nameLocal fixture provider with a long name",
+          "x": 39,
+          "right": 266,
+          "width": 227,
+          "height": 109.375
+        },
+        {
+          "text": "",
+          "x": 46,
+          "right": 90,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "loading",
+      "theme": "terminal",
+      "width": 320,
+      "modelRequests": 1,
+      "text": "Models\n0/5 selected\n\nLoading models…",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "Loading models…",
+          "x": 39,
+          "right": 266,
+          "width": 227,
+          "height": 31.5
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "error",
+      "theme": "terminal",
+      "width": 320,
+      "modelRequests": 2,
+      "text": "Models\n0/5 selected\n\nUnable to load models. Please try again.\n\nRetry models",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "Unable to load models. Please try again.",
+          "x": 46,
+          "right": 259,
+          "width": 213,
+          "height": 35
+        },
+        {
+          "text": "Retry models",
+          "x": 46,
+          "right": 164.203125,
+          "width": 118.203125,
+          "height": 44
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "empty",
+      "theme": "terminal",
+      "width": 320,
+      "modelRequests": 1,
+      "text": "Models\n0/5 selected\n\nNo enabled models available. Add or enable a model in the Models tab.",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "No enabled models available. Add or enable a model in the Models tab.",
+          "x": 39,
+          "right": 266,
+          "width": 227,
+          "height": 66.5
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "state": "populated",
+      "theme": "terminal",
+      "width": 320,
+      "modelRequests": 1,
+      "text": "Models\n1/5 selected\nWriting model with a deliberately long display name\nLocal fixture provider with a long name",
+      "x": 14,
+      "right": 291,
+      "documentWidth": 305,
+      "contents": [
+        {
+          "text": "Writing model with a deliberately long display nameLocal fixture provider with a long name",
+          "x": 39,
+          "right": 266,
+          "width": 227,
+          "height": 130.8125
+        },
+        {
+          "text": "",
+          "x": 46,
+          "right": 90,
+          "width": 44,
+          "height": 44
+        }
+      ],
+      "runtimeErrors": []
+    }
+  ]
+}
