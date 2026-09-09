@@ -991,6 +991,21 @@
 .article-references__body { padding-block: 4px 16px; border-top: 1px solid hsl(var(--border)); }
 .article-flow .article-references__body :is(p, li) { font-size: inherit; line-height: inherit; }
 .article-references__body a { overflow-wrap: anywhere; }
+
+/* Citation-only styling from the article export; body typography stays inherited. */
+.article-flow sup.article-citation {
+  font: normal .65em/0 var(--fn-sans);
+  vertical-align: super;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+.article-flow sup.article-citation a { text-decoration: none; }
+.article-flow sup.article-citation a:hover { text-decoration: underline; }
+.article-flow sup.article-citation a:focus-visible,
+.article-reference-target:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
 @media print {
   .article-flow details.article-references { padding: 0; border: 0; background: white; }
   .article-references > summary { display: none; }

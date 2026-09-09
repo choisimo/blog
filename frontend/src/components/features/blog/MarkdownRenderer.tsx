@@ -28,7 +28,10 @@ import { getMarkdownSanitizeSchema } from './markdownSanitizeSchema';
 import { ArticleDiagram } from './visualization/ArticleDiagram';
 import { parseArticleDiagram } from './visualization/articleDiagram';
 import { ArticleReferences } from './ArticleReferences';
-import { rehypeArticleReferences } from '@/utils/content/articleReferences';
+import {
+  handleArticleCitationClick,
+  rehypeArticleReferences,
+} from '@/utils/content/articleReferences';
 import {
   ClickableImage,
   EmbeddedVideo,
@@ -1404,7 +1407,7 @@ function MarkdownRendererInner({
                 ? event => {
                     event.preventDefault();
                   }
-                : undefined
+                : handleArticleCitationClick
             }
             className={cn(
               'font-medium text-primary underline decoration-primary/35 underline-offset-4 transition-colors hover:decoration-primary',
