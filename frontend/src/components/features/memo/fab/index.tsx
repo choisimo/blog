@@ -81,20 +81,10 @@ function sanitizeDockAction(action: DockAction): DockAction {
 
 export default function FloatingActionBar() {
   const { pathname } = useLocation();
-  const isReaderRoute = /^\/blog\/[^/]+\/[^/]+\/?$/.test(pathname);
-  const [readerToolsOpen, setReaderToolsOpen] = useState(false);
-  useEffect(() => {
-    const toggle = () => setReaderToolsOpen(value => !value);
-    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setReaderToolsOpen(false); };
-    window.addEventListener('fieldnotes:reader-tools', toggle);
-    window.addEventListener('keydown', close);
-    return () => { window.removeEventListener('fieldnotes:reader-tools', toggle); window.removeEventListener('keydown', close); };
-  }, []);
-  useEffect(() => { setReaderToolsOpen(false); }, [pathname]);
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('fieldnotes:reader-tools-state', { detail: { open: readerToolsOpen } }));
-  }, [readerToolsOpen]);
-  const enabled = isFabEnabled();
+  const isReaderRoute = /^\/(?:blog|post)\/[^/]+\/[^/]+\/?$/.test(pathname);
+  const { isTerminal } = useTheme();
+  // The reading desk still needs the chat/memo owners when the legacy dock is off.
+  const enabled = isFabEnabled() || (isReaderRoute && !isTerminal);
   const aiMemoEl = useAIMemoElement();
   const memoOpen = useMemoOpen(aiMemoEl);
   const overlayOpen = useHistoryOverlayOpen(aiMemoEl);
@@ -144,7 +134,6 @@ export default function FloatingActionBar() {
   const [fabPosition] = useFabPosition();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const { isTerminal } = useTheme();
   const { language } = useLanguage();
   const { send, sendImpression, sendMemoContextChange } = useFabAnalytics();
   const str = useUIStrings();
@@ -257,12 +246,19 @@ export default function FloatingActionBar() {
 
   const toggleMemo = useCallback(() => {
     const dispatchToggle = () => {
-      const panel = (ensureAIMemoElement() as MemoPadElement | null)?.shadowRoot?.getElementById('panel');
-      const openReaderDesk = isReaderRoute && !isTerminal &&
-        window.matchMedia('(min-width: 851px)').matches && !panel?.classList.contains('open');
+      const panel = (
+        ensureAIMemoElement() as MemoPadElement | null
+      )?.shadowRoot?.getElementById('panel');
+      const openReaderDesk =
+        isReaderRoute &&
+        !isTerminal &&
+        window.matchMedia('(min-width: 851px)').matches &&
+        !panel?.classList.contains('open');
       window.dispatchEvent(
         new CustomEvent('aiMemo:windowCommand', {
-          detail: openReaderDesk ? { action: 'open', mode: 'docked' } : { action: 'toggle' },
+          detail: openReaderDesk
+            ? { action: 'open', mode: 'docked' }
+            : { action: 'toggle' },
         })
       );
     };
@@ -406,20 +402,40 @@ export default function FloatingActionBar() {
   useEffect(() => {
     if (!enabled) return;
     let i = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const previousDisplays = new Map<HTMLElement, string>();
+    const hideLaunchers = () => {
+      const shadow = (aiMemoEl as MemoPadElement | null)?.shadowRoot;
+      for (const id of ['launcher', 'historyLauncher']) {
+        const launcher = shadow?.getElementById(id);
+        if (launcher && !previousDisplays.has(launcher)) {
+          previousDisplays.set(launcher, launcher.style.display);
+        }
+      }
+      hideLegacyLaunchers(aiMemoEl);
+    };
     const tick = () => {
       i += 1;
-      hideLegacyLaunchers(aiMemoEl);
-      if (i < 15) setTimeout(tick, 200);
+      hideLaunchers();
+      if (i < 15) timer = setTimeout(tick, 200);
     };
     tick();
 
     let mo: MutationObserver | null = null;
     const shadow = (aiMemoEl as MemoPadElement | null)?.shadowRoot ?? undefined;
     if (shadow) {
-      mo = new MutationObserver(() => hideLegacyLaunchers(aiMemoEl));
+      mo = new MutationObserver(hideLaunchers);
       mo.observe(shadow, { childList: true, subtree: true });
     }
-    return () => mo?.disconnect();
+    return () => {
+      mo?.disconnect();
+      clearTimeout(timer);
+      if (!isFabEnabled()) {
+        previousDisplays.forEach((display, launcher) => {
+          launcher.style.display = display;
+        });
+      }
+    };
   }, [enabled, aiMemoEl]);
 
   useEffect(() => {
@@ -448,7 +464,6 @@ export default function FloatingActionBar() {
 
   const containerClasses = cn(
     'fn-assistant-dock fixed z-[var(--z-fab-bar)] print:hidden',
-    isReaderRoute && !isTerminal && 'fn-reader-dock',
     isLeftFab
       ? 'left-0 top-1/2 -translate-y-1/2 px-0 py-3'
       : cn(
@@ -609,7 +624,7 @@ export default function FloatingActionBar() {
         />
       )}
 
-      {!toolbarDisabled && (
+      {!toolbarDisabled && (!isReaderRoute || isTerminal) && (
         <div
           role='toolbar'
           aria-label={normalizeFabActionLabel(
@@ -617,8 +632,6 @@ export default function FloatingActionBar() {
           )}
           aria-orientation={isLeftFab ? 'vertical' : 'horizontal'}
           className={containerClasses}
-          data-reader-tools-open={readerToolsOpen}
-          id={isReaderRoute ? 'fieldnotes-reader-tools' : undefined}
         >
           <nav
             className={cn(

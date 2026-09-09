@@ -111,10 +111,10 @@ describe('SparkInline', () => {
     ).not.toBeInTheDocument();
     fireEvent.click(trigger);
     const prism = screen.getByRole('button', { name: /다각도 분석/ });
-    const chain = screen.getByRole('button', { name: /더 생각해보기/ });
     fireEvent.click(prism);
     expect(prism).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Prism deck')).toBeVisible();
+    const chain = screen.getByRole('button', { name: /더 생각해보기/ });
     fireEvent.click(chain);
     expect(prism).toHaveAttribute('aria-pressed', 'false');
     expect(chain).toHaveAttribute('aria-pressed', 'true');
@@ -127,6 +127,37 @@ describe('SparkInline', () => {
     expect(chain).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Thought feed')).toBeVisible();
     expect(mockSketch).not.toHaveBeenCalled();
+  });
+
+  it('collapses the selector and restores the selected button without resetting results', () => {
+    const { container, rerender } = render(
+      <SparkInline>Paragraph to explore.</SparkInline>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'AI로 문단 분석하기' }));
+    const expanded = container.querySelector<HTMLElement>(
+      '.sentio-expanded-modes'
+    )!;
+    fireEvent.click(screen.getByRole('button', { name: /다각도 분석/ }));
+    expect(container.querySelector('.sentio-panel')).toHaveAttribute(
+      'data-compact',
+      'true'
+    );
+    expect(expanded.inert).toBe(true);
+    expect(screen.getByRole('button', { name: '다각도 분석' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '분석 방식 펼치기' }));
+    expect(expanded.inert).toBe(false);
+    expect(container.querySelector('.sentio-panel')).toHaveAttribute(
+      'data-compact',
+      'false'
+    );
+    expect(screen.getByRole('button', { name: /다각도 분석/ })).toHaveFocus();
+    expect(screen.getByText('Prism deck')).toBeVisible();
+    expect(mockSketch).not.toHaveBeenCalled();
+    rerender(<SparkInline>A different paragraph.</SparkInline>);
+    expect(container.querySelector('.sentio-panel')).toHaveAttribute(
+      'data-compact',
+      'false'
+    );
   });
 
   it('allows retry after an analysis failure', async () => {

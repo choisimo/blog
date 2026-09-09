@@ -690,7 +690,7 @@
 .rd-mobile-desk-actions {
   display: none;
 }
-@media (max-width: 850px) {
+@media (max-width: 1199px) {
   :root:not(.terminal) .fn-reader-mobilebar {
     display: flex;
     flex-direction: row;
@@ -915,7 +915,7 @@
     height: calc(100dvh - 24px);
   }
 }
-@media (max-width: 850px) {
+@media (max-width: 1199px) {
   :root:not(.terminal) .fn-reader-mobilebar .fn-reader-toc-trigger {
     display: flex;
     gap: 7px;

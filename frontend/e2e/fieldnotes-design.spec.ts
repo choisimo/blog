@@ -110,13 +110,15 @@ test('mobile reader keeps extra tools and the real notebook reachable', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(article);
   await expect(page.locator('.article-flow p').first()).toBeVisible({ timeout: 30_000 });
-  const more = page.getByRole('button', { name: '더 많은 도구' });
-  await expect(page.locator('#fieldnotes-reader-tools')).toBeHidden();
+  const more = page.locator('.fn-reader-mobilebar button[aria-label="더 많은 도구"]');
+  await expect(page.getByRole('toolbar', { name: /빠른 작업|Floating actions/ })).toHaveCount(0);
   await more.click();
   await expect(more).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('#fieldnotes-reader-tools')).toBeVisible();
-  await more.click();
-  await expect(page.locator('#fieldnotes-reader-tools')).toBeHidden();
+  await expect(page.getByRole('menuitem', { name: '방문 기록' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '인사이트' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(more).toBeFocused();
+  await expect(page.getByRole('menu')).toBeHidden();
   const memo = page.locator('ai-memo-pad .panel');
   await expect(memo).toHaveCount(1);
   await page.locator('.fn-reader-mobilebar').getByRole('button', { name: '메모', exact: true }).click();
@@ -150,12 +152,11 @@ for (const theme of ['light', 'dark']) {
     for (const width of [390, 768, 1024, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(article);
-      await expect(page.locator('.article-flow p').first()).toBeVisible();
+      await expect(page.locator('.article-flow p').first()).toBeVisible({ timeout: 30_000 });
       const opener = width >= 1200
         ? page.locator('.rd-right').getByRole('button', { name: '메모 열기' })
-        : width <= 850
-          ? page.locator('.fn-reader-mobilebar').getByRole('button', { name: '메모', exact: true })
-          : page.locator('#fieldnotes-reader-tools').getByRole('button', { name: '메모', exact: true });
+        : page.locator('.fn-reader-mobilebar').getByRole('button', { name: '메모', exact: true });
+      await expect(page.getByRole('toolbar', { name: /빠른 작업|Floating actions/ })).toHaveCount(0);
       await opener.click();
       const memo = page.locator('ai-memo-pad .panel');
       await expect(memo).toBeVisible();
@@ -182,6 +183,7 @@ for (const theme of ['light', 'dark']) {
       const close = memo.getByLabel('창 제어').getByRole('button', { name: '닫기', exact: true });
       await close.click();
       await expect(memo).toBeHidden();
+      await expect(page.getByRole('toolbar', { name: /빠른 작업|Floating actions/ })).toHaveCount(0);
       await opener.click();
       await expect(editor).toHaveValue(draft);
       if (width > 850) {

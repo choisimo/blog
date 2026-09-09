@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -23,6 +24,7 @@ import {
   ArrowUpRight,
   Check,
   AlertCircle,
+  ChevronDown,
 } from 'lucide-react';
 import useLanguage from '@/hooks/i18n/useLanguage';
 import {
@@ -279,6 +281,10 @@ export default function SparkInline({
 }) {
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const expandedModesRef = useRef<HTMLDivElement>(null);
+  const compactModesRef = useRef<HTMLDivElement>(null);
+  const focusModeRef = useRef<Mode | null>(null);
+  const [compact, setCompact] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<Mode>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -313,8 +319,23 @@ export default function SparkInline({
     setError(null);
     setSketchRes(null);
     setActiveMode('idle');
+    setCompact(false);
+    focusModeRef.current = null;
     setLoadedModes(createInitialLoadedModes());
   }, [contentKey]);
+
+  useLayoutEffect(() => {
+    if (expandedModesRef.current) expandedModesRef.current.inert = compact;
+    if (compactModesRef.current) compactModesRef.current.inert = !compact;
+    if (!focusModeRef.current) return;
+    const region = compact ? compactModesRef.current : expandedModesRef.current;
+    region
+      ?.querySelector<HTMLButtonElement>(
+        `[data-mode="${focusModeRef.current}"]`
+      )
+      ?.focus({ preventScroll: true });
+    focusModeRef.current = null;
+  }, [compact, activeMode]);
 
   const openMode = useCallback(
     async (mode: Exclude<Mode, 'idle'>) => {
@@ -323,6 +344,8 @@ export default function SparkInline({
       setOpen(true);
       setError(null);
       setActiveMode(mode);
+      if (!compact) focusModeRef.current = mode;
+      setCompact(true);
 
       if (mode === 'sketch') {
         if (loadedModes.sketch || sketchRes || loading === 'sketch') {
@@ -373,7 +396,16 @@ export default function SparkInline({
         setLoadedModes(prev => (prev[mode] ? prev : { ...prev, [mode]: true }));
       }
     },
-    [contentKey, hasText, loadedModes, loading, safePostTitle, sketchRes, text]
+    [
+      compact,
+      contentKey,
+      hasText,
+      loadedModes,
+      loading,
+      safePostTitle,
+      sketchRes,
+      text,
+    ]
   );
 
   const tooltipLabel = normalizeDisplayText(
@@ -459,6 +491,7 @@ export default function SparkInline({
         hidden={!open}
         className='sentio-panel not-prose'
         data-mode={activeMode}
+        data-compact={compact}
         role='region'
         aria-label='AI 분석 패널'
         onKeyDown={event => {
@@ -476,7 +509,11 @@ export default function SparkInline({
             </span>
             <div>
               <p className='sentio-eyebrow'>AI와 함께 읽기</p>
-              <h3>이 문단에서 생각을 넓혀보세요</h3>
+              <div className='sentio-heading-collapse' aria-hidden={compact}>
+                <div>
+                  <h3>이 문단에서 생각을 넓혀보세요</h3>
+                </div>
+              </div>
             </div>
           </div>
           <button
@@ -493,49 +530,112 @@ export default function SparkInline({
         </div>
 
         <div
-          className='sentio-mode-grid'
-          role='group'
-          aria-label='분석 방식 선택'
+          className='sentio-expanded-modes'
+          ref={expandedModesRef}
+          aria-hidden={compact}
         >
-          {(['sketch', 'prism', 'chain'] as const).map(mode => {
-            const config = ModeConfig[mode];
-            const Icon = config.icon;
-            const isActive = activeMode === mode;
-            const isLoading = loading === mode;
-            return (
+          <div>
+            <div
+              id={`${panelId}-modes`}
+              className='sentio-mode-grid'
+              role='group'
+              aria-label='분석 방식 선택'
+            >
+              {(['sketch', 'prism', 'chain'] as const).map(mode => {
+                const config = ModeConfig[mode];
+                const Icon = config.icon;
+                const isActive = activeMode === mode;
+                const isLoading = loading === mode;
+                return (
+                  <button
+                    key={mode}
+                    type='button'
+                    className='sentio-mode-card'
+                    data-mode={mode}
+                    aria-pressed={isActive}
+                    aria-controls={`${panelId}-result`}
+                    onClick={() => void openMode(mode)}
+                  >
+                    <span className='sentio-mode-icon'>
+                      <Icon aria-hidden='true' className='h-5 w-5' />
+                    </span>
+                    <span className='sentio-mode-copy'>
+                      <span className='sentio-mode-title'>{config.label}</span>
+                      <span className='sentio-mode-description'>
+                        {config.description}
+                      </span>
+                    </span>
+                    <span className='sentio-mode-action' aria-hidden='true'>
+                      {isLoading ? (
+                        <Loader2 className='h-4 w-4 animate-spin motion-reduce:animate-none' />
+                      ) : isActive ? (
+                        <Check size={16} />
+                      ) : (
+                        <ArrowUpRight size={16} />
+                      )}
+                      <span>
+                        {isLoading
+                          ? '분석 중'
+                          : isActive
+                            ? '선택됨'
+                            : '시작하기'}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className='sentio-compact-modes'
+          ref={compactModesRef}
+          aria-hidden={!compact}
+        >
+          <div>
+            <div
+              className='sentio-compact-bar'
+              role='group'
+              aria-label='분석 방식 선택'
+            >
+              {(['sketch', 'prism', 'chain'] as const).map(mode => {
+                const config = ModeConfig[mode];
+                const Icon = config.icon;
+                const selected = activeMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type='button'
+                    className='sentio-compact-mode'
+                    data-mode={mode}
+                    aria-label={config.label}
+                    title={config.label}
+                    aria-pressed={selected}
+                    aria-controls={`${panelId}-result`}
+                    onClick={() => void openMode(mode)}
+                  >
+                    <Icon className='h-[18px] w-[18px]' aria-hidden='true' />
+                    {selected && <span>{config.label}</span>}
+                  </button>
+                );
+              })}
               <button
-                key={mode}
                 type='button'
-                className='sentio-mode-card'
-                data-mode={mode}
-                aria-pressed={isActive}
-                aria-controls={`${panelId}-result`}
-                onClick={() => void openMode(mode)}
+                className='sentio-icon-button sentio-expand-modes'
+                aria-label='분석 방식 펼치기'
+                title='분석 방식 펼치기'
+                aria-expanded={!compact}
+                aria-controls={`${panelId}-modes`}
+                onClick={() => {
+                  focusModeRef.current = activeMode;
+                  setCompact(false);
+                }}
               >
-                <span className='sentio-mode-icon'>
-                  <Icon aria-hidden='true' className='h-5 w-5' />
-                </span>
-                <span className='sentio-mode-copy'>
-                  <span className='sentio-mode-title'>{config.label}</span>
-                  <span className='sentio-mode-description'>
-                    {config.description}
-                  </span>
-                </span>
-                <span className='sentio-mode-action' aria-hidden='true'>
-                  {isLoading ? (
-                    <Loader2 className='h-4 w-4 animate-spin motion-reduce:animate-none' />
-                  ) : isActive ? (
-                    <Check size={16} />
-                  ) : (
-                    <ArrowUpRight size={16} />
-                  )}
-                  <span>
-                    {isLoading ? '분석 중' : isActive ? '선택됨' : '시작하기'}
-                  </span>
-                </span>
+                <ChevronDown size={18} aria-hidden='true' />
               </button>
-            );
-          })}
+            </div>
+          </div>
         </div>
 
         {activeMode === 'idle' && (

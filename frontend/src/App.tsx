@@ -13,7 +13,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { ThemeProvider } from "./contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { Header, Footer } from "./components/organisms";
 import { ErrorBoundary, AuthGuard } from "./components/common";
@@ -138,6 +138,9 @@ function RouteFooter() {
 }
 
 function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
+  const { pathname } = useLocation();
+  const { isTerminal } = useTheme();
+  const readingDeskActive = !isTerminal && /^\/(?:blog|post)\/[^/]+\/[^/]+\/?$/.test(pathname);
   const insightWorkspaceActive = useInsightWorkspaceActive();
   const cleanBlogListing = useCleanBlogListing();
   const adminWorkspaceActive = useAdminWorkspaceActive();
@@ -156,7 +159,7 @@ function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
   return (
     <>
       <Suspense fallback={null}>
-        {!fabOn && <VisitedPostsMinimap />}
+        {!fabOn && !readingDeskActive && <VisitedPostsMinimap />}
       </Suspense>
       <Suspense fallback={null}>
         <FloatingActionBar />
