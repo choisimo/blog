@@ -6,8 +6,8 @@
       "year": "2026",
       "slug": "organizing-intelligence-era",
       "title": "지능을 소유하던 시대에서 지능을 조직하는 시대로",
-      "description": "AI·에이전트·로보틱스가 바꾸는 지식, 노동, 교육과 개인의 확장. 지능을 소유하는 능력에서 지능을 조직하고 검증하는 능력으로 이동하는 시대를 살펴봅니다.",
-      "snippet": "AI·에이전트·로보틱스가 바꾸는 지식, 노동, 교육과 개인의 확장. 지능을 소유하는 능력에서 지능을 조직하고 검증하는 능력으로 이동하는 시대를 살펴봅니다.",
+      "description": "지식의 희소성 위에 세운 사회는 지능의 풍요를 감당할 수 있는가?",
+      "snippet": "지식의 희소성 위에 세운 사회는 지능의 풍요를 감당할 수 있는가?",
       "date": "2026-09-08",
       "tags": [
         "AI",
@@ -20,7 +20,7 @@
       ],
       "category": "AI",
       "author": "nodove",
-      "readingTime": "65 min read",
+      "readingTime": "56 min read",
       "published": true,
       "coverImage": "/images/2026/organizing-intelligence-era/cover-ink-editorial.png",
       "url": "/blog/2026/organizing-intelligence-era"
@@ -5989,7 +5989,7 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-09-08T13:42:08.431Z",
+  "generatedAt": "2026-09-09T21:05:19.917Z",
   "years": [
     "2026",
     "2025",
