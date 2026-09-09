@@ -204,6 +204,7 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
 for (const scenario of [
   { width: 1280, theme: 'light', reduced: false },
   { width: 390, theme: 'dark', reduced: false },
+  { width: 320, theme: 'light', reduced: false },
   { width: 1280, theme: 'terminal', reduced: false },
   { width: 390, theme: 'light', reduced: true },
 ]) {
@@ -219,6 +220,8 @@ for (const scenario of [
     const panel = page.locator('.sentio-panel:visible');
     const grid = panel.locator('.sentio-mode-grid');
     const initialGrid = await grid.boundingBox();
+    const expanded = panel.locator('.sentio-expanded-modes');
+    const initialExpanded = (await expanded.boundingBox())!.height;
     for (const label of [
       '핵심 파악',
       '다각도 분석',
@@ -259,15 +262,79 @@ for (const scenario of [
       if (scenario.reduced)
         await expect(content).toHaveCSS('transition-duration', '0s');
       const currentGrid = await grid.boundingBox();
-      expect(currentGrid!.height).toBeCloseTo(initialGrid!.height, 0);
+      await expect(panel).toHaveAttribute('data-compact', 'true');
+      await expect
+        .poll(async () => (await expanded.boundingBox())!.height)
+        .toBeLessThan(1);
+      await expect(
+        panel.locator('.sentio-compact-mode[aria-pressed="true"]')
+      ).toBeFocused();
+      expect(initialExpanded).toBeGreaterThan(80);
       expect(currentGrid!.width).toBeCloseTo(initialGrid!.width, 0);
       const bounds = await panel.boundingBox();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(scenario.width + 1);
     }
+    await panel.getByRole('button', { name: '분석 방식 펼치기' }).click();
+    await expect(panel).toHaveAttribute('data-compact', 'false');
+    await expect
+      .poll(async () => (await expanded.boundingBox())!.height)
+      .toBeCloseTo(initialExpanded, 0);
+    await expect(
+      panel.getByRole('button', { name: /다각도 분석/ })
+    ).toBeFocused();
+    await panel.getByRole('button', { name: /다각도 분석/ }).click();
+    await expect
+      .poll(async () => (await expanded.boundingBox())!.height)
+      .toBeLessThan(1);
     await panel.screenshot({
-      path: `verification-screenshots/sentio-mode-reveal-${scenario.theme}-${scenario.width}-${scenario.reduced}.png`,
+      path: `verification-screenshots/sentio-mode-collapse-${scenario.theme}-${scenario.width}-${scenario.reduced}.png`,
     });
+  });
+}
+
+for (const width of [390, 1024, 1440]) {
+  test(`reading desk ${width}px keeps chat and history without the FAB`, async ({
+    page,
+    baseURL,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    // setup deliberately disables the old FAB preference; desk actions must still work.
+    await setup(page, 'light', baseURL);
+    await expect(page.locator('.fn-assistant-dock')).toHaveCount(0);
+    const desk = page.locator(
+      width >= 1200 ? '.rd-right' : '.fn-reader-mobilebar'
+    );
+    if (width < 1200)
+      await desk.getByRole('button', { name: '더 많은 도구' }).click();
+    await page
+      .getByRole(width >= 1200 ? 'button' : 'menuitem', {
+        name: '방문 기록',
+        exact: true,
+      })
+      .click();
+    await expect(page.locator('.fn-visited-desk')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.fn-visited-desk')).toBeHidden();
+    await desk
+      .getByRole('button', {
+        name: width >= 1200 ? '이 글에 질문하기' : '질문',
+        exact: true,
+      })
+      .click();
+    await expect(page.locator('.fn-chat-desk')).toBeVisible();
+    await expect(page.locator('.fn-assistant-dock')).toHaveCount(0);
+    const legacyLauncher = page.locator('ai-memo-pad #launcher');
+    await expect(legacyLauncher).toBeHidden();
+    await page
+      .locator('.fn-chat-desk')
+      .getByRole('button', { name: '창 닫기', exact: true })
+      .click();
+    await page.evaluate(() => {
+      window.history.pushState({}, '', '/projects');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await expect(legacyLauncher).toBeVisible();
   });
 }
 

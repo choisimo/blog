@@ -47,11 +47,4 @@
 @media (max-width:480px) {
   .fn-site-header .fn-reading-settings-trigger { display: none; }
 }
-/* The mobile reader's More control reveals the existing dock; its chat/memo owners stay mounted. */
-@media (max-width:850px) {
-  .fn-reader-dock.fn-assistant-dock { inset: auto 16px calc(74px + env(safe-area-inset-bottom,0px)); padding: 0; transform: none; opacity: 1; pointer-events: auto; }
-  .fn-reader-dock[data-reader-tools-open='false'] { display: none; }
-  .fn-reader-dock[data-reader-tools-open='true'] { display: block; }
-  .fn-reader-dock nav > div { width: 100%; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 6px; box-shadow: 0 6px 20px hsl(var(--foreground) / .08); }
-}
 :root:not(.terminal) .fn-assistant-dock nav > div { border-color: hsl(var(--border)); border-radius: 6px; background: hsl(var(--card) / .97); box-shadow: 0 4px 18px hsl(var(--foreground) / .035); }

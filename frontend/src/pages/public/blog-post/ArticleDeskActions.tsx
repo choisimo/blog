@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Ellipsis, NotebookPen, Sparkles } from 'lucide-react';
+import { Ellipsis, Layers, Map, NotebookPen, Sparkles } from 'lucide-react';
+import { ensureAIMemoElement } from '@/components/features/memo/fab/hooks/useFabState';
+import { Link } from 'react-router-dom';
 import {
-  ensureAIMemoElement,
-  isFabEnabled,
-} from '@/components/features/memo/fab/hooks/useFabState';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import type { SelectedBlockEventPayload } from '@/components/features/content-selection';
 import { useToast } from '@/components/ui/use-toast';
 import { useFeatureFlags } from '@/stores/runtime/useFeatureFlagsStore';
@@ -26,26 +29,9 @@ export function ArticleDeskActions({
   language,
   compact = false,
 }: ArticleDeskActionsProps) {
-  const [enabled, setEnabled] = useState(isFabEnabled);
-  const [toolsOpen, setToolsOpen] = useState(false);
   const { toast } = useToast();
   const { flags } = useFeatureFlags();
   const korean = language === 'ko';
-
-  useEffect(() => {
-    const sync = () => setEnabled(isFabEnabled());
-    const tools = (event: Event) => { if (event instanceof CustomEvent) setToolsOpen(event.detail?.open === true); };
-    window.addEventListener('storage', sync);
-    window.addEventListener('focus', sync);
-    window.addEventListener('fieldnotes:reader-tools-state', tools);
-    return () => {
-      window.removeEventListener('storage', sync);
-      window.removeEventListener('focus', sync);
-      window.removeEventListener('fieldnotes:reader-tools-state', tools);
-    };
-  }, []);
-
-  if (!enabled) return null;
 
   const askAboutArticle = () => {
     const detail: SelectedBlockEventPayload = {
@@ -72,7 +58,9 @@ export function ArticleDeskActions({
       new CustomEvent('aiMemo:windowCommand', {
         detail: {
           action: 'open',
-          ...(window.matchMedia('(min-width: 851px)').matches ? { mode: 'docked' } : {}),
+          ...(window.matchMedia('(min-width: 851px)').matches
+            ? { mode: 'docked' }
+            : {}),
         },
       })
     );
@@ -80,20 +68,22 @@ export function ArticleDeskActions({
 
   return (
     <>
-      {flags.aiEnabled && <button
-        type='button'
-        className='rd-rail-action'
-        onClick={askAboutArticle}
-      >
-        <Sparkles aria-hidden='true' />
-        {compact
-          ? korean
-            ? '질문'
-            : 'Ask'
-          : korean
-            ? '이 글에 질문하기'
-            : 'Ask about this note'}
-      </button>}
+      {flags.aiEnabled && (
+        <button
+          type='button'
+          className='rd-rail-action'
+          onClick={askAboutArticle}
+        >
+          <Sparkles aria-hidden='true' />
+          {compact
+            ? korean
+              ? '질문'
+              : 'Ask'
+            : korean
+              ? '이 글에 질문하기'
+              : 'Ask about this note'}
+        </button>
+      )}
       <button type='button' className='rd-rail-action' onClick={openMemo}>
         <NotebookPen aria-hidden='true' />
         {compact
@@ -104,19 +94,49 @@ export function ArticleDeskActions({
             ? '메모 열기'
             : 'Open notebook'}
       </button>
-      {compact && (
-        <button
-          type='button'
-          className='rd-mobile-more'
-          aria-label={language === 'ko' ? '더 많은 도구' : 'More tools'}
-          aria-expanded={toolsOpen}
-          aria-controls='fieldnotes-reader-tools'
-          onClick={() =>
-            window.dispatchEvent(new Event('fieldnotes:reader-tools'))
-          }
-        >
-          <Ellipsis aria-hidden='true' />
-        </button>
+      {compact ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type='button'
+              className='rd-mobile-more'
+              aria-label={korean ? '더 많은 도구' : 'More tools'}
+            >
+              <Ellipsis aria-hidden='true' />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end' side='top'>
+            <DropdownMenuItem
+              onSelect={() =>
+                window.dispatchEvent(new Event('visitedposts:open'))
+              }
+            >
+              <Layers aria-hidden='true' />
+              {korean ? '방문 기록' : 'Visited notes'}
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to='/insight'>
+                <Map aria-hidden='true' />
+                {korean ? '인사이트' : 'Insight'}
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <>
+          <button
+            type='button'
+            className='rd-rail-action'
+            onClick={() => window.dispatchEvent(new Event('visitedposts:open'))}
+          >
+            <Layers aria-hidden='true' />
+            {korean ? '방문 기록' : 'Visited notes'}
+          </button>
+          <Link className='rd-rail-action' to='/insight'>
+            <Map aria-hidden='true' />
+            {korean ? '인사이트' : 'Insight'}
+          </Link>
+        </>
       )}
     </>
   );
