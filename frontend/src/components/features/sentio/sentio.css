@@ -186,6 +186,46 @@
   padding: 20px;
   border-top: 1px solid hsl(var(--ui-line));
 }
+.sentio-reveal {
+  position: relative;
+}
+.sentio-reveal-loader {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 240ms ease,
+    visibility 240ms ease;
+}
+.sentio-reveal-loader > .sentio-loading {
+  height: 100%;
+}
+.sentio-reveal[data-loading='true'] > .sentio-reveal-loader {
+  position: relative;
+}
+.sentio-reveal[data-loading='false'] > .sentio-reveal-loader {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.sentio-reveal-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 360ms ease,
+    transform 480ms var(--sentio-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+.sentio-reveal[data-loading='true'] > .sentio-reveal-content {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(10px);
+  visibility: hidden;
+  pointer-events: none;
+}
 .sentio-loading {
   min-height: 36rem;
   border: 1px dashed hsl(var(--ui-line));
@@ -455,6 +495,7 @@
 @media (prefers-reduced-motion: reduce) {
   .sentio-trigger,
   .sentio-panel *,
+  .sentio-reveal *,
   .sentio-results *,
   .sentio-lens * {
     animation: none !important;
