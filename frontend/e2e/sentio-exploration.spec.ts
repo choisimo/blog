@@ -42,6 +42,8 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
         });
       if (url.pathname.endsWith('/chat/session'))
         return json({ id: `fixture-session-${++session}` });
+      if (url.pathname.endsWith('/ai/sketch'))
+        return json({ mood: '분석적', bullets: ['핵심 요약 결과'] });
       if (url.pathname.endsWith('/lens-feed'))
         return json({
           items: [
@@ -197,6 +199,76 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
     })
     .first()
     .click();
+}
+
+for (const scenario of [
+  { width: 1280, theme: 'light', reduced: false },
+  { width: 390, theme: 'dark', reduced: false },
+  { width: 1280, theme: 'terminal', reduced: false },
+  { width: 390, theme: 'light', reduced: true },
+]) {
+  test(`mode reveal ${scenario.theme} ${scenario.width}px reduced=${scenario.reduced}`, async ({
+    page,
+    baseURL,
+  }) => {
+    await page.setViewportSize({ width: scenario.width, height: 1000 });
+    await page.emulateMedia({
+      reducedMotion: scenario.reduced ? 'reduce' : 'no-preference',
+    });
+    await setup(page, scenario.theme, baseURL);
+    const panel = page.locator('.sentio-panel:visible');
+    const grid = panel.locator('.sentio-mode-grid');
+    const initialGrid = await grid.boundingBox();
+    for (const label of [
+      '핵심 파악',
+      '다각도 분석',
+      '더 생각해보기',
+      '다각도 분석',
+    ]) {
+      await panel.getByRole('button', { name: new RegExp(label) }).click();
+      const reveal = panel.locator('.sentio-reveal:visible');
+      if (!scenario.reduced) {
+        await expect(reveal).toHaveAttribute('aria-busy', 'true');
+        await expect(reveal.getByRole('status')).toBeVisible();
+        const loadingHeight = await reveal.evaluate(element => {
+          // Measure the existing loader at its natural height, outside the overlay.
+          const natural = element
+            .querySelector('.sentio-loading')!
+            .cloneNode(true) as HTMLElement;
+          Object.assign(natural.style, {
+            position: 'absolute',
+            width: '100%',
+            height: 'auto',
+            visibility: 'hidden',
+          });
+          element.append(natural);
+          const expected = natural.getBoundingClientRect().height;
+          natural.remove();
+          return { actual: element.getBoundingClientRect().height, expected };
+        });
+        expect(loadingHeight.actual).toBeCloseTo(loadingHeight.expected, 0);
+        await expect(reveal.locator('.sentio-reveal-content')).toHaveCSS(
+          'visibility',
+          'hidden'
+        );
+      }
+      await expect(reveal).toHaveAttribute('aria-busy', 'false');
+      const content = reveal.locator('.sentio-reveal-content');
+      await expect(content).toHaveCSS('opacity', '1');
+      await expect(content).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+      if (scenario.reduced)
+        await expect(content).toHaveCSS('transition-duration', '0s');
+      const currentGrid = await grid.boundingBox();
+      expect(currentGrid!.height).toBeCloseTo(initialGrid!.height, 0);
+      expect(currentGrid!.width).toBeCloseTo(initialGrid!.width, 0);
+      const bounds = await panel.boundingBox();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(scenario.width + 1);
+    }
+    await panel.screenshot({
+      path: `verification-screenshots/sentio-mode-reveal-${scenario.theme}-${scenario.width}-${scenario.reduced}.png`,
+    });
+  });
 }
 
 for (const mode of ['prism', 'chain'] as const) {

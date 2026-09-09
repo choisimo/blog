@@ -144,4 +144,32 @@ describe('SparkInline', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(mockSketch).toHaveBeenCalledTimes(2);
   });
+
+  it('keeps a late sketch response in its own mode during rapid switching', async () => {
+    let resolveSketch!: (result: { mood: string; bullets: string[] }) => void;
+    mockSketch.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveSketch = resolve;
+        })
+    );
+    render(<SparkInline>Paragraph to explore.</SparkInline>);
+    fireEvent.click(screen.getByRole('button', { name: 'AI로 문단 분석하기' }));
+    fireEvent.click(screen.getByRole('button', { name: /핵심 파악/ }));
+    const prism = screen.getByRole('button', { name: /다각도 분석/ });
+    expect(prism).toBeEnabled();
+    fireEvent.click(prism);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    resolveSketch({ mood: '분석적', bullets: ['Delayed summary'] });
+    await waitFor(() =>
+      expect(screen.getByText('Delayed summary')).not.toBeVisible()
+    );
+    expect(prism).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /핵심 파악/ }));
+    await waitFor(() =>
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    );
+    expect(screen.getByText('Delayed summary')).toBeVisible();
+    expect(mockSketch).toHaveBeenCalledTimes(1);
+  });
 });

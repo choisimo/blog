@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import type { LensCard as LensCardData } from '@/services/chat';
 import './sentio.css';
+import ModeReveal from './ModeReveal';
 import { useCardExploration } from './hooks/useCardExploration';
 import LensCard from './LensCard';
 import { useLensDeck, type LensDeckSource } from './hooks/useLensDeck';
@@ -153,166 +154,152 @@ export default function PrismDeck({
     [canGoNext, canGoPrev, handleGoNext, handleGoPrev]
   );
 
-  if (loading) {
-    return (
-      <div
-        className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
-        role='status'
-      >
-        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
-          <Loader2 className='h-6 w-6 animate-spin text-ui-accent' />
-        </div>
-        <div>
-          <p className='text-sm font-medium text-foreground'>
-            다양한 관점을 살펴보고 있어요
-          </p>
-          <p className='text-xs text-muted-foreground'>
-            문단의 주장과 근거를 정리하고 있습니다.
-          </p>
-        </div>
+  const loader = (
+    <div
+      className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
+      role='status'
+    >
+      <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
+        <Loader2 className='h-6 w-6 animate-spin text-ui-accent' />
       </div>
-    );
-  }
-
-  if (!activeCard) {
-    if (status === 'warming') {
-      return (
-        <div
-          className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
-          role='status'
-        >
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
-            <Loader2 className='h-6 w-6 animate-spin text-ui-accent' />
-          </div>
-          <div>
-            <p className='text-sm font-medium text-foreground'>
-              새로운 관점을 준비하고 있어요
-            </p>
-            <p className='text-xs text-muted-foreground'>
-              분석이 준비되면 여기에 표시됩니다.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
-        아직 표시할 관점이 없습니다.
+      <div>
+        <p className='text-sm font-medium text-foreground'>
+          {status === 'warming' && !loading
+            ? '새로운 관점을 준비하고 있어요'
+            : '다양한 관점을 살펴보고 있어요'}
+        </p>
+        <p className='text-xs text-muted-foreground'>
+          {status === 'warming' && !loading
+            ? '분석이 준비되면 여기에 표시됩니다.'
+            : '문단의 주장과 근거를 정리하고 있습니다.'}
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <>
-      <div className='sentio-results not-prose space-y-4'>
-        <div className='sentio-result-heading'>
-          <div>
-            <span className='sentio-result-label'>관점 탐색</span>
-            <h4>하나의 문단, 서로 다른 시선</h4>
-            <p>
-              이어지는 질문을 누르면 이 카드에서 AI와 더 깊게 탐구할 수 있어요.
-            </p>
-          </div>
-          <AsyncArtifactStatusChip
-            status={status}
-            labels={{
-              warming: '분석 중',
-              'fallback-hard': '기본 분석',
-              error: '연결 오류',
-            }}
-          />
+    <ModeReveal
+      active={enabled}
+      pending={loading || (!activeCard && status === 'warming')}
+      loader={loader}
+    >
+      {!activeCard ? (
+        <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
+          아직 표시할 관점이 없습니다.
         </div>
-
-        <div className='sentio-deck-stage'>
-          {visibleCards
-            .slice()
-            .reverse()
-            .map((card, reverseIndex, arr) => {
-              const depth = arr.length - reverseIndex - 1;
-              const isActive = depth === 0;
-              return (
-                <LensCard
-                  key={card.id}
-                  card={card}
-                  exploration={{
-                    state: exploration.states[card.id],
-                    questions: [
-                      '이 관점을 실제 사례에 적용하면?',
-                      '이 관점의 한계와 반례는 무엇일까?',
-                    ],
-                    available: exploration.available && isActive,
-                    onExplore: question => {
-                      void exploration.explore(
-                        {
-                          id: card.id,
-                          title: card.title,
-                          body: [
-                            card.summary,
-                            card.detail,
-                            ...card.bullets,
-                          ].join('\n'),
-                          persona: card.personaId,
-                        },
-                        question
-                      );
-                    },
-                    onStop: () => exploration.stop(card.id),
-                    onBack: () => exploration.back(card.id),
-                    onReset: () => exploration.reset(card.id),
-                  }}
-                  stacked={!isActive}
-                  depth={depth}
-                  active={isActive}
-                  showEvidence={isActive && showEvidence}
-                  onToggleEvidence={isActive ? handleToggleEvidence : undefined}
-                  onPointerDown={isActive ? handlePointerDown : undefined}
-                  onPointerMove={isActive ? handlePointerMove : undefined}
-                  onPointerUp={isActive ? handlePointerUp : undefined}
-                />
-              );
-            })}
-        </div>
-
-        <div className='sentio-deck-nav'>
-          <button
-            type='button'
-            onClick={handleGoPrev}
-            disabled={!canGoPrev}
-            className='sentio-icon-button'
-            aria-label='이전 관점'
-          >
-            <ArrowLeft className='h-4 w-4' />
-          </button>
-
-          <div className='sentio-deck-position'>
-            <span aria-live='polite'>
-              관점 {currentIndex + 1} <span aria-hidden='true'>/</span>{' '}
-              {cards.length}
-            </span>
-            <progress
-              className='sentio-deck-progress'
-              value={currentIndex + 1}
-              max={cards.length}
-              aria-label='관점 탐색 진행'
+      ) : (
+        <div className='sentio-results not-prose space-y-4'>
+          <div className='sentio-result-heading'>
+            <div>
+              <span className='sentio-result-label'>관점 탐색</span>
+              <h4>하나의 문단, 서로 다른 시선</h4>
+              <p>
+                이어지는 질문을 누르면 이 카드에서 AI와 더 깊게 탐구할 수
+                있어요.
+              </p>
+            </div>
+            <AsyncArtifactStatusChip
+              status={status}
+              labels={{
+                warming: '분석 중',
+                'fallback-hard': '기본 분석',
+                error: '연결 오류',
+              }}
             />
           </div>
 
-          <button
-            type='button'
-            onClick={handleGoNext}
-            disabled={!canGoNext}
-            className='sentio-icon-button'
-            aria-label='다음 관점'
-          >
-            {(loadingMore || appendWarming) && !canGoNext ? (
-              <Loader2 className='h-4 w-4 animate-spin' />
-            ) : (
-              <ArrowRight className='h-4 w-4' />
-            )}
-          </button>
+          <div className='sentio-deck-stage'>
+            {visibleCards
+              .slice()
+              .reverse()
+              .map((card, reverseIndex, arr) => {
+                const depth = arr.length - reverseIndex - 1;
+                const isActive = depth === 0;
+                return (
+                  <LensCard
+                    key={card.id}
+                    card={card}
+                    exploration={{
+                      state: exploration.states[card.id],
+                      questions: [
+                        '이 관점을 실제 사례에 적용하면?',
+                        '이 관점의 한계와 반례는 무엇일까?',
+                      ],
+                      available: exploration.available && isActive,
+                      onExplore: question => {
+                        void exploration.explore(
+                          {
+                            id: card.id,
+                            title: card.title,
+                            body: [
+                              card.summary,
+                              card.detail,
+                              ...card.bullets,
+                            ].join('\n'),
+                            persona: card.personaId,
+                          },
+                          question
+                        );
+                      },
+                      onStop: () => exploration.stop(card.id),
+                      onBack: () => exploration.back(card.id),
+                      onReset: () => exploration.reset(card.id),
+                    }}
+                    stacked={!isActive}
+                    depth={depth}
+                    active={isActive}
+                    showEvidence={isActive && showEvidence}
+                    onToggleEvidence={
+                      isActive ? handleToggleEvidence : undefined
+                    }
+                    onPointerDown={isActive ? handlePointerDown : undefined}
+                    onPointerMove={isActive ? handlePointerMove : undefined}
+                    onPointerUp={isActive ? handlePointerUp : undefined}
+                  />
+                );
+              })}
+          </div>
+
+          <div className='sentio-deck-nav'>
+            <button
+              type='button'
+              onClick={handleGoPrev}
+              disabled={!canGoPrev}
+              className='sentio-icon-button'
+              aria-label='이전 관점'
+            >
+              <ArrowLeft className='h-4 w-4' />
+            </button>
+
+            <div className='sentio-deck-position'>
+              <span aria-live='polite'>
+                관점 {currentIndex + 1} <span aria-hidden='true'>/</span>{' '}
+                {cards.length}
+              </span>
+              <progress
+                className='sentio-deck-progress'
+                value={currentIndex + 1}
+                max={cards.length}
+                aria-label='관점 탐색 진행'
+              />
+            </div>
+
+            <button
+              type='button'
+              onClick={handleGoNext}
+              disabled={!canGoNext}
+              className='sentio-icon-button'
+              aria-label='다음 관점'
+            >
+              {(loadingMore || appendWarming) && !canGoNext ? (
+                <Loader2 className='h-4 w-4 animate-spin' />
+              ) : (
+                <ArrowRight className='h-4 w-4' />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
-    </>
+      )}
+    </ModeReveal>
   );
 }

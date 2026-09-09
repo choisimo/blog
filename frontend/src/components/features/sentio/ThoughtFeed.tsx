@@ -5,6 +5,7 @@ import ThoughtCard from './ThoughtCard';
 import { useThoughtFeed, type ThoughtFeedSource } from './hooks/useThoughtFeed';
 import AsyncArtifactStatusChip from './AsyncArtifactStatusChip';
 import './sentio.css';
+import ModeReveal from './ModeReveal';
 import { useCardExploration } from './hooks/useCardExploration';
 
 type ThoughtFeedProps = {
@@ -126,121 +127,107 @@ export default function ThoughtFeed({
     );
   }, [appendWarming, exhausted, loadingMore]);
 
-  if (loading) {
-    return (
-      <div
-        className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
-        role='status'
-      >
-        <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
-          <Loader2 className='h-6 w-6 animate-spin text-ui-success' />
-        </div>
-        <div>
-          <p className='text-sm font-medium text-foreground'>
-            생각을 넓힐 질문을 찾고 있어요
-          </p>
-          <p className='text-xs text-muted-foreground'>
-            이 문단에서 이어지는 질문과 설명을 정리합니다.
-          </p>
-        </div>
+  const loader = (
+    <div
+      className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
+      role='status'
+    >
+      <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
+        <Loader2 className='h-6 w-6 animate-spin text-ui-success' />
       </div>
-    );
-  }
-
-  if (cards.length === 0) {
-    if (status === 'warming') {
-      return (
-        <div
-          className='sentio-results sentio-loading flex flex-col items-center justify-center gap-3 px-6 py-10 text-center'
-          role='status'
-        >
-          <div className='flex h-14 w-14 items-center justify-center rounded-2xl bg-ui-soft'>
-            <Loader2 className='h-6 w-6 animate-spin text-ui-success' />
-          </div>
-          <div>
-            <p className='text-sm font-medium text-foreground'>
-              이어지는 질문을 준비하고 있어요
-            </p>
-            <p className='text-xs text-muted-foreground'>
-              질문이 준비되면 여기에 표시됩니다.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
-        아직 표시할 질문이 없습니다.
+      <div>
+        <p className='text-sm font-medium text-foreground'>
+          {status === 'warming' && !loading
+            ? '이어지는 질문을 준비하고 있어요'
+            : '생각을 넓힐 질문을 찾고 있어요'}
+        </p>
+        <p className='text-xs text-muted-foreground'>
+          {status === 'warming' && !loading
+            ? '질문이 준비되면 여기에 표시됩니다.'
+            : '이 문단에서 이어지는 질문과 설명을 정리합니다.'}
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className='sentio-results not-prose space-y-4' data-mode='chain'>
-      <div className='sentio-result-heading'>
-        <div>
-          <span className='sentio-result-label'>생각의 흐름</span>
-          <h4>질문에서 다음 질문으로</h4>
-          <p>
-            질문을 선택하면 같은 카드의 설명이 그 방향으로 실시간 갱신됩니다.
-          </p>
+    <ModeReveal
+      active={enabled}
+      pending={loading || (cards.length === 0 && status === 'warming')}
+      loader={loader}
+    >
+      {cards.length === 0 ? (
+        <div className='rounded-[2rem] border border-border/60 bg-muted/30 px-5 py-10 text-center text-sm text-muted-foreground'>
+          아직 표시할 질문이 없습니다.
         </div>
-        <AsyncArtifactStatusChip
-          status={status}
-          labels={{
-            warming: '질문 준비 중',
-            'fallback-hard': '기본 질문',
-            error: '연결 오류',
-          }}
-        />
-      </div>
+      ) : (
+        <div className='sentio-results not-prose space-y-4' data-mode='chain'>
+          <div className='sentio-result-heading'>
+            <div>
+              <span className='sentio-result-label'>생각의 흐름</span>
+              <h4>질문에서 다음 질문으로</h4>
+              <p>
+                질문을 선택하면 같은 카드의 설명이 그 방향으로 실시간
+                갱신됩니다.
+              </p>
+            </div>
+            <AsyncArtifactStatusChip
+              status={status}
+              labels={{
+                warming: '질문 준비 중',
+                'fallback-hard': '기본 질문',
+                error: '연결 오류',
+              }}
+            />
+          </div>
 
-      <div
-        ref={scrollRef}
-        className='sentio-feed-scroll'
-        tabIndex={0}
-        role='region'
-        aria-label='이어지는 질문'
-      >
-        {cards.map((card, index) => (
-          <ThoughtCard
-            key={card.id}
-            card={card}
-            index={index}
-            exploration={{
-              state: exploration.states[card.id],
-              questions: (card.bullets ?? [])
-                .filter(point => /[?？]|어떻게|무엇|왜/.test(point))
-                .slice(0, 2).length
-                ? (card.bullets ?? [])
+          <div
+            ref={scrollRef}
+            className='sentio-feed-scroll'
+            tabIndex={0}
+            role='region'
+            aria-label='이어지는 질문'
+          >
+            {cards.map((card, index) => (
+              <ThoughtCard
+                key={card.id}
+                card={card}
+                index={index}
+                exploration={{
+                  state: exploration.states[card.id],
+                  questions: (card.bullets ?? [])
                     .filter(point => /[?？]|어떻게|무엇|왜/.test(point))
-                    .slice(0, 2)
-                : [
-                    '이 질문을 구체적인 사례로 풀어보면?',
-                    '여기서 한 단계 더 나아가면 어떤 질문이 생길까?',
-                  ],
-              available: exploration.available,
-              onExplore: question => {
-                void exploration.explore(
-                  {
-                    id: card.id,
-                    title: card.title,
-                    body: [card.body, ...(card.bullets ?? [])].join('\n'),
+                    .slice(0, 2).length
+                    ? (card.bullets ?? [])
+                        .filter(point => /[?？]|어떻게|무엇|왜/.test(point))
+                        .slice(0, 2)
+                    : [
+                        '이 질문을 구체적인 사례로 풀어보면?',
+                        '여기서 한 단계 더 나아가면 어떤 질문이 생길까?',
+                      ],
+                  available: exploration.available,
+                  onExplore: question => {
+                    void exploration.explore(
+                      {
+                        id: card.id,
+                        title: card.title,
+                        body: [card.body, ...(card.bullets ?? [])].join('\n'),
+                      },
+                      question
+                    );
                   },
-                  question
-                );
-              },
-              onStop: () => exploration.stop(card.id),
-              onBack: () => exploration.back(card.id),
-              onReset: () => exploration.reset(card.id),
-            }}
-          />
-        ))}
-        <div ref={sentinelRef} className='h-4 w-full' aria-hidden='true' />
-      </div>
+                  onStop: () => exploration.stop(card.id),
+                  onBack: () => exploration.back(card.id),
+                  onReset: () => exploration.reset(card.id),
+                }}
+              />
+            ))}
+            <div ref={sentinelRef} className='h-4 w-full' aria-hidden='true' />
+          </div>
 
-      {renderStatus()}
-    </div>
+          {renderStatus()}
+        </div>
+      )}
+    </ModeReveal>
   );
 }

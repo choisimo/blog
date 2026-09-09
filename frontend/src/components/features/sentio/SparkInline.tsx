@@ -33,6 +33,7 @@ import {
 import PrismDeck from './PrismDeck';
 import ThoughtFeed from './ThoughtFeed';
 import './sentio.css';
+import ModeReveal from './ModeReveal';
 
 const ANSI_ESCAPE_PATTERN =
   /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
@@ -375,7 +376,6 @@ export default function SparkInline({
     [contentKey, hasText, loadedModes, loading, safePostTitle, sketchRes, text]
   );
 
-  const activeModeConfig = ModeConfig[activeMode];
   const tooltipLabel = normalizeDisplayText(
     triggerTitle,
     language === 'ko' ? 'AI 설명 보기' : 'View AI explanation'
@@ -510,7 +510,6 @@ export default function SparkInline({
                 data-mode={mode}
                 aria-pressed={isActive}
                 aria-controls={`${panelId}-result`}
-                disabled={loading === 'sketch'}
                 onClick={() => void openMode(mode)}
               >
                 <span className='sentio-mode-icon'>
@@ -550,113 +549,119 @@ export default function SparkInline({
           className='sentio-panel-content'
           hidden={activeMode === 'idle'}
         >
-          {/* Loading state */}
-          {loading !== 'idle' && (
-            <div
-              role='status'
-              className={cn(
-                'sentio-loading flex flex-col items-center gap-3 py-8 justify-center'
-              )}
-            >
-              <div
-                className={cn(
-                  'flex items-center justify-center w-12 h-12 rounded-2xl',
-                  isTerminal ? 'bg-primary/10' : 'bg-muted'
-                )}
-              >
-                <Loader2
+          <div hidden={activeMode !== 'sketch'}>
+            <ModeReveal
+              key={contentKey}
+              active={open && activeMode === 'sketch'}
+              pending={loading === 'sketch'}
+              loader={
+                <div
+                  role='status'
                   className={cn(
-                    'h-6 w-6 animate-spin',
-                    isTerminal ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                />
-              </div>
-              <div className='text-center'>
-                <p
-                  className={cn(
-                    'text-sm font-medium',
-                    isTerminal ? 'text-primary' : 'text-foreground'
+                    'sentio-loading flex flex-col items-center gap-3 py-8 justify-center'
                   )}
                 >
-                  {activeModeConfig.label} 분석 중...
-                </p>
-                <p className='text-xs text-muted-foreground mt-0.5'>
-                  잠시만 기다려 주세요...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Error state */}
-          {error && (
-            <div
-              role='alert'
-              className={cn(
-                'rounded-xl px-4 py-3 text-sm',
-                'bg-destructive/10 text-destructive border border-destructive/20'
-              )}
-            >
-              <div className='flex items-center gap-2 font-medium'>
-                <AlertCircle aria-hidden='true' size={16} />
-                분석을 완료하지 못했습니다
-              </div>
-              <p className='mt-2'>{error}</p>
-              <button
-                type='button'
-                className='sentio-retry'
-                onClick={() => void openMode('sketch')}
-              >
-                다시 시도
-              </button>
-            </div>
-          )}
-
-          {/* Sketch Result */}
-          {activeMode === 'sketch' && sketchRes && loading === 'idle' && (
-            <div className='space-y-4 animate-in fade-in-0 slide-in-from-bottom-2 duration-300'>
-              {/* Mood badge */}
-              <div className='flex items-center gap-2'>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
-                    isTerminal
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                  )}
-                >
-                  <span
-                    className='text-base mr-0.5'
-                    role='img'
-                    aria-label='mood'
-                  >
-                    {getMoodEmoji(sketchRes.mood)}
-                  </span>
-                  {sketchRes.mood}
-                </span>
-              </div>
-
-              {/* Bullets */}
-              <ul className='space-y-2'>
-                {sketchRes.bullets.map((b, i) => (
-                  <li
-                    key={i}
+                  <div
                     className={cn(
-                      'flex items-start gap-3 text-sm leading-relaxed',
-                      isTerminal ? 'text-foreground/90' : 'text-foreground'
+                      'flex items-center justify-center w-12 h-12 rounded-2xl',
+                      isTerminal ? 'bg-primary/10' : 'bg-muted'
                     )}
                   >
-                    <span
+                    <Loader2
                       className={cn(
-                        'flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2',
-                        isTerminal ? 'bg-primary/60' : 'bg-amber-500/60'
+                        'h-6 w-6 animate-spin',
+                        isTerminal ? 'text-primary' : 'text-muted-foreground'
                       )}
                     />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                  </div>
+                  <div className='text-center'>
+                    <p
+                      className={cn(
+                        'text-sm font-medium',
+                        isTerminal ? 'text-primary' : 'text-foreground'
+                      )}
+                    >
+                      {ModeConfig.sketch.label} 분석 중...
+                    </p>
+                    <p className='text-xs text-muted-foreground mt-0.5'>
+                      잠시만 기다려 주세요...
+                    </p>
+                  </div>
+                </div>
+              }
+            >
+              {/* Error state */}
+              {error && (
+                <div
+                  role='alert'
+                  className={cn(
+                    'rounded-xl px-4 py-3 text-sm',
+                    'bg-destructive/10 text-destructive border border-destructive/20'
+                  )}
+                >
+                  <div className='flex items-center gap-2 font-medium'>
+                    <AlertCircle aria-hidden='true' size={16} />
+                    분석을 완료하지 못했습니다
+                  </div>
+                  <p className='mt-2'>{error}</p>
+                  <button
+                    type='button'
+                    className='sentio-retry'
+                    onClick={() => void openMode('sketch')}
+                  >
+                    다시 시도
+                  </button>
+                </div>
+              )}
+
+              {/* Sketch Result */}
+              {sketchRes && loading === 'idle' && (
+                <div className='space-y-4'>
+                  {/* Mood badge */}
+                  <div className='flex items-center gap-2'>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium',
+                        isTerminal
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                      )}
+                    >
+                      <span
+                        className='text-base mr-0.5'
+                        role='img'
+                        aria-label='mood'
+                      >
+                        {getMoodEmoji(sketchRes.mood)}
+                      </span>
+                      {sketchRes.mood}
+                    </span>
+                  </div>
+
+                  {/* Bullets */}
+                  <ul className='space-y-2'>
+                    {sketchRes.bullets.map((b, i) => (
+                      <li
+                        key={i}
+                        className={cn(
+                          'flex items-start gap-3 text-sm leading-relaxed',
+                          isTerminal ? 'text-foreground/90' : 'text-foreground'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2',
+                            isTerminal ? 'bg-primary/60' : 'bg-amber-500/60'
+                          )}
+                        />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </ModeReveal>
+          </div>
 
           {/* Prism Result */}
           <div hidden={activeMode !== 'prism'}>
