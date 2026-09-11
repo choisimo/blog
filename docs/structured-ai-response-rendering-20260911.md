@@ -47,3 +47,22 @@ containers, false positives and bounded traversal. Worker tests cover both feed
 types, task schemas, pagination/deduplication, and corrupt exact/stale snapshots
 using the real local D1 test runtime. Frontend and backend regression tests cover
 normalization and rendering of structured task results.
+
+## Follow-up: empty sketch and stretched Markdown lists
+
+After deployment, fresh lens and thought snapshots rendered normal Korean cards
+on both 390px and 1440px production viewports. The separate sketch request still
+failed. A production provider call reproduced an empty answer at 1,024 tokens:
+`finishReason: length`, 1,024 output tokens, including 1,021 reasoning tokens.
+The same model (`nodove-mspark-1.3c`) returned complete sketch JSON with a
+4,096-token ceiling and `finishReason: stop`. Structured task defaults now allow
+4,096 tokens for sketch, prism, chain, summary and quiz. This is a ceiling, not a
+required response length; schema validation still rejects incomplete answers.
+
+The additional screenshot's vertical Korean code labels had a separate cause:
+`.sentio-thought li` applied `display: flex` inside `CardExplorationBody`'s rich
+Markdown. Text, inline code and paragraphs became competing flex items. Card
+bullet rules now target only direct card lists. Markdown keeps ordinary inline
+and list flow, including nested and ordered lists. A real-component Playwright
+fixture checks Korean code labels, paragraph stacking, overflow and original
+card bullets at 390px and 1280px.

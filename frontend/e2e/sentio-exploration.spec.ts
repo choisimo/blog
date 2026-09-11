@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
 async function setup(page: Page, theme: string, baseURL: string | undefined) {
   if (!baseURL) throw new Error('A Playwright baseURL is required');
@@ -431,4 +432,57 @@ for (const mode of ['prism', 'chain'] as const) {
       await expect(card).toContainText('생성을 중지했어요');
     });
   }
+}
+
+// Component fixtures need source modules even when the main suite uses a built preview.
+const markdownTest = test.extend<{}, { markdownOrigin: string }>({
+  markdownOrigin: [async ({}, use) => {
+    const { createServer } = await import('vite');
+    const server = await createServer({
+      root: fileURLToPath(new URL('..', import.meta.url)),
+      configFile: fileURLToPath(new URL('../config/vite.config.ts', import.meta.url)),
+      server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+    });
+    try {
+      await server.listen();
+      await use(server.resolvedUrls!.local[0]);
+    } finally {
+      await server.close();
+    }
+  }, { scope: 'worker' }],
+});
+
+for (const width of [390, 1280]) {
+  markdownTest(`markdown list flow ${width}px preserves inline prose and raw bullets`, async ({ page, markdownOrigin }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(new URL('/e2e/fixtures/sentio-markdown.html', markdownOrigin).href);
+    const rich = page.getByTestId('rich');
+    const items = rich.locator('li');
+    await expect(items).toHaveCount(4);
+    for (const item of await items.all()) {
+      await expect(item).toHaveCSS('display', 'list-item');
+    }
+    await expect(rich.locator('ul').first()).toHaveCSS('list-style-type', 'disc');
+    await expect(rich.locator('ol')).toHaveCSS('list-style-type', 'decimal');
+    const code = rich.locator('code');
+    await expect(code).toHaveCount(8);
+    for (const inline of await code.all()) {
+      await expect(inline).toHaveCSS('display', 'inline');
+      const geometry = await inline.evaluate(element => ({
+        height: element.getBoundingClientRect().height,
+        lineHeight: parseFloat(getComputedStyle(element.parentElement!).lineHeight),
+      }));
+      // Tokens can wrap with prose, but must not stretch to the entire item's height.
+      expect(geometry.height).toBeLessThan(geometry.lineHeight * 3);
+    }
+    const paragraphs = rich.locator('ul > li > p');
+    await expect(paragraphs).toHaveCount(2);
+    const first = (await paragraphs.nth(0).boundingBox())!;
+    const second = (await paragraphs.nth(1).boundingBox())!;
+    expect(second.y).toBeGreaterThanOrEqual(first.y + first.height);
+    const raw = page.locator('[data-card-id="raw"] > ul > li');
+    await expect(raw).toHaveCSS('display', 'flex');
+    expect(await raw.evaluate(element => getComputedStyle(element, '::before').width)).toBe('4px');
+    expect(await rich.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  });
 }

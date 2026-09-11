@@ -26,15 +26,17 @@ export const AI_TEMPERATURES = {
 // Max Tokens
 // =============================================================================
 export const MAX_TOKENS = {
-  SKETCH: 1024,
-  PRISM: 1536,
-  CHAIN: 1024,
-  SUMMARY: 2048,
+  // Reasoning models share this budget between reasoning and the JSON answer.
+  // A 1024-token sketch exhausted it before emitting any visible content in production.
+  SKETCH: 4096,
+  PRISM: 4096,
+  CHAIN: 4096,
+  SUMMARY: 4096,
   CUSTOM: 2048,
   TRANSLATE_TITLE: 256,
   TRANSLATE_DESC: 512,
   TRANSLATE_CONTENT: 16000,
-  QUIZ: 3072,
+  QUIZ: 4096,
 } as const;
 
 // =============================================================================
