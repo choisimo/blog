@@ -131,6 +131,7 @@ type UseChatActionsProps = {
   setUploadedImages: React.Dispatch<React.SetStateAction<UploadedChatImage[]>>;
   messages: ChatMessage[];
   setSessionKey: (key: string) => void;
+  adoptSessionKey: (key: string) => void;
   currentLiveRoom: string;
   switchLiveRoom: (room: string) => void;
   sendVisitorMessage: (input: {
@@ -169,6 +170,7 @@ export function useChatActions({
   setUploadedImages,
   messages,
   setSessionKey,
+  adoptSessionKey,
   currentLiveRoom,
   switchLiveRoom,
   sendVisitorMessage,
@@ -616,7 +618,7 @@ export function useChatActions({
               setMessages(prev => prev.map(m => m.id === aiId ? { ...m, text: visibleText } : m));
             }
           } else if (ev.type === 'session') {
-            setSessionKey(ev.sessionId);
+            adoptSessionKey(ev.sessionId);
           } else if (ev.type === 'sources') {
             finalSources = ev.sources;
           } else if (ev.type === 'followups') {
@@ -686,7 +688,7 @@ export function useChatActions({
     lastPromptRef,
     setUploadedImages,
     setMessages,
-    setSessionKey,
+    adoptSessionKey,
     redactSelectedBlockAttachments,
     currentLiveRoom,
     switchLiveRoom,

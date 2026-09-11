@@ -208,6 +208,7 @@ export default function ChatWidget(props: {
     setUploadedImages: state.setUploadedImages,
     messages: state.messages,
     setSessionKey: state.setSessionKey,
+    adoptSessionKey: state.adoptSessionKey,
     currentLiveRoom: liveVisitorChat.room,
     switchLiveRoom: liveVisitorChat.switchRoom,
     sendVisitorMessage: liveVisitorChat.sendVisitorMessage,

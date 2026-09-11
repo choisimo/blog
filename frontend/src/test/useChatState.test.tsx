@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,7 @@ import {
   normalizeStoredChatMessages,
   useChatState,
 } from "@/components/features/chat/widget/hooks/useChatState";
+import type { ChatMessage } from "@/components/features/chat/widget/types";
 
 const chatMocks = vi.hoisted(() => ({
   getStoredSessionId: vi.fn(),
@@ -83,6 +84,110 @@ describe("useChatState", () => {
     });
     expect(screen.getByTestId("session-id").textContent).toBe("session-2");
   });
+
+  it.each([true, false])(
+    "adopts only valid server identities without replacing messages (persistence: %s)",
+    (persistOptIn) => {
+      const storedMessages: ChatMessage[] = [
+        { id: "stored-message", role: "assistant", text: "Old snapshot" },
+      ];
+      localStorage.setItem(
+        "aiChat.messages.server-session",
+        JSON.stringify(storedMessages),
+      );
+      const { result } = renderHook(() => useChatState());
+      const activeMessages: ChatMessage[] = [
+        { id: "user-message", role: "user", text: "Current question" },
+        { id: "pending-reply", role: "assistant", text: "", pending: true },
+      ];
+      act(() => {
+        result.current.setPersistOptIn(persistOptIn);
+        result.current.setMessages(activeMessages);
+        result.current.setBusy(true);
+      });
+
+      act(() => { result.current.adoptSessionKey(" server-session "); });
+      expect(result.current.sessionKey).toBe("server-session");
+      expect(result.current.messages).toBe(activeMessages);
+      expect(result.current.busy).toBe(true);
+
+      act(() => {
+        result.current.adoptSessionKey("server-session");
+        result.current.adoptSessionKey("bad\r\nid");
+        result.current.adoptSessionKey(" ");
+      });
+      expect(result.current.sessionKey).toBe("server-session");
+      expect(result.current.messages).toBe(activeMessages);
+    },
+  );
+
+  it("restores another history and clears a fresh selection even while busy after adoption", () => {
+    const history: ChatMessage[] = [
+      { id: "history-reply", role: "assistant", text: "Other conversation" },
+    ];
+    localStorage.setItem("aiChat.messages.history-session", JSON.stringify(history));
+    const { result } = renderHook(() => useChatState());
+    act(() => {
+      result.current.setMessages([
+        { id: "current-user", role: "user", text: "Current question" },
+        { id: "current-reply", role: "assistant", text: "", pending: true },
+      ]);
+      result.current.setBusy(true);
+      result.current.adoptSessionKey("server-session");
+    });
+
+    act(() => { result.current.setSessionKey("history-session"); });
+    expect(result.current.messages).toEqual(history);
+    expect(result.current.busy).toBe(true);
+
+    act(() => { result.current.setSessionKey("fresh-session"); });
+    expect(result.current.messages).toEqual([]);
+    expect(localStorage.getItem("aiChat.messages.history-session")).toBe(
+      JSON.stringify(history),
+    );
+  });
+
+  it("honors an explicit selection batched after adoption of the same identity", () => {
+    const history: ChatMessage[] = [
+      { id: "history-reply", role: "assistant", text: "Saved answer" },
+    ];
+    localStorage.setItem("aiChat.messages.server-session", JSON.stringify(history));
+    const { result } = renderHook(() => useChatState());
+    act(() => {
+      result.current.setMessages([
+        { id: "pending-reply", role: "assistant", text: "", pending: true },
+      ]);
+      result.current.adoptSessionKey("server-session");
+      result.current.setSessionKey("server-session");
+    });
+
+    expect(result.current.sessionKey).toBe("server-session");
+    expect(result.current.messages).toEqual(history);
+  });
+
+  it.each(["history-session", "fresh-session"])(
+    "ignores a delayed identity event from an old stream after selecting %s",
+    (selectedKey) => {
+      const history: ChatMessage[] = [
+        { id: "history-reply", role: "assistant", text: "Other conversation" },
+      ];
+      localStorage.setItem("aiChat.messages.history-session", JSON.stringify(history));
+      const { result } = renderHook(() => useChatState());
+      const adoptFromStream = result.current.adoptSessionKey;
+      act(() => { adoptFromStream("server-session"); });
+      act(() => { adoptFromStream("updated-server-session"); });
+      expect(result.current.sessionKey).toBe("updated-server-session");
+
+      act(() => {
+        result.current.setSessionKey(selectedKey);
+        adoptFromStream("late-server-session");
+      });
+      expect(result.current.sessionKey).toBe(selectedKey);
+      expect(result.current.messages).toEqual(
+        selectedKey === "history-session" ? history : [],
+      );
+    },
+  );
 
   it("normalizes persisted chat messages before restoring them", () => {
     expect(
