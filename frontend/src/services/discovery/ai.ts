@@ -1,3 +1,5 @@
+import { hasStructuredResponseText, isStructuredResponseText, parseStructuredResponse } from "@blog/shared/runtime/structured-response";
+import { unwrapStructuredResponse, isFallbackStructuredResponse } from "@/services/structuredResponse";
 import { invokeChatTask, type ChatTaskMode } from "@/services/chat";
 import { TEXT_LIMITS, FALLBACK_DATA } from "@/config/defaults";
 import { bearerAuth } from "@/lib/auth";
@@ -85,41 +87,11 @@ function isRecord(v: unknown): v is Record<string, unknown> {
  * JSON 파싱 (서버 응답이 문자열인 경우 대비)
  */
 function tryParseJson<T = unknown>(text: string): T | null {
-  if (!text || typeof text !== "string") return null;
-
-  // 직접 파싱
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    // continue
-  }
-
-  // 코드블록 추출
-  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence?.[1]) {
-    try {
-      return JSON.parse(fence[1].trim()) as T;
-    } catch {
-      // continue
-    }
-  }
-
-  // { } 서브스트링
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    try {
-      return JSON.parse(text.slice(start, end + 1)) as T;
-    } catch {
-      // continue
-    }
-  }
-
-  return null;
+  return parseStructuredResponse(text) as T | null;
 }
 
 function safeTruncate(s: string, maxLength: number): string {
-  if (!s) return "";
+  if (!s || isStructuredResponseText(s)) return "";
   const normalized = normalizeMultilineText(s);
   return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}...` : normalized;
 }
@@ -289,81 +261,14 @@ function getTaskErrorMessage(parsed: unknown, fallback: string): string {
 }
 
 function isFallbackResponse(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    (value._fallback === true ||
-      value.source === "fallback" ||
-      (isRecord(value.data) && value.data._fallback === true))
-  );
+  return isFallbackStructuredResponse(value);
 }
 
 /**
  * 응답 데이터 검증 및 정규화
  */
-function normalizeResponse<T>(
-  raw: unknown,
-  validator: (data: unknown) => data is T,
-): T | null {
-  // 직접 검증
-  if (validator(raw)) {
-    return raw;
-  }
-
-  // nested data 구조 확인
-  if (isRecord(raw) && "data" in raw && validator(raw.data)) {
-    return raw.data as T;
-  }
-
-  // _raw.text 구조 확인 (LLM 응답 파싱 실패 시)
-  if (isRecord(raw) && "_raw" in raw) {
-    const rawData = raw._raw;
-    // _raw가 문자열인 경우
-    if (typeof rawData === "string") {
-      const parsed = tryParseJson<T>(rawData);
-      if (parsed && validator(parsed)) {
-        return parsed;
-      }
-    }
-    // _raw.text가 문자열인 경우
-    if (isRecord(rawData) && typeof rawData.text === "string") {
-      const parsed = tryParseJson<T>(rawData.text);
-      if (parsed && validator(parsed)) {
-        return parsed;
-      }
-    }
-  }
-
-  // nested data._raw 구조 확인
-  if (
-    isRecord(raw) &&
-    "data" in raw &&
-    isRecord(raw.data) &&
-    "_raw" in raw.data
-  ) {
-    const rawData = (raw.data as Record<string, unknown>)._raw;
-    if (typeof rawData === "string") {
-      const parsed = tryParseJson<T>(rawData);
-      if (parsed && validator(parsed)) {
-        return parsed;
-      }
-    }
-    if (isRecord(rawData) && typeof rawData.text === "string") {
-      const parsed = tryParseJson<T>(rawData.text);
-      if (parsed && validator(parsed)) {
-        return parsed;
-      }
-    }
-  }
-
-  // 문자열인 경우 JSON 파싱 시도
-  if (typeof raw === "string") {
-    const parsed = tryParseJson<T>(raw);
-    if (parsed && validator(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
+export function normalizeResponse<T>(raw: unknown, validator: (data: unknown) => data is T): T | null {
+  return unwrapStructuredResponse(raw, validator);
 }
 
 // ============================================================================
@@ -374,42 +279,42 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
-function isSketchResult(data: unknown): data is SketchResult {
+export function isSketchResult(data: unknown): data is SketchResult {
   return (
-    isRecord(data) &&
-    typeof data.mood === "string" &&
-    isStringArray(data.bullets)
+    isRecord(data) && !hasStructuredResponseText(data) &&
+    typeof data.mood === "string" && !!data.mood.trim() &&
+    isStringArray(data.bullets) && data.bullets.length > 0
   );
 }
 
 function isPrismFacet(data: unknown): data is PrismResult["facets"][number] {
   return (
-    isRecord(data) &&
+    isRecord(data) && !hasStructuredResponseText(data) &&
     typeof data.title === "string" &&
     isStringArray(data.points)
   );
 }
 
-function isPrismResult(data: unknown): data is PrismResult {
-  return isRecord(data) && Array.isArray(data.facets) && data.facets.every(isPrismFacet);
+export function isPrismResult(data: unknown): data is PrismResult {
+  return isRecord(data) && !hasStructuredResponseText(data) && Array.isArray(data.facets) && data.facets.length > 0 && data.facets.every(isPrismFacet);
 }
 
 function isChainQuestion(data: unknown): data is ChainResult["questions"][number] {
   return (
-    isRecord(data) &&
+    isRecord(data) && !hasStructuredResponseText(data) &&
     typeof data.q === "string" &&
     typeof data.why === "string"
   );
 }
 
-function isChainResult(data: unknown): data is ChainResult {
-  return isRecord(data) && Array.isArray(data.questions) && data.questions.every(isChainQuestion);
+export function isChainResult(data: unknown): data is ChainResult {
+  return isRecord(data) && !hasStructuredResponseText(data) && Array.isArray(data.questions) && data.questions.length > 0 && data.questions.every(isChainQuestion);
 }
 
-function isSummaryResult(data: unknown): data is SummaryResult {
+export function isSummaryResult(data: unknown): data is SummaryResult {
   return (
-    isRecord(data) &&
-    typeof data.summary === "string" &&
+    isRecord(data) && !hasStructuredResponseText(data) &&
+    typeof data.summary === "string" && !!data.summary.trim() &&
     (data.keyPoints === undefined || isStringArray(data.keyPoints))
   );
 }
@@ -698,7 +603,10 @@ function normalizeQuizQuestion(raw: unknown): QuizQuestion | null {
     raw.answer ?? raw.correctAnswer ?? raw.correct ?? raw.solution ?? raw.a,
   );
 
-  if (!question || !answer) return null;
+  if (!question || !answer || hasStructuredResponseText([
+    question, answer, raw.options, raw.choices, raw.candidates,
+    raw.explanation, raw.reason, raw.why, raw.hint,
+  ])) return null;
 
   const optionsSource =
     (Array.isArray(raw.options) ? raw.options : undefined) ??
@@ -760,23 +668,30 @@ function normalizeQuizTags(value: unknown): string[] {
     .slice(0, 12);
 }
 
-function extractQuizItems(raw: unknown): unknown[] {
+function extractQuizItems(raw: unknown, depth = 0): unknown[] {
+  if (depth > 12) return [];
   if (Array.isArray(raw)) return raw;
   if (typeof raw === "string") {
     const parsed = tryParseJson(raw);
-    return parsed ? extractQuizItems(parsed) : [];
+    return parsed ? extractQuizItems(parsed, depth + 1) : [];
   }
-  if (!isRecord(raw)) return [];
+  if (!isRecord(raw) || raw.ok === false) return [];
   if (Array.isArray(raw.quiz)) return raw.quiz;
   if (Array.isArray(raw.questions)) return raw.questions;
   if (Array.isArray(raw.items)) return raw.items;
-  if ("data" in raw) return extractQuizItems(raw.data);
-  if ("result" in raw) return extractQuizItems(raw.result);
+  if ("data" in raw) return extractQuizItems(raw.data, depth + 1);
+  if ("result" in raw) return extractQuizItems(raw.result, depth + 1);
+  for (const key of ["output", "payload", "text"]) {
+    if (key in raw) {
+      const items = extractQuizItems(raw[key], depth + 1);
+      if (items.length) return items;
+    }
+  }
   if ("_raw" in raw) {
     const rawData = raw._raw;
-    if (typeof rawData === "string") return extractQuizItems(rawData);
+    if (typeof rawData === "string") return extractQuizItems(rawData, depth + 1);
     if (isRecord(rawData) && typeof rawData.text === "string") {
-      return extractQuizItems(rawData.text);
+      return extractQuizItems(rawData.text, depth + 1);
     }
   }
   // Sentio/custom mode: backend may return a blog-post metadata object with a
@@ -808,10 +723,11 @@ function extractQuizItems(raw: unknown): unknown[] {
   return [];
 }
 
-function normalizeQuizResult(
+export function normalizeQuizResult(
   raw: unknown,
   maxQuestions = 2,
 ): QuizResult | null {
+  if (isFallbackStructuredResponse(raw)) return null;
   const items = extractQuizItems(raw);
   if (items.length === 0) return null;
 

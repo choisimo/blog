@@ -1,3 +1,4 @@
+import { isStructuredResponseText } from '@blog/shared/runtime/structured-response';
 import { useId, useState } from 'react';
 import LensViewToggle from './LensViewToggle';
 import './lens-reading.css';
@@ -71,7 +72,7 @@ const ANSI_ESCAPE_PATTERN =
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 export function normalizeDisplayText(value: unknown, fallback = ''): string {
-  if (typeof value !== 'string') return fallback;
+  if (typeof value !== 'string' || isStructuredResponseText(value)) return fallback;
   const normalized = value
     .replace(ANSI_ESCAPE_PATTERN, '')
     .replace(CONTROL_TEXT_PATTERN, ' ')

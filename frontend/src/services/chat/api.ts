@@ -39,6 +39,7 @@ import type {
   ContentPart
 } from "./types";
 import { ChatError } from "./types";
+import { normalizeFeedResponse, normalizeChatTaskResponse, isFallbackStructuredResponse } from '@/services/structuredResponse';
 
 type ChatTaskEnvelope = {
   data?: unknown;
@@ -315,6 +316,17 @@ export async function invokeChatTask<T = unknown>(
     headers: input.headers,
   });
 
+  if (isFallbackStructuredResponse(response.raw)) {
+    throw new ChatError("AI task returned fallback", "SERVER_ERROR");
+  }
+
+  // Quiz has legacy aliases normalized by discovery/ai; custom tasks may contain code.
+  if (['sketch', 'prism', 'chain', 'summary'].includes(input.mode)) {
+    const normalized = normalizeChatTaskResponse(response.raw, input.mode);
+    if (normalized === null) throw new ChatError('Invalid task response', 'PARSE_ERROR');
+    response.data = normalized as T;
+  }
+
   return {
     ok: true,
     status: response.status,
@@ -338,11 +350,12 @@ export async function invokeLensFeed(
     options,
   );
 
-  if (response.data == null) {
+  const normalized = normalizeFeedResponse<LensFeedResponse>(response.raw, 'summary');
+  if (normalized == null) {
     throw new ChatError("Invalid lens feed response", "PARSE_ERROR");
   }
 
-  return response.data;
+  return normalized;
 }
 
 export async function invokeThoughtFeed(
@@ -360,11 +373,12 @@ export async function invokeThoughtFeed(
     options,
   );
 
-  if (response.data == null) {
+  const normalized = normalizeFeedResponse<ThoughtFeedResponse>(response.raw, 'body');
+  if (normalized == null) {
     throw new ChatError("Invalid thought feed response", "PARSE_ERROR");
   }
 
-  return response.data;
+  return normalized;
 }
 
 // ============================================================================

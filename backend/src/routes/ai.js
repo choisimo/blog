@@ -803,12 +803,8 @@ router.post("/summarize", async (req, res, next) => {
 
     return res.json({
       ok: true,
-      data: {
-        summary:
-          result.data?.summary ||
-          result.data?.text ||
-          contentText.slice(0, 200),
-      },
+      ...(result._fallback ? { _fallback: true, source: "fallback" } : {}),
+      data: { summary: result.data.summary },
     });
   } catch (err) {
     return next(err);
@@ -832,6 +828,7 @@ router.post("/sketch", async (req, res, next) => {
     if (result.ok && result.data) {
       return res.json({
         ok: true,
+        ...(result._fallback ? { _fallback: true, source: "fallback" } : {}),
         data: {
           mood: result.data.mood,
           bullets: (result.data.bullets || []).slice(0, 10),
@@ -861,6 +858,7 @@ router.post("/prism", async (req, res, next) => {
     if (result.ok && result.data) {
       return res.json({
         ok: true,
+        ...(result._fallback ? { _fallback: true, source: "fallback" } : {}),
         data: { facets: (result.data.facets || []).slice(0, 4) },
       });
     }
@@ -887,6 +885,7 @@ router.post("/chain", async (req, res, next) => {
     if (result.ok && result.data) {
       return res.json({
         ok: true,
+        ...(result._fallback ? { _fallback: true, source: "fallback" } : {}),
         data: { questions: (result.data.questions || []).slice(0, 6) },
       });
     }

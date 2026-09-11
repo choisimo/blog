@@ -1,3 +1,4 @@
+import { isStructuredResponseText } from '@blog/shared/runtime/structured-response';
 import { memo } from 'react';
 import ChatMarkdown from '@/components/molecules/ChatMarkdown';
 
@@ -8,8 +9,9 @@ export default memo(function ReadingSummary({
   summary,
   points = [],
 }: ReadingSummaryProps) {
+  summary = isStructuredResponseText(summary) ? undefined : summary;
   const items = points.filter(
-    (point): point is string => typeof point === 'string' && !!point.trim()
+    (point): point is string => typeof point === 'string' && !!point.trim() && !isStructuredResponseText(point)
   );
   return (
     <div className='sentio-reading-summary'>

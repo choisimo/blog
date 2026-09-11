@@ -2,7 +2,7 @@ import { buildAgentPreferenceContext, normalizeAgentPreferences } from '../../..
 import { Router } from "express";
 import { WebSocketServer } from "ws";
 import crypto from "node:crypto";
-import { aiService, tryParseJson } from "../lib/ai-service.js";
+import { aiService } from "../lib/ai-service.js";
 import { config } from "../config.js";
 import { verifyJwt } from "../lib/jwt.js";
 import { verifyGatewaySignatureRequest } from "../middleware/gatewaySignature.js";
@@ -1156,36 +1156,11 @@ router.post("/session/:sessionId/task", async (req, res, next) => {
         preview: text?.slice(0, 500),
       });
 
-      // Parse response based on mode
-      let data;
-      if (taskMode === "custom" || taskMode === "summary") {
-        data = taskMode === "summary" ? { summary: text } : { text };
-      } else {
-        const json = tryParseJson(text);
-        if (json) {
-          const normalized = normalizeTaskData(taskMode, json, taskPayload);
-          if (normalized) {
-            data = normalized;
-            logger.debug(
-              { taskMode },
-              "Successfully parsed and normalized JSON",
-              { preview: JSON.stringify(data).slice(0, 200) },
-            );
-          } else {
-            logger.warn(
-              { taskMode },
-              "Parsed JSON failed schema validation, projecting text result",
-            );
-            data = projectTaskDataFromText(taskMode, text, taskPayload);
-          }
-        } else {
-          logger.warn(
-            { taskMode },
-            "JSON parse failed, projecting text result",
-          );
-          data = projectTaskDataFromText(taskMode, text, taskPayload);
-        }
-      }
+      // Decode expected task schemas before considering genuine prose projection.
+      const data = taskMode === "custom"
+        ? { text }
+        : normalizeTaskData(taskMode, text, taskPayload)
+          ?? projectTaskDataFromText(taskMode, text, taskPayload);
 
       return res.json({
         ok: true,

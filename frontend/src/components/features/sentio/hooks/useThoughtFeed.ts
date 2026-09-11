@@ -1,3 +1,4 @@
+import { hasStructuredResponseText, isStructuredResponseText } from '@blog/shared/runtime/structured-response';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   invokeChatTask,
@@ -60,7 +61,7 @@ const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 function normalizeDisplayText(value: unknown, fallback = ''): string {
-  if (typeof value !== 'string') return fallback;
+  if (typeof value !== 'string' || isStructuredResponseText(value)) return fallback;
   const normalized = value
     .replace(CONTROL_TEXT_PATTERN, ' ')
     .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
@@ -69,7 +70,7 @@ function normalizeDisplayText(value: unknown, fallback = ''): string {
 }
 
 function normalizeCardKey(value: unknown, fallback: string): string {
-  if (typeof value !== 'string') return fallback;
+  if (typeof value !== 'string' || isStructuredResponseText(value)) return fallback;
   const normalized = value
     .trim()
     .replace(CONTROL_TEXT_PATTERN, '-')
@@ -99,7 +100,7 @@ function normalizeThoughtCursor(value: unknown): ThoughtCursor {
 }
 
 function normalizeThoughtCard(card: unknown, index: number): ThoughtCardData | null {
-  if (!card || typeof card !== 'object') return null;
+  if (!card || typeof card !== 'object' || hasStructuredResponseText(card)) return null;
   const raw = card as Partial<ThoughtCardData>;
   const fallbackKey = `thought-${index + 1}`;
   const trackKey = normalizeCardKey(raw.trackKey ?? raw.id, fallbackKey);
@@ -174,6 +175,7 @@ function isFallbackTaskResponse(raw: unknown): boolean {
 function normalizeChainQuestions(data: ChainTaskData | null): ChainQuestion[] {
   if (!data || !Array.isArray(data.questions)) return [];
   return data.questions
+    .filter(question => question && !hasStructuredResponseText(question))
     .map(question => ({
       q: normalizeDisplayText(question.q),
       why: normalizeDisplayText(question.why),
@@ -228,7 +230,7 @@ function mergeThoughtCards(
 function resolveResponseSource(
   response: { source?: string; warming?: boolean } | null | undefined
 ): Exclude<ThoughtFeedSource, 'fallback'> {
-  if (response?.source === 'warming' || response?.warming === true) {
+  if (response?.source === 'warming' || response?.source === 'warming-fallback' || response?.warming === true) {
     return 'warming';
   }
   return 'feed';

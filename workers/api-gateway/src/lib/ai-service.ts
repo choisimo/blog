@@ -1,3 +1,5 @@
+import { normalizeTaskDataForMode } from './llm';
+import { parseStructuredResponse } from '@blog/shared/runtime/structured-response';
 /**
  * Unified AI Service for Cloudflare Workers
  *
@@ -177,7 +179,10 @@ export class AIService {
 
       if (!res.ok) {
         await res.body?.cancel().catch(() => {});
-        throw Object.assign(new Error(`Backend AI error: ${res.status}`), {status:res.status,code:'AI_ERROR'});
+        throw Object.assign(new Error(`Backend AI error: ${res.status}`), {
+          status: res.status,
+          code: 'AI_ERROR',
+        });
       }
 
       const payload = (await res.json()) as { ok?: boolean; data?: T; error?: string };
@@ -263,7 +268,7 @@ export class AIService {
         maxTokens: config.maxTokens,
       });
 
-      const json = tryParseJson<T>(text);
+      const json = normalizeTaskDataForMode(mode, tryParseJson(text), payload) as T | null;
       if (json && typeof json === 'object') {
         return { ok: true, data: json };
       }
@@ -271,14 +276,20 @@ export class AIService {
       console.error(`[AIService:${mode}] Invalid JSON response from backend AI`);
       return {
         ok: false,
-        data: { ...(getFallbackData(mode, payload) as Record<string, unknown>), _fallback: true } as T,
+        data: {
+          ...(getFallbackData(mode, payload) as Record<string, unknown>),
+          _fallback: true,
+        } as T,
         error: 'AI task response was not valid JSON',
       };
     } catch (err) {
       console.error(`[AIService:${mode}] Error:`, err instanceof Error ? err.message : err);
       return {
         ok: false,
-        data: { ...(getFallbackData(mode, payload) as Record<string, unknown>), _fallback: true } as T,
+        data: {
+          ...(getFallbackData(mode, payload) as Record<string, unknown>),
+          _fallback: true,
+        } as T,
         error: err instanceof Error ? err.message : 'AI task failed',
       };
     }
@@ -411,37 +422,7 @@ export class AIService {
  * LLM 응답에서 JSON을 추출합니다.
  */
 export function tryParseJson<T = unknown>(text: string): T | null {
-  if (!text || typeof text !== 'string') return null;
-
-  // 1. 직접 파싱 시도
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    // continue
-  }
-
-  // 2. ```json 코드블록 추출
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenceMatch?.[1]) {
-    try {
-      return JSON.parse(fenceMatch[1].trim()) as T;
-    } catch {
-      // continue
-    }
-  }
-
-  // 3. 첫 { ~ 마지막 } 서브스트링
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try {
-      return JSON.parse(text.slice(start, end + 1)) as T;
-    } catch {
-      // continue
-    }
-  }
-
-  return null;
+  return parseStructuredResponse(text) as T | null;
 }
 
 // ============================================================================

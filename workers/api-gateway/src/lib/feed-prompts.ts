@@ -54,10 +54,11 @@ Rules:
 2. angleKey must be short kebab-case text and MUST NOT reuse the seen keys above.
 3. personaId must be one of: mentor, debater, explorer, analyst.
 4. summary should be 1-2 concise sentences.
-5. bullets should contain 3-5 evidence-backed points.
+5. bullets should contain 3 concise evidence-backed points.
 6. detail should expand the reasoning with concrete support from the source text.
 7. tags should contain 1-4 short labels.
 8. Avoid generic repetition across items. Make page ${pageNumber} feel like a continuation, not a reset.
+9. Keep title within 120 characters, summary within 240, each bullet within 140, and detail within 700. Keep identifiers and tags short.
 
 Response Schema:
 ${JSON.stringify(LENS_FEED_SCHEMA, null, 2)}`;
@@ -66,7 +67,7 @@ ${JSON.stringify(LENS_FEED_SCHEMA, null, 2)}`;
     system: FEED_SYSTEM,
     user,
     temperature: AI_TEMPERATURES.PRISM,
-    maxTokens: Math.max(MAX_TOKENS.PRISM, 2048),
+    maxTokens: Math.max(MAX_TOKENS.PRISM, 2048, input.count * 1536),
     schema: LENS_FEED_SCHEMA,
   };
 }
@@ -93,9 +94,10 @@ Rules:
 3. title should feel like a strong prompt for reflection.
 4. subtitle is optional, but if present it should sharpen the angle.
 5. body should contain a short thesis or explanation grounded in the source text.
-6. bullets should contain 3-5 concrete sub-questions or reasoning cues when useful.
+6. bullets should contain 3 concise sub-questions or reasoning cues when useful.
 7. tags should contain 1-4 short labels.
 8. Avoid debate-room language and avoid CTA phrasing. These cards should stand alone inside the feed.
+9. Keep title within 120 characters, subtitle within 180, body within 520, and each bullet within 140. Keep identifiers and tags short.
 
 Response Schema:
 ${JSON.stringify(THOUGHT_FEED_SCHEMA, null, 2)}`;
@@ -104,7 +106,7 @@ ${JSON.stringify(THOUGHT_FEED_SCHEMA, null, 2)}`;
     system: FEED_SYSTEM,
     user,
     temperature: Math.max(AI_TEMPERATURES.CHAIN, 0.25),
-    maxTokens: Math.max(MAX_TOKENS.CHAIN, 2048),
+    maxTokens: Math.max(MAX_TOKENS.CHAIN, 2048, input.count * 1024),
     schema: THOUGHT_FEED_SCHEMA,
   };
 }

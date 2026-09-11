@@ -44,6 +44,10 @@
       "types": "./src/contracts/agent-preferences.d.ts",
       "default": "./src/contracts/agent-preferences.js"
     },
+    "./runtime/structured-response": {
+      "types": "./src/runtime/structured-response.d.ts",
+      "default": "./src/runtime/structured-response.js"
+    },
     "./runtime/anonymous-session": {
       "types": "./src/runtime/anonymous-session.d.ts",
       "default": "./src/runtime/anonymous-session.js"

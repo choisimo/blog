@@ -1,3 +1,8 @@
+import {
+  parseStructuredResponse,
+  hasStructuredResponseText,
+  isStructuredResponseText,
+} from '@blog/shared/runtime/structured-response';
 /**
  * Unified LLM Service
  *
@@ -152,22 +157,23 @@ function normalizeQuizQuestion(value: unknown): QuizQuestion | null {
   return normalized;
 }
 
-function extractQuizItemsFromData(value: unknown): unknown[] {
+function extractQuizItemsFromData(value: unknown, depth = 0): unknown[] {
+  if (depth > 8) return [];
   if (Array.isArray(value)) return value;
   if (typeof value === 'string') {
     const parsed = tryParseJson(value);
-    return parsed ? extractQuizItemsFromData(parsed) : [];
+    return parsed ? extractQuizItemsFromData(parsed, depth + 1) : [];
   }
-  if (!isRecord(value)) return [];
+  if (!isRecord(value) || value.ok === false || value._fallback === true || value.source === 'fallback') return [];
   if (Array.isArray(value.quiz)) return value.quiz;
   if (Array.isArray(value.questions)) return value.questions;
   if (Array.isArray(value.items)) return value.items;
-  if ('result' in value) return extractQuizItemsFromData(value.result);
+  if ('result' in value) return extractQuizItemsFromData(value.result, depth + 1);
   if ('_raw' in value) {
     const rawData = value._raw;
-    if (typeof rawData === 'string') return extractQuizItemsFromData(rawData);
+    if (typeof rawData === 'string') return extractQuizItemsFromData(rawData, depth + 1);
     if (isRecord(rawData) && typeof rawData.text === 'string') {
-      return extractQuizItemsFromData(rawData.text);
+      return extractQuizItemsFromData(rawData.text, depth + 1);
     }
   }
   // Sentio/custom mode: backend may return a blog-post metadata object with a
@@ -203,13 +209,61 @@ function normalizeQuizData(value: unknown, maxQuestions = 2): { quiz: QuizQuesti
   return { quiz };
 }
 
-function normalizeTaskDataForMode(
+export function normalizeTaskDataForMode(
   mode: TaskMode,
   value: unknown,
-  payload?: Record<string, unknown>
+  payload?: Record<string, unknown>,
+  depth = 0
 ): unknown | null {
-  if (mode !== 'quiz') return value;
-  return normalizeQuizData(value, clampQuizCount(payload?.quizCount, 2));
+  if (depth > 8) return null;
+  if (typeof value === 'string') {
+    const parsed = parseStructuredResponse(value);
+    return parsed && parsed !== value
+      ? normalizeTaskDataForMode(mode, parsed, payload, depth + 1)
+      : null;
+  }
+  if (!isRecord(value) || value.ok === false || value._fallback === true || value.source === 'fallback') return null;
+
+  const text = (entry: unknown): entry is string =>
+    typeof entry === 'string' && Boolean(entry.trim());
+  const texts = (entry: unknown): boolean =>
+    Array.isArray(entry) && entry.length > 0 && entry.every(text);
+  const rows = (entry: unknown, validate: (row: Record<string, unknown>) => boolean): boolean =>
+    Array.isArray(entry) &&
+    entry.length > 0 &&
+    entry.every((row) => isRecord(row) && validate(row));
+  let valid = false;
+  switch (mode) {
+    case 'sketch':
+      valid = text(value.mood) && texts(value.bullets);
+      break;
+    case 'prism':
+      valid = rows(value.facets, (row) => text(row.title) && texts(row.points));
+      break;
+    case 'chain':
+      valid = rows(value.questions, (row) => text(row.q) && text(row.why));
+      break;
+    case 'summary':
+      valid =
+        text(value.summary) &&
+        (value.keyPoints === undefined ||
+          (Array.isArray(value.keyPoints) && value.keyPoints.every(text)));
+      break;
+    case 'quiz': {
+      const quiz = normalizeQuizData(value, clampQuizCount(payload?.quizCount, 2));
+      if (quiz && !hasStructuredResponseText(quiz)) return quiz;
+      break;
+    }
+    default:
+      valid = true;
+  }
+  if (valid && !hasStructuredResponseText(value)) return value;
+  for (const key of ['data', 'result', 'output', 'payload', '_raw', 'text']) {
+    if (!(key in value)) continue;
+    const normalized = normalizeTaskDataForMode(mode, value[key], payload, depth + 1);
+    if (normalized) return normalized;
+  }
+  return null;
 }
 
 function projectTaskDataFromText(
@@ -217,6 +271,9 @@ function projectTaskDataFromText(
   text: string,
   payload: Record<string, unknown>
 ): unknown {
+  if (isStructuredResponseText(text) || (parseStructuredResponse(text) !== null && /^\s*(?:[\[{"]|```(?:json)?\s*[\[{])/.test(text))) {
+    return null;
+  }
   const lines = extractMeaningfulLines(text);
   const cleanedLines = lines.map((line) => line.replace(/^[-*•\d.)\s]+/, '').trim());
 
@@ -401,48 +458,7 @@ async function repairTaskJsonWithSchema(
  * LLM 응답에서 JSON을 추출합니다.
  */
 export function tryParseJson<T = unknown>(text: string): T | null {
-  if (!text || typeof text !== 'string') return null;
-
-  // 1. 직접 파싱 시도
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    // continue to next method
-  }
-
-  // 2. ```json 코드블록 추출
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenceMatch?.[1]) {
-    try {
-      return JSON.parse(fenceMatch[1].trim()) as T;
-    } catch {
-      // continue to next method
-    }
-  }
-
-  // 3. 첫 { ~ 마지막 } 서브스트링
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try {
-      return JSON.parse(text.slice(start, end + 1)) as T;
-    } catch {
-      // continue to next method
-    }
-  }
-
-  // 4. 첫 [ ~ 마지막 ] 서브스트링 (배열 응답용)
-  const arrStart = text.indexOf('[');
-  const arrEnd = text.lastIndexOf(']');
-  if (arrStart >= 0 && arrEnd > arrStart) {
-    try {
-      return JSON.parse(text.slice(arrStart, arrEnd + 1)) as T;
-    } catch {
-      // failed
-    }
-  }
-
-  return null;
+  return parseStructuredResponse(text) as T | null;
 }
 
 /**
@@ -489,6 +505,7 @@ async function callBackendAutoChat(
       body: JSON.stringify({
         messages: [{ role: 'user', content: message }],
         temperature: request.temperature,
+        maxTokens: request.maxTokens,
       }),
     });
 
@@ -727,7 +744,15 @@ export async function executeTask(
     // 최종 보정: 텍스트를 모드별 구조로 투영
     console.warn('LLM response parsing failed, projecting text to structured task output');
     const projected = projectTaskDataFromText(mode, response.text, payload);
-    const normalizedProjected = normalizeTaskDataForMode(mode, projected, payload) ?? projected;
+    const normalizedProjected = normalizeTaskDataForMode(mode, projected, payload);
+    if (!normalizedProjected) {
+      return {
+        ok: false,
+        data: getFallbackData(mode, payload),
+        source: 'fallback',
+        error: 'Invalid structured AI response',
+      };
+    }
 
     return {
       ok: true,
