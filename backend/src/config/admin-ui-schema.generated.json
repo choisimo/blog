@@ -1168,6 +1168,15 @@
           "deprecatedAliases": []
         },
         {
+          "key": "WORKER_STATE_SQLITE_PATH",
+          "type": "string",
+          "isSecret": false,
+          "classification": "private-config",
+          "publicExposure": false,
+          "mutableAtRuntime": false,
+          "deprecatedAliases": []
+        },
+        {
           "key": "WORKSPACE_PATH",
           "type": "string",
           "isSecret": false,

@@ -56,7 +56,7 @@ async function ensureSchema(db: D1Database): Promise<void> {
       )`
     )
     .run();
-  const columns = await db.prepare(`PRAGMA table_info(idempotency_records)`).all<{ name: string }>();
+  const columns = await db.prepare(`SELECT name FROM pragma_table_info('idempotency_records')`).all<{ name: string }>();
   const names = new Set((columns.results || []).map((column) => column.name));
   if (!names.has('state')) {
     await db.prepare(`ALTER TABLE idempotency_records ADD COLUMN state TEXT`).run();

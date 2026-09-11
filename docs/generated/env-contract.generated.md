@@ -257,6 +257,7 @@
 | `SQLITE_PATH` | private-config | infrastructure | backend, k3s, infra, open-notebook, content-sync | k3s-configmap, process-env | - | no | no | not-secret |
 | `SSE_PING_INTERVAL_MS` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |
 | `SSR` | public-config | frontend-platform | frontend, backend, api-gateway | frontend-runtime-json, vite-build-var, process-env, wrangler-var | - | yes | no | not-secret |
+| `STATE_STORE_BACKEND` | private-config | data-platform | api-gateway | wrangler-var | - | no | no | manual |
 | `STREAM_CHUNK_DELAY_MS` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |
 | `STREAM_CHUNK_SIZE` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |
 | `SURREALDB_ROOT_PASSWORD` | secret | infrastructure | backend, k3s, github-actions, infra, content-sync | k3s-secret, github-secret, process-env | - | no | no | infrastructure-credential-rotation |
@@ -311,6 +312,7 @@
 | `WEB_SCRAPER_USER_AGENT` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |
 | `WEB_SEARCH_ENGINE` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |
 | `WORKER_API_URL` | private-config | backend-platform | backend, k3s, ci | process-env, k3s-configmap, consul-kv, default | - | no | no | not-secret |
+| `WORKER_STATE_SQLITE_PATH` | private-config | infrastructure | backend, k3s, infra, open-notebook, content-sync | k3s-configmap, process-env | - | no | no | not-secret |
 | `WORKSPACE_PATH` | private-config | infrastructure | backend, k3s, infra, open-notebook, content-sync | k3s-configmap, process-env | - | no | no | not-secret |
 | `WS_STREAM_CHUNK_DELAY_MS` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |
 | `WS_STREAM_CHUNK_SIZE` | private-config | backend-platform | backend | process-env, default | - | no | no | not-secret |

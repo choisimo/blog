@@ -19,6 +19,7 @@ on:
       - 'shared/**'
       - 'scripts/worker-deploy-matrix.mjs'
       - 'scripts/ensure-reader-image-bucket.mjs'
+      - 'scripts/verify-backend-state.mjs'
       - '.github/workflows/deploy-workers.yml'
 
 permissions:
@@ -144,8 +145,28 @@ jobs:
           }
           NODE
 
-      - name: Apply production D1 migrations
+      - name: Select production state store
+        id: state-store
         if: ${{ matrix.id == 'api-gateway' }}
+        working-directory: workers/${{ matrix.path }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const config = readFileSync('wrangler.toml', 'utf8');
+          const vars = config.split('[env.production.vars]')[1]?.split(/\n\[/)[0] || '';
+          appendFileSync(process.env.GITHUB_OUTPUT, `backend=${/STATE_STORE_BACKEND\s*=\s*"origin"/.test(vars)}\n`);
+          NODE
+
+      - name: Verify Kubernetes state schema
+        if: ${{ matrix.id == 'api-gateway' && steps.state-store.outputs.backend == 'true' }}
+        env:
+          BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+          BACKEND_KEY: ${{ secrets.BACKEND_KEY }}
+          GATEWAY_SIGNING_SECRET: ${{ secrets.GATEWAY_SIGNING_SECRET }}
+        run: node scripts/verify-backend-state.mjs
+
+      - name: Apply production D1 migrations
+        if: ${{ matrix.id == 'api-gateway' && steps.state-store.outputs.backend != 'true' }}
         working-directory: workers/${{ matrix.path }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -181,7 +202,7 @@ jobs:
           npm run migrations:apply:prod
 
       - name: Verify production D1 schema
-        if: ${{ matrix.id == 'api-gateway' }}
+        if: ${{ matrix.id == 'api-gateway' && steps.state-store.outputs.backend != 'true' }}
         working-directory: workers/${{ matrix.path }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
