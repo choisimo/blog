@@ -12,22 +12,6 @@ type RawProjectsManifest = {
   format?: number;
 };
 
-type RawProjectCatalogRepository = {
-  repository?: string;
-  url?: string;
-  sourceUrl?: string;
-  isFork?: boolean;
-  isArchived?: boolean;
-  isEmpty?: boolean;
-  pushedAt?: string;
-  languages?: string[];
-};
-
-type RawProjectCatalog = {
-  checkedAt?: string;
-  repositories?: RawProjectCatalogRepository[];
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -56,19 +40,6 @@ function parseProjectsManifest(value: unknown): RawProjectsManifest | null {
       typeof value.format === 'number' && Number.isFinite(value.format)
         ? value.format
         : undefined,
-  };
-}
-
-function parseProjectCatalog(value: unknown): RawProjectCatalog | null {
-  if (!isRecord(value)) return null;
-
-  const repositories = Array.isArray(value.repositories)
-    ? value.repositories.filter(isRecord).map((repository) => repository as RawProjectCatalogRepository)
-    : [];
-
-  return {
-    checkedAt: typeof value.checkedAt === 'string' ? value.checkedAt : undefined,
-    repositories,
   };
 }
 
@@ -157,39 +128,6 @@ function normalizeProject(item: RawManifestItem, index: number): ProjectItem | n
   };
 }
 
-function normalizeCatalogProject(repository: RawProjectCatalogRepository, index: number): ProjectItem | null {
-  const url = normalizeProjectUrl(repository.url);
-  if (!url) return null;
-
-  const [, rawTitle] = String(repository.repository || '').split('/');
-  const title = rawTitle?.trim() || `Repository ${index + 1}`;
-  const languages = sanitizeStringArray(repository.languages);
-  const category = languages[0] || 'Web';
-  const status = repository.isEmpty
-    ? '빈 저장소'
-    : repository.isArchived
-      ? '보관'
-      : repository.isFork
-        ? '포크'
-        : '공개';
-  const tags = [...new Set([category, repository.isFork ? '포크' : '원본', ...languages])];
-
-  return {
-    id: `catalog-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || index + 1}`,
-    title,
-    description: `${title} 공개 저장소 항목입니다. 검토된 저장소 메타데이터를 바탕으로 복구된 프로젝트 카드입니다.`,
-    date: toSafeDate(repository.pushedAt),
-    category,
-    tags,
-    stack: languages,
-    status,
-    type: 'link',
-    url,
-    codeUrl: normalizeProjectUrl(repository.sourceUrl) || url,
-    featured: false,
-  };
-}
-
 function sortProjects(items: ProjectItem[]): ProjectItem[] {
   return items.sort((a, b) => {
     if (a.featured && !b.featured) return -1;
@@ -222,16 +160,13 @@ export class ProjectService {
       const rawManifest = parseProjectsManifest(
         await this.fetchJson('/projects-manifest.json')
       );
-      const rawItems = Array.isArray(rawManifest?.items) ? rawManifest.items : [];
+      if (!rawManifest) return null;
+      const rawItems = rawManifest.items ?? [];
       const normalizedItems = sortProjects(
         rawItems
           .map((item, index) => normalizeProject(item, index))
           .filter((item): item is ProjectItem => item !== null)
       );
-
-      if (!normalizedItems.length) {
-        return null;
-      }
 
       return {
         total: normalizedItems.length,
@@ -245,34 +180,10 @@ export class ProjectService {
     }
   }
 
-  private static async loadCatalogFallback(): Promise<ProjectsManifest | null> {
-    try {
-      const catalog = parseProjectCatalog(await this.fetchJson('/project-catalog.json'));
-      const repositories = Array.isArray(catalog?.repositories) ? catalog.repositories : [];
-      const normalizedItems = sortProjects(
-        repositories
-          .map((repository, index) => normalizeCatalogProject(repository, index))
-          .filter((item): item is ProjectItem => item !== null)
-      );
-      if (!normalizedItems.length) {
-        return null;
-      }
-      return {
-        total: normalizedItems.length,
-        items: normalizedItems,
-        generatedAt: catalog?.checkedAt || new Date().toISOString(),
-        format: 1,
-      };
-    } catch (error) {
-      console.error('Error loading project catalog fallback:', error);
-      return null;
-    }
-  }
-
   static async getAllProjects(): Promise<ProjectItem[]> {
     if (this.cache) return this.cache.items;
 
-    const manifest = (await this.loadManifest()) || (await this.loadCatalogFallback());
+    const manifest = await this.loadManifest();
     if (!manifest) {
       return [];
     }

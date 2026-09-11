@@ -1,5 +1,11 @@
 # Projects catalog
 
+The project Markdown entries were intentionally removed on 2026-09-11. Normal
+development and production builds only read existing Markdown; they never seed
+entries from the catalog. An absent or empty `public/project-data/` directory
+produces an empty manifest, which the Projects page preserves without a catalog
+fallback. The catalog and summaries below are retained as historical evidence.
+
 The catalog was rebuilt from the 2026-09-08 GitHub CLI inventory for `choisimo`.
 It includes every one of the 68 public repositories returned by `gh repo list`:
 59 originals and 9 forks. Two originals have no commits and are explicitly marked
@@ -18,7 +24,8 @@ fork and empty flags, pushed and checked timestamps, and pinned commit URLs.
 generator produces `public/projects-manifest.json`; do not edit that generated
 file by hand.
 
-To rebuild using a fresh reviewed evidence bundle containing `repositories.json`
+Only when explicitly republishing the projects, rebuild using a fresh reviewed
+evidence bundle containing `repositories.json`
 and `evidence.json`, first review and update the summaries for its exact public
 repository set. Then run from `frontend/`:
 
