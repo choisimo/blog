@@ -1,3 +1,4 @@
+import { rejectInvalidForwardedAccess } from './forwarded-access';
 import type { Context } from 'hono';
 import type { HonoEnv } from '../types';
 import { getCorsHeadersForRequest } from './cors';
@@ -159,6 +160,14 @@ export async function proxyToBackendWithPolicy(
   options: BackendProxyOptions
 ): Promise<Response> {
   const corsHeaders = await getCorsHeadersForRequest(c.req.raw, c.env);
+  if (!options.dropClientAuthorization) {
+    const rejection = await rejectInvalidForwardedAccess(c.req.raw, c.env);
+    if (rejection) {
+      applyCorsHeaders(rejection.headers, corsHeaders);
+      return rejection;
+    }
+  }
+
   const backendUrl = buildBackendUrl(c, options);
   const method = options.method || c.req.method;
   const unavailableMessage =

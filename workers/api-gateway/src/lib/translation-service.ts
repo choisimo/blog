@@ -1,5 +1,7 @@
 import type { Env } from '../types';
-import { queryOne, execute } from './d1';
+import { queryOne } from './d1';
+import { checkpointTranslation, markTranslationStage, commitTranslationCache, type TranslationJobRow } from './translation-job-repository';
+import { normalizeTranslationSlug } from '../../../../shared/src/contracts/translation-path.js';
 import { createAIService } from './ai-service';
 import { AI_TEMPERATURES, MAX_TOKENS, TEXT_LIMITS } from '../config/defaults';
 
@@ -42,6 +44,7 @@ export type TranslationCache = {
   description: string | null;
   content: string;
   content_hash: string;
+  source_version?: string | null;
   is_ai_generated: number;
   created_at: string;
   updated_at: string;
@@ -68,6 +71,8 @@ export type GenerateTranslationInput = {
   description: string;
   content: string;
   forceRefresh?: boolean;
+  execution?: TranslationJobRow;
+  deadlineMs?: number;
 };
 
 function parseFrontmatter(markdown: string): {
@@ -126,12 +131,12 @@ export function hashContent(content: string): string {
   return hash.toString(16);
 }
 
-function truncateForTranslation(
-  content: string,
-  maxChars: number = TEXT_LIMITS.TRANSLATE_CONTENT
-): string {
-  if (content.length <= maxChars) return content;
-  return `${content.slice(0, maxChars)}\n\n[... content truncated for translation ...]`;
+export const TRANSLATION_VERSION = 'a02-checkpoint-v1';
+export async function translationSourceVersion(source: SourcePost, targetLang: SupportedTranslationLang): Promise<string> {
+  const value = JSON.stringify([TRANSLATION_VERSION, source.year, source.slug, source.title, source.description,
+    source.content, source.sourceLang, targetLang]);
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return `sha256:${Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2,'0')).join('')}`;
 }
 
 export function normalizeComparableText(value: string): string {
@@ -151,23 +156,41 @@ export function isSuspiciousTranslation(source: string, translated: string): boo
   return false;
 }
 
+function sourceUnavailable(): Error {
+  return Object.assign(new Error('Published source is temporarily unavailable'), {
+    status: 503, code: 'SOURCE_UNAVAILABLE',
+  });
+}
+async function fetchSourceResponse(url: string, accept: string): Promise<Response> {
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: accept, 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw sourceUnavailable();
+    }
+    return response;
+  } catch { throw sourceUnavailable(); }
+}
+
 export async function fetchPublishedPost(
   env: Env,
   year: string,
   slug: string
 ): Promise<SourcePost | null> {
+  if (!/^\d{4}$/.test(year)) throw Object.assign(new Error('Invalid year'), {status:400,code:'BAD_REQUEST'});
+  slug = normalizeTranslationSlug(slug, false);
   const siteUrl = getPublicSiteUrl(env);
-  const manifestResponse = await fetch(`${siteUrl}/posts-manifest.json`, {
-    headers: { Accept: 'application/json' },
-  });
-
-  if (!manifestResponse.ok) {
-    throw new Error(`Failed to load posts manifest: ${manifestResponse.status}`);
-  }
-
-  const manifest = (await manifestResponse.json()) as { items?: ManifestItem[] };
+  const manifestResponse = await fetchSourceResponse(`${siteUrl}/posts-manifest.json`, 'application/json');
+  let manifest: { items: ManifestItem[] };
+  try {
+    manifest = await manifestResponse.json() as { items: ManifestItem[] };
+    if (!manifest || !Array.isArray(manifest.items)) throw sourceUnavailable();
+  } catch { throw sourceUnavailable(); }
   const item = manifest.items?.find(
-    (entry) => entry.year === year && entry.slug === slug && entry.published !== false
+    (entry) => entry && entry.year === year && typeof entry.slug === 'string' && entry.slug.normalize('NFC') === slug && entry.published !== false
   );
 
   if (!item?.path) {
@@ -175,15 +198,15 @@ export async function fetchPublishedPost(
   }
 
   const normalizedPath = item.path.startsWith('/') ? item.path : `/${item.path}`;
-  const markdownResponse = await fetch(`${siteUrl}${normalizedPath}`, {
-    headers: { Accept: 'text/markdown, text/plain, */*' },
-  });
-
-  if (!markdownResponse.ok) {
-    return null;
+  if (normalizedPath.startsWith('//') || /[\\\u0000-\u001f]/.test(normalizedPath) || normalizedPath.split('/').some(part => {
+    try { const decoded=decodeURIComponent(part); return decoded==='.' || decoded==='..' || /[/\\%]/.test(decoded); } catch { return true; }
+  }) || !/\.md$/i.test(normalizedPath)) throw new Error('Invalid published source path');
+  const markdownResponse = await fetchSourceResponse(`${siteUrl}${normalizedPath}`, 'text/markdown, text/plain');
+  let markdown: string;
+  try { markdown = await markdownResponse.text(); } catch { throw sourceUnavailable(); }
+  if (markdownResponse.headers.get('Content-Type')?.includes('text/html') || /^\s*<!doctype html|^\s*<html/i.test(markdown)) {
+    throw Object.assign(new Error('Source origin returned an HTML shell'), {status:503,code:'SOURCE_UNAVAILABLE'});
   }
-
-  const markdown = await markdownResponse.text();
   const { data, content } = parseFrontmatter(markdown);
 
   return {
@@ -194,6 +217,7 @@ export async function fetchPublishedPost(
     content,
     sourceLang:
       normalizeTranslationLang(data.defaultLanguage) ||
+      normalizeTranslationLang(data.language) ||
       normalizeTranslationLang(item.defaultLanguage) ||
       normalizeTranslationLang(item.language) ||
       'ko',
@@ -234,10 +258,10 @@ export async function getValidCachedTranslation(
   targetLang: SupportedTranslationLang
 ): Promise<TranslationCache | null> {
   const cached = await getCachedTranslationRecord(db, sourcePost.year, sourcePost.slug, targetLang);
-  const contentHash = hashContent(sourcePost.content);
+  const sourceVersion = await translationSourceVersion(sourcePost, targetLang);
   if (
     cached &&
-    cached.content_hash === contentHash &&
+    cached.source_version === sourceVersion &&
     !isSuspiciousTranslation(sourcePost.content, cached.content)
   ) {
     return cached;
@@ -246,101 +270,47 @@ export async function getValidCachedTranslation(
 }
 
 export async function translateAndCachePost(
-  env: Env,
-  db: D1Database,
-  input: GenerateTranslationInput
+  env: Env, db: D1Database, input: GenerateTranslationInput
 ): Promise<TranslationResponseData> {
-  const { year, slug, targetLang, sourceLang, title, description, content } = input;
-  const contentHash = hashContent(content);
-
-  if (!input.forceRefresh) {
-    const cached = await getCachedTranslationRecord(db, year, slug, targetLang);
-    if (
-      cached &&
-      cached.content_hash === contentHash &&
-      !isSuspiciousTranslation(content, cached.content)
-    ) {
-      return buildTranslationResponse(cached);
-    }
+  const { title, description, content, sourceLang, targetLang, execution: job } = input;
+  if (!job) throw new Error('Translation execution lease is required');
+  const source: SourcePost = {year: input.year, slug: input.slug, title,description,content,sourceLang};
+  if (await translationSourceVersion(source,targetLang) !== job.source_version) {
+    throw Object.assign(new Error('Source changed'), {code:'SUPERSEDED'});
   }
-
-  if (sourceLang === targetLang) {
-    return {
-      title,
-      description,
-      content,
-      cached: false,
-      isAiGenerated: false,
-    };
+  // A04 will provide structural block translation. Until then fail before billing, never truncate.
+  if (content.length > TEXT_LIMITS.TRANSLATE_CONTENT) {
+    throw Object.assign(new Error('Full article requires block translation'), {code:'CONTENT_TOO_LONG'});
   }
-
-  const sourceLangName = LANG_NAMES[sourceLang] || sourceLang;
-  const targetLangName = LANG_NAMES[targetLang] || targetLang;
-  const aiService = createAIService(env);
-
-  const titlePrompt = `Translate the following blog post title from ${sourceLangName} to ${targetLangName}.\nReturn ONLY the translated title, nothing else.\n\nTitle: ${title}`;
-
-  const translatedTitle = await aiService.generate(titlePrompt, {
-    temperature: AI_TEMPERATURES.TRANSLATE,
-    maxTokens: MAX_TOKENS.TRANSLATE_TITLE,
-  });
-
-  let translatedDescription = '';
-  if (description) {
-    const descPrompt = `Translate the following blog post description from ${sourceLangName} to ${targetLangName}.\nReturn ONLY the translated description, nothing else.\n\nDescription: ${description}`;
-
-    translatedDescription = await aiService.generate(descPrompt, {
-      temperature: AI_TEMPERATURES.TRANSLATE,
-      maxTokens: MAX_TOKENS.TRANSLATE_DESC,
+  const checkpoint = JSON.parse(job.checkpoint_json || '{}') as Record<string,string>;
+  const aiService = createAIService(env, job.id);
+  const deadline = input.deadlineMs || Date.now()+240_000;
+  const languages = `${LANG_NAMES[sourceLang]} to ${LANG_NAMES[targetLang]}`;
+  const stage = async (name: 'title'|'description'|'content', prompt: string, maxTokens: number) => {
+    if (typeof checkpoint[name] === 'string') return checkpoint[name];
+    if (Date.now() >= deadline) throw Object.assign(new Error('Execution budget exhausted before submission'), {code:'EXECUTOR_DEADLINE'});
+    await markTranslationStage(db,job,name);
+    const raw = await aiService.generate(prompt, {
+      temperature: AI_TEMPERATURES.TRANSLATE, maxTokens,
+      timeout: Math.max(1,deadline-Date.now()), idempotencyKey:`${job.id}:${name}`,
     });
-  }
-
-  const truncatedContent = truncateForTranslation(content);
-  const contentPrompt = `You are a professional translator. Translate the following blog post content from ${sourceLangName} to ${targetLangName}.\n\nIMPORTANT RULES:\n1. Preserve ALL markdown formatting exactly (headers, code blocks, lists, links, images, etc.)\n2. Do NOT translate code snippets inside fenced code blocks\n3. Do NOT translate URLs or file paths\n4. Preserve technical terms when appropriate (with translation in parentheses if needed)\n5. Maintain the same paragraph structure\n6. Return ONLY the translated content, no explanations\n\nContent:\n${truncatedContent}`;
-
-  const translatedContent = await aiService.generate(contentPrompt, {
-    temperature: AI_TEMPERATURES.TRANSLATE_CONTENT,
-    maxTokens: MAX_TOKENS.TRANSLATE_CONTENT,
-  });
-
-  const cleanTitle = translatedTitle.trim().replace(/^["']|["']$/g, '');
-  const cleanDescription = translatedDescription.trim().replace(/^["']|["']$/g, '');
-  const cleanContent = translatedContent.trim();
-
-  await execute(
-    db,
-    `INSERT INTO post_translations_cache
-       (post_slug, year, source_lang, target_lang, title, description, content, content_hash, is_ai_generated)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-     ON CONFLICT(post_slug, year, target_lang)
-     DO UPDATE SET
-       source_lang = ?,
-       title = ?,
-       description = ?,
-       content = ?,
-       content_hash = ?,
-       is_ai_generated = 1,
-       updated_at = datetime('now')`,
-    slug,
-    year,
-    sourceLang,
-    targetLang,
-    cleanTitle,
-    cleanDescription,
-    cleanContent,
-    contentHash,
-    sourceLang,
-    cleanTitle,
-    cleanDescription,
-    cleanContent,
-    contentHash
-  );
-
-  return {
-    title: cleanTitle,
-    description: cleanDescription,
-    content: cleanContent,
-    cached: false,
-    isAiGenerated: true,
+    const result = typeof raw==='string' ? raw.trim() : '';
+    if (!result || (name==='content' && isSuspiciousTranslation(content,result))) {
+      throw Object.assign(new Error('Incomplete translation output'), {code:'INVALID_TRANSLATION'});
+    }
+    checkpoint[name]=result;
+    await checkpointTranslation(db,job,checkpoint);
+    return result;
   };
+  const translatedTitle = await stage('title', `Translate the following blog post title from ${languages}. Return ONLY the translated title.\n\nTitle: ${title}`,MAX_TOKENS.TRANSLATE_TITLE);
+  const translatedDescription = description
+    ? await stage('description',`Translate the following blog post description from ${languages}. Return ONLY the translated description.\n\nDescription: ${description}`,MAX_TOKENS.TRANSLATE_DESC) : '';
+  const translatedContent = await stage('content',`Translate the complete blog post from ${languages}. Preserve ALL Markdown formatting, fenced code, links, image URLs, tables and footnotes. Do not translate code or URLs. Do not summarize or omit paragraphs. Return ONLY the translated content.\n\nContent:\n${content}`,MAX_TOKENS.TRANSLATE_CONTENT);
+  const current=await fetchPublishedPost(env,input.year,input.slug);
+  if (!current || await translationSourceVersion(current,targetLang)!==job.source_version) {
+    throw Object.assign(new Error('Source is no longer current or public'), {code:'SUPERSEDED'});
+  }
+  const value={title:translatedTitle,description:translatedDescription,content:translatedContent,cached:false,isAiGenerated:true};
+  await commitTranslationCache(db,job,value);
+  return value;
 }

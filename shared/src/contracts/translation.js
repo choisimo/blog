@@ -48,16 +48,46 @@ export const translationGenerateSchema = translationQuerySchema.extend({
 
 export const translationJobStatusSchema = z.object({
   id: z.string(),
-  type: z.literal("translation.generate"),
-  status: z.enum(["queued", "running", "succeeded", "failed"]),
+  key: z.string().optional(),
+  type: z.literal("translation.generate").optional(),
+  status: z.enum(["queued", "deferred", "running", "succeeded", "failed"]),
+  year: z.string().optional(),
+  slug: z.string().optional(),
+  targetLang: translationLocaleSchema.optional(),
+  sourceLang: translationLocaleSchema.optional(),
+  forceRefresh: z.boolean().optional(),
   message: z.string().optional(),
   resultRef: z.string().optional(),
-  statusUrl: z.string().optional(),
-  cacheUrl: z.string().optional(),
-  generateUrl: z.string().optional(),
+  statusUrl: z.string(),
+  cacheUrl: z.string(),
+  generateUrl: z.string(),
   contentHash: z.string().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  attempts: z.number().int().nonnegative().optional(),
+  retryAt: z.string().optional(),
+  sourceVersion: z.string().optional(),
+  error: z
+    .object({
+      status: z.number().optional(),
+      code: z.string().optional(),
+      message: z.string(),
+      retryable: z.boolean().optional(),
+      retryAfterSeconds: z.number().optional(),
+    })
+    .optional(),
+  result: z
+    .object({
+      source: z.enum(["cache", "generated", "passthrough"]),
+      cached: z.boolean(),
+      isAiGenerated: z.boolean(),
+      translationAvailable: z.boolean(),
+      createdAt: z.string().optional(),
+      updatedAt: z.string().optional(),
+    })
+    .optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  startedAt: z.string().optional(),
+  completedAt: z.string().optional(),
 });
 
 export const cachedTranslationResponseSchema = apiSuccessEnvelopeSchema(
@@ -77,8 +107,10 @@ export const translationGenerateResponseSchema = z.union([
     data: z.null(),
     job: translationJobStatusSchema,
   }),
+  z.object({ ok:z.literal(true), data:translationResultSchema.nullable(), job:translationJobStatusSchema }),
 ]);
 
-export const translationJobResponseSchema = apiSuccessEnvelopeSchema(
-  translationJobStatusSchema,
-);
+export const translationJobResponseSchema = z.union([
+  apiSuccessEnvelopeSchema(z.object({job:translationJobStatusSchema})),
+  apiSuccessEnvelopeSchema(translationJobStatusSchema),
+]);

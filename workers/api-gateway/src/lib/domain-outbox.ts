@@ -54,6 +54,7 @@ type ListDomainOutboxInput = {
 
 type ClaimDomainOutboxInput = {
   stream: string;
+  excludeEventTypes?: string[];
   limit?: number;
   now?: string;
 };
@@ -384,10 +385,12 @@ export async function claimDomainOutboxEvents(
       WHERE stream = ?
         AND status = 'pending'
         AND next_attempt_at <= ?
+        ${input.excludeEventTypes?.length ? `AND event_type NOT IN (${input.excludeEventTypes.map(() => '?').join(',')})` : ''}
       ORDER BY created_at ASC
       LIMIT ?`,
     input.stream,
     now,
+    ...(input.excludeEventTypes || []),
     normalizeLimit(input.limit)
   );
 

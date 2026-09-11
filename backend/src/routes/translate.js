@@ -3,9 +3,27 @@ import { config } from '../config.js';
 import { createLogger } from '../lib/logger.js';
 import { requireUserAuth } from '../middleware/userAuth.js';
 import requireAdmin from '../middleware/adminAuth.js';
+import { requireBackendKey } from '../middleware/backendAuth.js';
+import { createTranslationDispatcher } from '../services/translation-dispatch.service.js';
 
 const router = Router();
 const logger = createLogger('translate');
+let dispatcher;
+router.post('/internal/translations/wake', requireBackendKey, (_req, res) => {
+  dispatcher ||= createTranslationDispatcher({workerApiUrl:config.services?.workerApiUrl,backendKey:config.backendKey,
+    onError:code=>logger.warn({},code)});
+  if (!dispatcher.wake()) return res.status(503).json({ok:false,error:'Translation dispatcher is not configured'});
+  return res.status(202).json({ok:true,data:{accepted:true}});
+});
+function translationQuery(req) {
+  const original = new URL(req.originalUrl, 'http://proxy.invalid');
+  const query = new URLSearchParams();
+  if (original.searchParams.get('observe') === 'true') query.set('observe','true');
+  const id = original.searchParams.get('jobId');
+  if (id) query.set('jobId',id);
+  return query.size ? `?${query}` : '';
+}
+
 const TRANSLATE_PROXY_TIMEOUT_MS = Math.max(
   5_000,
   Number.parseInt(process.env.TRANSLATE_PROXY_TIMEOUT_MS || '20000', 10),
@@ -16,6 +34,9 @@ function buildWorkerTranslateHeaders(req) {
     Accept: req.get('accept') || 'application/json',
   };
 
+  for (const name of ['Idempotency-Key','Prefer','X-Response-Mode']) {
+    const value = req.get(name); if (value) headers[name] = value;
+  }
   const contentType = req.get('content-type');
   if (contentType) {
     headers['Content-Type'] = contentType;
@@ -115,7 +136,7 @@ router.get('/public/posts/:year/:slug/translations/:targetLang', async (req, res
     return await proxyTranslateToWorker(
       req,
       res,
-      `/api/v1/public/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}`,
+      `/api/v1/public/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}${translationQuery(req)}`,
     );
   } catch (err) {
     return next(err);
@@ -128,11 +149,18 @@ router.get('/public/posts/:year/:slug/translations/:targetLang/cache', async (re
     return await proxyTranslateToWorker(
       req,
       res,
-      `/api/v1/public/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}/cache`,
+      `/api/v1/public/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}/cache${translationQuery(req)}`,
     );
   } catch (err) {
     return next(err);
   }
+});
+
+router.get('/public/posts/:year/:slug/translations/:targetLang/status', async (req, res, next) => {
+  try {
+    const {year,slug,targetLang}=req.params;
+    return await proxyTranslateToWorker(req,res,`/api/v1/public/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}/status${translationQuery(req)}`);
+  } catch(err) {return next(err);}
 });
 
 router.post(
@@ -197,7 +225,7 @@ router.delete(
       return await proxyTranslateToWorker(
         req,
         res,
-        `/api/v1/internal/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}`,
+        `/api/v1/internal/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}${translationQuery(req)}`,
       );
     } catch (err) {
       return next(err);
@@ -214,7 +242,7 @@ router.delete(
       return await proxyTranslateToWorker(
         req,
         res,
-        `/api/v1/internal/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}/cache`,
+        `/api/v1/internal/posts/${encodeURIComponent(year)}/${encodeURIComponent(slug)}/translations/${encodeURIComponent(targetLang)}/cache${translationQuery(req)}`,
       );
     } catch (err) {
       return next(err);

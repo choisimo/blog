@@ -113,6 +113,7 @@ beforeEach(async () => {
     scanned: 1,
     skipped: false,
     reason: 'ok',
+    translations: { processed: 0, failed: 0, deferred: 0, enabled: false },
   });
 
   outboxMocks.getLatestSchedulerDecision.mockReset();
@@ -175,6 +176,7 @@ describe('internal AI outbox routes', () => {
       scanned: 3,
       skipped: false,
       reason: 'ok',
+    translations: { processed: 0, failed: 0, deferred: 0, enabled: false },
     };
     const backendKey = env.BACKEND_KEY ?? 'test-backend-key';
     outboxMocks.flushAiArtifactOutbox.mockResolvedValueOnce(flushResult);

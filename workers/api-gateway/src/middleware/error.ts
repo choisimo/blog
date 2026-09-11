@@ -1,3 +1,4 @@
+import { AnonymousAuthError } from '../lib/anonymous-identity';
 import { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { error } from '../lib/response';
@@ -8,6 +9,11 @@ const isContentfulStatus = (value: number): value is ContentfulStatusCode => {
 };
 
 export function errorHandler(err: Error, c: Context) {
+  if (err instanceof AnonymousAuthError) {
+    c.header('Cache-Control', 'private, no-store');
+    if (err.status === 503) c.header('Retry-After', '30');
+    return error(c, err.message, err.status, err.code);
+  }
   console.error('Unhandled error:', {
     message: err.message,
     stack: err.stack,

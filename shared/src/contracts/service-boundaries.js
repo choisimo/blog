@@ -10,7 +10,7 @@ export const SERVICE_BOUNDARIES = Object.freeze([
   { id: 'comments', prefix: '/api/v1/comments', owner: ROUTE_OWNERS.WORKER, description: 'Comment CRUD and moderation at the edge' },
   { id: 'ai', prefix: '/api/v1/ai', owner: ROUTE_OWNERS.WORKER, description: 'AI gateway and request shaping' },
   { id: 'chat', prefix: '/api/v1/chat', owner: ROUTE_OWNERS.WORKER, description: 'Hybrid chat surface: worker-owned feeds, backend-owned session/live operations via worker proxy' },
-  { id: 'images', prefix: '/api/v1/images', owner: ROUTE_OWNERS.WORKER, description: 'Image upload and vision routing' },
+  { id: 'images', prefix: '/api/v1/images', owner: ROUTE_OWNERS.WORKER, description: 'Image upload, vision routing and quota-protected private reader generation' },
   { id: 'og', prefix: '/api/v1/og', owner: ROUTE_OWNERS.WORKER, description: 'OpenGraph image generation' },
   { id: 'analytics', prefix: '/api/v1/analytics', owner: ROUTE_OWNERS.WORKER, description: 'Edge reads with backend-backed canonical analytics flows' },
   { id: 'translate', prefix: '/api/v1/translate', owner: ROUTE_OWNERS.WORKER, description: 'Translation jobs and cache orchestration' },
@@ -51,6 +51,13 @@ export const SERVICE_BOUNDARIES = Object.freeze([
 ]);
 
 export const ROUTE_BOUNDARIES = Object.freeze([
+  { id: 'reader-images.policy', method: 'GET', path: '/api/v1/images/generation-policy', owner: ROUTE_OWNERS.WORKER, boundaryId: 'images', description: 'Verified principal daily image policy' },
+  { id: 'reader-images.generate', method: 'POST', path: '/api/v1/images/generate', owner: ROUTE_OWNERS.WORKER, boundaryId: 'images', description: 'Atomic quota reservation and private image generation' },
+  { id: 'reader-images.job', method: 'GET', path: '/api/v1/images/generations/:key', owner: ROUTE_OWNERS.WORKER, boundaryId: 'images', description: 'Owner-scoped generation status without resubmission' },
+  { id: 'reader-images.object', method: 'GET', path: '/api/v1/images/generated/:id', owner: ROUTE_OWNERS.WORKER, boundaryId: 'images', description: 'Authenticated private PNG read with retention cutoff' },
+  { id: 'reader-images.origin-bridge-blocked', method: 'POST', path: '/api/v1/images/render-private', owner: ROUTE_OWNERS.WORKER, boundaryId: 'images', description: 'Public edge returns 404; only the reserved quota handler calls origin directly' },
+  { id: 'agent-preferences.read', method: 'GET', path: '/api/v1/user/agent-preferences', owner: ROUTE_OWNERS.WORKER, boundaryId: 'user', description: 'Verified member preference read' },
+  { id: 'agent-preferences.write', method: 'PUT', path: '/api/v1/user/agent-preferences', owner: ROUTE_OWNERS.WORKER, boundaryId: 'user', description: 'Verified member preference compare-and-swap update' },
   { id: 'chat.session.create', method: 'POST', path: '/api/v1/chat/session', owner: ROUTE_OWNERS.BACKEND, boundaryId: 'chat', description: 'Create backend chat session through worker proxy' },
   { id: 'chat.message', method: 'POST', path: '/api/v1/chat/session/:sessionId/message', owner: ROUTE_OWNERS.BACKEND, boundaryId: 'chat', description: 'Backend chat completion streaming via worker proxy' },
   { id: 'chat.task', method: 'POST', path: '/api/v1/chat/session/:sessionId/task', owner: ROUTE_OWNERS.BACKEND, boundaryId: 'chat', description: 'Backend task orchestration via worker proxy' },

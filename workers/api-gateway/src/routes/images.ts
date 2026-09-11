@@ -10,7 +10,13 @@ import { getApiBaseUrl } from '../lib/config';
 import { proxyToBackendWithPolicy } from '../lib/backend-proxy';
 import { enforceKvRateLimit } from '../lib/rate-limit';
 
+import readerImages from './reader-images';
+
 const images = new Hono<HonoEnv>();
+images.route('/', readerImages);
+
+// The rendering bridge is origin-only. Do not let the catch-all proxy expose it.
+images.all('/render-private', c => error(c, 'Not found', 404, 'NOT_FOUND'));
 
 const DIRECT_UPLOAD_MAX_SIZE = 20 * 1024 * 1024; // 20MB
 const DIRECT_UPLOAD_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];

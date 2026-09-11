@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { translationDrainResponse } from './lib/translation-jobs';
 import type { HonoEnv } from '../types';
 import { success, unauthorized, serverError, badRequest } from '../lib/response';
 import { getAiServeUrl, getAiDefaultModel } from '../lib/config';
@@ -85,6 +86,8 @@ internal.use('*', async (c, next) => {
 
   await next();
 });
+
+internal.post('/translations/drain', (c) => translationDrainResponse(c.env));
 
 function decodeGeneratedImageBase64(value: string): Uint8Array | null {
   if (

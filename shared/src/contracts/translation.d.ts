@@ -46,16 +46,21 @@ export type TranslationGenerateInput = TranslationQuery & {
 
 export type TranslationJobStatus = {
   id: string;
-  type: 'translation.generate';
-  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  type?: 'translation.generate';
+  status: 'queued' | 'deferred' | 'running' | 'succeeded' | 'failed';
   message?: string;
   resultRef?: string;
-  statusUrl?: string;
-  cacheUrl?: string;
-  generateUrl?: string;
+  statusUrl: string;
+  cacheUrl: string;
+  generateUrl: string;
   contentHash?: string;
-  createdAt: string;
-  updatedAt: string;
+  key?: string; year?: string; slug?: string; targetLang?: TranslationLocale; sourceLang?: TranslationLocale;
+  forceRefresh?: boolean; attempts?: number; sourceVersion?: string; retryAt?: string;
+  error?: {status?: number; code?: string; message:string; retryable?:boolean; retryAfterSeconds?:number};
+  result?: {source:'cache'|'generated'|'passthrough';cached:boolean;isAiGenerated:boolean;translationAvailable:boolean;createdAt?:string;updatedAt?:string};
+  startedAt?: string; completedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export const translationErrorCodeSchema: ZodTypeAny;

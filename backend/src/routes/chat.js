@@ -1,3 +1,4 @@
+import { buildAgentPreferenceContext, normalizeAgentPreferences } from '../../../shared/src/contracts/agent-preferences.js';
 import { Router } from "express";
 import { WebSocketServer } from "ws";
 import crypto from "node:crypto";
@@ -474,7 +475,8 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
 
   try {
     const { sessionId } = req.params;
-    const { parts, context, enableRag } = req.body || {};
+    const { parts, context, enableRag, agentPreferences } = req.body || {};
+    const userPreferences = normalizeAgentPreferences(agentPreferences);
     const forcedModel = resolveChatModel(req);
 
     // Extract text from parts
@@ -497,6 +499,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
     const idempotencyPayload = {
       sessionId,
       parts: parts ?? null,
+      agentPreferences: userPreferences,
       context: context ?? null,
       enableRag: enableRag === true,
       model: forcedModel,
@@ -654,6 +657,7 @@ router.post("/session/:sessionId/message", async (req, res, next) => {
       let messagesWithContext = [...session.messages];
       const liveContext = getLiveContextForSession(effectiveSessionId);
       const contextParts = [
+        buildAgentPreferenceContext(userPreferences),
         partContext,
         liveContext,
         ragContext,
@@ -1213,19 +1217,20 @@ router.post("/session/:sessionId/task", async (req, res, next) => {
  */
 router.post("/aggregate", async (req, res, next) => {
   try {
-    const { prompt } = req.body || {};
+    const { prompt, agentPreferences } = req.body || {};
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return res.status(400).json({ ok: false, error: "prompt is required" });
     }
 
     const systemPrompt = [
+      buildAgentPreferenceContext(agentPreferences),
       "다음 입력에는 여러 대화 세션의 요약과 사용자의 통합 질문이 함께 포함되어 있습니다.",
       "먼저 세션 요약들을 충분히 이해한 뒤, 사용자의 요청에 따라 전체를 한 번에 통합하여 답변해 주세요.",
       "- 공통된 핵심 아이디어",
       "- 서로 다른 관점이나 긴장 지점",
       "- 다음 액션/실천 아이디어",
-      "를 중심으로 한국어로 정리해 주세요.",
+      "를 중심으로 사용자가 설정한 언어와 길이에 맞춰 정리해 주세요.",
       "",
       "---",
       "",

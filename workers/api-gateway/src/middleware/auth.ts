@@ -1,7 +1,8 @@
 import { Context, Next } from 'hono';
 import type { Env } from '../types';
 import { verifyJwt } from '../lib/jwt';
-import { unauthorized, forbidden } from '../lib/response';
+import { AnonymousAuthError, readBearerToken } from '../lib/anonymous-identity';
+import { unauthorized, forbidden, error } from '../lib/response';
 
 /**
  * Require any authenticated user
@@ -14,7 +15,7 @@ export async function requireAuth(c: Context, next: Next) {
     return unauthorized(c, 'Missing Authorization header');
   }
 
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const token = readBearerToken(authHeader);
   if (!token) {
     return unauthorized(c, 'Invalid Authorization header format');
   }
@@ -29,11 +30,15 @@ export async function requireAuth(c: Context, next: Next) {
 
     // Store user info in context for downstream handlers
     c.set('user', payload);
-    await next();
   } catch (err) {
+    if (err instanceof AnonymousAuthError && err.status === 503) {
+      c.header('Retry-After', '30');
+      return error(c, err.message, 503, err.code);
+    }
     const message = err instanceof Error ? err.message : 'Invalid token';
     return unauthorized(c, message);
   }
+  await next();
 }
 
 /**
@@ -52,7 +57,7 @@ export async function requireAdmin(c: Context, next: Next) {
     return unauthorized(c, 'Missing Authorization header');
   }
 
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const token = readBearerToken(authHeader);
   if (!token) {
     return unauthorized(c, 'Invalid Authorization header format');
   }
@@ -77,11 +82,15 @@ export async function requireAdmin(c: Context, next: Next) {
 
     // Store user info in context
     c.set('user', payload);
-    await next();
   } catch (err) {
+    if (err instanceof AnonymousAuthError && err.status === 503) {
+      c.header('Retry-After', '30');
+      return error(c, err.message, 503, err.code);
+    }
     const message = err instanceof Error ? err.message : 'Invalid token';
     return unauthorized(c, message);
   }
+  await next();
 }
 
 /**
@@ -96,7 +105,7 @@ export async function requireAdminBasic(c: Context, next: Next) {
     return unauthorized(c, 'Missing Authorization header');
   }
 
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const token = readBearerToken(authHeader);
   if (!token) {
     return unauthorized(c, 'Invalid Authorization header format');
   }
@@ -113,9 +122,13 @@ export async function requireAdminBasic(c: Context, next: Next) {
     }
 
     c.set('user', payload);
-    await next();
   } catch (err) {
+    if (err instanceof AnonymousAuthError && err.status === 503) {
+      c.header('Retry-After', '30');
+      return error(c, err.message, 503, err.code);
+    }
     const message = err instanceof Error ? err.message : 'Invalid token';
     return unauthorized(c, message);
   }
+  await next();
 }

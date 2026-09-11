@@ -1,3 +1,5 @@
+import { issueAnonymousToken, renewAnonymousToken, revokeAnonymousToken } from '../lib/anonymous-auth-service';
+import { AnonymousAuthError, readBearerToken } from '../lib/anonymous-identity';
 /**
  * Auth Routes — TOTP + OAuth2 (GitHub / Google)
  *
@@ -22,7 +24,7 @@
  *   POST /auth/logout     - Invalidate session
  *   GET  /auth/me         - Current user info
  *
- * Anonymous (unchanged, verbatim):
+ * Anonymous (proof-bound renewal):
  *   POST /auth/anonymous         - Issue anonymous JWT
  *   POST /auth/anonymous/refresh - Refresh anonymous JWT
  *
@@ -88,7 +90,7 @@ const TOTP_CHALLENGE_VERSION = 'totp-challenge-v1';
 const textEncoder = new TextEncoder();
 
 // Anonymous token expiry (30 days)
-const ANONYMOUS_TOKEN_EXPIRY = 30 * 24 * 3600;
+
 
 // TOTP challenge TTL (5 minutes)
 const CHALLENGE_TTL = 5 * 60;
@@ -1003,7 +1005,8 @@ auth.get('/me', async (c) => {
     return unauthorized(c, 'Missing Authorization header');
   }
 
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  c.header('Cache-Control', 'private, no-store');
+  const token = readBearerToken(authHeader);
   if (!token) {
     return unauthorized(c, 'Invalid Authorization format');
   }
@@ -1024,13 +1027,17 @@ auth.get('/me', async (c) => {
       },
     });
   } catch (err) {
+    if (err instanceof AnonymousAuthError && err.status === 503) {
+      c.header('Retry-After', '30');
+      return error(c, err.message, 503, err.code);
+    }
     const message = err instanceof Error ? err.message : 'Unauthorized';
     return unauthorized(c, message);
   }
 });
 
 // ============================================================================
-// ANONYMOUS TOKENS (verbatim — DO NOT MODIFY)
+// ANONYMOUS TOKENS — proof-bound continuity
 // ============================================================================
 
 /**
@@ -1039,131 +1046,33 @@ auth.get('/me', async (c) => {
  * This allows anonymous users to use features like memos, personas, etc.
  * The token contains a unique anonymous user ID that persists across sessions
  */
-auth.post('/anonymous', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
-  const { existingId } = body as { existingId?: string };
-
-  // Use existing anonymous ID or generate a new one
-  let anonymousId: string;
-
-  if (existingId && typeof existingId === 'string' && existingId.startsWith('anon-')) {
-    // Validate existing ID format (anon-{uuid})
-    const uuidPart = existingId.slice(5);
-    if (/^[a-f0-9-]{36}$/.test(uuidPart)) {
-      anonymousId = existingId;
-    } else {
-      anonymousId = `anon-${crypto.randomUUID()}`;
+// These endpoints never replace a failed proof with a fresh owner.
+async function anonymousResponse(c: import('hono').Context<HonoEnv>, operation: () => Promise<unknown>) {
+  c.header('Cache-Control', 'private, no-store');
+  c.header('Pragma', 'no-cache');
+  try { return success(c, await operation()); }
+  catch (cause) {
+    if (cause instanceof AnonymousAuthError) {
+      if (cause.status === 503) c.header('Retry-After', '30');
+      return error(c, cause.message, cause.status, cause.code);
     }
-  } else {
-    anonymousId = `anon-${crypto.randomUUID()}`;
+    return error(c, 'Anonymous authentication unavailable', 503, 'ANONYMOUS_AUTH_UNAVAILABLE');
   }
+}
 
-  // Generate a long-lived token for anonymous users
-  const token = await signJwt(
-    {
-      sub: anonymousId,
-      role: 'anonymous',
-      username: 'Anonymous',
-      tokenClass: 'anonymous',
-      type: 'access',
-    },
-    c.env,
-    ANONYMOUS_TOKEN_EXPIRY
-  );
-  const expiresAt = new Date(
-    Date.now() + ANONYMOUS_TOKEN_EXPIRY * 1000
-  ).toISOString();
+auth.post('/anonymous', async c => anonymousResponse(c, async () => {
+  const raw = await c.req.text();
+  if (raw.length > 1024) throw new AnonymousAuthError('BAD_REQUEST', 400, 'Anonymous request too large');
+  let body: unknown = {};
+  try { if (raw) body = JSON.parse(raw); }
+  catch { throw new AnonymousAuthError('BAD_REQUEST', 400, 'Invalid JSON'); }
+  return issueAnonymousToken(c.env, body, c.req.header('Authorization'));
+}));
 
-  return success(c, {
-    token,
-    userId: anonymousId,
-    tokenType: 'Bearer',
-    expiresIn: ANONYMOUS_TOKEN_EXPIRY,
-    expiresAt,
-    isAnonymous: true,
-  });
-});
+auth.post('/anonymous/refresh', c => anonymousResponse(c, () =>
+  renewAnonymousToken(c.env, c.req.header('Authorization'))));
 
-/**
- * POST /auth/anonymous/refresh
- * Refresh an anonymous token (extends expiration)
- */
-auth.post('/anonymous/refresh', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader) {
-    return unauthorized(c, 'Missing Authorization header');
-  }
-
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!token) {
-    return unauthorized(c, 'Invalid Authorization format');
-  }
-
-  try {
-    const payload = await verifyJwt(token, c.env);
-
-    // Only refresh anonymous tokens
-    if (
-      payload.role !== 'anonymous' ||
-      payload.type !== 'access' ||
-      payload.tokenClass !== 'anonymous' ||
-      !payload.sub?.startsWith('anon-')
-    ) {
-      return badRequest(c, 'Not an anonymous token');
-    }
-
-    // Generate new token with same anonymous ID
-    const newToken = await signJwt(
-      {
-        sub: payload.sub,
-        role: 'anonymous',
-        username: 'Anonymous',
-        tokenClass: 'anonymous',
-        type: 'access',
-      },
-      c.env,
-      ANONYMOUS_TOKEN_EXPIRY
-    );
-    const expiresAt = new Date(
-      Date.now() + ANONYMOUS_TOKEN_EXPIRY * 1000
-    ).toISOString();
-
-    return success(c, {
-      token: newToken,
-      userId: payload.sub,
-      tokenType: 'Bearer',
-      expiresIn: ANONYMOUS_TOKEN_EXPIRY,
-      expiresAt,
-      isAnonymous: true,
-    });
-  } catch (err) {
-    // Token expired or invalid - issue new anonymous token
-    const anonymousId = `anon-${crypto.randomUUID()}`;
-    const newToken = await signJwt(
-      {
-        sub: anonymousId,
-        role: 'anonymous',
-        username: 'Anonymous',
-        tokenClass: 'anonymous',
-        type: 'access',
-      },
-      c.env,
-      ANONYMOUS_TOKEN_EXPIRY
-    );
-    const expiresAt = new Date(
-      Date.now() + ANONYMOUS_TOKEN_EXPIRY * 1000
-    ).toISOString();
-
-    return success(c, {
-      token: newToken,
-      userId: anonymousId,
-      tokenType: 'Bearer',
-      expiresIn: ANONYMOUS_TOKEN_EXPIRY,
-      expiresAt,
-      isAnonymous: true,
-      renewed: true,
-    });
-  }
-});
+auth.post('/anonymous/revoke', c => anonymousResponse(c, () =>
+  revokeAnonymousToken(c.env, c.req.header('Authorization'))));
 
 export default auth;
