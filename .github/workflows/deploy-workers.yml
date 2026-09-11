@@ -43,7 +43,12 @@ jobs:
           STATE_EXPORT_PUBLIC_KEY: ${{ inputs.export_public_key }}
         run: |
           umask 077
-          npx wrangler d1 export blog-db-prod --env production --remote --output=/tmp/worker-state.sql
+          # Wrangler prints a signed plaintext download URL. Keep all its output
+          # private, including on failure, rather than putting it in public logs.
+          if ! npx wrangler d1 export blog-db-prod --env production --remote --output=/tmp/worker-state.sql > /tmp/state-export.log 2>&1; then
+            echo 'State export failed; no plaintext data or download URLs were published.'
+            exit 1
+          fi
           node ../../scripts/seal-state-export.mjs /tmp/worker-state.sql /tmp/worker-state.sealed
           rm /tmp/worker-state.sql
       - uses: actions/upload-artifact@v4
