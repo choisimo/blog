@@ -17,7 +17,9 @@
     "routes:check:orphans": "node scripts/check-orphan-routes.mjs",
     "k3s:backend:tunnel": "bash scripts/k3s-backend-tunnel.sh",
     "dev:frontend:k3s": "bash scripts/dev-frontend-k3s.sh",
-    "smoke:k3s:endpoints": "node scripts/smoke-k3s-endpoints.mjs"
+    "smoke:k3s:endpoints": "node scripts/smoke-k3s-endpoints.mjs",
+    "verify:anonymous": "node frontend/scripts/sync-anonymous-session.mjs --check && node scripts/verification/anonymous-r07-1.cjs",
+    "verify:translation": "node scripts/verification/translation-a02.cjs"
   },
   "devDependencies": {},
   "dependencies": {

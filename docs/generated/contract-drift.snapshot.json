@@ -520,7 +520,8 @@
     {
       "file": "frontend/src/services/content/translate.ts",
       "sharedContracts": [
-        "translation"
+        "translation",
+        "translation-path"
       ]
     },
     {

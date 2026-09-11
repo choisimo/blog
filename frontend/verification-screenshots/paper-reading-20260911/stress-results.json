@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "theme": "light",
+      "cardHeight": 869,
+      "stageHeight": 869,
+      "docWidth": 375,
+      "viewport": 390,
+      "viewWidth": 303,
+      "viewScroll": 303
+    },
+    {
+      "theme": "dark terminal",
+      "cardHeight": 504,
+      "stageHeight": 504,
+      "docWidth": 375,
+      "viewport": 390,
+      "viewWidth": 305,
+      "viewScroll": 305
+    }
+  ],
+  "syntheticLongText": true,
+  "terminalAndLight": true
+}

@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: 100 wake signals are coalesced and contain no caller-supplied URL or source text
+ok 1 - 100 wake signals are coalesced and contain no caller-supplied URL or source text
+  ---
+  duration_ms: 29.116896
+  type: 'test'
+  ...
+# Subtest: unconfigured transport rejects a wake and never fetches
+ok 2 - unconfigured transport rejects a wake and never fetches
+  ---
+  duration_ms: 0.185227
+  type: 'test'
+  ...
+# Subtest: consumer HTTP errors do not cause unbounded automatic retry
+ok 3 - consumer HTTP errors do not cause unbounded automatic retry
+  ---
+  duration_ms: 1.024605
+  type: 'test'
+  ...
+# Subtest: a disconnected observation is not a successful generation result
+ok 4 - a disconnected observation is not a successful generation result
+  ---
+  duration_ms: 0.595944
+  type: 'test'
+  ...
+# Subtest: one process pump is bounded even with an endless backlog
+ok 5 - one process pump is bounded even with an endless backlog
+  ---
+  duration_ms: 1.371049
+  type: 'test'
+  ...
+# Subtest: SSE frames split across network chunks are parsed without buffering the whole job
+ok 6 - SSE frames split across network chunks are parsed without buffering the whole job
+  ---
+  duration_ms: 1.316766
+  type: 'test'
+  ...
+# Subtest: unexpected large executor bodies are stopped rather than retained in memory
+ok 7 - unexpected large executor bodies are stopped rather than retained in memory
+  ---
+  duration_ms: 0.814585
+  type: 'test'
+  ...
+# Subtest: a later explicit wake can recover after a failed callback
+ok 8 - a later explicit wake can recover after a failed callback
+  ---
+  duration_ms: 0.723409
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 108.751057

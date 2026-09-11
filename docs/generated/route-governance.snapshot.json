@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-01T04:49:42.163Z",
+  "generatedAt": "2026-09-10T00:23:21.114Z",
   "counts": {
     "serviceBoundaries": {
       "worker-owned": 27,
@@ -8,8 +8,8 @@
       "compatibility": 1
     },
     "routeBoundaries": {
-      "backend-owned": 29,
-      "worker-owned": 2
+      "worker-owned": 9,
+      "backend-owned": 29
     }
   },
   "serviceBoundaries": [
@@ -41,7 +41,7 @@
       "id": "images",
       "prefix": "/api/v1/images",
       "owner": "worker-owned",
-      "description": "Image upload and vision routing"
+      "description": "Image upload, vision routing and quota-protected private reader generation"
     },
     {
       "id": "og",
@@ -255,6 +255,62 @@
     }
   ],
   "routeBoundaries": [
+    {
+      "id": "reader-images.policy",
+      "method": "GET",
+      "path": "/api/v1/images/generation-policy",
+      "owner": "worker-owned",
+      "boundaryId": "images",
+      "description": "Verified principal daily image policy"
+    },
+    {
+      "id": "reader-images.generate",
+      "method": "POST",
+      "path": "/api/v1/images/generate",
+      "owner": "worker-owned",
+      "boundaryId": "images",
+      "description": "Atomic quota reservation and private image generation"
+    },
+    {
+      "id": "reader-images.job",
+      "method": "GET",
+      "path": "/api/v1/images/generations/:key",
+      "owner": "worker-owned",
+      "boundaryId": "images",
+      "description": "Owner-scoped generation status without resubmission"
+    },
+    {
+      "id": "reader-images.object",
+      "method": "GET",
+      "path": "/api/v1/images/generated/:id",
+      "owner": "worker-owned",
+      "boundaryId": "images",
+      "description": "Authenticated private PNG read with retention cutoff"
+    },
+    {
+      "id": "reader-images.origin-bridge-blocked",
+      "method": "POST",
+      "path": "/api/v1/images/render-private",
+      "owner": "worker-owned",
+      "boundaryId": "images",
+      "description": "Public edge returns 404; only the reserved quota handler calls origin directly"
+    },
+    {
+      "id": "agent-preferences.read",
+      "method": "GET",
+      "path": "/api/v1/user/agent-preferences",
+      "owner": "worker-owned",
+      "boundaryId": "user",
+      "description": "Verified member preference read"
+    },
+    {
+      "id": "agent-preferences.write",
+      "method": "PUT",
+      "path": "/api/v1/user/agent-preferences",
+      "owner": "worker-owned",
+      "boundaryId": "user",
+      "description": "Verified member preference compare-and-swap update"
+    },
     {
       "id": "chat.session.create",
       "method": "POST",

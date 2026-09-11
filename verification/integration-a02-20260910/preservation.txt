@@ -1,0 +1,1 @@
+PASS: 332 content/config files match before-snapshot SHA-256. Includes protected article manifests, RSS, sitemap, secrets source modules, post Markdown, k3s YAML. No preexisting snapshot path was deleted. backend/nginx.conf symlink preserved.

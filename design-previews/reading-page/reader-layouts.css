@@ -1,0 +1,1788 @@
+/* Preview-only presentation. Existing article and AI components own their state. */
+:root[data-reader-design] {
+  --rp-accent: hsl(var(--ui-accent, 153 28% 28%));
+  --rp-ink: hsl(var(--ui-text, 155 23% 19%));
+  --rp-muted: hsl(var(--ui-muted, 145 8% 43%));
+  --rp-line: hsl(var(--ui-line, 100 13% 83%));
+  --rp-surface: hsl(var(--ui-surface, 48 25% 98%));
+  --rp-soft: hsl(var(--ui-soft, 90 17% 93%));
+  --rp-font: var(--fn-sans, "Noto Sans CJK KR", sans-serif);
+}
+#reader-design-controls {
+  position: relative;
+  z-index: 95;
+  font-family: var(--rp-font);
+  color: var(--rp-ink);
+  font-size: 12px;
+}
+#reader-design-controls button,
+#reader-design-controls select,
+.rp-panel-tools button {
+  min-height: 44px;
+  cursor: pointer;
+  font: inherit;
+  touch-action: manipulation;
+}
+#reader-design-controls button:disabled,
+.rp-panel-tools button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+#reader-design-controls button:focus-visible,
+#reader-design-controls select:focus-visible,
+.rp-panel-tools button:focus-visible,
+.rp-panel-tools summary:focus-visible,
+.rp-panel-tools textarea:focus-visible {
+  outline: 3px solid var(--rp-accent);
+  outline-offset: 3px;
+}
+.rp-switcher {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 36px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-surface);
+  box-shadow: 0 12px 55px #17332624;
+  border-radius: 12px;
+  white-space: nowrap;
+  z-index: 95;
+}
+.rp-switcher button {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: transparent;
+  font-size: 11px !important;
+}
+.rp-switcher button:hover {
+  background: var(--rp-soft);
+}
+.rp-switcher .rp-switcher-mark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--rp-accent);
+  font-family: Georgia, serif;
+  font-size: 22px !important;
+  padding: 0 8px;
+}
+.rp-switcher-mark span {
+  font-family: var(--rp-font);
+  font-size: 10px;
+}
+.rp-select-group {
+  border-left: 1px solid var(--rp-line);
+  padding-left: 14px;
+}
+.rp-select-group label {
+  font-size: 9px;
+  display: block;
+  color: var(--rp-muted);
+}
+.rp-select-group select {
+  border: 0;
+  background: transparent;
+  font-weight: 650;
+  font-size: 13px !important;
+  min-height: 27px !important;
+  width: 184px;
+  outline-offset: 0;
+}
+.rp-switcher-nav {
+  display: flex;
+}
+.rp-switcher .rp-switcher-nav button {
+  padding: 0;
+  width: 36px;
+  min-width: 44px;
+}
+.rp-switcher .rp-original {
+  border-color: var(--rp-line);
+}
+.rp-switcher .rp-go-ai {
+  color: var(--rp-accent);
+  background: var(--rp-soft);
+}
+.rp-switcher .rp-save {
+  color: var(--rp-surface);
+  background: var(--rp-accent);
+  padding-inline: 15px;
+}
+.rp-switcher .rp-save[aria-pressed="true"] {
+  background: var(--rp-soft);
+  color: var(--rp-accent);
+  border-color: var(--rp-accent);
+}
+.rp-live-info {
+  position: fixed;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  background: var(--rp-surface);
+  border: 1px solid var(--rp-line);
+  padding: 1px 10px;
+  border-radius: 20px;
+  font-size: 9px;
+  color: var(--rp-muted);
+  white-space: nowrap;
+  z-index: 94;
+}
+.rp-live-info span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: #a88747;
+}
+.rp-live-info .rp-online {
+  background: #4f895d;
+}
+.rp-collapsed {
+  left: 22px;
+  transform: none;
+  bottom: 22px;
+}
+.rp-selection-status {
+  position: fixed;
+  bottom: 115px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  background: var(--rp-ink);
+  color: var(--rp-surface);
+  padding: 5px 8px 5px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-radius: 8px;
+  box-shadow: 0 5px 20px #0002;
+}
+.rp-selection-status button {
+  width: 44px;
+  font-size: 22px !important;
+}
+.rp-design-dialog {
+  width: min(1180px, 94vw);
+  max-height: 88vh;
+  overflow: auto;
+  border: 1px solid var(--rp-line);
+  padding: 30px;
+  background: var(--rp-surface);
+  color: var(--rp-ink);
+  border-radius: 15px;
+  box-shadow: 0 25px 100px #0003;
+}
+.rp-design-dialog::backdrop {
+  background: #15281bcc;
+  backdrop-filter: blur(5px);
+}
+.rp-design-dialog header {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+.rp-design-dialog header > button {
+  width: 44px;
+  font-size: 23px !important;
+  flex-shrink: 0;
+}
+.rp-design-dialog header span {
+  font-size: 10px;
+  color: var(--rp-muted);
+  letter-spacing: 1px;
+}
+.rp-design-dialog h2 {
+  font-family: var(--rp-font);
+  font-size: 25px;
+  letter-spacing: -0.04em;
+  margin: 8px 0;
+  font-weight: 600;
+}
+.rp-design-dialog p {
+  font-size: 11px;
+  color: var(--rp-muted);
+  line-height: 1.8;
+  word-break: keep-all;
+}
+.rp-design-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 13px;
+}
+.rp-design-grid > button {
+  padding: 14px;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-surface);
+  border-radius: 8px;
+  text-align: left;
+}
+.rp-design-grid > button:hover,
+.rp-design-grid > button[aria-pressed="true"] {
+  border-color: var(--rp-accent);
+  background: var(--rp-soft);
+}
+.rp-design-grid b {
+  font-size: 12px;
+  display: block;
+  margin: 12px 0 6px;
+}
+.rp-design-grid small {
+  font-size: 10px;
+  color: var(--rp-muted);
+  margin-right: 6px;
+  font-weight: 400;
+}
+.rp-diagram {
+  height: 93px;
+  background: var(--rp-soft);
+  border: 1px solid var(--rp-line);
+  border-radius: 5px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  padding: 12px;
+}
+.rp-diagram i {
+  background: var(--rp-accent);
+  opacity: 0.2;
+  border-radius: 2px;
+}
+.rp-diagram i:first-child {
+  opacity: 0.5;
+}
+.rp-diagram-1 i:first-child {
+  grid-column: 1/-1;
+}
+.rp-diagram-1 i:nth-child(2) {
+  grid-column: 1/-1;
+  grid-row: 2/4;
+}
+.rp-diagram-2 i:first-child {
+  grid-column: 1/3;
+  grid-row: 1/4;
+}
+.rp-diagram-2 i:nth-child(2) {
+  grid-row: 1/4;
+}
+.rp-diagram-3 i:first-child {
+  grid-row: 1/4;
+}
+.rp-diagram-3 i:nth-child(2) {
+  grid-column: 2/4;
+  grid-row: 1/4;
+}
+.rp-diagram-4 i {
+  grid-row: 1/2;
+}
+.rp-diagram-4 {
+  border-bottom: 32px solid var(--rp-line);
+}
+.rp-diagram-5 i:first-child {
+  grid-column: 1/3;
+}
+.rp-diagram-5 i:nth-child(2) {
+  grid-column: 2/4;
+}
+.rp-diagram-5 i:last-child {
+  grid-column: 1/3;
+}
+.rp-diagram-6 i {
+  grid-row: 1/4;
+}
+.rp-diagram-7 i {
+  grid-column: 1/-1;
+  border-left: 5px solid var(--rp-accent);
+}
+.rp-diagram-8 i:first-child {
+  grid-column: 1/3;
+  grid-row: 1/4;
+}
+.rp-diagram-8 i:nth-child(2) {
+  grid-row: 1/4;
+}
+.rp-diagram-9 i:first-child {
+  grid-column: 1/-1;
+}
+.rp-diagram-9 i:nth-child(2) {
+  grid-column: 1/-1;
+  grid-row: 2/4;
+}
+.rp-diagram-10 i:first-child {
+  grid-row: 1/4;
+}
+.rp-diagram-10 i:nth-child(2) {
+  grid-column: 2/4;
+  grid-row: 1/3;
+}
+.rp-diagram-10 i:last-child {
+  grid-column: 2/4;
+}
+.rp-design-dialog footer {
+  margin-top: 20px;
+  border-top: 1px solid var(--rp-line);
+  padding-top: 15px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+.rp-design-dialog footer button {
+  font-size: 12px;
+  color: var(--rp-accent);
+}
+.rp-design-dialog footer span {
+  font-size: 10px;
+  color: var(--rp-muted);
+}
+/* Shared improvements apply exclusively to the ten variants. */
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-panel {
+  border: 1px solid var(--rp-line);
+  border-radius: 12px;
+  background: var(--rp-surface);
+  box-shadow: 0 6px 20px #263b3206;
+  overflow: hidden;
+  margin: 18px 0 34px;
+  scroll-margin-top: 105px;
+  isolation: isolate;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-panel-header {
+  padding: 17px 20px 10px;
+  min-height: 65px;
+  border-bottom: 0;
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-panel-heading
+  .sentio-eyebrow {
+  font-size: 13px !important;
+  font-weight: 600;
+  color: var(--rp-ink);
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-heading-icon {
+  width: 33px;
+  height: 33px;
+  border-radius: 8px;
+  background: var(--rp-soft);
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-compact-bar {
+  padding: 0 20px 12px;
+  gap: 6px;
+  border-bottom: 1px solid var(--rp-line);
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-compact-mode {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-compact-mode[aria-pressed="true"] {
+  background: var(--rp-soft);
+  color: var(--rp-accent);
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-panel-content {
+  padding: 0 20px 20px;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-feed-scroll {
+  max-height: 620px;
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rp-line) transparent;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-result-status {
+  padding: 10px 0 12px;
+  margin: 0;
+  font-size: 11px;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought {
+  padding: 20px;
+  margin: 0 0 14px;
+  border: 1px solid var(--rp-line);
+  border-radius: 9px;
+  min-width: 0;
+  box-shadow: none;
+  background: var(--rp-surface);
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought::after {
+  display: none;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought-header {
+  margin-bottom: 18px;
+  gap: 10px;
+  font-size: 11px;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought-number {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+  flex-shrink: 0;
+  background: var(--rp-soft);
+  color: var(--rp-accent);
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought h3 {
+  font: 500 24px/1.65 var(--rd-serif);
+  letter-spacing: -0.035em;
+  margin: 0 0 15px;
+  color: var(--rp-ink);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought p,
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought li {
+  font-size: 14px;
+  line-height: 1.9;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought-body {
+  margin: 12px 0;
+  padding: 11px 15px;
+  background: var(--rp-soft);
+  border-left: 2px solid var(--rp-accent);
+  border-radius: 0 5px 5px 0;
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-thought
+  > [data-reader-internal="true"],
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-thought
+  [data-reader-internal="true"],
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-thought
+  [data-reader-repeat="true"] {
+  display: none;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought > ul {
+  margin: 14px 0 17px;
+  padding-left: 20px;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought-tags {
+  margin: 12px 0;
+}
+.sentio-panel .rp-panel-tools {
+  font-family: var(--rp-font);
+  font-size: 12px;
+  color: var(--rp-ink);
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-exploration-controls {
+  padding: 15px 0 0;
+  margin: 17px 0 0;
+  border-top: 1px solid var(--rp-line);
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-exploration-choice {
+  font-family: var(--rp-font);
+  font-size: 12px;
+  line-height: 1.65;
+  padding: 10px 13px;
+  min-height: 44px;
+  border: 1px solid var(--rp-line);
+  background: var(--rp-soft);
+  color: var(--rp-accent);
+  border-radius: 7px;
+  word-break: keep-all;
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-exploration-form {
+  border: 1px solid var(--rp-line);
+  border-radius: 7px;
+  background: var(--rp-surface);
+  min-height: 52px;
+  margin-top: 10px;
+  padding: 3px;
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-exploration-form
+  input {
+  font-family: var(--rp-font);
+  font-size: 13px;
+  min-width: 0;
+  padding: 10px;
+  background: transparent;
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-exploration-form
+  button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 5px;
+  color: var(--rp-surface);
+  background: var(--rp-accent);
+}
+:root[data-reader-design]:not([data-reader-design="0"])
+  .sentio-exploration-form
+  button:disabled {
+  opacity: 0.4;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-feed-status {
+  margin: 0;
+  padding: 13px 0 0;
+  font-size: 11px;
+  color: var(--rp-muted);
+  border-top: 1px solid var(--rp-line);
+}
+.rp-panel-tools {
+  padding: 0 20px;
+}
+.rp-source {
+  margin: 14px 0 4px;
+  border-bottom: 1px solid var(--rp-line);
+}
+.rp-source summary {
+  min-height: 44px;
+  cursor: pointer;
+  padding: 10px 0;
+  font: 11px/1.8 var(--rp-font);
+  color: var(--rp-muted);
+}
+.rp-source blockquote {
+  border: 0;
+  border-left: 2px solid var(--rp-accent);
+  padding: 10px 14px;
+  margin: 0 0 17px;
+  background: var(--rp-soft);
+  font: 12px/1.95 var(--rp-font);
+  word-break: keep-all;
+  color: var(--rp-ink);
+  max-height: 230px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.rp-question-nav {
+  padding: 15px 0 0;
+}
+.rp-nav-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--rp-muted);
+  margin-bottom: 9px;
+}
+.rp-nav-heading strong {
+  font-weight: 500;
+}
+.rp-question-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rp-question-options button {
+  border: 1px solid var(--rp-line);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 12px;
+  line-height: 1.7;
+  background: var(--rp-surface);
+  font-size: 11px;
+  word-break: keep-all;
+  min-width: 44px;
+}
+.rp-question-options button[aria-pressed="true"] {
+  border-color: var(--rp-accent);
+  color: var(--rp-accent);
+  background: var(--rp-soft);
+}
+.rp-question-number {
+  font-family: var(--fn-mono, monospace);
+  font-size: 10px;
+}
+.rp-question-label {
+  display: none;
+}
+.rp-step-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.rp-step-controls button {
+  min-height: 44px;
+  border-radius: 5px;
+  padding: 0 8px;
+}
+.rp-step-controls span {
+  font-size: 10px;
+  color: var(--rp-muted);
+}
+.rp-note {
+  padding: 22px;
+  background: var(--rp-soft);
+  border: 1px solid var(--rp-line);
+  border-radius: 8px;
+}
+.rp-note > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.rp-note > div span {
+  font-size: 10px;
+  color: var(--rp-muted);
+}
+.rp-note label {
+  display: block;
+  margin: 23px 0 12px;
+  font-family: var(--rd-serif);
+  font-size: 18px;
+  line-height: 1.8;
+}
+.rp-note textarea {
+  width: 100%;
+  min-height: 250px;
+  border: 0;
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    var(--rp-line) 31px,
+    var(--rp-line) 32px
+  );
+  color: var(--rp-ink);
+  font: 14px/32px var(--rp-font);
+  resize: vertical;
+  padding: 0 3px;
+}
+.rp-note > p {
+  margin-top: 10px;
+  color: var(--rp-muted);
+  font-size: 10px;
+}
+/* 01 — One question, in the original reading flow. */
+:root[data-reader-design][data-reader-design="1"]
+  .sentio-thought[data-reader-selected="false"],
+:root[data-reader-design][data-reader-design="2"]
+  .sentio-thought[data-reader-selected="false"],
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-thought[data-reader-selected="false"],
+:root[data-reader-design][data-reader-design="4"]
+  .sentio-thought[data-reader-selected="false"],
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-thought[data-reader-selected="false"],
+:root[data-reader-design][data-reader-design="9"]
+  .sentio-thought[data-reader-selected="false"],
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-thought[data-reader-selected="false"] {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="1"]
+  .sentio-panel
+  .sentio-thought {
+  border: 0;
+  padding: 19px 10px 10px;
+  margin: 0;
+}
+:root[data-reader-design][data-reader-design="1"]
+  .sentio-panel
+  .rp-question-nav {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+.rp-question-nav .rp-step-controls {
+  grid-column: 1/-1;
+}
+:root[data-reader-design][data-reader-design="1"] .rp-nav-heading {
+  margin: 0;
+  align-items: center;
+}
+.rp-nav-heading span {
+  white-space: nowrap;
+}
+:root[data-reader-design][data-reader-design="1"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: none;
+  overflow: visible;
+}
+:root[data-reader-design][data-reader-design="1"] .rp-step-controls {
+  display: none;
+}
+/* 02 — A persistent inspector beside the real article. */
+@media (min-width: 1100px) {
+  :root[data-reader-design][data-reader-design="2"]
+    .fn-reading-layout.rd-shell {
+    max-width: calc(100% - 480px);
+    margin-left: 0;
+    margin-right: 480px;
+    grid-template-columns: 132px minmax(0, 680px);
+    gap: 32px;
+    padding-inline: 24px;
+  }
+  :root[data-reader-design][data-reader-design="2"] .rd-right {
+    display: none;
+  }
+  :root[data-reader-design][data-reader-design="2"]
+    .sentio-panel:not([hidden]) {
+    position: fixed;
+    right: 24px;
+    top: 100px;
+    bottom: 138px;
+    width: 430px;
+    max-height: calc(100dvh - 238px);
+    margin: 0;
+    z-index: 45;
+    overflow: auto;
+    box-shadow: 0 10px 40px #19342516;
+    scrollbar-width: thin;
+  }
+  :root[data-reader-design][data-reader-design="2"]
+    .sentio-panel
+    .sentio-panel-header {
+    position: sticky;
+    top: 0;
+    background: var(--rp-surface);
+    z-index: 5;
+    border-bottom: 1px solid var(--rp-line);
+  }
+}
+:root[data-reader-design][data-reader-design="2"]
+  .sentio-panel
+  .sentio-thought {
+  border: 0;
+  padding: 16px 0;
+  margin: 0;
+}
+:root[data-reader-design][data-reader-design="2"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: none;
+  overflow: visible;
+}
+:root[data-reader-design][data-reader-design="2"] .rp-source blockquote {
+  max-height: 155px;
+  font-size: 12px;
+}
+:root[data-reader-design][data-reader-design="2"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-size: 23px;
+}
+:root[data-reader-design][data-reader-design="2"] .rp-step-controls {
+  display: none;
+}
+/* 03 — Index / detail within the existing panel. */
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel[data-mode="chain"] {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.7fr) minmax(0, 1.6fr);
+}
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-panel-header,
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-expanded-modes,
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-compact-modes {
+  grid-column: 1/-1;
+}
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel[data-mode="chain"]
+  > .rp-panel-tools {
+  padding: 0 15px 20px;
+  background: var(--rp-soft);
+  border-right: 1px solid var(--rp-line);
+}
+:root[data-reader-design][data-reader-design="3"] .rp-question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+:root[data-reader-design][data-reader-design="3"] .rp-question-label {
+  display: block;
+  font-size: 11px;
+}
+:root[data-reader-design][data-reader-design="3"] .rp-question-options button {
+  padding: 12px 10px;
+  align-items: start;
+  width: 100%;
+  background: transparent;
+  border-color: transparent;
+}
+:root[data-reader-design][data-reader-design="3"]
+  .rp-question-options
+  button[aria-pressed="true"] {
+  background: var(--rp-surface);
+  border-color: var(--rp-line);
+}
+:root[data-reader-design][data-reader-design="3"] .rp-source {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel
+  .sentio-panel-content {
+  padding: 5px 19px 20px;
+}
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel
+  .sentio-thought {
+  padding: 15px 0 0;
+  border: 0;
+  background: transparent;
+  margin: 0;
+}
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-family: var(--rp-font);
+  font-size: 21px;
+  font-weight: 650;
+}
+:root[data-reader-design][data-reader-design="3"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: 650px;
+}
+:root[data-reader-design][data-reader-design="3"] .rp-step-controls {
+  display: none;
+}
+/* 04 — Sequential progress; the original cards remain mounted. */
+:root[data-reader-design][data-reader-design="4"] .sentio-panel {
+  background: var(--rp-soft);
+}
+:root[data-reader-design][data-reader-design="4"] .rp-question-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+:root[data-reader-design][data-reader-design="4"] .rp-question-options button {
+  display: flex;
+  align-items: start;
+  gap: 7px;
+  padding: 11px 9px;
+  min-height: 80px;
+}
+:root[data-reader-design][data-reader-design="4"] .rp-question-label {
+  display: block;
+  font-size: 10px;
+}
+:root[data-reader-design][data-reader-design="4"] .rp-question-number {
+  background: var(--rp-soft);
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+:root[data-reader-design][data-reader-design="4"]
+  .rp-question-options
+  button[aria-pressed="true"]
+  .rp-question-number {
+  background: var(--rp-accent);
+  color: var(--rp-surface);
+}
+:root[data-reader-design][data-reader-design="4"] .rp-source {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="4"]
+  .sentio-panel
+  .sentio-thought {
+  padding: 25px;
+  border-radius: 9px;
+  box-shadow: 0 3px 15px #173a2b07;
+}
+:root[data-reader-design][data-reader-design="4"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: none;
+  overflow: visible;
+}
+/* 05 — Full thread, questions and streaming responses in one flow. */
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-thought {
+  border: 0;
+  border-bottom: 1px solid var(--rp-line);
+  border-radius: 0;
+  background: transparent;
+  padding: 22px 5px 28px 38px;
+  position: relative;
+  margin: 0;
+}
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-thought-number {
+  position: absolute;
+  left: 0;
+  top: 24px;
+  border-radius: 8px;
+  width: 27px;
+  height: 27px;
+}
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-thought-header {
+  justify-content: flex-end;
+  margin-bottom: 8px;
+  min-height: 35px;
+}
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-size: 23px;
+}
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-exploration-question {
+  margin-left: auto;
+  max-width: 90%;
+  padding: 12px 16px;
+  background: var(--rp-soft);
+  border-radius: 12px 12px 0 12px;
+  color: var(--rp-ink);
+}
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-exploration-controls {
+  border-top: 0;
+  padding-top: 0;
+}
+:root[data-reader-design][data-reader-design="5"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: 650px;
+}
+:root[data-reader-design][data-reader-design="5"] .rp-question-nav {
+  display: none;
+}
+/* 06 — Parallel question cards; every native action remains available. */
+@media (min-width: 1200px) {
+  :root[data-reader-design][data-reader-design="6"]
+    .fn-reading-layout.rd-shell {
+    grid-template-columns: 160px minmax(0, 980px);
+    max-width: 1280px;
+  }
+  :root[data-reader-design][data-reader-design="6"] .rd-right {
+    display: none;
+  }
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  max-height: none;
+  overflow: visible;
+  align-items: start;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-thought {
+  padding: 17px 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 375px !important;
+  margin: 0;
+  border-top: 3px solid var(--rp-accent);
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-family: var(--rp-font);
+  font-size: 18px;
+  font-weight: 600;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-thought
+  p,
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-thought
+  li {
+  font-size: 12px;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-thought
+  .sentio-exploration-controls {
+  margin-top: auto;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-exploration-form
+  input {
+  font-size: 11px;
+  padding: 8px;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-thought[data-reader-selected="true"] {
+  box-shadow: 0 0 0 1px var(--rp-accent);
+}
+:root[data-reader-design][data-reader-design="6"] .rp-step-controls {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="6"] .rp-question-label {
+  display: block;
+  max-width: 180px;
+  font-size: 10px;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-feed-scroll
+  > [aria-hidden="true"] {
+  grid-column: 1/-1;
+}
+/* 07 — A connected vertical reading path, full cards and anchor navigation. */
+:root[data-reader-design][data-reader-design="7"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: 690px;
+  padding: 10px 5px 5px 24px;
+  border-left: 1px solid var(--rp-line);
+  margin-left: 15px;
+}
+:root[data-reader-design][data-reader-design="7"]
+  .sentio-panel
+  .sentio-thought {
+  position: relative;
+  border: 0;
+  border-bottom: 1px solid var(--rp-line);
+  padding: 0 0 24px 15px;
+  border-radius: 0;
+  background: transparent;
+  margin-bottom: 25px;
+}
+:root[data-reader-design][data-reader-design="7"]
+  .sentio-panel
+  .sentio-thought::before {
+  content: "";
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--rp-line);
+  left: -30px;
+  top: 16px;
+  outline: 5px solid var(--rp-surface);
+}
+:root[data-reader-design][data-reader-design="7"]
+  .sentio-panel
+  .sentio-thought[data-reader-selected="true"]::before {
+  background: var(--rp-accent);
+}
+:root[data-reader-design][data-reader-design="7"] .rp-question-options {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rp-line);
+}
+:root[data-reader-design][data-reader-design="7"] .rp-step-controls {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="7"] .rp-source {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="7"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-size: 25px;
+}
+/* 08 — A real persistent note alongside the question. */
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel[data-mode="chain"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 1fr);
+}
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-panel-header,
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-expanded-modes,
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-compact-modes {
+  grid-column: 1/-1;
+}
+:root[data-reader-design][data-reader-design="8"] .rp-panel-tools {
+  display: contents;
+}
+:root[data-reader-design][data-reader-design="8"] .rp-source {
+  grid-column: 1/-1;
+  margin: 5px 20px 0;
+}
+:root[data-reader-design][data-reader-design="8"] .rp-source blockquote {
+  max-height: 145px;
+}
+:root[data-reader-design][data-reader-design="8"] .rp-question-nav {
+  grid-column: 1/-1;
+  margin: 0 20px 8px;
+}
+:root[data-reader-design][data-reader-design="8"] .rp-step-controls {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="8"] .rp-note {
+  grid-column: 2;
+  grid-row: 6/9;
+  margin: 10px 20px 22px 0;
+  align-self: start;
+  min-width: 0;
+}
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-panel-content {
+  grid-column: 1;
+  grid-row: 6/9;
+  padding: 0 15px 20px 20px;
+}
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel
+  .sentio-thought {
+  padding: 15px 0;
+  border: 0;
+  background: transparent;
+}
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-size: 23px;
+}
+:root[data-reader-design][data-reader-design="8"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: none;
+  overflow: visible;
+}
+/* 09 — Nonmodal bottom sheet. Native Escape and close restore paragraph focus. */
+:root[data-reader-design][data-reader-design="9"] .sentio-panel:not([hidden]) {
+  position: fixed;
+  bottom: 122px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(820px, calc(100vw - 40px));
+  max-height: 72dvh;
+  overflow: auto;
+  z-index: 50;
+  margin: 0;
+  border-radius: 20px 20px 10px 10px;
+  box-shadow: 0 -5px 65px #14261b29;
+  scrollbar-width: thin;
+}
+:root[data-reader-design][data-reader-design="9"]
+  .sentio-panel
+  .sentio-panel-header {
+  position: sticky;
+  top: 0;
+  background: var(--rp-surface);
+  z-index: 5;
+  border-bottom: 1px solid var(--rp-line);
+  padding-top: 20px;
+}
+:root[data-reader-design][data-reader-design="9"]
+  .sentio-panel
+  .sentio-panel-header::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: calc(50% - 17px);
+  width: 34px;
+  height: 4px;
+  border-radius: 5px;
+  background: var(--rp-line);
+}
+:root[data-reader-design][data-reader-design="9"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: none;
+  overflow: visible;
+}
+:root[data-reader-design][data-reader-design="9"]
+  .sentio-panel
+  .sentio-thought {
+  border: 0;
+  padding: 12px 0;
+  margin: 0;
+}
+:root[data-reader-design][data-reader-design="9"] .rp-step-controls {
+  display: none;
+}
+/* 10 — The actual source stays beside the selected question and evidence. */
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel[data-mode="chain"] {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.95fr) minmax(0, 1.4fr);
+}
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-panel-header,
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-expanded-modes,
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel[data-mode="chain"]
+  > .sentio-compact-modes {
+  grid-column: 1/-1;
+}
+:root[data-reader-design][data-reader-design="10"] .rp-panel-tools {
+  padding: 5px 20px 20px;
+  background: var(--rp-soft);
+  border-right: 1px solid var(--rp-line);
+}
+:root[data-reader-design][data-reader-design="10"] .rp-source {
+  margin: 0;
+  border: 0;
+}
+:root[data-reader-design][data-reader-design="10"] .rp-source blockquote {
+  max-height: none;
+  padding: 0;
+  margin: 8px 0 18px;
+  border: 0;
+  font-family: var(--rd-serif);
+  font-size: 13px;
+  line-height: 2.1;
+  background: transparent;
+}
+:root[data-reader-design][data-reader-design="10"] .rp-question-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+:root[data-reader-design][data-reader-design="10"] .rp-question-options button {
+  justify-content: center;
+  padding: 7px;
+}
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel
+  .sentio-thought {
+  border: 0;
+  padding: 15px 0 0;
+  background: transparent;
+  margin: 0;
+}
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel
+  .sentio-thought
+  h3 {
+  font-family: var(--rp-font);
+  font-size: 21px;
+  font-weight: 650;
+}
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: none;
+  overflow: visible;
+}
+/* Reduced nesting, predictable reflow, and touch targets at narrower widths. */
+@media (max-width: 1100px) {
+  .rp-switcher-mark span {
+    display: none;
+  }
+  .rp-switcher {
+    gap: 4px;
+    padding: 8px;
+    bottom: 29px;
+  }
+  .rp-switcher button {
+    padding: 0 8px;
+    font-size: 10px !important;
+  }
+  .rp-select-group {
+    padding-left: 9px;
+  }
+  .rp-select-group select {
+    width: 160px;
+    font-size: 12px !important;
+  }
+  .rp-switcher-nav {
+    display: none;
+  }
+  .rp-design-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .rp-switcher {
+    width: calc(100% - 20px);
+    max-width: 560px;
+    bottom: 85px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+    border-radius: 10px;
+    padding: 8px;
+    justify-content: space-between;
+  }
+  .rp-switcher .rp-switcher-mark {
+    grid-column: 1;
+    width: 32px;
+    min-width: 32px;
+    padding: 0;
+    font-size: 20px !important;
+  }
+  .rp-select-group {
+    grid-column: 2 / 5;
+    flex: 1;
+    min-width: 0;
+  }
+  .rp-select-group label {
+    font-size: 8px;
+  }
+  .rp-select-group select {
+    width: 100%;
+    min-height: 35px !important;
+    font-size: 11px !important;
+  }
+  .rp-switcher .rp-original {
+    grid-column: 5 / 7;
+    padding: 0 10px;
+    font-size: 10px !important;
+  }
+  .rp-switcher .rp-go-ai {
+    grid-column: 3 / 5;
+    flex: 1;
+    padding: 0 10px;
+  }
+  .rp-switcher .rp-save {
+    grid-column: 5 / 7;
+    flex: 1;
+    padding: 0 10px;
+  }
+  .rp-switcher button {
+    min-width: 0;
+    white-space: normal;
+    font-size: 10px !important;
+  }
+  .rp-switcher .rp-browse {
+    grid-column: 1 / 3;
+  }
+  .rp-switcher > button:nth-last-child(3) {
+    flex: 0 0 74px;
+    border-color: var(--rp-line);
+  }
+  .rp-live-info {
+    bottom: 64px;
+    font-size: 8px;
+    padding: 1px 8px;
+    max-width: calc(100vw - 28px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rp-collapsed {
+    display: flex;
+    width: auto;
+    left: 12px;
+    bottom: 80px;
+    transform: none;
+  }
+  .rp-selection-status {
+    bottom: 218px;
+    width: max-content;
+    font-size: 11px;
+  }
+  .rp-design-dialog {
+    padding: 20px;
+    width: 94vw;
+    max-height: 87dvh;
+  }
+  .rp-design-dialog h2 {
+    font-size: 23px;
+    line-height: 1.4;
+    word-break: keep-all;
+  }
+  .rp-design-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .rp-design-grid > button {
+    padding: 12px;
+  }
+  .rp-design-grid b {
+    font-size: 12px;
+  }
+  .rp-diagram {
+    height: 83px;
+    padding: 9px;
+  }
+  .rp-design-dialog footer {
+    display: block;
+  }
+  .rp-design-dialog footer span {
+    display: block;
+    font-size: 9px;
+    margin-top: 8px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-panel {
+    margin: 14px 0 25px;
+    border-radius: 10px;
+    scroll-margin-top: 88px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-panel-header {
+    padding: 13px 15px 9px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-compact-bar {
+    padding: 0 14px 10px;
+    gap: 5px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"])
+    .sentio-panel-content {
+    padding: 0 15px 16px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought {
+    padding: 16px 12px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought h3 {
+    font-size: 23px;
+    line-height: 1.7;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought p,
+  :root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought li {
+    font-size: 13px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"])
+    .sentio-exploration-choice {
+    font-size: 12px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"])
+    .sentio-exploration-form
+    input {
+    font-size: 12px;
+  }
+  :root[data-reader-design]:not([data-reader-design="0"])
+    .sentio-panel-heading
+    .sentio-eyebrow {
+    font-size: 12px !important;
+  }
+  .rp-panel-tools {
+    padding: 0 15px;
+  }
+  .rp-question-options button {
+    padding: 8px 11px;
+  }
+  .rp-source blockquote {
+    font-size: 11px;
+    max-height: 175px;
+  }
+  :root[data-reader-design][data-reader-design="3"]
+    .sentio-panel[data-mode="chain"],
+  :root[data-reader-design][data-reader-design="8"]
+    .sentio-panel[data-mode="chain"],
+  :root[data-reader-design][data-reader-design="10"]
+    .sentio-panel[data-mode="chain"] {
+    display: block;
+  }
+  :root[data-reader-design][data-reader-design="3"]
+    .sentio-panel[data-mode="chain"]
+    > .rp-panel-tools {
+    border-right: 0;
+    border-bottom: 1px solid var(--rp-line);
+    padding: 0 12px 12px;
+  }
+  :root[data-reader-design][data-reader-design="3"] .rp-question-options {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  :root[data-reader-design][data-reader-design="3"]
+    .rp-question-options
+    button {
+    flex: 0 0 160px;
+    padding: 10px;
+    min-height: 83px;
+  }
+  :root[data-reader-design][data-reader-design="3"]
+    .sentio-panel
+    .sentio-panel-content {
+    padding: 0 16px 16px;
+  }
+  :root[data-reader-design][data-reader-design="4"] .rp-question-options {
+    gap: 5px;
+  }
+  :root[data-reader-design][data-reader-design="4"]
+    .rp-question-options
+    button {
+    flex-direction: column;
+    font-size: 9px;
+    padding: 8px;
+    min-height: 100px;
+    gap: 7px;
+  }
+  :root[data-reader-design][data-reader-design="4"] .rp-question-label {
+    font-size: 9px;
+  }
+  :root[data-reader-design][data-reader-design="4"]
+    .sentio-panel
+    .sentio-thought {
+    padding: 18px 14px;
+  }
+  :root[data-reader-design][data-reader-design="5"]
+    .sentio-panel
+    .sentio-thought {
+    padding: 18px 0 23px 30px;
+  }
+  :root[data-reader-design][data-reader-design="5"]
+    .sentio-panel
+    .sentio-thought
+    h3 {
+    font-size: 21px;
+  }
+  :root[data-reader-design][data-reader-design="6"]
+    .sentio-panel
+    .sentio-feed-scroll {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    max-height: none;
+    gap: 12px;
+    padding-bottom: 10px;
+    align-items: stretch;
+  }
+  :root[data-reader-design][data-reader-design="6"]
+    .sentio-panel
+    .sentio-thought {
+    flex: 0 0 87%;
+    scroll-snap-align: start;
+    min-height: 420px !important;
+  }
+  :root[data-reader-design][data-reader-design="6"]
+    .sentio-panel
+    .sentio-thought
+    h3 {
+    font-size: 19px;
+  }
+  :root[data-reader-design][data-reader-design="6"] .rp-question-label {
+    display: none;
+  }
+  :root[data-reader-design][data-reader-design="6"]
+    .sentio-feed-scroll
+    > [aria-hidden="true"] {
+    display: none;
+  }
+  :root[data-reader-design][data-reader-design="7"]
+    .sentio-panel
+    .sentio-feed-scroll {
+    margin-left: 7px;
+    padding-left: 16px;
+  }
+  :root[data-reader-design][data-reader-design="7"]
+    .sentio-panel
+    .sentio-thought {
+    padding: 0 0 20px 6px;
+  }
+  :root[data-reader-design][data-reader-design="7"]
+    .sentio-panel
+    .sentio-thought::before {
+    left: -22px;
+  }
+  :root[data-reader-design][data-reader-design="8"] .rp-panel-tools {
+    display: block;
+    padding: 0 15px;
+  }
+  :root[data-reader-design][data-reader-design="8"] .rp-source {
+    margin: 0;
+  }
+  :root[data-reader-design][data-reader-design="8"] .rp-question-nav {
+    margin: 0 0 10px;
+  }
+  :root[data-reader-design][data-reader-design="8"] .rp-note {
+    margin: 0 0 16px;
+    padding: 17px;
+  }
+  :root[data-reader-design][data-reader-design="8"] .rp-note textarea {
+    min-height: 125px;
+  }
+  :root[data-reader-design][data-reader-design="8"] .rp-note label {
+    font-size: 16px;
+    margin: 13px 0 8px;
+  }
+  :root[data-reader-design][data-reader-design="8"]
+    .sentio-panel[data-mode="chain"]
+    > .sentio-panel-content {
+    padding: 0 15px 16px;
+  }
+  :root[data-reader-design][data-reader-design="9"]
+    .sentio-panel:not([hidden]) {
+    width: calc(100vw - 16px);
+    bottom: 210px;
+    max-height: calc(100dvh - 290px);
+    left: 50%;
+    margin: 0;
+    border-radius: 17px 17px 8px 8px;
+  }
+  :root[data-reader-design][data-reader-design="9"]
+    .sentio-panel
+    .sentio-thought {
+    padding: 12px 0;
+  }
+  :root[data-reader-design][data-reader-design="10"] .rp-panel-tools {
+    padding: 0 15px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rp-line);
+  }
+  :root[data-reader-design][data-reader-design="10"] .rp-source blockquote {
+    max-height: 175px;
+    overflow: auto;
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  :root[data-reader-design][data-reader-design="10"] .rp-question-nav {
+    padding-top: 5px;
+  }
+  :root[data-reader-design][data-reader-design="10"] .rp-step-controls {
+    display: none;
+  }
+}
+@media (max-width: 350px) {
+  .rp-switcher .rp-switcher-mark {
+    display: none;
+  }
+  .rp-select-group {
+    grid-column: 1 / 5;
+    border: 0;
+    padding-left: 0;
+  }
+  .rp-design-grid {
+    grid-template-columns: 1fr;
+  }
+  .rp-diagram {
+    height: 65px;
+  }
+  .rp-live-info {
+    font-size: 7px;
+  }
+  .rp-switcher .rp-save {
+    font-size: 9px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp-switcher *,
+  .rp-panel-tools * {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  #reader-design-controls {
+    display: none !important;
+  }
+  :root[data-reader-design] .sentio-panel {
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+  }
+  :root[data-reader-design][data-reader-design="2"]
+    .fn-reading-layout.rd-shell {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+  .rp-note textarea {
+    border: 1px solid #bbb;
+  }
+}
+
+/* Scope the extra controls above inherited article typography. */
+:root[data-reader-design] .sentio-panel .rp-source blockquote {
+  margin: 0 0 15px;
+  padding: 10px 14px;
+  font: 12px/1.95 var(--rp-font);
+  max-height: 175px;
+  overflow: auto;
+  border-left: 2px solid var(--rp-accent);
+  background: var(--rp-soft);
+}
+:root[data-reader-design] .sentio-panel .rp-source summary {
+  font: 11px/1.8 var(--rp-font);
+  padding: 10px 0;
+  margin: 0;
+}
+:root[data-reader-design] .sentio-panel .rp-note textarea {
+  background: repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    var(--rp-line) 31px,
+    var(--rp-line) 32px
+  );
+  font: 14px/32px var(--rp-font);
+  padding: 0 3px;
+  border: 0;
+  border-radius: 0;
+}
+:root[data-reader-design] .sentio-panel .rp-note p {
+  font: 10px/1.8 var(--rp-font);
+  margin: 10px 0 0;
+}
+:root[data-reader-design][data-reader-design="4"] .rp-question-options {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+}
+:root[data-reader-design][data-reader-design="4"] .rp-question-options button {
+  flex: 0 0 150px;
+  scroll-snap-align: start;
+  min-height: 92px;
+}
+:root[data-reader-design][data-reader-design="6"]
+  .sentio-panel
+  .sentio-feed-scroll {
+  max-height: 700px;
+  overflow: auto;
+}
+:root[data-reader-design]:not([data-reader-design="0"]) .sentio-thought-topic {
+  display: none;
+}
+:root[data-reader-design][data-reader-design="10"]
+  .sentio-panel
+  .rp-source
+  blockquote {
+  max-height: 420px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: var(--rd-serif);
+  font-size: 13px;
+  line-height: 2.1;
+}
+@media (max-width: 760px) {
+  :root[data-reader-design][data-reader-design="4"]
+    .rp-question-options
+    button {
+    flex-basis: 104px;
+    min-height: 108px;
+  }
+  :root[data-reader-design][data-reader-design="6"]
+    .sentio-panel
+    .sentio-feed-scroll {
+    max-height: none;
+    overflow-x: auto;
+  }
+  :root[data-reader-design][data-reader-design="10"]
+    .sentio-panel
+    .rp-source
+    blockquote {
+    max-height: 150px;
+    font-size: 12px;
+  }
+}

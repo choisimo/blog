@@ -1,0 +1,12 @@
+{
+  "fileProtocolGallery": true,
+  "embedded320All10": true,
+  "embeddedFormsAll10": true,
+  "keyboardModalFocusReturn": true,
+  "modeSwitch": true,
+  "blankValidation": true,
+  "scriptLikeInputEscaped": true,
+  "blockedStorageFallback": true,
+  "reducedMotionSetting": true,
+  "errors": []
+}

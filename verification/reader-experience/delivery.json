@@ -1,0 +1,49 @@
+{
+  "source_archive": "blog--snapshot--source-repro--feat_organizing-intelligence-citations--3ece77621379--20260910T083732+0900--dirty.tar.gz",
+  "source_sha256": "f3ba44ce1b823c5905a12e32957344b52e142b1b0c1093b954cc7bf17a9fd1c0",
+  "delivery_date": "2026-09-10",
+  "status": "source implemented; deployment and provider integration unverified",
+  "tests": {
+    "contracts": {
+      "passed": 26,
+      "failed": 0,
+      "scope": "production policy/migration/SQL via SQLite; not HTTP E2E"
+    },
+    "browser": {
+      "passed_combinations": 9,
+      "widths": [
+        320,
+        390,
+        1360
+      ],
+      "themes": [
+        "light",
+        "dark",
+        "terminal"
+      ],
+      "storage": "memory adapter; not persistent storage"
+    },
+    "syntax": "TS transpile/JS/CSS only; not full typecheck or build",
+    "contract_snapshots": "current snapshots consistent; baseline snapshots absent"
+  },
+  "deployment": {
+    "performed": false,
+    "paid_provider_calls": false,
+    "default_image_feature_flag": false,
+    "private_bucket_required": true,
+    "migration": "0039_reader_image_jobs.sql"
+  },
+  "limits": {
+    "guest_daily_fixed": 5,
+    "member_daily_configurable_default": 20,
+    "global_daily_configurable_default": 500,
+    "timezone": "Asia/Seoul",
+    "retention_days": 7
+  },
+  "not_implemented": [
+    "general member enrollment",
+    "guest-to-member usage/data migration",
+    "provider unknown-outcome reconciliation",
+    "distributed abuse protection/Turnstile"
+  ]
+}

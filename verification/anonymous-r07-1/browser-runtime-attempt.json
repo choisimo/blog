@@ -1,0 +1,7 @@
+{
+  "status": "blocked",
+  "attempt": "Chromium navigation for actual localStorage/Web Locks multi-tab test",
+  "error": "ERR_BLOCKED_BY_ADMINISTRATOR",
+  "actualCrossTabVerified": false,
+  "actualPersistenceVerified": false
+}

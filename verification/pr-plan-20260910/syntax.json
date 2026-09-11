@@ -1,0 +1,241 @@
+{
+  "scope": "Changed TS/TSX/JS/MJS/CJS syntax only. Not typecheck, dependency resolution, build, CSS parsing or test-suite execution.",
+  "passed": 41,
+  "failed": 0,
+  "files": [
+    {
+      "file": "backend/src/routes/chat.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "backend/src/routes/images.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "backend/src/routes/readerImageRender.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "backend/src/services/ai-image/litellm-image-generation.service.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "frontend/public/ai-memo/ai-memo.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "frontend/scripts/generate-projects-manifest.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "frontend/scripts/rebuild-github-project-data.mjs",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/ai/AgentPreferencesDialog.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/ai/GeneratedImageCard.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/chat/widget/components/ChatHeader.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/chat/widget/components/ChatMessages.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/chat/widget/hooks/useChatActions.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/chat/widget/index.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/chat/widget/types.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/debate/DebateRoom.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/pages/public/BlogPost.tsx",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/chat/api.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/chat/context.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/content/projectService.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/content/translate.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/personal/agentPreferences.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/personal/readerImages.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/reader-image-contracts.cjs",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "scripts/verification/reader-source-syntax.cjs",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "shared/src/contracts/agent-preferences.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "shared/src/contracts/service-boundaries.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "shared/src/contracts/translation.js",
+      "check": "node --check",
+      "passed": true
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/reader-image-policy.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/reader-image-repository.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/reader-image-retention.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/agent-preferences.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/images.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/reader-images.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/translate.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/user.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/types.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/test/translation-routes.test.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/seo-gateway/src/index.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/seo-gateway/test/gateway-routing.test.ts",
+      "check": "TypeScript syntax/transpile only",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

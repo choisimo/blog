@@ -1,0 +1,596 @@
+TAP version 13
+# Subtest: backend forwards stage token, model and remaining deadline options
+ok 1 - backend forwards stage token, model and remaining deadline options
+  ---
+  duration_ms: 3.951514
+  type: 'test'
+  ...
+# Subtest: remaining deadline changes do not change the stage idempotency payload
+ok 2 - remaining deadline changes do not change the stage idempotency payload
+  ---
+  duration_ms: 2.425659
+  type: 'test'
+  ...
+# Subtest: legacy plain prompts still use default generation settings
+ok 3 - legacy plain prompts still use default generation settings
+  ---
+  duration_ms: 2.513714
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: maxTokens {"maxTokens":16001}
+ok 4 - invalid generation options are rejected before invoking AI: maxTokens {"maxTokens":16001}
+  ---
+  duration_ms: 1.073935
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: maxTokens {"maxTokens":0}
+ok 5 - invalid generation options are rejected before invoking AI: maxTokens {"maxTokens":0}
+  ---
+  duration_ms: 0.911846
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: maxTokens {"maxTokens":1.5}
+ok 6 - invalid generation options are rejected before invoking AI: maxTokens {"maxTokens":1.5}
+  ---
+  duration_ms: 0.977696
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: timeout {"timeout":240001}
+ok 7 - invalid generation options are rejected before invoking AI: timeout {"timeout":240001}
+  ---
+  duration_ms: 1.02746
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: timeout {"timeout":0}
+ok 8 - invalid generation options are rejected before invoking AI: timeout {"timeout":0}
+  ---
+  duration_ms: 1.019437
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: model {"model":{}}
+ok 9 - invalid generation options are rejected before invoking AI: model {"model":{}}
+  ---
+  duration_ms: 1.519863
+  type: 'test'
+  ...
+# Subtest: invalid generation options are rejected before invoking AI: systemPrompt oversize
+ok 10 - invalid generation options are rejected before invoking AI: systemPrompt oversize
+  ---
+  duration_ms: 1.322237
+  type: 'test'
+  ...
+# Subtest: 100 wake signals are coalesced and contain no caller-supplied URL or source text
+ok 11 - 100 wake signals are coalesced and contain no caller-supplied URL or source text
+  ---
+  duration_ms: 26.90271
+  type: 'test'
+  ...
+# Subtest: unconfigured transport rejects a wake and never fetches
+ok 12 - unconfigured transport rejects a wake and never fetches
+  ---
+  duration_ms: 0.495854
+  type: 'test'
+  ...
+# Subtest: consumer HTTP errors do not cause unbounded automatic retry
+ok 13 - consumer HTTP errors do not cause unbounded automatic retry
+  ---
+  duration_ms: 1.227035
+  type: 'test'
+  ...
+# Subtest: a disconnected observation is not a successful generation result
+ok 14 - a disconnected observation is not a successful generation result
+  ---
+  duration_ms: 0.562515
+  type: 'test'
+  ...
+# Subtest: one process pump is bounded even with an endless backlog
+ok 15 - one process pump is bounded even with an endless backlog
+  ---
+  duration_ms: 1.200117
+  type: 'test'
+  ...
+# Subtest: SSE frames split across network chunks are parsed without buffering the whole job
+ok 16 - SSE frames split across network chunks are parsed without buffering the whole job
+  ---
+  duration_ms: 1.896417
+  type: 'test'
+  ...
+# Subtest: unexpected large executor bodies are stopped rather than retained in memory
+ok 17 - unexpected large executor bodies are stopped rather than retained in memory
+  ---
+  duration_ms: 0.940748
+  type: 'test'
+  ...
+# Subtest: a later explicit wake can recover after a failed callback
+ok 18 - a later explicit wake can recover after a failed callback
+  ---
+  duration_ms: 0.885034
+  type: 'test'
+  ...
+# (node:1809) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: immediate valid cache renders ready without a status poll
+ok 19 - immediate valid cache renders ready without a status poll
+  ---
+  duration_ms: 2.21737
+  type: 'test'
+  ...
+# Subtest: observation budget expiry becomes paused, not AI_TIMEOUT or a server failure
+ok 20 - observation budget expiry becomes paused, not AI_TIMEOUT or a server failure
+  ---
+  duration_ms: 0.653194
+  type: 'test'
+  ...
+# Subtest: a request that ignores AbortSignal cannot prevent observation from ending
+ok 21 - a request that ignores AbortSignal cannot prevent observation from ending
+  ---
+  duration_ms: 0.356058
+  type: 'test'
+  ...
+# Subtest: polling uses the saved ID and a read-only cache read after success
+ok 22 - polling uses the saved ID and a read-only cache read after success
+  ---
+  duration_ms: 0.474205
+  type: 'test'
+  ...
+# Subtest: resume starts with status lookup, never a new admission
+ok 23 - resume starts with status lookup, never a new admission
+  ---
+  duration_ms: 1.021995
+  type: 'test'
+  ...
+# Subtest: terminal failed job preserves stale text and never submits a retry
+ok 24 - terminal failed job preserves stale text and never submits a retry
+  ---
+  duration_ms: 0.525757
+  type: 'test'
+  ...
+# Subtest: deferred budget state is visible without clearing the text while waiting
+ok 25 - deferred budget state is visible without clearing the text while waiting
+  ---
+  duration_ms: 1.119158
+  type: 'test'
+  ...
+# Subtest: network disconnection during status polling preserves text and permits reconnection
+ok 26 - network disconnection during status polling preserves text and permits reconnection
+  ---
+  duration_ms: 0.507687
+  type: 'test'
+  ...
+# Subtest: changing language aborts observation and discards a late response
+ok 27 - changing language aborts observation and discards a late response
+  ---
+  duration_ms: 0.455421
+  type: 'test'
+  ...
+# Subtest: closing the page does not call a generation cancellation endpoint
+ok 28 - closing the page does not call a generation cancellation endpoint
+  ---
+  duration_ms: 0.505913
+  type: 'test'
+  ...
+# Subtest: legacy 202 without a job is polled with observation-only flags
+ok 29 - legacy 202 without a job is polled with observation-only flags
+  ---
+  duration_ms: 0.29655
+  type: 'test'
+  ...
+# Subtest: succeeded status without validated cache does not show a false ready result
+ok 30 - succeeded status without validated cache does not show a false ready result
+  ---
+  duration_ms: 0.26844
+  type: 'test'
+  ...
+# Subtest: a failed resumed job does not fall through to a new generating GET
+ok 31 - a failed resumed job does not fall through to a new generating GET
+  ---
+  duration_ms: 0.157179
+  type: 'test'
+  ...
+# (node:1832) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: translation selector accepts and canonicalizes 감동을_잃어버린_그대들에게
+ok 32 - translation selector accepts and canonicalizes 감동을_잃어버린_그대들에게
+  ---
+  duration_ms: 1.746634
+  type: 'test'
+  ...
+# Subtest: translation selector accepts and canonicalizes Container Network Interface
+ok 33 - translation selector accepts and canonicalizes Container Network Interface
+  ---
+  duration_ms: 0.301479
+  type: 'test'
+  ...
+# Subtest: translation selector accepts and canonicalizes _index
+ok 34 - translation selector accepts and canonicalizes _index
+  ---
+  duration_ms: 0.110872
+  type: 'test'
+  ...
+# Subtest: translation selector accepts and canonicalizes release.v1
+ok 35 - translation selector accepts and canonicalizes release.v1
+  ---
+  duration_ms: 0.145471
+  type: 'test'
+  ...
+# Subtest: translation selector accepts and canonicalizes C++
+ok 36 - translation selector accepts and canonicalizes C++
+  ---
+  duration_ms: 0.244931
+  type: 'test'
+  ...
+# Subtest: translation selector accepts and canonicalizes 한글
+ok 37 - translation selector accepts and canonicalizes 한글
+  ---
+  duration_ms: 0.140187
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "."
+ok 38 - translation selector rejects unsafe segment "."
+  ---
+  duration_ms: 0.293621
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment ".."
+ok 39 - translation selector rejects unsafe segment ".."
+  ---
+  duration_ms: 0.0881
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "a/b"
+ok 40 - translation selector rejects unsafe segment "a/b"
+  ---
+  duration_ms: 0.309705
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "a\\\\b"
+ok 41 - translation selector rejects unsafe segment "a\\\\b"
+  ---
+  duration_ms: 0.383971
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "%252f"
+ok 42 - translation selector rejects unsafe segment "%252f"
+  ---
+  duration_ms: 0.150389
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "%2F"
+ok 43 - translation selector rejects unsafe segment "%2F"
+  ---
+  duration_ms: 0.108872
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "a\\n"
+ok 44 - translation selector rejects unsafe segment "a\\n"
+  ---
+  duration_ms: 0.051337
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "a%00"
+ok 45 - translation selector rejects unsafe segment "a%00"
+  ---
+  duration_ms: 0.044045
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "bad%"
+ok 46 - translation selector rejects unsafe segment "bad%"
+  ---
+  duration_ms: 0.068393
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "a?b"
+ok 47 - translation selector rejects unsafe segment "a?b"
+  ---
+  duration_ms: 0.04871
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "a\#b"
+ok 48 - translation selector rejects unsafe segment "a\#b"
+  ---
+  duration_ms: 0.042449
+  type: 'test'
+  ...
+# Subtest: translation selector rejects unsafe segment "%252e%252e"
+ok 49 - translation selector rejects unsafe segment "%252e%252e"
+  ---
+  duration_ms: 0.040779
+  type: 'test'
+  ...
+# Subtest: every supplied public post is accepted by the shared selector
+ok 50 - every supplied public post is accepted by the shared selector
+  ---
+  duration_ms: 2.372015
+  type: 'test'
+  ...
+# Subtest: 100 concurrent admissions share one job and one durable outbox record
+ok 51 - 100 concurrent admissions share one job and one durable outbox record
+  ---
+  duration_ms: 45.651428
+  type: 'test'
+  ...
+# Subtest: 100 public requests return the same job; the wake contains no source and is coalesced
+ok 52 - 100 public requests return the same job; the wake contains no source and is coalesced
+  ---
+  duration_ms: 104.673971
+  type: 'test'
+  ...
+# Subtest: public, internal and warm admission use the same execution ledger
+ok 53 - public, internal and warm admission use the same execution ledger
+  ---
+  duration_ms: 20.647749
+  type: 'test'
+  ...
+# Subtest: the production generator persists three checkpoints and a validated current cache
+ok 54 - the production generator persists three checkpoints and a validated current cache
+  ---
+  duration_ms: 14.541638
+  type: 'test'
+  ...
+# Subtest: completed jobs are only read on subsequent GET requests
+ok 55 - completed jobs are only read on subsequent GET requests
+  ---
+  duration_ms: 13.453419
+  type: 'test'
+  ...
+# Subtest: nested error messages returned publicly are a safe allowlist, not provider details
+ok 56 - nested error messages returned publicly are a safe allowlist, not provider details
+  ---
+  duration_ms: 14.111021
+  type: 'test'
+  ...
+# Subtest: an internal-first job has public status and canonical encoded URLs for anonymous observers
+ok 57 - an internal-first job has public status and canonical encoded URLs for anonymous observers
+  ---
+  duration_ms: 6.132458
+  type: 'test'
+  ...
+# Subtest: public status denies another post job ID and never starts generation
+ok 58 - public status denies another post job ID and never starts generation
+  ---
+  duration_ms: 4.562313
+  type: 'test'
+  ...
+# Subtest: an unpublished post cannot disclose status or cached content
+ok 59 - an unpublished post cannot disclose status or cached content
+  ---
+  duration_ms: 4.243459
+  type: 'test'
+  ...
+# Subtest: read-only cache misses and status queries do not admit jobs
+ok 60 - read-only cache misses and status queries do not admit jobs
+  ---
+  duration_ms: 7.014369
+  type: 'test'
+  ...
+# Subtest: malformed status selectors return 400, not a server failure
+ok 61 - malformed status selectors return 400, not a server failure
+  ---
+  duration_ms: 4.118366
+  type: 'test'
+  ...
+# Subtest: a source-language request returns the source without generating
+ok 62 - a source-language request returns the source without generating
+  ---
+  duration_ms: 3.621972
+  type: 'test'
+  ...
+# Subtest: known 429 rejection defers with bounded attempts and resumes after the saved title
+ok 63 - known 429 rejection defers with bounded attempts and resumes after the saved title
+  ---
+  duration_ms: 15.669033
+  type: 'test'
+  ...
+# Subtest: three rejected attempts become terminal; subsequent GET cannot reset the retry counter
+ok 64 - three rejected attempts become terminal; subsequent GET cannot reset the retry counter
+  ---
+  duration_ms: 28.91195
+  type: 'test'
+  ...
+# Subtest: unknown outcome is quarantined; 100 observations never start another model call
+ok 65 - unknown outcome is quarantined; 100 observations never start another model call
+  ---
+  duration_ms: 49.114858
+  type: 'test'
+  ...
+# Subtest: worker loss before submission resumes; loss after submission is not automatically charged again
+ok 66 - worker loss before submission resumes; loss after submission is not automatically charged again
+  ---
+  duration_ms: 11.112231
+  type: 'test'
+  ...
+# Subtest: an expired third pre-submission lease is terminal rather than deferred forever
+ok 67 - an expired third pre-submission lease is terminal rather than deferred forever
+  ---
+  duration_ms: 4.421442
+  type: 'test'
+  ...
+# Subtest: lost lease owners cannot checkpoint, settle or publish
+ok 68 - lost lease owners cannot checkpoint, settle or publish
+  ---
+  duration_ms: 5.508307
+  type: 'test'
+  ...
+# Subtest: a newer source admission fences the older cache write
+ok 69 - a newer source admission fences the older cache write
+  ---
+  duration_ms: 4.499746
+  type: 'test'
+  ...
+# Subtest: an original edited while generation runs is not published under the new original
+ok 70 - an original edited while generation runs is not published under the new original
+  ---
+  duration_ms: 6.307071
+  type: 'test'
+  ...
+# Subtest: 50,000-character content is explicitly blocked before billing, not silently truncated
+ok 71 - 50,000-character content is explicitly blocked before billing, not silently truncated
+  ---
+  duration_ms: 6.092666
+  type: 'test'
+  ...
+# Subtest: a grossly incomplete result does not replace an existing cache
+ok 72 - a grossly incomplete result does not replace an existing cache
+  ---
+  duration_ms: 5.968859
+  type: 'test'
+  ...
+# Subtest: source version includes title
+ok 73 - source version includes title
+  ---
+  duration_ms: 1.137714
+  type: 'test'
+  ...
+# Subtest: source version includes description
+ok 74 - source version includes description
+  ---
+  duration_ms: 0.653855
+  type: 'test'
+  ...
+# Subtest: source version includes content
+ok 75 - source version includes content
+  ---
+  duration_ms: 0.619645
+  type: 'test'
+  ...
+# Subtest: source version includes sourceLang
+ok 76 - source version includes sourceLang
+  ---
+  duration_ms: 0.8043
+  type: 'test'
+  ...
+# Subtest: the target locale participates in the source version
+ok 77 - the target locale participates in the source version
+  ---
+  duration_ms: 0.649648
+  type: 'test'
+  ...
+# Subtest: global concurrency is atomic across independent SQLite connections
+ok 78 - global concurrency is atomic across independent SQLite connections
+  ---
+  duration_ms: 50.745232
+  type: 'test'
+  ...
+# Subtest: per-day attempt caps reserve atomically and do not reset on GET
+ok 79 - per-day attempt caps reserve atomically and do not reset on GET
+  ---
+  duration_ms: 22.894231
+  type: 'test'
+  ...
+# Subtest: token reservation cap is separate from the image quota and consumed before submission
+ok 80 - token reservation cap is separate from the image quota and consumed before submission
+  ---
+  duration_ms: 3.908565
+  type: 'test'
+  ...
+# Subtest: KST midnight resets the quota day, not the browser timezone
+ok 81 - KST midnight resets the quota day, not the browser timezone
+  ---
+  duration_ms: 0.152899
+  type: 'test'
+  ...
+# Subtest: interactive work skips warm admission checks, but old warm work can age ahead when permitted
+ok 82 - interactive work skips warm admission checks, but old warm work can age ahead when permitted
+  ---
+  duration_ms: 4.827628
+  type: 'test'
+  ...
+# Subtest: feature-disabled requests are observable as deferred without invoking the backend
+ok 83 - feature-disabled requests are observable as deferred without invoking the backend
+  ---
+  duration_ms: 5.113384
+  type: 'test'
+  ...
+# Subtest: lost wake-up does not lose the durable work; scheduled drain executes it
+ok 84 - lost wake-up does not lose the durable work; scheduled drain executes it
+  ---
+  duration_ms: 6.458912
+  type: 'test'
+  ...
+# Subtest: legacy translation outbox is handed off once, not executed by the feed consumer
+ok 85 - legacy translation outbox is handed off once, not executed by the feed consumer
+  ---
+  duration_ms: 7.504297
+  type: 'test'
+  ...
+# Subtest: generic feed claims explicitly exclude translation events
+ok 86 - generic feed claims explicitly exclude translation events
+  ---
+  duration_ms: 4.293536
+  type: 'test'
+  ...
+# Subtest: administrative invalidation fences in-flight writes without deleting the job record
+ok 87 - administrative invalidation fences in-flight writes without deleting the job record
+  ---
+  duration_ms: 4.361667
+  type: 'test'
+  ...
+# Subtest: explicit same-key regeneration deduplicates even after a different revision was requested
+ok 88 - explicit same-key regeneration deduplicates even after a different revision was requested
+  ---
+  duration_ms: 4.392622
+  type: 'test'
+  ...
+# Subtest: full backlog cannot leave a half-created outbox event
+ok 89 - full backlog cannot leave a half-created outbox event
+  ---
+  duration_ms: 2.961574
+  type: 'test'
+  ...
+# Subtest: the internal drain stream reports actual completion rather than an early accepted result
+ok 90 - the internal drain stream reports actual completion rather than an early accepted result
+  ---
+  duration_ms: 11.522268
+  type: 'test'
+  ...
+# Subtest: a superseded queued revision is discarded before a model request
+ok 91 - a superseded queued revision is discarded before a model request
+  ---
+  duration_ms: 13.455396
+  type: 'test'
+  ...
+# Subtest: 0041 preserves old jobs/cache and quarantines old in-flight work during migration
+ok 92 - 0041 preserves old jobs/cache and quarantines old in-flight work during migration
+  ---
+  duration_ms: 2.612136
+  type: 'test'
+  ...
+# Subtest: source network failure is deferred without a paid submission
+ok 93 - source network failure is deferred without a paid submission
+  ---
+  duration_ms: 4.959478
+  type: 'test'
+  ...
+# Subtest: source http failure is deferred without a paid submission
+ok 94 - source http failure is deferred without a paid submission
+  ---
+  duration_ms: 4.458827
+  type: 'test'
+  ...
+# Subtest: source json failure is deferred without a paid submission
+ok 95 - source json failure is deferred without a paid submission
+  ---
+  duration_ms: 4.738668
+  type: 'test'
+  ...
+# Subtest: source shape failure is deferred without a paid submission
+ok 96 - source shape failure is deferred without a paid submission
+  ---
+  duration_ms: 4.519812
+  type: 'test'
+  ...
+# Subtest: malformed legacy events cannot starve the next valid outbox admission
+ok 97 - malformed legacy events cannot starve the next valid outbox admission
+  ---
+  duration_ms: 6.69025
+  type: 'test'
+  ...
+1..97
+# tests 97
+# suites 0
+# pass 97
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1371.841442

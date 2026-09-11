@@ -1,0 +1,289 @@
+{
+  "checks": [
+    {
+      "design": 0,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 1,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 2,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 3,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 4,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 5,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 6,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 7,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 8,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 9,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 10,
+      "width": 1440,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 0,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 1,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 2,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 3,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 4,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 5,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 6,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 7,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 8,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 9,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 10,
+      "width": 390,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 0,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 1,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 2,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 3,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 4,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 5,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 6,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 7,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 8,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 9,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    },
+    {
+      "design": 10,
+      "width": 320,
+      "contentPreserved": true,
+      "draftPreserved": true,
+      "noOverflow": true
+    }
+  ],
+  "originalParagraphs": 30,
+  "originalHeadings": 6,
+  "actualCardCount": 7,
+  "actualCardTitle": "손가락 몇 번으로 예약되는 운명",
+  "realStreamCharacters": 1086,
+  "realStreamSucceeded": true,
+  "notePersistence": true,
+  "selection": true,
+  "standaloneOfflineReading": true,
+  "api": [
+    {
+      "path": "/api/v1/analytics/heartbeat"
+    },
+    {
+      "path": "/api/v1/public/config"
+    },
+    {
+      "path": "/api/v1/comments"
+    },
+    {
+      "path": "/api/v1/comments/stream"
+    },
+    {
+      "path": "/api/v1/auth/anonymous"
+    },
+    {
+      "path": "/api/v1/comments/reactions/batch"
+    },
+    {
+      "path": "/api/v1/analytics/view"
+    },
+    {
+      "path": "/api/v1/chat/session"
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/thought-feed"
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/thought-feed"
+    },
+    {
+      "path": "/api/v1/rag/search"
+    },
+    {
+      "path": "/api/v1/chat/session"
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/message"
+    },
+    {
+      "path": "/api/v1/analytics/heartbeat"
+    }
+  ],
+  "errors": []
+}

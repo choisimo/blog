@@ -1,0 +1,205 @@
+{
+  "checks": [
+    {
+      "name": "article-summary",
+      "width": 1440,
+      "document": 1440,
+      "dialog": 1078,
+      "scroll": 1078,
+      "sheet": 798,
+      "sheetScroll": 798,
+      "title": "핵심 요약",
+      "titleSize": "36px"
+    },
+    {
+      "name": "article-summary",
+      "width": 390,
+      "document": 390,
+      "dialog": 372,
+      "scroll": 372,
+      "sheet": 339,
+      "sheetScroll": 339,
+      "title": "핵심 요약",
+      "titleSize": "26px"
+    },
+    {
+      "name": "article-summary",
+      "width": 320,
+      "document": 320,
+      "dialog": 302,
+      "scroll": 302,
+      "sheet": 269,
+      "sheetScroll": 269,
+      "title": "핵심 요약",
+      "titleSize": "26px"
+    },
+    {
+      "name": "paragraph-summary",
+      "width": 1440,
+      "document": 1440,
+      "dialog": 1078,
+      "scroll": 1078,
+      "sheet": 798,
+      "sheetScroll": 798,
+      "title": "핵심 파악",
+      "titleSize": "36px"
+    },
+    {
+      "name": "paragraph-summary",
+      "width": 390,
+      "document": 390,
+      "dialog": 372,
+      "scroll": 372,
+      "sheet": 339,
+      "sheetScroll": 339,
+      "title": "핵심 파악",
+      "titleSize": "26px"
+    },
+    {
+      "name": "paragraph-summary",
+      "width": 320,
+      "document": 320,
+      "dialog": 302,
+      "scroll": 302,
+      "sheet": 269,
+      "sheetScroll": 269,
+      "title": "핵심 파악",
+      "titleSize": "26px"
+    },
+    {
+      "name": "lens-evidence",
+      "width": 1440,
+      "document": 1440,
+      "dialog": 1078,
+      "scroll": 1078,
+      "sheet": 798,
+      "sheetScroll": 798,
+      "title": "앱 속으로 들어간 무속: 점집의 플랫폼화",
+      "titleSize": "36px"
+    },
+    {
+      "name": "lens-evidence",
+      "width": 390,
+      "document": 390,
+      "dialog": 372,
+      "scroll": 372,
+      "sheet": 339,
+      "sheetScroll": 339,
+      "title": "앱 속으로 들어간 무속: 점집의 플랫폼화",
+      "titleSize": "26px"
+    },
+    {
+      "name": "lens-evidence",
+      "width": 320,
+      "document": 320,
+      "dialog": 302,
+      "scroll": 302,
+      "sheet": 269,
+      "sheetScroll": 269,
+      "title": "앱 속으로 들어간 무속: 점집의 플랫폼화",
+      "titleSize": "26px"
+    },
+    {
+      "name": "lens-points",
+      "width": 1440,
+      "document": 1440,
+      "dialog": 1078,
+      "scroll": 1078,
+      "sheet": 798,
+      "sheetScroll": 798,
+      "title": "앱 속으로 들어간 무속: 점집의 플랫폼화",
+      "titleSize": "36px"
+    },
+    {
+      "name": "lens-points",
+      "width": 390,
+      "document": 390,
+      "dialog": 372,
+      "scroll": 372,
+      "sheet": 339,
+      "sheetScroll": 339,
+      "title": "앱 속으로 들어간 무속: 점집의 플랫폼화",
+      "titleSize": "26px"
+    },
+    {
+      "name": "lens-points",
+      "width": 320,
+      "document": 320,
+      "dialog": 302,
+      "scroll": 302,
+      "sheet": 269,
+      "sheetScroll": 269,
+      "title": "앱 속으로 들어간 무속: 점집의 플랫폼화",
+      "titleSize": "26px"
+    }
+  ],
+  "tooltip": true,
+  "hoverColorChanges": true,
+  "oneTogglePerView": true,
+  "sharedToggleState": true,
+  "realSummary": true,
+  "realEvidence": true,
+  "errors": [],
+  "api": [
+    {
+      "path": "/api/v1/analytics/heartbeat",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/public/config",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/comments",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/anonymous",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/comments/stream",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/comments/reactions/batch",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/analytics/view",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/rag/search",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/task",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/analytics/heartbeat",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/ai/sketch",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/lens-feed",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/message",
+      "status": 200
+    }
+  ]
+}

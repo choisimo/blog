@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-10",
+  "operation": "PR planning, read-only review and repackaging; application source unchanged",
+  "plan_units": 14,
+  "next_product_pr": "A01",
+  "security_gate_before_reader_image_activation": "R07-1",
+  "original_regular_files_preserved": 1957,
+  "current_contract_tests": {
+    "passed": 26,
+    "failed": 0,
+    "scope": "production reader policy and SQL via SQLite; not HTTP/provider E2E"
+  },
+  "changed_source_syntax": {
+    "passed": 41,
+    "failed": 0,
+    "not_full_typecheck_or_build": true
+  },
+  "diagnostic_groups": {
+    "executed": 8,
+    "all_functionality_passed": false,
+    "scope": "isolated source functions with mocked fetch and passthrough HTMLRewriter; contains reproduced defects"
+  },
+  "projects_generator": {
+    "count": 68,
+    "unique_ids": 68,
+    "existing_items_matched": true,
+    "runs_in_temporary_directory": true
+  },
+  "original_suite_attempts": [
+    {
+      "command": "npm --prefix workers/seo-gateway run typecheck",
+      "exit": 2,
+      "blocked_by": "missing @cloudflare/workers-types"
+    },
+    {
+      "command": "npm --prefix workers/api-gateway test",
+      "exit": 127,
+      "blocked_by": "vitest not found"
+    },
+    {
+      "command": "npm --prefix frontend run test:run",
+      "exit": 127,
+      "blocked_by": "vitest not found"
+    }
+  ],
+  "full_build_performed": false,
+  "browser_e2e_rerun": false,
+  "paid_provider_calls": false,
+  "remote_deploy": false,
+  "blog_markdown_files_in_snapshot": 0,
+  "project_markdown_files": 68,
+  "previous_reader_browser_results": "preserved historical results, not current re-execution"
+}

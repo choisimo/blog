@@ -1,0 +1,26 @@
+[
+  {
+    "path": "/projects",
+    "error": "HTTPSConnectionPool(host='noblog.nodove.com', port=443): Max retries exceeded with url: /projects (Caused by NameResolutionError(\"HTTPSConnection(host='noblog.nodove.com', port=443): Failed to resolve 'noblog.nodove.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "path": "/about",
+    "error": "HTTPSConnectionPool(host='noblog.nodove.com', port=443): Max retries exceeded with url: /about (Caused by NameResolutionError(\"HTTPSConnection(host='noblog.nodove.com', port=443): Failed to resolve 'noblog.nodove.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "path": "/posts-manifest.json",
+    "error": "HTTPSConnectionPool(host='noblog.nodove.com', port=443): Max retries exceeded with url: /posts-manifest.json (Caused by NameResolutionError(\"HTTPSConnection(host='noblog.nodove.com', port=443): Failed to resolve 'noblog.nodove.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "path": "/projects-manifest.json",
+    "error": "HTTPSConnectionPool(host='noblog.nodove.com', port=443): Max retries exceeded with url: /projects-manifest.json (Caused by NameResolutionError(\"HTTPSConnection(host='noblog.nodove.com', port=443): Failed to resolve 'noblog.nodove.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "path": "/robots.txt",
+    "error": "HTTPSConnectionPool(host='noblog.nodove.com', port=443): Max retries exceeded with url: /robots.txt (Caused by NameResolutionError(\"HTTPSConnection(host='noblog.nodove.com', port=443): Failed to resolve 'noblog.nodove.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "path": "/sitemap.xml",
+    "error": "HTTPSConnectionPool(host='noblog.nodove.com', port=443): Max retries exceeded with url: /sitemap.xml (Caused by NameResolutionError(\"HTTPSConnection(host='noblog.nodove.com', port=443): Failed to resolve 'noblog.nodove.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  }
+]

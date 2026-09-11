@@ -1,0 +1,86 @@
+[
+  {
+    "width": 390,
+    "route": "/",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "/blog",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "/projects",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "/insight",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "/admin/login",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "reader",
+    "transition": "0.42s, 0.22s",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "evidence",
+    "state": "real network unavailable, retry rendered",
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "/",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "/blog",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "/projects",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "/insight",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "/admin/login",
+    "barHeight": 60,
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "reader",
+    "transition": "0s",
+    "errors": []
+  },
+  {
+    "width": 320,
+    "route": "evidence",
+    "state": "real network unavailable, retry rendered",
+    "errors": []
+  }
+]

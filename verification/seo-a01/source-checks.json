@@ -1,0 +1,84 @@
+{
+  "scope": "Syntax/transpile and lock metadata only; NOT full semantic TypeScript or real runtime verification",
+  "compiler": "5.8.3",
+  "results": [
+    {
+      "file": "workers/seo-gateway/package-lock.json",
+      "check": "JSON parse",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/package.json",
+      "check": "JSON parse",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/src/index.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/src/meta-rewriter.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/src/post-resolver.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/src/types.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/test/gateway-routing.test.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "scripts/verification/seo-a01-offline.cjs",
+      "check": "Node syntax",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/src/request-policy.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/test/helpers/fixtures.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/test/meta-rewriter.test.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/test/post-resolver.test.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/test/request-policy.test.ts",
+      "check": "TypeScript syntax/transpile",
+      "result": "PASS"
+    },
+    {
+      "file": "workers/seo-gateway/test/runtime/html-rewriter.test.mjs",
+      "check": "Node syntax",
+      "result": "PASS"
+    }
+  ],
+  "lock": {
+    "directTestDependencies": [
+      "esbuild@0.27.3",
+      "miniflare@4.20260409.0"
+    ],
+    "existingPackageEntriesChanged": 0,
+    "rootMatches": true
+  }
+}
