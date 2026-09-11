@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { NotebookPen, Sparkles, Layers, Map as MapIcon } from 'lucide-react';
+import {
+  NotebookPen,
+  Sparkles,
+  Layers,
+  Map as MapIcon,
+  Terminal,
+  ArrowUp,
+} from 'lucide-react';
+import MobileActionBar from '@/components/molecules/MobileActionBar';
 import VisitedPostsMinimap from '@/components/molecules/VisitedPostsMinimap';
 import { useVisitedPostsState } from '@/components/molecules/useVisitedPostsState';
 import ChatWidget from '@/components/molecules/ChatWidget';
@@ -37,7 +45,6 @@ import { useOverlayFocusReturn } from './hooks/useOverlayFocusReturn';
 import {
   ShellModal,
   ShellOutputOverlay,
-  MobileShellBar,
   TerminalDock,
   DefaultDock,
   RealTerminalModal,
@@ -79,7 +86,9 @@ function sanitizeDockAction(action: DockAction): DockAction {
   };
 }
 
-export default function FloatingActionBar() {
+export default function FloatingActionBar({
+  toolbarHidden = false,
+}: { toolbarHidden?: boolean } = {}) {
   const { pathname } = useLocation();
   const isReaderRoute = /^\/(?:blog|post)\/[^/]+\/[^/]+\/?$/.test(pathname);
   const { isTerminal } = useTheme();
@@ -107,10 +116,6 @@ export default function FloatingActionBar() {
     (node: HTMLButtonElement | null) => registerTrigger('shell', node),
     [registerTrigger]
   );
-  const shellPathRef = useCallback(
-    (node: HTMLDivElement | null) => registerTrigger('shell-path', node),
-    [registerTrigger]
-  );
   const shellOutputRef = useCallback(
     (node: HTMLButtonElement | null) => registerTrigger('shell-output', node),
     [registerTrigger]
@@ -129,11 +134,17 @@ export default function FloatingActionBar() {
     useState<SelectedBlockAttachment[]>([]);
   const [chatCurrentPost, setChatCurrentPost] =
     useState<ReturnType<typeof getArticleContext>>(null);
-  const scrollHidden = useScrollHide();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const scrollHidden = useScrollHide({
+    enabled: !mobileMenuOpen,
+    resetKey: pathname,
+    revealAtBottom: !isReaderRoute,
+  });
   const [fabPinned] = useFabPinned();
   const [fabPosition] = useFabPosition();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  useEffect(() => setMobileMenuOpen(false), [pathname, isMobile]);
   const { language } = useLanguage();
   const { send, sendImpression, sendMemoContextChange } = useFabAnalytics();
   const str = useUIStrings();
@@ -173,17 +184,6 @@ export default function FloatingActionBar() {
   }, [send]);
 
   useSelectedBlockActions({ openChat, send });
-
-  // Scroll to top button visibility (for mobile terminal shell bar)
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Initial check
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Ctrl+Alt+M shortcut: open live chat
   useEffect(() => {
@@ -535,6 +535,28 @@ export default function FloatingActionBar() {
         },
         badge: hasNew,
       },
+      {
+        key: 'shell',
+        triggerRef: shellTriggerRef,
+        label: language === 'ko' ? '터미널' : 'Terminal',
+        icon: Terminal,
+        onClick: () => openShell('shell'),
+        hidden: !isTerminal || !isMobile,
+      },
+      {
+        key: 'top',
+        label: language === 'ko' ? '맨 위로 이동' : 'Back to top',
+        icon: ArrowUp,
+        onClick: () =>
+          window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+              .matches
+              ? 'auto'
+              : 'smooth',
+          }),
+        hidden: !isTerminal || !isMobile,
+      },
     ],
     [
       str,
@@ -552,6 +574,10 @@ export default function FloatingActionBar() {
       closeChat,
       chatTriggerRef,
       rememberFocus,
+      isTerminal,
+      isMobile,
+      openShell,
+      shellTriggerRef,
     ]
   );
 
@@ -624,60 +650,59 @@ export default function FloatingActionBar() {
         />
       )}
 
-      {!toolbarDisabled && (!isReaderRoute || isTerminal) && (
-        <div
-          role='toolbar'
-          aria-label={normalizeFabActionLabel(
-            language === 'ko' ? '빠른 작업' : 'Floating actions'
-          )}
-          aria-orientation={isLeftFab ? 'vertical' : 'horizontal'}
-          className={containerClasses}
-        >
-          <nav
-            className={cn(
-              'mx-auto flex w-full justify-center',
-              isLeftFab
-                ? 'flex-col items-center gap-1'
-                : isMobile
-                  ? 'max-w-none'
-                  : 'max-w-6xl'
-            )}
+      {!toolbarHidden &&
+        (!toolbarDisabled || isMobile) &&
+        (!isReaderRoute || isTerminal) &&
+        (isMobile ? (
+          <MobileActionBar
+            hidden={toolbarDisabled}
+            aria-label={language === 'ko' ? '빠른 작업' : 'Floating actions'}
+            scrollHidden={(isReaderRoute || !fabPinned) && scrollHidden}
           >
-            {/* Terminal style dock */}
-            {isTerminal ? (
-              isMobile ? (
-                // Mobile TUI: Shell Bar
-                !shellOpen && (
-                  <MobileShellBar
-                    displayPath={vfs.displayPath}
-                    onShellOpen={() => openShell('shell')}
-                    onPathOpen={() => openShell('shell-path')}
-                    triggerRef={shellTriggerRef}
-                    pathRef={shellPathRef}
-                    showScrollTop={showScrollTop}
-                    hasNew={hasNew}
-                    data-hidden={scrollHidden}
-                  />
-                )
-              ) : (
-                // PC Terminal Dock
+            <DefaultDock
+              dockActions={dockActions}
+              isMobile
+              language={language}
+              onMenuOpenChange={setMobileMenuOpen}
+            />
+          </MobileActionBar>
+        ) : (
+          <div
+            role='toolbar'
+            aria-label={normalizeFabActionLabel(
+              language === 'ko' ? '빠른 작업' : 'Floating actions'
+            )}
+            aria-orientation={isLeftFab ? 'vertical' : 'horizontal'}
+            className={containerClasses}
+          >
+            <nav
+              className={cn(
+                'mx-auto flex w-full justify-center',
+                isLeftFab
+                  ? 'flex-col items-center gap-1'
+                  : isMobile
+                    ? 'max-w-none'
+                    : 'max-w-6xl'
+              )}
+            >
+              {/* Terminal style dock */}
+              {isTerminal ? (
                 <TerminalDock
+                  dockActions={dockActions}
+                  isMobile={false}
+                  isLeft={isLeftFab}
+                />
+              ) : (
+                // Default style dock
+                <DefaultDock
                   dockActions={dockActions}
                   isMobile={isMobile}
                   isLeft={isLeftFab}
                 />
-              )
-            ) : (
-              // Default style dock
-              <DefaultDock
-                dockActions={dockActions}
-                isMobile={isMobile}
-                isLeft={isLeftFab}
-              />
-            )}
-          </nav>
-        </div>
-      )}
+              )}
+            </nav>
+          </div>
+        ))}
 
       {chatOpen && (
         <ChatWidget

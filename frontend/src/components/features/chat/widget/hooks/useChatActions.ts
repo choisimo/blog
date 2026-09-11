@@ -1,3 +1,4 @@
+import { preferenceScope } from '@/services/personal/agentPreferences';
 import { useCallback } from 'react';
 import type {
   ChatMessage,
@@ -495,6 +496,7 @@ export function useChatActions({
         setSelectedBlockAttachments([]);
         return;
       }
+      const responseScope = preferenceScope();
       const baseText =
         trimmed ||
         (imageToUpload
@@ -550,7 +552,7 @@ export function useChatActions({
           prompt: text,
           signal: controller.signal,
         });
-        push({ id: aiId, role: 'assistant', text: aggregated });
+        push({ id: aiId, role: 'assistant', text: aggregated, visualPrompt: baseText, visualScope: responseScope });
       } else {
         let memoryContext: string | null = null;
 
@@ -568,6 +570,7 @@ export function useChatActions({
         }
 
         let acc = '';
+        let lastPaint = 0;
         let finalSources: ChatMessage['sources'] | undefined;
         let finalFollowups: ChatMessage['followups'] | undefined;
         const idempotencyKey = createChatIdempotencyKey();
@@ -594,6 +597,12 @@ export function useChatActions({
         })) {
           if (ev.type === 'text') {
             acc += ev.text;
+            // Expose received text without waiting for the complete response.
+            if (Date.now() - lastPaint > 80) {
+              const visibleText = acc;
+              lastPaint = Date.now();
+              setMessages(prev => prev.map(m => m.id === aiId ? { ...m, text: visibleText } : m));
+            }
           } else if (ev.type === 'session') {
             setSessionKey(ev.sessionId);
           } else if (ev.type === 'sources') {
@@ -612,6 +621,8 @@ export function useChatActions({
                   typingLabel: undefined,
                   sources: finalSources,
                   followups: finalFollowups,
+                  visualPrompt: acc.trim() ? baseText : undefined,
+                  visualScope: responseScope,
                 }
               : m
           )
@@ -633,7 +644,7 @@ export function useChatActions({
       }
     } catch (e) {
       if (aiId) {
-        setMessages(prev => prev.filter(m => m.id !== aiId));
+        setMessages(prev => prev.flatMap(m => m.id !== aiId ? [m] : m.text.trim() ? [{ ...m, pending: false, typingLabel: undefined }] : []));
       }
       const msg = getErrorMessage(e, 'Chat failed');
       const errId =

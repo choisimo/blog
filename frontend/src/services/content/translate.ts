@@ -4,8 +4,8 @@
  */
 import {
   cachedTranslationResponseSchema,
-  translationGenerateResponseSchema,
 } from "@blog/shared/contracts/translation";
+import { normalizeTranslationSelectors, normalizeTranslationJobId as sharedJobId } from "@blog/shared/contracts/translation-path";
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { getAuthHeadersAsync } from "@/stores/session/useAuthStore";
 
@@ -30,6 +30,7 @@ export type TranslationRequest = {
   description?: string;
   content?: string;
   forceRefresh?: boolean;
+  idempotencyKey?: string;
 };
 
 export type TranslationErrorCode =
@@ -37,11 +38,15 @@ export type TranslationErrorCode =
   | "AI_TIMEOUT"
   | "AUTH_REQUIRED"
   | "NOT_AVAILABLE"
+  | "BACKEND_UNAVAILABLE"
   | "UNKNOWN";
 
 export type TranslationJobStatus = {
   id: string;
-  status: "running" | "succeeded" | "failed";
+  status: "queued" | "deferred" | "running" | "succeeded" | "failed";
+  attempts?: number;
+  retryAt?: string;
+  sourceVersion?: string;
   statusUrl: string;
   cacheUrl: string;
   generateUrl: string;
@@ -69,7 +74,7 @@ export type PublicTranslationLookupResult = {
 };
 
 type TranslationErrorResponse = {
-  error?: string | { message?: string };
+  error?: string | { message?: string; code?: string; retryable?: boolean };
   code?: string;
   retryable?: boolean;
   message?: string;
@@ -100,9 +105,11 @@ function mapStatusToErrorCode(
   status: number,
   data?: TranslationErrorResponse,
 ): TranslationErrorCode {
-  if (data?.code === "AI_TIMEOUT" || status === 504) return "AI_TIMEOUT";
-  if (data?.code === "AI_ERROR" || status === 502) return "AI_ERROR";
-  if (data?.code === "NOT_AVAILABLE" || status === 404) return "NOT_AVAILABLE";
+  const code = typeof data?.error === "object" ? data.error.code : data?.code;
+  if (code === "BACKEND_UNAVAILABLE" || status === 503) return "BACKEND_UNAVAILABLE";
+  if (code === "AI_TIMEOUT" || status === 504) return "AI_TIMEOUT";
+  if (code === "AI_ERROR" || status === 502) return "AI_ERROR";
+  if (code === "NOT_AVAILABLE" || status === 404) return "NOT_AVAILABLE";
   if (status === 401 || status === 403) return "AUTH_REQUIRED";
   return "UNKNOWN";
 }
@@ -110,6 +117,7 @@ function mapStatusToErrorCode(
 export function normalizeTranslationErrorCode(
   code?: string | null,
 ): TranslationErrorCode {
+  if (code === "BACKEND_UNAVAILABLE") return "BACKEND_UNAVAILABLE";
   if (code === "AI_TIMEOUT") return "AI_TIMEOUT";
   if (code === "AI_ERROR") return "AI_ERROR";
   if (code === "NOT_AVAILABLE" || code === "NOT_READY") return "NOT_AVAILABLE";
@@ -130,41 +138,15 @@ async function parseError(response: Response): Promise<TranslationApiError> {
     code: mapStatusToErrorCode(response.status, data),
     status: response.status,
     retryable: Boolean(
-      data.retryable || response.status === 502 || response.status === 504,
+      data.retryable || (typeof data.error === "object" && data.error.retryable) || [429,502,503,504].includes(response.status),
     ),
   });
 }
 
-function parseTranslationPayload(
-  payload: unknown,
-  status: number,
-): TranslationResult {
-  const parsed = translationGenerateResponseSchema.safeParse(payload);
-  if (parsed.success) {
-    const data = parsed.data.data;
-    if ("translation" in data) {
-      if (data.translation) {
-        return data.translation as TranslationResult;
-      }
-
-      throw new TranslationApiError("Translation is not ready yet", {
-        code: "NOT_AVAILABLE",
-        status,
-      });
-    }
-
-    return data as TranslationResult;
-  }
-
-  const cached = cachedTranslationResponseSchema.safeParse(payload);
-  if (cached.success) {
-    return cached.data.data as TranslationResult;
-  }
-
-  throw new TranslationApiError("Invalid translation response", {
-    code: "UNKNOWN",
-    status,
-  });
+function parseTranslationPayload(payload:unknown,status:number):TranslationResult {
+  const parsed=parseGenerateResult(payload,status);
+  if(parsed.translation)return parsed.translation;
+  throw new TranslationApiError("Translation was accepted and is not ready yet",{code:"NOT_AVAILABLE",status,retryable:true});
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -180,7 +162,7 @@ function parseTranslationJobStatus(value: unknown): TranslationJobStatus | null 
 
   if (
     !id ||
-    (value.status !== "running" &&
+    (value.status !== "queued" && value.status !== "deferred" && value.status !== "running" &&
       value.status !== "succeeded" &&
       value.status !== "failed") ||
     !statusUrl ||
@@ -196,6 +178,9 @@ function parseTranslationJobStatus(value: unknown): TranslationJobStatus | null 
     statusUrl,
     cacheUrl,
     generateUrl,
+    ...(typeof value.attempts === 'number' ? {attempts:value.attempts}:{}),
+    ...(typeof value.retryAt === 'string' ? {retryAt:value.retryAt}:{}),
+    ...(typeof value.sourceVersion === 'string' ? {sourceVersion:value.sourceVersion}:{}),
   };
 
   const errorMessage = isRecord(value.error)
@@ -227,9 +212,6 @@ function invalidTranslationJobError(status: number): TranslationApiError {
   });
 }
 
-const TRANSLATION_YEAR_PATTERN = /^\d{4}$/;
-const TRANSLATION_SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
-const TRANSLATION_LANGUAGE_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/;
 const TRANSLATION_JOB_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const TRANSLATION_CONTROL_PATTERN = /[\u0000-\u001F\u007F]/;
 
@@ -242,22 +224,6 @@ function decodeTranslationSelector(value: string): string | null {
   } catch {
     return trimmed;
   }
-}
-
-function normalizeTranslationSegment(
-  value: string,
-  label: string,
-  pattern: RegExp,
-): string {
-  const normalized = decodeTranslationSelector(value);
-  if (!normalized || !pattern.test(normalized)) {
-    throw new TranslationApiError(`Invalid translation ${label}`, {
-      code: "UNKNOWN",
-      status: 400,
-    });
-  }
-
-  return encodeURIComponent(normalized);
 }
 
 function normalizeOptionalJobId(value?: string): string | null {
@@ -296,65 +262,27 @@ function normalizeJobId(value: unknown): string | null {
   return TRANSLATION_JOB_ID_PATTERN.test(normalized) ? normalized : null;
 }
 
-function getTranslationPathSegments(
-  request: Pick<TranslationRequest, "year" | "slug" | "targetLang">,
-): { year: string; slug: string; targetLang: string } {
-  return {
-    year: normalizeTranslationSegment(request.year, "year", TRANSLATION_YEAR_PATTERN),
-    slug: normalizeTranslationSegment(request.slug, "slug", TRANSLATION_SLUG_PATTERN),
-    targetLang: normalizeTranslationSegment(
-      request.targetLang,
-      "target language",
-      TRANSLATION_LANGUAGE_PATTERN,
-    ),
-  };
+function getTranslationPathSegments(request:Pick<TranslationRequest,"year"|"slug"|"targetLang">) {
+  try {
+    const value=normalizeTranslationSelectors(request);
+    return {...value,slug:encodeURIComponent(value.slug)};
+  } catch (error) {throw new TranslationApiError(error instanceof Error ? error.message : 'Invalid translation selectors',{status:400});}
 }
 
-function parseGenerateResult(
-  payload: unknown,
-  status: number,
-): TranslationGenerateResult {
-  const parsed = translationGenerateResponseSchema.safeParse(payload);
-  if (!parsed.success) {
-    throw new TranslationApiError("Invalid translation response", {
-      code: "UNKNOWN",
-      status,
-    });
-  }
-
-  const body = parsed.data;
-  if ("job" in body && body.data === null) {
-    const job = parseTranslationJobStatus(body.job);
-    if (!job) {
-      throw invalidTranslationJobError(status);
-    }
-
-    return {
-      translation: null,
-      job,
-      accepted: true,
-    };
-  }
-
-  if (isRecord(body.data) && "job" in body.data) {
-    const job = parseTranslationJobStatus(body.data.job);
-    if (!job) {
-      throw invalidTranslationJobError(status);
-    }
-
-    return {
-      translation:
-        (body.data.translation as TranslationResult | undefined) ?? null,
-      job,
-      accepted: false,
-    };
-  }
-
-  return {
-    translation: body.data as TranslationResult,
-    job: null,
-    accepted: false,
-  };
+function parseGenerateResult(payload:unknown,status:number):TranslationGenerateResult {
+  if(!isRecord(payload) || payload.ok!==true)throw invalidTranslationJobError(status);
+  const nested=isRecord(payload.data) && 'job' in payload.data ? payload.data : null;
+  const rawJob=payload.job ?? nested?.job;
+  const job=rawJob===undefined ? null : parseTranslationJobStatus(rawJob);
+  if(rawJob!==undefined && !job)throw invalidTranslationJobError(status);
+  const rawTranslation=nested ? nested.translation : payload.data;
+  let translation:TranslationResult|null=null;
+  if(rawTranslation!=null) {
+    const parsed=cachedTranslationResponseSchema.safeParse({ok:true,data:rawTranslation});
+    if(!parsed.success)throw invalidTranslationJobError(status);
+    translation=parsed.data.data as TranslationResult;
+  } else if(!job && status!==202)throw invalidTranslationJobError(status);
+  return {translation,job,accepted:job ? ['queued','deferred','running'].includes(job.status) : status===202};
 }
 
 function parseRetryAfterSeconds(value: string | null): number | undefined {
@@ -379,10 +307,14 @@ function extractLookupFlags(payload: unknown): {
     body.data && typeof body.data === "object"
       ? (body.data as Record<string, unknown>)
       : (payload as Record<string, unknown>);
+  const translation =
+    candidate.translation && typeof candidate.translation === "object"
+      ? (candidate.translation as Record<string, unknown>)
+      : candidate;
 
   return {
-    warming: candidate.warming === true,
-    stale: candidate.stale === true,
+    warming: translation.warming === true,
+    stale: translation.stale === true,
   };
 }
 
@@ -427,7 +359,9 @@ export async function translatePost(
 ): Promise<TranslationResult> {
   const path = getTranslationPathSegments(request);
   const baseUrl = getApiBaseUrl();
-  const headers = await getAuthHeadersAsync();
+  const headers = {...await getAuthHeadersAsync(),
+    ...(request.forceRefresh ? {'Idempotency-Key':request.idempotencyKey || crypto.randomUUID()}:{}),
+  };
   const body = JSON.stringify({
     sourceLang: request.sourceLang,
     forceRefresh: request.forceRefresh,
@@ -474,6 +408,7 @@ export async function requestTranslationGeneration(
   const headers = {
     ...(await getAuthHeadersAsync()),
     Prefer: "respond-async",
+    ...(request.forceRefresh ? {"Idempotency-Key":request.idempotencyKey || crypto.randomUUID()}:{}),
   };
   const body = JSON.stringify({
     sourceLang: request.sourceLang,
@@ -532,13 +467,16 @@ export async function getCachedTranslation(
   year: string,
   slug: string,
   targetLang: string,
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; readOnly?: boolean; jobId?: string },
 ): Promise<PublicTranslationLookupResult> {
   const path = getTranslationPathSegments({ year, slug, targetLang });
   const baseUrl = getApiBaseUrl();
+  const query=new URLSearchParams();
+  if(options?.readOnly)query.set('observe','true');
+  if(options?.jobId)query.set('jobId',sharedJobId(options.jobId));
   const response = await fetch(
-    `${baseUrl}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}`,
-    { signal: options?.signal },
+    `${baseUrl}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}${query.size?'?'+query:''}`,
+    { signal: options?.signal, cache:'no-store' },
   );
   const retryAfterSeconds = parseRetryAfterSeconds(
     response.headers.get("Retry-After"),
@@ -559,29 +497,12 @@ export async function getCachedTranslation(
   }
 
   const payload = await response.json().catch(() => null);
-  if (
-    response.status === 202 &&
-    payload &&
-    typeof payload === "object" &&
-    "data" in payload &&
-    (payload as { data?: unknown }).data === null
-  ) {
-    return {
-      translation: null,
-      pending: true,
-      job: null,
-      retryAfterSeconds,
-      warming: true,
-      stale: false,
-    };
-  }
-
   const result = parseGenerateResult(payload, response.status);
   const flags = extractLookupFlags(payload);
 
   return {
     translation: result.translation,
-    pending: response.status === 202 || result.accepted || flags.warming,
+    pending: result.job ? ["queued","deferred","running"].includes(result.job.status) : response.status === 202 || result.accepted || flags.warming,
     job: result.job,
     retryAfterSeconds,
     warming: flags.warming,
@@ -613,4 +534,16 @@ export async function deleteCachedTranslation(
   } catch {
     return false;
   }
+}
+
+/** Read-only public status; never follow a supplied statusUrl or send member credentials. */
+export async function getPublicTranslationGenerationStatus(
+  request:Pick<TranslationRequest,'year'|'slug'|'targetLang'>, jobId:string, options?:{signal?:AbortSignal}
+):Promise<TranslationJobStatus> {
+  const path=getTranslationPathSegments(request);
+  const id=sharedJobId(jobId);
+  const response=await fetch(`${getApiBaseUrl()}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}/status?jobId=${encodeURIComponent(id)}`,
+    {signal:options?.signal,cache:'no-store'});
+  if(!response.ok)throw await parseError(response);
+  return parseJobStatusPayload(await response.json(),response.status);
 }

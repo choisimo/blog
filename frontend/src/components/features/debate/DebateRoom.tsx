@@ -1,3 +1,6 @@
+import { preferenceScope } from '@/services/personal/agentPreferences';
+import { GeneratedImageCard } from '@/components/features/ai/GeneratedImageCard';
+import { AgentSettingsButton } from '@/components/features/ai/AgentPreferencesDialog';
 import {
   Fragment,
   useCallback,
@@ -257,18 +260,18 @@ function buildDebateSystemPrompt(
   persona?: AIPersona,
 ): string {
   const baseInstructions =
-    persona?.systemPromptPrefix || "당신은 사려 깊은 상담 파트너입니다.";
+    persona?.systemPromptPrefix || "사용자가 정한 역할과 토론 방식에 맞춰 주제를 검토하는 대화 상대입니다.";
 
   const lines: string[] = [
     baseInstructions,
     "",
     "다음 지침을 따르세요:",
-    "1. 사용자의 감정과 생각을 먼저 공감하고, 차분하게 응답합니다.",
-    "2. 옳고 그름을 판단하기보다, 사용자가 스스로 정리하고 선택할 수 있도록 도와줍니다.",
-    "3. 조언이 필요할 때에는 예의 바르게, 구체적인 예시와 함께 제안합니다.",
-    "4. 사용자가 새로운 관점이나 선택지를 발견하도록 부드럽게 질문을 던집니다.",
-    "5. 말투는 친근하고 따뜻하게 유지하되, 과도하게 가볍지 않게 균형을 잡습니다.",
-    "6. 응답은 2~4문장 정도로 간결하게, 지금 대화에서 가장 중요한 한두 가지에 집중합니다.",
+    "1. 사용자의 질문과 선택한 관점을 먼저 파악하고 질문에 직접 답합니다.",
+    "2. 확인 가능한 사실, 해석과 추측을 구분하고 사용자가 판단할 근거를 제시합니다.",
+    "3. 필요한 경우에만 구체적인 예시와 반례를 덧붙입니다.",
+    "4. 답변에 필요한 정보가 부족할 때만 질문을 덧붙이고, 매번 후속 질문을 강제하지 않습니다.",
+    "5. 말투, 답변 길이와 언어는 함께 제공된 사용자 응답 선호를 따릅니다.",
+    "6. 선택한 토론 입장과 대화 상대의 관점을 유지하고, 지금 질문에 직접 답합니다.",
     "",
     "---",
     "",
@@ -392,7 +395,9 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     () => sanitizeIntentOptions(getModeIntentOptions(safeTopic)),
     [safeTopic],
   );
+  const visualSession = useMemo(() => ({ key: crypto.randomUUID(), scope: preferenceScope() }), [safeTopic.title, safeTopic.context]);
   const [messages, setMessages] = useState<DebateMessage[]>([]);
+  const [hasTopicText, setHasTopicText] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [thinkingMsgIdx, setThinkingMsgIdx] = useState(0);
@@ -534,6 +539,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         })) {
           if (ev.type === "text") {
             acc += sanitizeStreamText(ev.text);
+            if (acc.trim()) setHasTopicText(true);
             setMessages((prev) =>
               prev.map((m) => (m.id === aiId ? { ...m, content: acc } : m)),
             );
@@ -647,6 +653,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
       })) {
         if (ev.type === "text") {
           acc += sanitizeStreamText(ev.text);
+            if (acc.trim()) setHasTopicText(true);
           setMessages((prev) =>
             prev.map((m) => (m.id === aiId ? { ...m, content: acc } : m)),
           );
@@ -828,6 +835,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <AgentSettingsButton />
           {messages.length > 0 && (
             <button
               type="button"
@@ -864,6 +872,7 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
         ref={scrollRef}
         className="fn-debate-messages flex-1 overflow-y-auto overscroll-contain px-4 py-5 space-y-5"
       >
+        {hasTopicText && messages.length > 0 && <GeneratedImageCard requestKey={`debate-${visualSession.key}`} prompt={`${safeTopic.title}\n${safeTopic.context.slice(0, 1000)}`} purpose="debate" expectedScope={visualSession.scope} automatic />}
         {selectionStep === "intent" && (
           <div className="space-y-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <StepProgress

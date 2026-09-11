@@ -1,3 +1,4 @@
+import { AgentSettingsButton } from '@/components/features/ai/AgentPreferencesDialog';
 import {
   Sparkles,
   MoreVertical,
@@ -252,6 +253,7 @@ export function ChatHeader({
 
       {/* Right: Actions */}
       <div className="flex items-center gap-0.5 shrink-0">
+        <AgentSettingsButton />
         {!isMobile && canExpand && (
           <button
             type="button"

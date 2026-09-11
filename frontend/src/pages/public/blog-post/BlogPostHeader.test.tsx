@@ -50,7 +50,7 @@ vi.mock('@/utils/content/blog', () => ({
   formatDate: () => 'January 1, 2026',
 }));
 
-function renderHeader() {
+function renderHeader(translationStatus: 'idle' | 'warming' = 'idle') {
   return render(
     <MemoryRouter>
       <BlogPostHeader
@@ -79,7 +79,7 @@ function renderHeader() {
         setLanguage={vi.fn()}
         availableLanguages={['en']}
         resolveLanguageName={() => 'English'}
-        translationStatus='idle'
+        translationStatus={translationStatus}
         aiTranslation={null}
         hasNativeTranslation={false}
         translationError={{
@@ -104,6 +104,11 @@ function renderHeader() {
 }
 
 describe('BlogPostHeader', () => {
+  it('keeps language controls available while translation is being observed', () => {
+    renderHeader('warming');
+    expect(screen.getByRole('button', {name: 'English'})).not.toBeDisabled();
+  });
+
   it('sanitizes header metadata and tag navigation', () => {
     renderHeader();
 

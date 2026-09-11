@@ -43,6 +43,9 @@ export type ChatMessage = {
   text: string;
   attachments?: ChatMessageAttachment[];
   pending?: boolean;
+  visualPrompt?: string;
+  visualScope?: string;
+  visualPurpose?: 'chat' | 'debate';
   typingLabel?: string;
   typingKey?: string;
   channel?: "default" | "live";

@@ -57,6 +57,8 @@ vi.mock('@/services/content/translate', () => {
     getCachedTranslation: vi.fn(),
     requestTranslationGeneration: vi.fn(),
     getTranslationGenerationStatus: vi.fn(),
+    getPublicTranslationGenerationStatus: vi.fn(async () => ({id:'job-1',status:'succeeded',statusUrl:'/status',cacheUrl:'/cache',generateUrl:'/generate'})),
+    normalizeTranslationErrorCode: (code: string) => code || 'UNKNOWN',
     TranslationApiError: MockTranslationApiError,
   };
 });
@@ -119,7 +121,7 @@ vi.mock('@/utils/i18n/uiStrings', () => ({
   useUIStrings: () => hoisted.uiStrings,
 }));
 vi.mock('@/stores/session/useAuthStore', () => ({
-  useAuthStore: (
+  useAuthStore: Object.assign((
     selector?: (state: {
       accessToken: string | null;
       refreshToken: string | null;
@@ -129,7 +131,10 @@ vi.mock('@/stores/session/useAuthStore', () => ({
       ? { accessToken: 'token', refreshToken: null }
       : { accessToken: null, refreshToken: null };
     return selector ? selector(state) : state;
-  },
+  }, {
+    getState: () => hoisted.hasTranslationSession ? { accessToken: 'token', refreshToken: null } : { accessToken: null, refreshToken: null },
+    subscribe: () => () => {},
+  }),
 }));
 vi.mock('@/contexts/ThemeContext', () => ({
   useTheme: () => ({ isTerminal: false }),
@@ -272,6 +277,8 @@ function renderBlogPost() {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
+  vi.mocked(translateService.getPublicTranslationGenerationStatus).mockReset().mockResolvedValue({id:'job-1',status:'succeeded',statusUrl:'/status',cacheUrl:'/cache',generateUrl:'/generate'});
   hoisted.currentLanguage = 'ko';
   hoisted.hasTranslationSession = false;
   hoisted.setLanguage.mockReset();
@@ -360,7 +367,7 @@ test('provides the desktop table of contents and quick actions drawer', async ()
   expect(screen.getAllByTestId('toc-drawer')).toHaveLength(1);
 });
 
-test('renders original content when translation fails', async () => {
+test('renders original content when translation observation disconnects', async () => {
   hoisted.currentLanguage = 'en';
   vi.mocked(postsData.getPostBySlug).mockResolvedValue(basePost);
   vi.mocked(translateService.getCachedTranslation).mockRejectedValue(

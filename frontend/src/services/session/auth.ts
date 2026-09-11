@@ -1,3 +1,4 @@
+import { getAnonymousSession } from '@blog/shared/runtime/anonymous-session';
 /**
  * Admin Authentication Service
  *
@@ -538,7 +539,8 @@ export function getStoredAnonymousToken(): string | null {
     const token = localStorage.getItem(ANON_TOKEN_KEY);
     const normalizedToken = normalizeHeaderToken(token);
     if (token && !normalizedToken) {
-      clearAnonymousToken();
+      // Preserve invalid/expired proof for an explicit recovery decision.
+      return null;
     }
     return normalizedToken;
   } catch {
@@ -572,31 +574,6 @@ export function clearAnonymousToken(): void {
 /**
  * Get a valid anonymous token, requesting/refreshing if needed
  */
-export async function getValidAnonymousToken(): Promise<string> {
-  const existing = getStoredAnonymousToken();
-
-  // No token - request new one
-  if (!existing) {
-    const result = await requestAnonymousToken();
-    storeAnonymousToken(result.token);
-    return result.token;
-  }
-
-  // Check if token is still valid (with 1 day buffer)
-  if (!isTokenExpired(existing, 86400)) {
-    return existing;
-  }
-
-  // Try to refresh
-  try {
-    const result = await refreshAnonymousToken(existing);
-    storeAnonymousToken(result.token);
-    return result.token;
-  } catch {
-    // Refresh failed - request new token
-    clearAnonymousToken();
-    const result = await requestAnonymousToken();
-    storeAnonymousToken(result.token);
-    return result.token;
-  }
+export async function getValidAnonymousToken(options: { forceRefresh?: boolean } = {}): Promise<string> {
+  return getAnonymousSession({ apiBase: getBaseUrl(), forceRefresh: options.forceRefresh });
 }

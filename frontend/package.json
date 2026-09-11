@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "npm run generate-manifests && npm run generate-projects-manifest && npm run generate-runtime-config",
+    "predev": "npm run sync:anonymous-session && npm run generate-manifests && npm run generate-projects-manifest && npm run generate-runtime-config",
     "dev": "vite --config config/vite.config.ts",
-    "prebuild": "npm run generate-manifests && npm run generate-projects-manifest && npm run generate-seo && npm run optimize-images && npm run generate-runtime-config",
+    "prebuild": "npm run sync:anonymous-session && npm run generate-manifests && npm run generate-projects-manifest && npm run generate-seo && npm run optimize-images && npm run generate-runtime-config",
     "build": "vite build --config config/vite.config.ts",
     "postbuild": "node scripts/generate-static-html.js",
     "build:dev": "vite build --mode development --config config/vite.config.ts",
@@ -39,7 +39,9 @@
     "optimize-images": "node scripts/optimize-images.js",
     "verify:reading": "node scripts/reading-verification/check-sources.mjs && node --test scripts/reading-verification/core.test.mjs",
     "test:reading": "vitest run --config config/vite.config.ts src/test/reading src/test/ImageLightbox.test.tsx src/components/features/blog/ImageLightbox.test.tsx src/test/MarkdownRenderer.codeblocks.test.tsx",
-    "test:e2e:reading": "playwright test e2e/reading-design.spec.ts"
+    "test:e2e:reading": "playwright test e2e/reading-design.spec.ts",
+    "sync:anonymous-session": "node scripts/sync-anonymous-session.mjs",
+    "verify:anonymous-session": "node scripts/sync-anonymous-session.mjs --check"
   },
   "dependencies": {
     "@blog/shared": "file:../shared",

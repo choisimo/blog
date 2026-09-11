@@ -12,6 +12,22 @@ type RawProjectsManifest = {
   format?: number;
 };
 
+type RawProjectCatalogRepository = {
+  repository?: string;
+  url?: string;
+  sourceUrl?: string;
+  isFork?: boolean;
+  isArchived?: boolean;
+  isEmpty?: boolean;
+  pushedAt?: string;
+  languages?: string[];
+};
+
+type RawProjectCatalog = {
+  checkedAt?: string;
+  repositories?: RawProjectCatalogRepository[];
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -43,6 +59,19 @@ function parseProjectsManifest(value: unknown): RawProjectsManifest | null {
   };
 }
 
+function parseProjectCatalog(value: unknown): RawProjectCatalog | null {
+  if (!isRecord(value)) return null;
+
+  const repositories = Array.isArray(value.repositories)
+    ? value.repositories.filter(isRecord).map((repository) => repository as RawProjectCatalogRepository)
+    : [];
+
+  return {
+    checkedAt: typeof value.checkedAt === 'string' ? value.checkedAt : undefined,
+    repositories,
+  };
+}
+
 function sanitizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -60,9 +89,7 @@ function normalizeProjectUrl(value: unknown): string {
 
   try {
     const url = new URL(raw);
-    return url.protocol === 'http:' || url.protocol === 'https:'
-      ? url.href
-      : '';
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : '';
   } catch {
     return '';
   }
@@ -108,12 +135,10 @@ function normalizeProject(item: RawManifestItem, index: number): ProjectItem | n
 
   const codeUrl = normalizeProjectUrl(item.codeUrl);
   const thumbnail = normalizeProjectUrl(item.thumbnail);
-  const category = typeof item.category === 'string' && item.category.trim()
-    ? item.category.trim()
-    : 'Web';
-  const status = typeof item.status === 'string' && item.status.trim()
-    ? item.status.trim()
-    : 'Dev';
+  const category =
+    typeof item.category === 'string' && item.category.trim() ? item.category.trim() : 'Web';
+  const status =
+    typeof item.status === 'string' && item.status.trim() ? item.status.trim() : 'Dev';
 
   return {
     id: createId(item, index),
@@ -132,6 +157,47 @@ function normalizeProject(item: RawManifestItem, index: number): ProjectItem | n
   };
 }
 
+function normalizeCatalogProject(repository: RawProjectCatalogRepository, index: number): ProjectItem | null {
+  const url = normalizeProjectUrl(repository.url);
+  if (!url) return null;
+
+  const [, rawTitle] = String(repository.repository || '').split('/');
+  const title = rawTitle?.trim() || `Repository ${index + 1}`;
+  const languages = sanitizeStringArray(repository.languages);
+  const category = languages[0] || 'Web';
+  const status = repository.isEmpty
+    ? '빈 저장소'
+    : repository.isArchived
+      ? '보관'
+      : repository.isFork
+        ? '포크'
+        : '공개';
+  const tags = [...new Set([category, repository.isFork ? '포크' : '원본', ...languages])];
+
+  return {
+    id: `catalog-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || index + 1}`,
+    title,
+    description: `${title} 공개 저장소 항목입니다. 검토된 저장소 메타데이터를 바탕으로 복구된 프로젝트 카드입니다.`,
+    date: toSafeDate(repository.pushedAt),
+    category,
+    tags,
+    stack: languages,
+    status,
+    type: 'link',
+    url,
+    codeUrl: normalizeProjectUrl(repository.sourceUrl) || url,
+    featured: false,
+  };
+}
+
+function sortProjects(items: ProjectItem[]): ProjectItem[] {
+  return items.sort((a, b) => {
+    if (a.featured && !b.featured) return -1;
+    if (!a.featured && b.featured) return 1;
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+}
+
 export class ProjectService {
   private static cache: ProjectsManifest | null = null;
 
@@ -140,17 +206,65 @@ export class ProjectService {
     return base.replace(/\/$/, '');
   }
 
-  private static async loadManifest(): Promise<RawProjectsManifest | null> {
+  private static async fetchJson(pathname: string): Promise<unknown> {
+    const base = this.getBasePath();
+    const cacheBust = import.meta.env.PROD ? `?v=${Date.now()}` : '';
+    const url = `${base}${pathname}${cacheBust}`;
+    const response = await fetch(url, { cache: 'no-cache' });
+    if (!response.ok) {
+      throw new Error(`Failed to load ${pathname}: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  private static async loadManifest(): Promise<ProjectsManifest | null> {
     try {
-      const base = this.getBasePath();
-      const url = `${base}/projects-manifest.json${import.meta.env.PROD ? `?v=${Date.now()}` : ''}`;
-      const response = await fetch(url, { cache: 'no-cache' });
-      if (!response.ok) {
-        throw new Error(`Failed to load projects manifest: ${response.status}`);
+      const rawManifest = parseProjectsManifest(
+        await this.fetchJson('/projects-manifest.json')
+      );
+      const rawItems = Array.isArray(rawManifest?.items) ? rawManifest.items : [];
+      const normalizedItems = sortProjects(
+        rawItems
+          .map((item, index) => normalizeProject(item, index))
+          .filter((item): item is ProjectItem => item !== null)
+      );
+
+      if (!normalizedItems.length) {
+        return null;
       }
-      return parseProjectsManifest(await response.json());
+
+      return {
+        total: normalizedItems.length,
+        items: normalizedItems,
+        generatedAt: rawManifest?.generatedAt || new Date().toISOString(),
+        format: rawManifest?.format ?? 1,
+      };
     } catch (error) {
       console.error('Error loading projects manifest:', error);
+      return null;
+    }
+  }
+
+  private static async loadCatalogFallback(): Promise<ProjectsManifest | null> {
+    try {
+      const catalog = parseProjectCatalog(await this.fetchJson('/project-catalog.json'));
+      const repositories = Array.isArray(catalog?.repositories) ? catalog.repositories : [];
+      const normalizedItems = sortProjects(
+        repositories
+          .map((repository, index) => normalizeCatalogProject(repository, index))
+          .filter((item): item is ProjectItem => item !== null)
+      );
+      if (!normalizedItems.length) {
+        return null;
+      }
+      return {
+        total: normalizedItems.length,
+        items: normalizedItems,
+        generatedAt: catalog?.checkedAt || new Date().toISOString(),
+        format: 1,
+      };
+    } catch (error) {
+      console.error('Error loading project catalog fallback:', error);
       return null;
     }
   }
@@ -158,25 +272,12 @@ export class ProjectService {
   static async getAllProjects(): Promise<ProjectItem[]> {
     if (this.cache) return this.cache.items;
 
-    const manifest = await this.loadManifest();
-    const rawItems = Array.isArray(manifest?.items) ? manifest?.items : [];
+    const manifest = (await this.loadManifest()) || (await this.loadCatalogFallback());
+    if (!manifest) {
+      return [];
+    }
 
-    const normalizedItems = rawItems
-      .map((item, index) => normalizeProject(item, index))
-      .filter((item): item is ProjectItem => item !== null)
-      .sort((a, b) => {
-        if (a.featured && !b.featured) return -1;
-        if (!a.featured && b.featured) return 1;
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      });
-
-    this.cache = {
-      total: normalizedItems.length,
-      items: normalizedItems,
-      generatedAt: manifest?.generatedAt || new Date().toISOString(),
-      format: manifest?.format ?? 1,
-    };
-
+    this.cache = manifest;
     return this.cache.items;
   }
 

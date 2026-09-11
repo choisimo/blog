@@ -76,16 +76,19 @@ describe('FloatingActionBar feature flag', () => {
   it('shows VisitedPostsMinimap when FAB disabled', async () => {
     seedVisited();
     await withFab(false);
-    const historyTriggers = screen.queryAllByLabelText(
-      'Open visited posts history'
-    );
-    expect(historyTriggers.length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(
+        screen.queryAllByLabelText('Open visited posts history').length
+      ).toBeGreaterThan(0);
+    });
   });
 
   it('renders FAB toolbar when enabled', async () => {
     await withFab(true);
     await waitFor(() => {
-      const toolbar = screen.queryByRole('toolbar', { name: 'Floating actions' });
+      const toolbar = screen.queryByRole('toolbar', {
+        name: 'Floating actions',
+      });
       expect(toolbar).not.toBeNull();
     });
     expect(
@@ -162,7 +165,10 @@ describe('FloatingActionBar feature flag', () => {
 
     await waitFor(() => {
       const calls = dispatchSpy.mock?.calls || [];
-      const hasVisitedOpen = calls.some((args: unknown[]) => args?.[0] && (args[0] as Event).type === 'visitedposts:open');
+      const hasVisitedOpen = calls.some(
+        (args: unknown[]) =>
+          args?.[0] && (args[0] as Event).type === 'visitedposts:open'
+      );
       expect(hasVisitedOpen).toBe(true);
     });
 
@@ -255,7 +261,8 @@ describe('FloatingActionBar feature flag', () => {
 
     expect(
       dispatchSpy.mock.calls.some(
-        (args: unknown[]) => args?.[0] && (args[0] as Event).type === 'visitedposts:open'
+        (args: unknown[]) =>
+          args?.[0] && (args[0] as Event).type === 'visitedposts:open'
       )
     ).toBe(true);
     dispatchSpy.mockRestore();

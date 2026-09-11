@@ -14,7 +14,8 @@
     set(key, val) {
       try {
         localStorage.setItem(key, JSON.stringify(val));
-      } catch (_) {}
+        return true;
+      } catch (_) { return false; }
     },
   };
 
@@ -61,7 +62,7 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
-  const AI_MEMO_ASSET_VERSION = '20260908-fieldnotes-reader-desk';
+  const AI_MEMO_ASSET_VERSION = '20260910-r07-1';
   const CATALYST_PROMPT_MAX_LENGTH = 160;
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
   const MAX_BLOCK_PAYLOAD_CHARS = 6000;
@@ -138,19 +139,6 @@
     return Date.now() >= payload.exp * 1000 - bufferSeconds * 1000;
   }
 
-  async function unwrapTokenResponse(res, fallbackMessage) {
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok || payload?.ok === false) {
-      const error = payload?.error?.message || payload?.error || payload?.message || fallbackMessage;
-      throw new Error(String(error));
-    }
-    const data = payload?.data || payload;
-    if (!data?.token || typeof data.token !== 'string') {
-      throw new Error(fallbackMessage);
-    }
-    return data.token;
-  }
-
   function escapeAttribute(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -196,7 +184,7 @@
         ),
         devJs: LS.get(KEYS.devJs, 'console.log("Hello from user JS");'),
         proposalMd: LS.get(KEYS.proposalMd, ''),
-        fontSize: LS.get(KEYS.fontSize, 13),
+        fontSize: LS.get(KEYS.fontSize, 16),
         fabPosition: getFabPositionSetting(),
         events: LS.get(KEYS.events, []),
         layoutMode: LS.get(KEYS.layoutMode, 'split'),
@@ -314,6 +302,7 @@
     connectedCallback() {
       this.render();
       this.bind();
+      this.bindWorkspace();
       this.applyThemeFromPage();
       this.restore();
       this.updateOpen();
@@ -325,10 +314,12 @@
       window.addEventListener('aiMemo:desktopLayout', this._boundExternalDesktopLayout);
       window.addEventListener('aiMemo:windowCommand', this._boundExternalWindowCommand);
       this._boundBeforeUnload = () => {
-        if (this.state.memo) {
-          LS.set(KEYS.memo, this.state.memo);
-        }
+        // Empty content is also a change; never resurrect a deleted memo on reload.
+        this.persistMemoContent();
       };
+      this._boundVisibilitySave = () => { if (document.visibilityState === 'hidden') this.persistMemoContent(); };
+      document.addEventListener('visibilitychange', this._boundVisibilitySave);
+      window.addEventListener('pagehide', this._boundBeforeUnload);
       window.addEventListener('beforeunload', this._boundBeforeUnload);
       
       this._isKeyboardVisible = false;
@@ -347,6 +338,13 @@
       window.removeEventListener('aiMemo:desktopLayout', this._boundExternalDesktopLayout);
       window.removeEventListener('aiMemo:windowCommand', this._boundExternalWindowCommand);
       window.removeEventListener('beforeunload', this._boundBeforeUnload);
+      window.removeEventListener('pagehide', this._boundBeforeUnload);
+      document.removeEventListener('visibilitychange', this._boundVisibilitySave);
+      this._workspaceResizeObserver?.disconnect();
+      clearTimeout(this._memoSaveTimer);
+      clearTimeout(this._editorSaveTimer);
+      this.persistMemoContent();
+      clearTimeout(this._outlineTimer);
       this.cleanupHistoryInteractions();
       
       if (window.visualViewport && this._boundHandleViewportResize) {
@@ -358,6 +356,7 @@
     handleViewportResize() {
       if (!window.visualViewport) return;
       const currentHeight = window.visualViewport.height;
+      this.$panel?.style.setProperty('--memo-viewport-height', `${currentHeight}px`);
       const windowHeight = window.innerHeight;
       const heightDiff = windowHeight - currentHeight;
       const keyboardThreshold = 150;
@@ -976,42 +975,26 @@
       } catch (_) {}
     }
 
+    async anonymousSessionRuntime() {
+      return import(`/ai-memo/anonymous-session.js?v=${AI_MEMO_ASSET_VERSION}`);
+    }
+
     async requestAnonymousToken(apiBase) {
-      const res = await fetch(`${apiBase}/api/v1/auth/anonymous`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: '{}',
-      });
-      const token = await unwrapTokenResponse(res, '익명 인증 토큰 발급에 실패했습니다.');
-      this.storeAnonymousToken(token);
-      return token;
+      // The shared lifecycle also joins an existing/renewing session; no forced reset.
+      return this.getValidAnonymousToken(apiBase);
     }
 
     async refreshAnonymousToken(apiBase, token) {
-      const res = await fetch(`${apiBase}/api/v1/auth/anonymous/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const refreshed = await unwrapTokenResponse(res, '익명 인증 토큰 갱신에 실패했습니다.');
-      this.storeAnonymousToken(refreshed);
-      return refreshed;
+      if (this.getStoredAnonymousToken() !== token) {
+        throw new Error('인증 상태가 변경되었습니다. 요청을 다시 확인하세요.');
+      }
+      const runtime = await this.anonymousSessionRuntime();
+      return runtime.getAnonymousSession({ apiBase, forceRefresh: true });
     }
 
     async getValidAnonymousToken(apiBase) {
-      const existing = this.getStoredAnonymousToken();
-      if (!existing) return this.requestAnonymousToken(apiBase);
-      if (!isTokenExpired(existing, 86400)) return existing;
-
-      try {
-        return await this.refreshAnonymousToken(apiBase, existing);
-      } catch (_) {
-        this.clearAnonymousToken();
-        return this.requestAnonymousToken(apiBase);
-      }
+      const runtime = await this.anonymousSessionRuntime();
+      return runtime.getAnonymousSession({ apiBase });
     }
 
     async getAiJsonHeaders(apiBase) {
@@ -1022,7 +1005,11 @@
         return headers;
       }
 
+      if (typeof adminToken === 'string' && adminToken.trim()) {
+        throw new Error('로그인이 만료되었습니다. 익명 계정으로 자동 전환하지 않습니다.');
+      }
       const token = await this.getValidAnonymousToken(apiBase);
+      if (LS.get(KEYS.adminToken, '') !== adminToken) throw new Error('계정이 변경되었습니다.');
       headers.Authorization = `Bearer ${token}`;
       return headers;
     }
@@ -1446,7 +1433,7 @@
       targets.forEach(t => {
         if (!t) return;
         t.style.fontSize = `${fs}px`;
-        if (t.tagName === 'TEXTAREA') t.style.lineHeight = '1.6';
+        if (t.tagName === 'TEXTAREA') t.style.lineHeight = '1.85';
       });
     }
 
@@ -1536,6 +1523,199 @@
         ].join(' · ');
       }
       this.updateLineNumbers(value);
+      clearTimeout(this._outlineTimer);
+      this._outlineTimer = setTimeout(() => this.updateWorkspaceOutline(value), 160);
+    }
+
+
+    persistMemoContent() {
+      const saved = LS.set(KEYS.memo, this.state.memo || '');
+      this.setMemoAutoSaveText(saved ? '저장됨' : '기기 저장 실패 · 내용을 복사하세요');
+      this.$memoAutoSave?.setAttribute('data-state', saved ? 'saved' : 'error');
+      this.setStatusState(saved ? 'saved' : 'error');
+      return saved;
+    }
+
+    updateWorkspaceOutline(value = this.state.memo || '') {
+      const list = this.shadowRoot.getElementById('memoOutlineItems');
+      if (!list) return;
+      const fragment = document.createDocumentFragment();
+      let offset = 0, fence = null, count = 0;
+      for (const line of value.split('\n')) {
+        const delimiter = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+        if (delimiter) {
+          const mark = delimiter[1];
+          if (!fence) fence = { char: mark[0], length: mark.length };
+          else if (mark[0] === fence.char && mark.length >= fence.length && /^\s{0,3}(`+|~+)\s*$/.test(line)) fence = null;
+        } else if (!fence) {
+          const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+          if (heading && count < 100) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = heading[2].replace(/[*_`]/g, '');
+            button.title = button.textContent;
+            button.style.setProperty('--heading-depth', String(heading[1].length - 1));
+            const start = offset;
+            button.addEventListener('click', () => {
+              this.$tabs?.find(tab => tab.dataset.tab === 'memo')?.click();
+              this.$memo.focus({ preventScroll: true });
+              this.$memo.setSelectionRange(start, start + line.length);
+              this.scrollWorkspaceSelection(start);
+              if (this.$panel.classList.contains('workspace-narrow')) this.setWorkspaceOutline(false);
+            });
+            fragment.appendChild(button); count++;
+          }
+        }
+        offset += line.length + 1;
+      }
+      if (!count) {
+        const empty = document.createElement('p');
+        empty.textContent = '# 제목으로 목차를 만들 수 있어요.';
+        fragment.appendChild(empty);
+      }
+      list.replaceChildren(fragment);
+    }
+
+    scrollWorkspaceSelection(offset) {
+      // Approximate wrapped lines using a mirror with the actual editor's metrics.
+      // No markup from the memo is ever inserted as HTML.
+      const mirror = document.createElement('div');
+      const style = getComputedStyle(this.$memo);
+      mirror.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;white-space:pre-wrap;overflow-wrap:break-word;box-sizing:border-box;';
+      for (const property of ['font','lineHeight','letterSpacing','padding','tabSize']) mirror.style[property] = style[property];
+      mirror.style.width = `${this.$memo.clientWidth}px`;
+      mirror.textContent = this.$memo.value.slice(0, offset) || '\u200b';
+      this.shadowRoot.appendChild(mirror);
+      const height = mirror.getBoundingClientRect().height;
+      mirror.remove();
+      this.$memo.scrollTop = Math.max(0, height - this.$memo.clientHeight / 3);
+      this.syncMemoLineNumberScroll();
+    }
+
+    setWorkspaceOutline(open) {
+      const outline = this.shadowRoot.getElementById('memoOutline');
+      outline.hidden = !open;
+      this.shadowRoot.getElementById('memoOutlineToggle').setAttribute('aria-expanded', String(open));
+      this.$panel.classList.toggle('workspace-outline-open', open);
+      if (open) this.updateWorkspaceOutline();
+    }
+
+    setWorkspaceFocus(focus) {
+      this.$panel.classList.toggle('workspace-focus', focus);
+      const button = this.shadowRoot.getElementById('memoFocus');
+      button.setAttribute('aria-pressed', String(focus));
+      button.setAttribute('aria-label', focus ? '집중 모드 끝내기' : '집중 모드');
+      button.title = focus ? '집중 모드 끝내기 (Esc)' : '집중 모드 (Ctrl+Shift+F)';
+      if (focus) {
+        this.setWorkspaceOutline(false);
+        this.$tabs?.find(tab => tab.dataset.tab === 'memo')?.click();
+        this.$memo.focus({ preventScroll: true });
+      }
+    }
+
+    bindWorkspace() {
+      const $ = id => this.shadowRoot.getElementById(id);
+      const moreActions = this.shadowRoot.querySelector('.memo-more-actions .footer-actions');
+      if (moreActions && $('memoHelp')) {
+        $('memoHelp').classList.add('footer-btn');
+        moreActions.appendChild($('memoHelp'));
+      }
+      $('memoCodeToggle').addEventListener('click', () => {
+        const expanded = $('memoCodeActions').hidden;
+        $('memoCodeActions').hidden = !expanded;
+        $('memoCodeToggle').setAttribute('aria-expanded', String(expanded));
+      });
+      this._workspaceSplit = LS.get('aiMemo.workspace.split', false) === true;
+      $('memoSplitToggle').setAttribute('aria-pressed', String(this._workspaceSplit));
+      $('memoSplitToggle').addEventListener('click', () => {
+        this._workspaceSplit = !this._workspaceSplit;
+        LS.set('aiMemo.workspace.split', this._workspaceSplit);
+        $('memoSplitToggle').setAttribute('aria-pressed', String(this._workspaceSplit));
+        this.updateMode();
+      });
+      $('memoOutlineToggle').addEventListener('click', () => this.setWorkspaceOutline($('memoOutline').hidden));
+      $('memoOutlineClose').addEventListener('click', () => { this.setWorkspaceOutline(false); $('memoOutlineToggle').focus(); });
+      $('memoAgentSettings').addEventListener('click', () => window.dispatchEvent(new Event('reader:agent-settings')));
+      $('memoFocus').addEventListener('click', () => this.setWorkspaceFocus(!this.$panel.classList.contains('workspace-focus')));
+      this._workspaceResizeObserver = new ResizeObserver(entries => {
+        const width = entries[0]?.contentRect.width || 0;
+        this.$panel.classList.toggle('workspace-narrow', width < 720);
+      });
+      this._workspaceResizeObserver.observe(this.$panel);
+      const findBar = $('memoFindBar'), findInput = $('memoFindInput');
+      let matches = [], index = -1;
+      const find = (direction = 0, select = true) => {
+        const query = findInput.value;
+        matches = [];
+        if (query) {
+          // Escaped literal, Unicode-aware case-insensitive matching preserves original offsets.
+          const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
+          for (const match of this.$memo.value.matchAll(pattern)) {
+            matches.push([match.index, match[0].length]);
+            if (matches.length >= 10000) break;
+          }
+        }
+        index = matches.length ? ((direction === 0 ? 0 : index + direction) + matches.length) % matches.length : -1;
+        $('memoFindCount').textContent = `${index + 1}/${matches.length}`;
+        $('memoFindPrev').disabled = $('memoFindNext').disabled = !matches.length;
+        if (index >= 0 && select) {
+          this.$tabs?.find(tab => tab.dataset.tab === 'memo')?.click();
+          const [start, length] = matches[index];
+          this.$memo.setSelectionRange(start, start + length);
+          this.scrollWorkspaceSelection(start);
+        }
+      };
+      const showFind = open => {
+        findBar.hidden = !open;
+        $('memoFindToggle').setAttribute('aria-expanded', String(open));
+        if (open) { findInput.focus(); findInput.select(); find(); }
+        else this.$memo.focus({ preventScroll: true });
+      };
+      $('memoFindToggle').addEventListener('click', () => showFind(findBar.hidden));
+      $('memoFindClose').addEventListener('click', () => showFind(false));
+      $('memoFindNext').addEventListener('click', () => find(1));
+      $('memoFindPrev').addEventListener('click', () => find(-1));
+      findInput.addEventListener('input', () => find());
+      findInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); find(event.shiftKey ? -1 : 1); }
+      });
+      this.$memo.addEventListener('input', () => { if (!findBar.hidden) find(0, false); });
+      const title = $('memoTitleDisplay'), quickTitle = $('memoQuickTitle');
+      const finishTitle = save => {
+        if (quickTitle.hidden) return;
+        if (save) this.setMemoTitle(quickTitle.value);
+        quickTitle.hidden = true; title.hidden = false;
+      };
+      title.addEventListener('click', () => {
+        quickTitle.value = this.state.title || '새 메모';
+        title.hidden = true; quickTitle.hidden = false; quickTitle.focus(); quickTitle.select();
+      });
+      quickTitle.addEventListener('blur', () => finishTitle(true));
+      quickTitle.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === 'Escape') {
+          event.preventDefault(); event.stopPropagation(); finishTitle(event.key === 'Enter'); title.focus();
+        }
+      });
+      this.shadowRoot.addEventListener('keydown', event => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+          event.preventDefault(); event.stopPropagation();
+          if (event.shiftKey) this.setWorkspaceFocus(!this.$panel.classList.contains('workspace-focus'));
+          else showFind(true);
+        } else if (event.key === 'Escape' && event.target !== quickTitle) {
+          if (!findBar.hidden) { event.preventDefault(); event.stopPropagation(); showFind(false); }
+          else if (this.$panel.classList.contains('workspace-focus')) {
+            event.preventDefault(); event.stopPropagation(); this.setWorkspaceFocus(false); $('memoFocus').focus();
+          }
+        }
+      }, true);
+      // Roving tabs follow the WAI-ARIA tab keyboard convention.
+      this.$tabs.forEach((tab, index) => tab.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? this.$tabs.length - 1 :
+          (index + (event.key === 'ArrowRight' ? 1 : -1) + this.$tabs.length) % this.$tabs.length;
+        this.$tabs[next].focus(); this.$tabs[next].click();
+      }));
     }
 
     // Convert Markdown to sanitized HTML string
@@ -1963,6 +2143,7 @@
       const launcherStyle = isReactFabManagingLaunchers() ? ' style="display:none;"' : '';
       doc.innerHTML = `
         <link rel="stylesheet" href="/ai-memo/ai-memo.css?v=${AI_MEMO_ASSET_VERSION}" />
+        <link rel="stylesheet" href="/ai-memo/memo-workspace.css?v=${AI_MEMO_ASSET_VERSION}" />
         <div class="bottom-app-bar"></div>
         <div id="launcher" class="launcher button" title="AI Memo" aria-label="AI Memo"${launcherStyle}>📝</div>
         <div id="historyLauncher" class="launcher history button" title="History" aria-label="History"${launcherStyle}>📖</div>
@@ -1998,12 +2179,14 @@
         <div id="panel" class="panel">
           <div id="drag" class="header">
             <div class="title-stack">
-              <div id="memoTitleDisplay" class="title">새 메모</div>
+              <button id="memoTitleDisplay" class="title" type="button" title="제목 바꾸기">새 메모</button>
+              <input id="memoQuickTitle" class="memo-quick-title" aria-label="메모 제목" maxlength="160" hidden />
               <div id="memoAutoSave" class="auto-save" aria-live="polite">저장됨</div>
             </div>
             <div class="spacer"></div>
             <button id="memoHelp" class="header-help" type="button" aria-label="도움말">도움말</button>
             <div class="window-controls" aria-label="창 제어">
+              <button id="memoFocus" class="window-control" type="button" aria-label="집중 모드" title="집중 모드 (Ctrl+Shift+F)" aria-pressed="false"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/><path d="M9 9h6v6H9z"/></svg></button>
               <button id="windowMinimize" class="window-control" type="button" title="최소화" aria-label="최소화"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/></svg></button>
               <button id="windowRestore" class="window-control" type="button" title="복원" aria-label="복원"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7" width="14" height="14" rx="2"/><path d="M7 7V3h14v14h-4"/></svg></button>
               <button id="windowFull" class="window-control" type="button" title="전체 화면" aria-label="전체 화면" aria-pressed="false"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
@@ -2048,6 +2231,12 @@
             </div>
               </div>
             </details>
+            <div class="memo-workspace-tools" role="group" aria-label="문서 보기">
+              <button id="memoOutlineToggle" type="button" class="toolbar-btn" aria-label="문서 목차" aria-expanded="false" aria-controls="memoOutline" title="문서 목차"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M3 6h1M3 12h1M3 18h1"/></svg></button>
+              <button id="memoFindToggle" type="button" class="toolbar-btn" aria-label="메모에서 찾기" aria-expanded="false" aria-controls="memoFindBar" title="찾기 (Ctrl+F)"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+              <button id="memoSplitToggle" type="button" class="toolbar-btn" aria-label="나란히 보기" aria-pressed="false" title="나란히 보기"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg></button>
+              <button id="memoAgentSettings" type="button" class="toolbar-btn" aria-label="AI 설정 열기" title="AI 설정"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="var(--memo-surface)"/><circle cx="16" cy="17" r="3" fill="var(--memo-surface)"/></svg></button>
+            </div>
           </div>
           <div class="tabs" role="tablist" aria-label="메모 패널">
             <button class="tab" type="button" data-tab="memo" role="tab">작성</button>
@@ -2058,15 +2247,22 @@
           </div>
           <div id="memoBody" class="body">
             <div class="memo-editor-shell">
+              <div id="memoFindBar" class="memo-find-bar" hidden role="search" aria-label="메모 검색">
+                <input id="memoFindInput" type="search" placeholder="메모에서 찾기" aria-label="검색어" autocomplete="off" />
+                <output id="memoFindCount" aria-live="polite">0/0</output>
+                <button id="memoFindPrev" type="button" aria-label="이전 결과" title="이전 결과 (Shift+Enter)">↑</button>
+                <button id="memoFindNext" type="button" aria-label="다음 결과" title="다음 결과 (Enter)">↓</button>
+                <button id="memoFindClose" type="button" aria-label="검색 닫기"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
+              </div>
               <div id="codeMode" class="code-mode" hidden>
-                <div class="code-mode-main">
+                <button id="memoCodeToggle" type="button" class="code-mode-main" aria-expanded="false" aria-controls="memoCodeActions">
                   <div class="code-mode-badge" aria-hidden="true"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18"/></svg></div>
                   <div class="code-mode-copy">
-                    <strong>Code Mode</strong>
+                    <strong>코드</strong>
                     <span id="codeModeStatus">코드 감지됨</span>
                   </div>
-                </div>
-                <div class="code-mode-actions" role="toolbar" aria-label="코드 작업">
+                </button>
+                <div id="memoCodeActions" class="code-mode-actions" hidden role="toolbar" aria-label="코드 작업">
                   <label class="code-mode-select-label" for="codeModeLanguage">언어</label>
                   <select id="codeModeLanguage" class="code-mode-select" aria-label="실행 언어">
                     <option value="auto">자동</option>
@@ -2079,6 +2275,11 @@
                   <pre id="codeModeOutput"></pre>
                 </div>
               </div>
+              <div class="memo-workspace-row">
+              <aside id="memoOutline" class="memo-outline" aria-label="문서 목차" hidden>
+                <div class="memo-outline-heading"><span>목차</span><button id="memoOutlineClose" type="button" aria-label="목차 닫기"><svg class="memo-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+                <nav id="memoOutlineItems" aria-label="문서 내 제목"></nav>
+              </aside>
               <div class="split memo-compose" id="previewSplit" data-layout="split" data-active-pane="editor">
                 <section class="split-left memo-editor-pane" data-pane="editor" aria-label="마크다운 작성">
                   <div class="pane-header">
@@ -2087,7 +2288,7 @@
                   </div>
                   <div class="editor-surface">
                     <div id="memoLineNumbers" class="memo-line-numbers" aria-hidden="true"><span>1</span></div>
-                    <textarea id="memo" class="textarea memo-input" spellcheck="true" placeholder="# 새 메모&#10;&#10;생각을 마크다운으로 작성하세요. 코드 블록, 목록, 링크를 바로 미리볼 수 있습니다."></textarea>
+                    <textarea id="memo" class="textarea memo-input" spellcheck="true" aria-label="메모 본문" placeholder="지금 떠오른 생각을 적어보세요."></textarea>
                   </div>
                 </section>
                 <section class="split-right memo-preview-pane" data-pane="preview" aria-label="마크다운 미리보기">
@@ -2098,9 +2299,10 @@
                   <div id="memoPreview" class="preview-md"></div>
                 </section>
               </div>
+              </div>
               <div class="memo-editor-footer">
                 <span id="memoStats" class="memo-stats">마크다운 · 0 단어 · 0 문자</span>
-                <span class="memo-save-note">변경 사항은 자동 저장됩니다</span>
+                <span class="memo-save-note">이 기기에 저장</span>
               </div>
             </div>
           </div>
@@ -3557,7 +3759,13 @@
       if (this.$devBody) this.$devBody.classList.toggle('active', mode === 'dev');
       if (this.$settingsBody) this.$settingsBody.classList.toggle('active', mode === 'settings');
       if (this.$versionsBody) this.$versionsBody.classList.toggle('active', mode === 'versions');
-      this.applyLayoutMode('split');
+      this.applyLayoutMode(this._workspaceSplit ? 'split' : 'tab');
+      this.$tabs?.forEach(tab => {
+        const selected = tab.dataset.tab === mode;
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      if (this.$panel) this.$panel.dataset.workspaceMode = mode;
       if (editorMode && this.$memoPreview) {
         if (this.$memoEditor) this.$memoEditor.value = this.$memo.value || '';
         this.applyPreviewPane(previewMode ? 'preview' : 'editor');
@@ -3615,7 +3823,7 @@
 
       this.$drag.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
-        if (e.target?.closest?.('.window-controls')) return;
+        if (e.target?.closest?.('button,input,select,textarea,a,.window-controls')) return;
         if (this.isMobileViewport()) return;
         beginFloatingInteraction();
         this._drag = {
@@ -3744,7 +3952,7 @@
 
       // input persistence - debounced localStorage saving
        // Use memory state during typing, persist to LS on idle/blur
-       let memoSaveTimer = null;
+       this._memoSaveTimer = null;
        const MEMO_SAVE_DELAY = 1000; // Save to LS 1 second after typing stops
        
        const updateMemoState = (value) => {
@@ -3762,20 +3970,15 @@
        };
        
        const scheduleMemoSave = () => {
-         clearTimeout(memoSaveTimer);
-         memoSaveTimer = setTimeout(() => {
-           LS.set(KEYS.memo, this.state.memo);
-           this.setMemoAutoSaveText('저장됨 · 방금 전');
-           this.setStatusState('saved');
-           this.out.tempStatus('저장됨', 'Ready', 900);
+         clearTimeout(this._memoSaveTimer);
+         this._memoSaveTimer = setTimeout(() => {
+           this.persistMemoContent();
          }, MEMO_SAVE_DELAY);
        };
        
        const saveMemoImmediately = () => {
-         clearTimeout(memoSaveTimer);
-         LS.set(KEYS.memo, this.state.memo);
-         this.setMemoAutoSaveText('저장됨 · 방금 전');
-         this.setStatusState('saved');
+         clearTimeout(this._memoSaveTimer);
+         this.persistMemoContent();
        };
        
        const saveMemo = () => {
@@ -3789,24 +3992,19 @@
       // Save immediately on blur
       this.$memo.addEventListener('blur', saveMemoImmediately);
       if (this.$memoEditor) {
-        let editorSaveTimer = null;
+        this._editorSaveTimer = null;
         const EDITOR_SAVE_DELAY = 1000;
         
         const scheduleEditorSave = () => {
-          clearTimeout(editorSaveTimer);
-          editorSaveTimer = setTimeout(() => {
-            LS.set(KEYS.memo, this.state.memo);
-            this.setMemoAutoSaveText('저장됨 · 방금 전');
-            this.setStatusState('saved');
-            this.out.tempStatus('저장됨', 'Ready', 900);
+          clearTimeout(this._editorSaveTimer);
+          this._editorSaveTimer = setTimeout(() => {
+            this.persistMemoContent();
           }, EDITOR_SAVE_DELAY);
         };
         
         const saveEditorImmediately = () => {
-          clearTimeout(editorSaveTimer);
-          LS.set(KEYS.memo, this.state.memo);
-          this.setMemoAutoSaveText('저장됨 · 방금 전');
-          this.setStatusState('saved');
+          clearTimeout(this._editorSaveTimer);
+          this.persistMemoContent();
         };
         
         const saveAndRender = () => {
@@ -3972,18 +4170,19 @@
       this.$memoFull?.addEventListener('click', () => this.toggleFullscreen());
       const persistMemoNow = label => {
         this.state.memo = this.$memo.value || '';
-        LS.set(KEYS.memo, this.state.memo);
         this.updateMemoChrome(this.state.memo);
-        this.setMemoAutoSaveText('저장됨 · 방금 전');
-        this.setStatusState('saved');
-        this.out.tempStatus(label || '저장됨', 'Ready', 900);
+        const saved = this.persistMemoContent();
+        if (saved) this.out.tempStatus(label || '저장됨', 'Ready', 900);
+        return saved;
       };
       this.$memoDraft?.addEventListener('click', () => {
-        persistMemoNow('저장됨');
-        this.out.toast('저장했습니다.');
+        if (persistMemoNow('저장됨')) this.out.toast('저장했습니다.');
       });
       this.$memoSaveClose?.addEventListener('click', () => {
-        persistMemoNow('저장됨');
+        if (!persistMemoNow('저장됨')) {
+          this.out.toast('저장하지 못했습니다. 내용을 복사하거나 내보낸 뒤 닫으세요.');
+          return;
+        }
         this.out.toast('저장하고 닫았습니다.');
         this.$panel.classList.remove('open');
         this.updateOpen();

@@ -29,7 +29,8 @@ import { cn } from '@/lib/utils';
 import { recordView } from '@/services/content/analytics';
 import {
   getCachedTranslation,
-  TranslationApiError,
+  getPublicTranslationGenerationStatus,
+  normalizeTranslationErrorCode,
   type TranslationErrorCode,
   type TranslationResult,
 } from '@/services/content/translate';
@@ -39,7 +40,7 @@ import { resolveAiMemoInlineEnabledPreference } from '@/utils/aiMemoInlinePrefer
 import { findRelatedPosts as findRAGRelatedPosts } from '@/services/discovery/rag';
 import { useSEO } from '@/hooks/seo/useSEO';
 import { generateSEOData, generateStructuredData } from '@/utils/seo/seo';
-import type { AsyncArtifactStatus } from '@/components/features/sentio/hooks/useAsyncArtifact';
+import { observeTranslation, type TranslationUiStatus } from '@/services/content/translationObservation';
 import { BlogPostHeader } from './blog-post/BlogPostHeader';
 import { BlogPostContent } from './blog-post/BlogPostContent';
 import { BlogPostRelated } from './blog-post/BlogPostRelated';
@@ -57,6 +58,7 @@ type VisitedPostItem = {
 type TranslationErrorState = {
   code: TranslationErrorCode;
   retryable: boolean;
+  message?: string;
 };
 
 const simulatorExistenceCache = new Map<string, boolean>();
@@ -209,13 +211,14 @@ const BlogPost = () => {
 
   // AI Translation state
   const [translationStatus, setTranslationStatus] =
-    useState<AsyncArtifactStatus>('idle');
+    useState<TranslationUiStatus>('idle');
   const [aiTranslation, setAiTranslation] = useState<TranslationResult | null>(
     null
   );
   const [translationError, setTranslationError] =
     useState<TranslationErrorState | null>(null);
   const [translationRetryNonce, setTranslationRetryNonce] = useState(0);
+  useEffect(() => { setAiTranslation(null); }, [year, slug, language]);
 
   // Check if native translation exists for the selected language
   const hasNativeTranslation = useMemo(() => {
@@ -536,132 +539,37 @@ ${description}
       return;
     }
 
-    let cancelled = false;
-    let pollTimer: number | null = null;
-    let deadlineTimer: number | null = null;
-    let pollAttempts = 0;
-    let pollingFinished = false;
-    let deadlineExpired = false;
-    const requestController = new AbortController();
-    const pollStartMs = Date.now();
-    const MAX_POLL_ATTEMPTS = 5;
-    const MAX_POLL_DURATION_MS = 20_000;
-
-    const stopPolling = () => {
-      pollingFinished = true;
-      if (pollTimer !== null) {
-        clearTimeout(pollTimer);
-        pollTimer = null;
-      }
-      if (deadlineTimer !== null) {
-        clearTimeout(deadlineTimer);
-        deadlineTimer = null;
-      }
-    };
-
-    const failPollingAsTimeout = () => {
-      if (cancelled || pollingFinished) return;
-
-      stopPolling();
-      requestController.abort();
-      setTranslationError({
-        code: 'AI_TIMEOUT',
-        retryable: true,
-      });
-      setTranslationStatus('error');
-    };
-
-    const scheduleRetry = (delaySeconds?: number) => {
-      if (cancelled || pollingFinished) return;
-
-      pollAttempts += 1;
-      const elapsedMs = Date.now() - pollStartMs;
-      if (
-        pollAttempts >= MAX_POLL_ATTEMPTS ||
-        elapsedMs >= MAX_POLL_DURATION_MS
-      ) {
-        failPollingAsTimeout();
-        return;
-      }
-      const requestedDelayMs = Math.max(1, delaySeconds ?? 15) * 1000;
-      const retryDelayMs = Math.min(
-        requestedDelayMs,
-        MAX_POLL_DURATION_MS - elapsedMs
-      );
-      pollTimer = window.setTimeout(() => {
-        pollTimer = null;
-        void loadTranslation();
-      }, retryDelayMs);
-    };
-
-    const loadTranslation = async () => {
-      try {
-        const result = await getCachedTranslation(year, slug, language, {
-          signal: requestController.signal,
-        });
-        if (cancelled || pollingFinished) return;
-
-        if (result.translation) {
-          setAiTranslation(result.translation);
-        }
-
-        if (result.pending) {
-          setTranslationError(null);
-          setTranslationStatus('warming');
-          scheduleRetry(result.retryAfterSeconds);
-          return;
-        }
-
-        stopPolling();
-        setTranslationError(null);
-        setTranslationStatus(result.translation ? 'ready' : 'idle');
-      } catch (err) {
-        if (cancelled) return;
-        if (deadlineExpired && requestController.signal.aborted) {
-          failPollingAsTimeout();
-          return;
-        }
-        if (pollingFinished) return;
-
-        stopPolling();
-        console.error('Translation failed:', err);
-        if (err instanceof TranslationApiError) {
-          setTranslationError({
-            code: err.code,
-            retryable: err.retryable,
-          });
-        } else {
-          setTranslationError({
-            code: 'UNKNOWN',
-            retryable: false,
-          });
-        }
-        setTranslationStatus('error');
-      }
-    };
-
-    deadlineTimer = window.setTimeout(() => {
-      deadlineTimer = null;
-      deadlineExpired = true;
-      failPollingAsTimeout();
-    }, MAX_POLL_DURATION_MS);
-
-    setTranslationStatus('warming');
+    const controller = new AbortController();
+    const scope = `translation-observation:${JSON.stringify([year,slug,language])}`;
+    // A source signature only invalidates a local observation pointer; server sourceVersion remains authoritative.
+    const sourceSignature = JSON.stringify([post.title,post.description,post.content]);
+    let signature=2166136261;
+    for (let i=0;i<sourceSignature.length;i++) signature=Math.imul(signature^sourceSignature.charCodeAt(i),16777619);
+    const stamp=String(signature>>>0);
+    let resumeJobId:string|null=null;
+    try {const saved=JSON.parse(sessionStorage.getItem(scope)||'null');if(saved?.stamp===stamp)resumeJobId=saved.jobId;}catch{}
     setTranslationError(null);
-    setAiTranslation(null);
-    void loadTranslation();
-
-    return () => {
-      cancelled = true;
-      stopPolling();
-      requestController.abort();
-    };
+    void observeTranslation({
+      signal:controller.signal,resumeJobId,
+      lookup:options=>getCachedTranslation(year,slug,language,options),
+      status:(id,options)=>getPublicTranslationGenerationStatus({year,slug,targetLang:language},id,options),
+      onChange:value=>{
+        if(controller.signal.aborted)return;
+        if(value.translation)setAiTranslation(value.translation);
+        setTranslationStatus(value.status);
+        setTranslationError(value.error?{code:normalizeTranslationErrorCode(value.error.code),retryable:value.error.retryable===true,message:value.error.message}:null);
+        try {
+          if(value.status==='ready'||value.status==='idle'||value.error?.code==='SUPERSEDED'||(value.status==='paused'&&!value.job))sessionStorage.removeItem(scope);
+          else if(value.job)sessionStorage.setItem(scope,JSON.stringify({stamp,jobId:value.job.id}));
+        }catch{}
+      },
+    });
+    return ()=>controller.abort();
   }, [hasNativeTranslation, language, post, slug, translationRetryNonce, year]);
 
   const handleRetryTranslation = useCallback(() => {
     setTranslationError(null);
-    setAiTranslation(null);
-    setTranslationStatus('idle');
+    setTranslationStatus('warming');
     setTranslationRetryNonce(prev => prev + 1);
   }, []);
 
@@ -918,9 +826,7 @@ ${description}
                 translationError={
                   translationError
                     ? {
-                        message: getTranslationErrorMessage(
-                          translationError.code
-                        ),
+                        message: translationError.message || getTranslationErrorMessage(translationError.code),
                         retryable: translationError.retryable,
                       }
                     : null

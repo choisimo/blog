@@ -21,6 +21,11 @@ const ANSI_ESCAPE_PATTERN =
   /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\))/g;
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
+// A refreshed card may reuse its id; evidence belongs to the actual claims.
+function evidenceKey(card: LensCardData): string {
+  return JSON.stringify([card.id, card.title, card.summary, card.bullets]);
+}
+
 export function normalizePrismDeckText(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const normalized = value
@@ -60,6 +65,13 @@ export default function PrismDeck({
     postTitle,
     enabled,
   });
+  const evidence = useCardExploration({
+    scopeKey: `${cacheKey}::${paragraph}`,
+    paragraph,
+    postTitle,
+    enabled,
+    purpose: 'evidence',
+  });
   const safePostTitle = normalizePrismDeckText(postTitle);
   const safeCacheKey = normalizeCacheKey(cacheKey);
   const {
@@ -82,6 +94,19 @@ export default function PrismDeck({
     onReady,
   });
   const [showEvidence, setShowEvidence] = useState(false);
+  const generateEvidence = (card: LensCardData) => {
+    void evidence.explore(
+      {
+        id: evidenceKey(card),
+        title: card.title,
+        body: card.summary,
+        points: card.bullets,
+        persona: card.personaId,
+      },
+      '각 요점이 성립하는 근거와 구체적인 사례, 한계를 개별적으로 설명해 주세요.',
+      { reuse: true }
+    );
+  };
   const dragStartXRef = useRef<number | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragMovedRef = useRef(false);
@@ -107,13 +132,14 @@ export default function PrismDeck({
     goNext();
   }, [goNext]);
 
-  const handleToggleEvidence = useCallback(() => {
+  const handleToggleEvidence = () => {
     if (dragMovedRef.current) {
       dragMovedRef.current = false;
       return;
     }
+    if (!showEvidence && activeCard) generateEvidence(activeCard);
     setShowEvidence(prev => !prev);
-  }, []);
+  };
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLElement>) => {
@@ -168,11 +194,6 @@ export default function PrismDeck({
             ? '새로운 관점을 준비하고 있어요'
             : '다양한 관점을 살펴보고 있어요'}
         </p>
-        <p className='text-xs text-muted-foreground'>
-          {status === 'warming' && !loading
-            ? '분석이 준비되면 여기에 표시됩니다.'
-            : '문단의 주장과 근거를 정리하고 있습니다.'}
-        </p>
       </div>
     </div>
   );
@@ -189,15 +210,7 @@ export default function PrismDeck({
         </div>
       ) : (
         <div className='sentio-results not-prose space-y-4'>
-          <div className='sentio-result-heading'>
-            <div>
-              <span className='sentio-result-label'>관점 탐색</span>
-              <h4>하나의 문단, 서로 다른 시선</h4>
-              <p>
-                이어지는 질문을 누르면 이 카드에서 AI와 더 깊게 탐구할 수
-                있어요.
-              </p>
-            </div>
+          <div className='sentio-result-status'>
             <AsyncArtifactStatusChip
               status={status}
               labels={{
@@ -219,6 +232,12 @@ export default function PrismDeck({
                   <LensCard
                     key={card.id}
                     card={card}
+                    evidence={{
+                      state: evidence.states[evidenceKey(card)],
+                      available: evidence.available && isActive,
+                      onGenerate: () => generateEvidence(card),
+                      onStop: () => evidence.stop(evidenceKey(card)),
+                    }}
                     exploration={{
                       state: exploration.states[card.id],
                       questions: [

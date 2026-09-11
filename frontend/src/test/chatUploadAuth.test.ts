@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_AGENT_PREFERENCES } from '@blog/shared/contracts/agent-preferences';
 
 vi.mock('@/utils/network/apiBase', () => ({
   getApiBaseUrl: () => 'https://api.example.com',
@@ -389,6 +390,7 @@ describe('chat upload authentication', () => {
     ).resolves.toBe('summary');
     expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).toEqual({
       prompt: 'Summarize\nthese sessions',
+      agentPreferences: DEFAULT_AGENT_PREFERENCES,
     });
   });
 });

@@ -576,7 +576,7 @@ describe('auth service', () => {
   });
 
   it('normalizes refresh and OAuth handoff tokens before network', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
       new Response(
         JSON.stringify({
           ok: true,
@@ -609,11 +609,11 @@ describe('auth service', () => {
     });
   });
 
-  it('clears unsafe stored anonymous tokens before reuse', () => {
+  it('does not reuse unsafe stored anonymous proof or silently discard it', () => {
     localStorage.setItem('anon.token', 'stored-token\r\nX-Injected: yes');
 
     expect(getStoredAnonymousToken()).toBeNull();
-    expect(localStorage.getItem('anon.token')).toBeNull();
+    expect(localStorage.getItem('anon.token')).toBe('stored-token\r\nX-Injected: yes');
   });
 
   it('stores anonymous tokens only when they are header safe', () => {
@@ -642,9 +642,9 @@ describe('auth service', () => {
       ),
     );
 
-    await expect(getValidAnonymousToken()).rejects.toThrow(
-      'Failed to get anonymous token',
-    );
+    await expect(getValidAnonymousToken()).rejects.toMatchObject({
+      code: 'ANONYMOUS_IDENTITY_MISMATCH',
+    });
     expect(localStorage.getItem('anon.token')).toBeNull();
   });
 

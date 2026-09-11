@@ -14,7 +14,6 @@
     "ai-agent-arena-2026-overview-and-comparison.md",
     "ai-agent-arena-2026-sonnet-4-6.md",
     "ai-agent-arena-2026-swe-1-5.md",
-    "ai-usage-habitual-search-inertia-report.md",
     "algorithm-1.md",
     "algorithm-2.md",
     "alone.md",
@@ -53,7 +52,7 @@
     "opnsense-policy-step-simulator.html",
     "vim-simulator.html"
   ],
-  "generatedAt": "2026-09-08T13:42:08.382Z",
-  "totalFiles": 48,
+  "generatedAt": "2026-09-11T00:37:08.719Z",
+  "totalFiles": 47,
   "excludedFiles": 0
 }

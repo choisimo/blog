@@ -1,0 +1,132 @@
+/* One stable header and one view switch; hidden content never receives focus. */
+.sentio-lens-reading {
+  min-height: 28rem;
+  overflow: hidden;
+}
+.sentio-lens-reading .sentio-lens-heading {
+  flex-shrink: 0;
+  padding: 20px 20px 0;
+}
+.sentio-lens-meta,
+.sentio-paper-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.sentio-lens-persona {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sentio-lens-reading .sentio-lens-heading h3 {
+  margin: 16px 0 0;
+  font-size: 21px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+:root .sentio-panel .sentio-lens-reading .sentio-lens-heading h3 {
+  margin-top: 16px;
+}
+.sentio-lens-view {
+  min-height: 0;
+  max-height: 28rem;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 18px 20px 24px;
+  scrollbar-width: thin;
+}
+.sentio-lens-reading [hidden],
+.sentio-paper-body [hidden] {
+  display: none;
+}
+.sentio-lens-summary {
+  margin: 0;
+  padding: 14px 16px;
+  border-left: 2px solid hsl(var(--ui-accent));
+  background: hsl(var(--ui-soft));
+  font-size: 14px;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.sentio-lens-points {
+  margin: 20px 0;
+  padding-left: 20px;
+  list-style: disc;
+  overflow-wrap: anywhere;
+}
+.sentio-lens-points li {
+  padding-left: 3px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+.sentio-lens-points li + li {
+  margin-top: 10px;
+}
+.sentio-lens-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  min-width: 88px;
+  padding: 7px 14px;
+  border: 1px solid hsl(var(--ui-line));
+  border-radius: 999px;
+  color: hsl(var(--ui-muted));
+  background: hsl(var(--ui-soft) / 0.55);
+  font: 600 12px/1.5 var(--ui-font);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.sentio-lens-view-toggle[aria-pressed='true'] {
+  color: hsl(var(--ui-accent));
+  border-color: hsl(var(--ui-accent) / 0.4);
+  background: hsl(var(--ui-accent-soft));
+}
+.sentio-lens-view-toggle:hover {
+  color: hsl(var(--ui-on-accent));
+  background: hsl(var(--ui-accent));
+  border-color: hsl(var(--ui-accent));
+}
+.sentio-lens-view-toggle:focus-visible {
+  outline: 2px solid hsl(var(--ui-accent));
+  outline-offset: 3px;
+}
+.sentio-lens-view-toggle:active {
+  transform: translateY(1px);
+}
+.sentio-lens-view-tooltip {
+  max-width: calc(100vw - 32px);
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: hsl(var(--ui-surface));
+  background: hsl(var(--ui-text));
+  border-color: hsl(var(--ui-text));
+  font: 500 12px/1.5 var(--ui-font);
+}
+.sentio-lens-tooltip-arrow {
+  fill: hsl(var(--ui-text));
+}
+@media (max-width: 520px) {
+  .sentio-lens-reading .sentio-lens-heading {
+    padding: 16px 14px 0;
+  }
+  .sentio-lens-view {
+    padding: 16px 14px 20px;
+    max-height: 55dvh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sentio-lens-view-toggle:active {
+    transform: none;
+  }
+  .sentio-lens-view-tooltip {
+    animation: none;
+  }
+}
