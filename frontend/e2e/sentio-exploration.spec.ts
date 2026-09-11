@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
 async function setup(page: Page, theme: string, baseURL: string | undefined) {
   if (!baseURL) throw new Error('A Playwright baseURL is required');
@@ -433,10 +434,28 @@ for (const mode of ['prism', 'chain'] as const) {
   }
 }
 
+// Component fixtures need source modules even when the main suite uses a built preview.
+const markdownTest = test.extend<{}, { markdownOrigin: string }>({
+  markdownOrigin: [async ({}, use) => {
+    const { createServer } = await import('vite');
+    const server = await createServer({
+      root: fileURLToPath(new URL('..', import.meta.url)),
+      configFile: fileURLToPath(new URL('../config/vite.config.ts', import.meta.url)),
+      server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false },
+    });
+    try {
+      await server.listen();
+      await use(server.resolvedUrls!.local[0]);
+    } finally {
+      await server.close();
+    }
+  }, { scope: 'worker' }],
+});
+
 for (const width of [390, 1280]) {
-  test(`markdown list flow ${width}px preserves inline prose and raw bullets`, async ({ page }) => {
+  markdownTest(`markdown list flow ${width}px preserves inline prose and raw bullets`, async ({ page, markdownOrigin }) => {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto('/e2e/fixtures/sentio-markdown.html');
+    await page.goto(new URL('/e2e/fixtures/sentio-markdown.html', markdownOrigin).href);
     const rich = page.getByTestId('rich');
     const items = rich.locator('li');
     await expect(items).toHaveCount(4);
