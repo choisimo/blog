@@ -26,12 +26,28 @@ export function createBackendStateDatabase(env: Env): D1Database {
     const path = '/internal/state-db/query';
     const headers = new Headers({ 'Content-Type': 'application/json', 'X-Backend-Key': env.BACKEND_KEY! });
     await attachOriginSignatureHeaders({ env, headers, method: 'POST', pathAndQuery: path });
-    const response = await fetch(new URL(path, origin), {
-      method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(20_000),
-      body: JSON.stringify({ statements, atomic: true }),
-    });
-    const data = await response.json() as { ok?: boolean; results?: Result[]; error?: { code?: string; message?: string } };
+    let response: Response;
+    try {
+      response = await fetch(new URL(path, origin), {
+        method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(20_000),
+        body: JSON.stringify({ statements, atomic: true }),
+      });
+    } catch (error) {
+      // Classify locally; exception text can contain credentials or URLs.
+      const message = String(error instanceof Error ? error.message : '');
+      const code = /redirect/i.test(message) ? 'REDIRECT' : /different request|request context/i.test(message) ? 'REQUEST_CONTEXT' : /timeout|abort/i.test(message) ? 'TIMEOUT' : 'TRANSPORT';
+      console.error(`[backend-state] phase=transport status=0 code=${code}`);
+      throw error;
+    }
+    let data: { ok?: boolean; results?: Result[]; error?: { code?: string; message?: string } };
+    try { data = await response.json(); }
+    catch {
+      console.error(`[backend-state] phase=decode status=${response.status} code=NON_JSON`);
+      throw new Error(`Backend state query returned an invalid response (${response.status})`);
+    }
     if (!response.ok || !data.ok || !Array.isArray(data.results) || data.results.length !== statements.length) {
+      const code = /^[A-Z0-9_]{1,80}$/.test(data.error?.code || '') ? data.error!.code : 'INVALID_RESPONSE';
+      console.error(`[backend-state] phase=response status=${response.status} code=${code}`);
       throw new Error(data.error?.message || `Backend state query failed (${response.status})`);
     }
     return data.results;
