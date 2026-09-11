@@ -1,8 +1,9 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { useEffect, useRef, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useChatActions } from '@/components/features/chat/widget/hooks/useChatActions';
+import { useChatState } from '@/components/features/chat/widget/hooks/useChatState';
 import type {
   ChatMessage,
   LiveReplyTarget,
@@ -23,6 +24,7 @@ const serviceMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/services/chat', () => ({
+  PERSIST_OPTIN_KEY: 'aiChat.persistOptIn',
   createChatIdempotencyKey: serviceMocks.createChatIdempotencyKey,
   streamChatEvents: serviceMocks.streamChatEvents,
   uploadChatImage: serviceMocks.uploadChatImage,
@@ -30,6 +32,13 @@ vi.mock('@/services/chat', () => ({
   startNewSession: serviceMocks.startNewSession,
   getLiveRooms: serviceMocks.getLiveRooms,
   getLiveRoomStats: serviceMocks.getLiveRoomStats,
+  getStoredSessionId: () => 'local-session',
+  storeSessionId: vi.fn(),
+  clearStoredSessionId: vi.fn(),
+  generateLocalSessionId: () => 'local-session',
+  loadSessionsIndex: () => [],
+  SESSIONS_INDEX_KEY: 'aiChat.sessionsIndex',
+  SESSION_MESSAGES_PREFIX: 'aiChat.messages.',
 }));
 
 vi.mock('@/services/personal/memory', () => ({
@@ -41,6 +50,12 @@ type HookApi = ReturnType<typeof useChatActions>;
 type HookHandle = {
   api: HookApi;
 };
+
+function streamGate() {
+  let release = () => {};
+  const promise = new Promise<void>((resolve) => { release = resolve; });
+  return { promise, release };
+}
 
 function Harness({
   memoContext,
@@ -102,6 +117,7 @@ function Harness({
     setUploadedImages,
     messages,
     setSessionKey: vi.fn(),
+    adoptSessionKey: vi.fn(),
     currentLiveRoom,
     switchLiveRoom: vi.fn(),
     sendVisitorMessage,
@@ -135,8 +151,86 @@ describe('useChatActions', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     serviceMocks.createChatIdempotencyKey.mockReturnValue('idem-key');
     serviceMocks.startNewSession.mockResolvedValue('session-next');
+    serviceMocks.getMemoryContextForChat.mockResolvedValue(null);
+    serviceMocks.extractAndSaveMemories.mockResolvedValue(undefined);
+  });
+
+  it('preserves the active conversation through server identity adoption and later stream updates', async () => {
+    const sessionEvent = streamGate();
+    const textEvent = streamGate();
+    const completion = streamGate();
+    serviceMocks.streamChatEvents.mockImplementation(async function* () {
+      await sessionEvent.promise;
+      yield { type: 'session', sessionId: 'server-session' };
+      await textEvent.promise;
+      yield { type: 'text', text: 'First part' };
+      await completion.promise;
+      yield { type: 'text', text: ' and final part' };
+      yield { type: 'followups', questions: ['What next?'] };
+    });
+    const { result } = renderHook(() => {
+      const state = useChatState({ initialMessage: 'Explain this' });
+      const actions = useChatActions({
+        ...state,
+        currentLiveRoom: 'room:lobby',
+        switchLiveRoom: vi.fn(),
+        sendVisitorMessage: vi.fn().mockResolvedValue(undefined),
+      });
+      return { state, actions };
+    });
+    let sending = Promise.resolve();
+
+    try {
+      act(() => { sending = result.current.actions.send(); });
+      await waitFor(() => expect(result.current.state.messages).toEqual([
+        expect.objectContaining({ role: 'user', text: 'Explain this' }),
+        expect.objectContaining({ role: 'assistant', text: '', pending: true }),
+      ]));
+      const pendingMessages = result.current.state.messages;
+
+      await act(async () => { sessionEvent.release(); });
+      expect(result.current.state.sessionKey).toBe('server-session');
+      expect(result.current.state.messages).toEqual(pendingMessages);
+      expect(result.current.state.busy).toBe(true);
+
+      await act(async () => { textEvent.release(); });
+      expect(result.current.state.messages[1]).toEqual(expect.objectContaining({
+        id: pendingMessages[1].id,
+        text: 'First part',
+        pending: true,
+      }));
+
+      await act(async () => { completion.release(); await sending; });
+      expect(result.current.state.messages).toEqual([
+        pendingMessages[0],
+        expect.objectContaining({
+          id: pendingMessages[1].id,
+          text: 'First part and final part',
+          pending: false,
+          followups: ['What next?'],
+          visualPrompt: 'Explain this',
+        }),
+      ]);
+      expect(result.current.state.busy).toBe(false);
+      await waitFor(() => expect(
+        JSON.parse(localStorage.getItem('aiChat.messages.server-session') || '[]'),
+      ).toEqual(result.current.state.messages));
+      expect(localStorage.getItem('aiChat.messages.local-session')).toBeNull();
+
+      await act(async () => { await result.current.actions.clearAll(true); });
+      expect(result.current.state.sessionKey).toBe('session-next');
+      expect(result.current.state.messages).toEqual([]);
+    } finally {
+      await act(async () => {
+        sessionEvent.release();
+        textEvent.release();
+        completion.release();
+        await sending;
+      });
+    }
   });
 
   it('normalizes live reply target metadata before sending direct live messages', async () => {

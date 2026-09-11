@@ -84,18 +84,21 @@ export function useChatState(options?: {
   const [busy, setBusy] = useState(false);
   const [persistOptIn, setPersistOptIn] = useState<boolean>(true);
 
-  const [sessionKey, setSessionKey] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
+  const [sessionSelection, setSessionSelection] = useState(() => {
+    if (typeof window === "undefined") {
+      return { key: "", restoreMessages: true, version: 0 };
+    }
     const existing = normalizeStateSessionId(getStoredSessionId());
-    if (existing) return existing;
+    if (existing) return { key: existing, restoreMessages: true, version: 0 };
 
     const fresh = normalizeStateSessionId(generateLocalSessionId()) || "";
     if (fresh) {
       storeSessionId(fresh);
     }
-    return fresh;
+    return { key: fresh, restoreMessages: true, version: 0 };
   });
 
+  const { key: sessionKey, version: selectionVersion } = sessionSelection;
   const sessionId = sessionKey;
 
   const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
@@ -138,8 +141,24 @@ export function useChatState(options?: {
   const setSafeSessionKey = useCallback((key: string) => {
     const normalized = normalizeStateSessionId(key);
     if (!normalized) return;
-    setSessionKey(normalized);
+    setSessionSelection((current) => ({
+      key: normalized,
+      restoreMessages: true,
+      version: current.version + 1,
+    }));
   }, []);
+
+  const adoptSessionKey = useCallback((key: string) => {
+    const normalized = normalizeStateSessionId(key);
+    if (!normalized) return;
+    // Keep current messages, but ignore events from a stream whose conversation
+    // has since been replaced by an explicit history/new-session selection.
+    setSessionSelection((current) =>
+      current.version !== selectionVersion || current.key === normalized
+        ? current
+        : { ...current, key: normalized, restoreMessages: false },
+    );
+  }, [selectionVersion]);
 
   const canSend =
     (input.trim().length > 0 ||
@@ -210,12 +229,16 @@ export function useChatState(options?: {
     setSessions(loadSessionsIndex());
   }, []);
 
-  // Load messages for current session
+  // Restore only an explicitly selected session, never an adopted identity.
   useEffect(() => {
-    if (!persistOptIn || !sessionKey) return;
+    if (
+      !persistOptIn ||
+      !sessionSelection.restoreMessages ||
+      !sessionSelection.key
+    ) return;
     try {
       const raw = localStorage.getItem(
-        `${SESSION_MESSAGES_PREFIX}${sessionKey}`,
+        `${SESSION_MESSAGES_PREFIX}${sessionSelection.key}`,
       );
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
@@ -227,7 +250,7 @@ export function useChatState(options?: {
     } catch {
       void 0;
     }
-  }, [persistOptIn, sessionKey]);
+  }, [persistOptIn, sessionSelection]);
 
   useEffect(() => {
     if (!persistOptIn || !sessionKey) return;
@@ -413,6 +436,7 @@ export function useChatState(options?: {
     sessionId,
     sessionKey,
     setSessionKey: setSafeSessionKey,
+    adoptSessionKey,
     sessions,
     setSessions,
     showSessions,
