@@ -5,10 +5,10 @@ import { execute, queryAll } from '../../lib/d1';
 import {
   enqueueTranslationJob, claimNextTranslationJob, getTranslationJobById,
   getLatestTranslationJob, recoverExpiredTranslationJobs, settleTranslationJob,
-  reserveTranslationWake, isLatestTranslationJob, type TranslationJobRow, type TranslationExecutionPolicy,
+  reserveTranslationWake, reserveTranslationExecutionBudget, isLatestTranslationJob, type TranslationJobRow, type TranslationExecutionPolicy,
 } from '../../lib/translation-job-repository';
 import {
-  fetchPublishedPost, getValidCachedTranslation, translationSourceVersion,
+  fetchPublishedPost, getValidCachedTranslation, translationSourceVersion, translationTokenBudget,
   translateAndCachePost, type SourcePost, type SupportedTranslationLang,
 } from '../../lib/translation-service';
 import { attachOriginSignatureHeadersForUrl } from '../../lib/origin-signature';
@@ -64,9 +64,7 @@ export async function startTranslationJob(env:Env, source:SourcePost, lang:Suppo
 }={}) {
   const policy=translationPolicy(env);
   const version=await translationSourceVersion(source,lang);
-  // Conservative reservation units: source UTF-8 bytes plus all configured maximum outputs and prompt overhead.
-  // This is an admission budget, not measured provider billing or a currency amount.
-  const budget=new TextEncoder().encode(source.title+source.description+source.content).length+256+512+16000+4000;
+  const budget=translationTokenBudget(source);
   const result=await enqueueTranslationJob(env.DB,{
     year:source.year,slug:source.slug,targetLang:lang,sourceLang:source.sourceLang,sourceVersion:version,
     priority:PRIORITY[input.priority||'interactive'],tokenBudget:budget,requestedBy:input.requestedBy,
@@ -137,7 +135,7 @@ async function notifySettledJob(env:Env, job:TranslationJobRow, succeeded:boolea
 }
 
 /** Both the signed backend callback and scheduled recovery await this one executor. */
-export async function drainTranslationJobs(env:Env, options:{limit?:number;allowWarm?:boolean}={}) {
+export async function drainTranslationJobs(env:Env, options:{limit?:number;allowWarm?:boolean;preferRecentWake?:boolean}={}) {
   const policy=translationPolicy(env);
   if (options.allowWarm!==undefined) policy.allowWarm=policy.allowWarm && options.allowWarm;
   await recoverExpiredTranslationJobs(env.DB);
@@ -145,7 +143,7 @@ export async function drainTranslationJobs(env:Env, options:{limit?:number;allow
   let processed=0,failed=0,deferred=0;
   const limit=Math.max(1,Math.min(2,options.limit||1));
   for (let index=0;index<limit;index++) {
-    const job=await claimNextTranslationJob(env.DB,policy);
+    const job=await claimNextTranslationJob(env.DB,policy,undefined,{preferRecentWake:options.preferRecentWake});
     if (!job) break;
     try {
       if(!await isLatestTranslationJob(env.DB,job))throw Object.assign(new Error('Newer revision exists'),{code:'SUPERSEDED'});
@@ -155,6 +153,17 @@ export async function drainTranslationJobs(env:Env, options:{limit?:number;allow
       }
       const cached=await getValidCachedTranslation(env.DB,source,job.target_lang);
       if (!cached || job.force_refresh) {
+        const reservation=await reserveTranslationExecutionBudget(env.DB,job,translationTokenBudget(source),policy.dailyTokenBudget);
+        if (!reservation.ready) {
+          const retry=job.attempts<policy.maxAttempts;
+          const code=retry?'TRANSLATION_BUDGET':'MAX_ATTEMPTS';
+          if (await settleTranslationJob(env.DB,job,{status:retry?'deferred':'failed',nextAt:retry?reservation.retryAt:undefined,
+            error:{code,message:ERRORS[code],retryable:retry}})) {
+            if(retry)deferred++;else{failed++;await notifySettledJob(env,job,false);}
+          }
+          continue;
+        }
+        job.token_budget=reservation.tokenBudget;
         await translateAndCachePost(env,env.DB,{...source,targetLang:job.target_lang,execution:job,deadlineMs:Date.now()+240_000});
       }
       if (await settleTranslationJob(env.DB,job,{status:'succeeded'})) {
@@ -188,7 +197,7 @@ export function translationDrainResponse(env:Env) {
       const send=(value:unknown)=>{if(!closed)try{controller.enqueue(encoder.encode(`data: ${JSON.stringify(value)}\n\n`));}catch{closed=true;}};
       send({type:'open'});
       const heartbeat=setInterval(()=>send({type:'heartbeat'}),15000);
-      try { send({type:'done',...await drainTranslationJobs(env,{limit:1})}); }
+      try { send({type:'done',...await drainTranslationJobs(env,{limit:1,preferRecentWake:true})}); }
       catch { send({type:'error',code:'TRANSLATION_EXECUTOR_UNAVAILABLE'}); }
       finally { clearInterval(heartbeat); if(!closed){closed=true;controller.close();} }
     },
