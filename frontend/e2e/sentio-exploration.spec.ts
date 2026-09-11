@@ -432,3 +432,38 @@ for (const mode of ['prism', 'chain'] as const) {
     });
   }
 }
+
+for (const width of [390, 1280]) {
+  test(`markdown list flow ${width}px preserves inline prose and raw bullets`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto('/e2e/fixtures/sentio-markdown.html');
+    const rich = page.getByTestId('rich');
+    const items = rich.locator('li');
+    await expect(items).toHaveCount(4);
+    for (const item of await items.all()) {
+      await expect(item).toHaveCSS('display', 'list-item');
+    }
+    await expect(rich.locator('ul').first()).toHaveCSS('list-style-type', 'disc');
+    await expect(rich.locator('ol')).toHaveCSS('list-style-type', 'decimal');
+    const code = rich.locator('code');
+    await expect(code).toHaveCount(8);
+    for (const inline of await code.all()) {
+      await expect(inline).toHaveCSS('display', 'inline');
+      const geometry = await inline.evaluate(element => ({
+        height: element.getBoundingClientRect().height,
+        lineHeight: parseFloat(getComputedStyle(element.parentElement!).lineHeight),
+      }));
+      // Tokens can wrap with prose, but must not stretch to the entire item's height.
+      expect(geometry.height).toBeLessThan(geometry.lineHeight * 3);
+    }
+    const paragraphs = rich.locator('ul > li > p');
+    await expect(paragraphs).toHaveCount(2);
+    const first = (await paragraphs.nth(0).boundingBox())!;
+    const second = (await paragraphs.nth(1).boundingBox())!;
+    expect(second.y).toBeGreaterThanOrEqual(first.y + first.height);
+    const raw = page.locator('[data-card-id="raw"] > ul > li');
+    await expect(raw).toHaveCSS('display', 'flex');
+    expect(await raw.evaluate(element => getComputedStyle(element, '::before').width)).toBe('4px');
+    expect(await rich.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  });
+}

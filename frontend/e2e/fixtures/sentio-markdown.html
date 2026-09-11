@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { ThemeProvider } from '/src/contexts/ThemeContext.tsx';
+      import ThoughtCard from '/src/components/features/sentio/ThoughtCard.tsx';
+      import { CardExplorationBody } from '/src/components/features/sentio/CardExploration.tsx';
+      import '/src/index.css';
+
+      const h = React.createElement;
+      const body = [
+        '- 최종 판정 후보: `호출 위주` / `직접 기억` / `혼합 유지` 사실: 항목을 고정하면 2주마다 빠르게 재분류할 수 있습니다.',
+        '',
+        '검토 기준:',
+        '',
+        '- 최종 판정 후보: `호출 위주` / `직접 기억` / `혼합 유지` 사실: 이 형태는 글에서 나온 오답 패턴 분석과 잘 맞습니다.',
+        '',
+        '  추론: 항목을 정성적 메모가 아닌 표준 필드로 고정하면 빠르게 재분류할 수 있습니다.',
+        '',
+        '  - 결과가 매번 맞더라도 **과정이 빈약하거나** 반례를 못 만드는 항목은 `혼합`으로 두고 다음 단계에서 확인합니다.',
+        '',
+        '1. 다음 2주 `삭제/보존` 결정 후 [기록](#record)을 확인합니다.',
+      ].join('\n');
+      createRoot(document.getElementById('root')).render(
+        h(ThemeProvider, null,
+          h('main', { style: { maxWidth: 900, margin: '0 auto', padding: 16 } },
+            h(ThoughtCard, { index: 0, card: {
+              id: 'raw', trackKey: 'raw', title: '기존 카드', body: '원래 설명',
+              bullets: ['기존 목록의 불릿과 텍스트 정렬을 유지합니다.'], tags: [],
+            } }),
+            h('article', { className: 'sentio-thought not-prose', 'data-testid': 'rich' },
+              h(CardExplorationBody, { state: {
+                status: 'complete', turns: [{ question: '재분류 규칙', body }],
+              } })
+            )
+          )
+        )
+      );
+    </script>
+  </body>
+</html>

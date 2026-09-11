@@ -455,12 +455,13 @@
   line-height: 1.9;
   overflow-wrap: anywhere;
 }
-.sentio-thought ul {
+/* Only the raw card bullets use flex; rich Markdown keeps normal list flow. */
+.sentio-thought > ul {
   margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
-.sentio-thought li {
+.sentio-thought > ul > li {
   display: flex;
   gap: 10px;
   margin-top: 8px;
@@ -468,7 +469,7 @@
   line-height: 1.8;
   overflow-wrap: anywhere;
 }
-.sentio-thought li::before {
+.sentio-thought > ul > li::before {
   content: '';
   flex-shrink: 0;
   width: 4px;
