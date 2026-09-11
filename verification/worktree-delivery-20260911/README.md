@@ -7,6 +7,8 @@ Base: `21242839` (main after PRs #180 and #181).
 
 All three registered worktrees were inspected. The primary worktree contained 517 changed/untracked file entries; the reading UI worktree contained 17, and the content-removal worktree was clean. Every initial file version was compared by SHA-256 with committed Git blobs: **534 checked, zero missing**. Deletions were checked for absence. `initial-files.json` records paths, statuses, hashes, and the preservation commits. The integrated branch merges both the published main history and the auxiliary artifact branch. Use a merge commit to preserve these intermediate versions.
 
+After the initial preservation commit, the user requested publication of their deletion of all 83 files under `design-previews/`. Those deletions are included in the final tree; original versions remain in commit history. No production build/config imports of the deleted preview directory were found.
+
 Generated JSON/RSS/sitemap conflicts were resolved to the integrated catalog and then regenerated using the current Markdown sources. The deleted report remains absent. The final build generated 139 public post pages and three static pages. Earlier catalog timestamps/versions remain in the merge ancestry.
 
 ## Verification
