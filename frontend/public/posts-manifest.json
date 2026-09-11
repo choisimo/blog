@@ -1,5 +1,5 @@
 {
-  "total": 282,
+  "total": 281,
   "items": [
     {
       "path": "/posts/2026/organizing-intelligence-era.md",
@@ -24,25 +24,6 @@
       "published": true,
       "coverImage": "/images/2026/organizing-intelligence-era/cover-ink-editorial.png",
       "url": "/blog/2026/organizing-intelligence-era"
-    },
-    {
-      "path": "/posts/2026/ai-usage-habitual-search-inertia-report.md",
-      "year": "2026",
-      "slug": "ai-usage-habitual-search-inertia-report",
-      "title": "AI 활용 안일화와 검색창 고착 구조 분석 보고서 첨부",
-      "description": "AI 활용 안일화 및 검색창 고착 현상을 정리한 분석 보고서 PDF 첨부글입니다.",
-      "snippet": "AI 활용 안일화 및 검색창 고착 현상을 정리한 분석 보고서 PDF 첨부글입니다.",
-      "date": "2026-07-21",
-      "tags": [
-        "AI",
-        "PDF",
-        "Analysis"
-      ],
-      "category": "AI",
-      "author": "Admin",
-      "readingTime": "1 min read",
-      "published": true,
-      "url": "/blog/2026/ai-usage-habitual-search-inertia-report"
     },
     {
       "path": "/posts/2026/knowledge.md",
@@ -5989,14 +5970,14 @@
       "url": "/blog/2024/_index"
     }
   ],
-  "generatedAt": "2026-09-09T21:05:19.917Z",
+  "generatedAt": "2026-09-11T00:26:01.194Z",
   "years": [
     "2026",
     "2025",
     "2024"
   ],
   "categoryCounts": {
-    "AI": 6,
+    "AI": 5,
     "ai": 1,
     "Programming Language": 1,
     "Kubernetes": 2,
