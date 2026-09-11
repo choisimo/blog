@@ -17,6 +17,7 @@ export type CardExplorationProps = {
   onStop: () => void;
   onBack: () => void;
   onReset: () => void;
+  composer?: { value: string; onChange: (value: string) => void };
 };
 
 export function CardExplorationBody({
@@ -57,8 +58,11 @@ export default function CardExploration({
   onStop,
   onBack,
   onReset,
+  composer,
 }: CardExplorationProps) {
-  const [question, setQuestion] = useState('');
+  const [localQuestion, setLocalQuestion] = useState('');
+  const question = composer?.value ?? localQuestion;
+  const setQuestion = composer?.onChange ?? setLocalQuestion;
   const inputId = useId();
   const busy = state?.status === 'connecting' || state?.status === 'streaming';
   const current = state?.draft ?? state?.turns.at(-1);
@@ -71,53 +75,53 @@ export default function CardExploration({
       ? '연결 오류'
       : state?.status === 'stopped'
         ? '생성을 중지했어요'
-        : state
-          ? '이 방향으로 더 탐구해 보세요'
-          : '이 카드에서 더 깊게';
+        : '';
   return (
     <div className='sentio-exploration-controls'>
-      <div className='sentio-exploration-toolbar'>
-        <span className='sentio-exploration-status' role='status'>
-          {busy && (
-            <Loader2
-              aria-hidden='true'
-              size={14}
-              className='animate-spin motion-reduce:animate-none'
-            />
+      {(status || state) && (
+        <div className='sentio-exploration-toolbar'>
+          <span className='sentio-exploration-status' role='status'>
+            {busy && (
+              <Loader2
+                aria-hidden='true'
+                size={14}
+                className='animate-spin motion-reduce:animate-none'
+              />
+            )}
+            {status}
+          </span>
+          {state && (
+            <div className='sentio-exploration-history'>
+              <button
+                type='button'
+                onClick={onBack}
+                aria-label='이전 내용으로 돌아가기'
+                title='이전 내용'
+              >
+                <ArrowLeft aria-hidden='true' size={16} />
+              </button>
+              <button
+                type='button'
+                onClick={onReset}
+                aria-label='처음 카드로 돌아가기'
+                title='처음 카드'
+              >
+                <RotateCcw aria-hidden='true' size={16} />
+              </button>
+            </div>
           )}
-          {status}
-        </span>
-        {state && (
-          <div className='sentio-exploration-history'>
+          {busy && (
             <button
               type='button'
-              onClick={onBack}
-              aria-label='이전 내용으로 돌아가기'
-              title='이전 내용'
+              onClick={onStop}
+              className='sentio-exploration-stop'
             >
-              <ArrowLeft aria-hidden='true' size={16} />
+              <Square aria-hidden='true' size={12} />
+              중지
             </button>
-            <button
-              type='button'
-              onClick={onReset}
-              aria-label='처음 카드로 돌아가기'
-              title='처음 카드'
-            >
-              <RotateCcw aria-hidden='true' size={16} />
-            </button>
-          </div>
-        )}
-        {busy && (
-          <button
-            type='button'
-            onClick={onStop}
-            className='sentio-exploration-stop'
-          >
-            <Square aria-hidden='true' size={12} />
-            중지
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       {(state?.status === 'error' || state?.status === 'stopped') &&
         current && (
           <button
