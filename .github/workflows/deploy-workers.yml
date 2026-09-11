@@ -116,6 +116,19 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          # Avoid running DDL on every release when the migration ledger is current.
+          npx wrangler d1 execute blog-db-prod --env production --remote --command "SELECT name FROM d1_migrations" --json > /tmp/d1-applied.json
+          if node --input-type=module <<'NODE'
+          import { readFileSync, readdirSync } from 'node:fs';
+          const responses = JSON.parse(readFileSync('/tmp/d1-applied.json', 'utf8'));
+          const applied = new Set(responses.flatMap(response => response.results || []).map(row => row.name));
+          const pending = readdirSync('../migrations').filter(name => name.endsWith('.sql') && !applied.has(name));
+          console.log(pending.length ? `Pending migrations: ${pending.join(', ')}` : 'Migration ledger is current; no writes needed.');
+          process.exit(pending.length ? 1 : 0);
+          NODE
+          then
+            exit 0
+          fi
           npx wrangler d1 execute blog-db-prod --env production --remote --command "
             CREATE TABLE IF NOT EXISTS d1_migrations(
               id INTEGER PRIMARY KEY AUTOINCREMENT,
