@@ -7,6 +7,7 @@ import type {
   UploadedChatImage,
 } from '../types';
 import type { PageContext } from '@/services/chat/types';
+import type { MemoContext } from './useMemoContext';
 import type { SelectedBlockAttachment } from '@/services/chat';
 import {
   createChatIdempotencyKey,
@@ -107,6 +108,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 type UseChatActionsProps = {
+  memoContext?: MemoContext | null;
   canSend: boolean;
   input: string;
   setInput: (input: string) => void;
@@ -146,6 +148,7 @@ type UseChatActionsProps = {
 };
 
 export function useChatActions({
+  memoContext,
   canSend,
   input,
   setInput,
@@ -486,6 +489,15 @@ export function useChatActions({
           return normalized ? [normalized] : [];
         },
       );
+      if (memoContext?.content.trim()) {
+        selectedBlocksToSend.push({
+          id: 'current-memo', kind: 'selected-block', contentType: 'text/markdown',
+          name: `${memoContext.title}.md`, markdown: memoContext.content,
+          textPreview: memoContext.content.slice(0, 360),
+          sizeBytes: new TextEncoder().encode(memoContext.content).length,
+          truncated: memoContext.truncated,
+        });
+      }
       if (
         selectedBlockAttachments.length > 0 &&
         selectedBlocksToSend.length === 0 &&
@@ -549,7 +561,7 @@ export function useChatActions({
       if (isAggregatePrompt) {
         setIsAggregatePrompt(false);
         const aggregated = await invokeChatAggregate({
-          prompt: text,
+          prompt: memoContext?.content.trim() ? `${text}\n\n[참고 메모: ${memoContext.title}]\n${memoContext.content}` : text,
           signal: controller.signal,
         });
         push({ id: aiId, role: 'assistant', text: aggregated, visualPrompt: baseText, visualScope: responseScope });
@@ -683,6 +695,7 @@ export function useChatActions({
     setLivePinned,
     currentPost,
     sendDirectLiveMessage,
+    memoContext,
   ]);
 
   const stop = useCallback(() => {

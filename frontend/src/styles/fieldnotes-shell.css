@@ -5,6 +5,12 @@
 .fn-reading-settings .fn-setting-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
 .fn-setting-toggle input { min-width: 24px; min-height: 24px; accent-color: hsl(var(--primary)); }
 .fn-site-header.ui-header { background: hsl(var(--background) / .96); }
+/* Keep the viewport as the sticky header's scroll container during Radix locks.
+   The body must not become a competing overflow:hidden scroll container. */
+@supports (overflow: clip) {
+  html:has(body[data-scroll-locked] .fn-site-header) { overflow: hidden; }
+  body[data-scroll-locked]:has(.fn-site-header) { overflow: clip !important; }
+}
 .fn-header-inner.ui-header__inner { max-width: 1390px; height: auto; min-height: var(--fn-header-height); padding-inline: clamp(18px, 4.5vw, 64px); gap: 42px; }
 .fn-header-identity { gap: 18px; }
 .fn-site-header .fn-brand { gap: 12px; }

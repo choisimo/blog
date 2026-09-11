@@ -22,12 +22,15 @@ async function request<T>(path: string, body?: ImageInput, key?: string, scope =
       headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(body ? 315000 : 20000) });
   } catch { throw new ReaderImageError('연결이 끊겼습니다. 새로 생성하지 않고 상태를 확인하세요.', 'IMAGE_OUTCOME_UNKNOWN', 0); }
   const payload = await response.json().catch(() => null);
+  if (scope !== preferenceScope()) throw new ReaderImageError('계정이 변경되었습니다. 다시 요청하세요.', 'ACCOUNT_CHANGED', 401);
   if (!response.ok || !payload?.ok) {
     const messages: Record<string, string> = {
       IMAGE_DISABLED: '이미지 생성 준비 중입니다. 글 답변은 계속 사용할 수 있습니다.',
       IMAGE_UNAVAILABLE: '이미지 생성 연결이 준비되지 않았습니다.',
       IMAGE_POLICY_UNAVAILABLE: '사용량을 확인하지 못해 생성하지 않았습니다.',
       IMAGE_REJECTED: '생성이 거절되었습니다. 사용량은 차감하지 않았습니다. 내용을 바꿔 새로 질문하세요.',
+      IMAGE_PROVIDER_UNAVAILABLE: '이미지 생성 연결을 확인하고 있습니다. 사용량은 차감하지 않았습니다. 잠시 후 다시 시도하세요.',
+      IMAGE_PROVIDER_RATE_LIMIT: '이미지 생성 서비스가 혼잡합니다. 사용량은 차감하지 않았습니다. 잠시 후 다시 시도하세요.',
     };
     const code = payload?.error?.code || 'IMAGE_ERROR';
     throw new ReaderImageError(messages[code] || payload?.error?.message || '이미지를 불러오지 못했습니다.', code, response.status);
@@ -44,5 +47,8 @@ export async function loadReaderImageBlob(image: ReaderImage, scope = preference
     redirect: 'error', signal: AbortSignal.timeout(20000) });
   if (!response.ok) throw new Error(response.status === 404 ? '이미지 보관 기간이 지났습니다.' : '이미지를 열지 못했습니다.');
   if (!response.headers.get('Content-Type')?.startsWith('image/png')) throw new Error('잘못된 이미지 형식입니다.');
-  return response.blob();
+  const blob = await response.blob();
+  if (scope !== preferenceScope()) throw new ReaderImageError('계정이 변경되었습니다. 다시 요청하세요.', 'ACCOUNT_CHANGED', 401);
+  if (!blob.size || blob.size > 8 * 1024 * 1024) throw new Error('잘못된 이미지 크기입니다.');
+  return blob;
 }

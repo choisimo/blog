@@ -135,3 +135,52 @@
 @media(max-width:640px) {
  :host(:not(.terminal)) .panel.open:not(.window-fullscreen), :host(.terminal) .panel.open { inset:0!important; height:var(--memo-viewport-height,100dvh)!important; max-height:var(--memo-viewport-height,100dvh)!important; border-radius:0; }
 }
+
+/* AI output remains visible without replacing or clearing the current draft. */
+:host .panel .memo-ai-feedback { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 16px; border-top:1px solid var(--memo-border); background:var(--memo-surface-subtle); color:var(--memo-text-muted); font-size:12px; line-height:1.5; }
+:host .panel .memo-ai-feedback[data-state="error"] { color:var(--memo-danger,#b52d37); }
+:host .panel .memo-ai-feedback button { flex-shrink:0; min-height:44px; border:1px solid currentColor; border-radius:6px; padding:0 10px; color:inherit; background:transparent; cursor:pointer; }
+/* A document workspace for proposals, using the memo's existing theme tokens. */
+:host .panel #devBody { padding:0; overflow:auto; background:var(--memo-surface); }
+:host .panel #devBody.active { display:flex; }
+:host .panel .proposal-workspace { width:100%; min-height:100%; display:flex; flex-direction:column; color:var(--memo-text); }
+:host .panel .proposal-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:24px 28px 20px; }
+:host .panel .proposal-eyebrow { margin:0 0 8px; color:var(--memo-primary); font-size:11px; font-weight:650; letter-spacing:.03em; }
+:host .panel .proposal-heading h2 { margin:0 0 8px; font-size:22px; font-weight:650; line-height:1.4; letter-spacing:-.03em; }
+:host .panel .proposal-heading p:not(.proposal-eyebrow) { margin:0; color:var(--memo-text-muted); font-size:13px; line-height:1.65; }
+:host .panel .proposal-workspace .btn { min-height:44px; flex-shrink:0; border-radius:7px; font-size:13px; padding:0 14px; }
+:host .panel .proposal-source { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; padding:12px 28px; background:var(--memo-surface-subtle); border-block:1px solid var(--memo-border); font-size:12px; overflow-wrap:anywhere; }
+:host .panel .proposal-source>span { color:var(--memo-text-muted); }
+:host .panel #originalPath { margin-left:auto; font-size:11px; }
+:host .panel .proposal-pane-tabs { display:flex; align-items:center; gap:6px; padding:8px 20px; border-bottom:1px solid var(--memo-border); }
+:host .panel .proposal-pane-tabs button { min-height:44px; padding:0 16px; border:0; border-radius:6px; background:transparent; color:var(--memo-text-muted); font:600 13px var(--memo-font,system-ui); cursor:pointer; }
+:host .panel .proposal-pane-tabs button[aria-selected="true"] { background:var(--memo-surface-subtle); color:var(--memo-text); }
+:host .panel #proposalStats { margin-left:auto; color:var(--memo-text-muted); font-size:11px; }
+:host .panel .proposal-content { display:flex; flex:1; min-height:240px; }
+:host .panel .proposal-content>section { display:flex; flex-direction:column; flex:1; min-width:0; }
+:host .panel .proposal-write label { padding:14px 28px 0; color:var(--memo-text-muted); font-size:11px; }
+:host .panel #proposalMd { width:100%; flex:1; min-height:260px; border:0; border-radius:0; resize:vertical; padding:16px 28px 28px; color:var(--memo-text); background:var(--memo-surface); font:400 14px/1.85 var(--memo-font,system-ui); box-sizing:border-box; }
+:host .panel #proposalMd:focus { outline:2px solid var(--memo-primary); outline-offset:-2px; box-shadow:none; }
+:host .panel #proposalPreview { min-height:260px; padding:20px 28px; background:var(--memo-surface); overflow-wrap:anywhere; font-size:15px; line-height:1.85; }
+:host .panel .proposal-empty { color:var(--memo-text-muted); }
+:host .panel .proposal-footer { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:16px 28px; border-top:1px solid var(--memo-border); background:var(--memo-surface-subtle); }
+:host .panel .proposal-footer p { margin:0; font-size:12px; line-height:1.6; }
+:host .panel .proposal-note { color:var(--memo-text-muted); }
+:host .panel #proposalFeedback[data-state="error"] { color:var(--memo-danger,#b52d37); }
+:host .panel .proposal-footer a { color:var(--memo-primary); font-size:13px; }
+:host .panel .proposal-workspace :is(button,a):focus-visible { outline:2px solid var(--memo-primary); outline-offset:3px; }
+@media(max-width:600px) {
+  :host .panel .proposal-heading { padding:18px; align-items:flex-start; flex-direction:column; gap:12px; }
+  :host .panel .proposal-heading h2 { font-size:20px; }
+  :host .panel .proposal-source,:host .panel .proposal-footer { padding:12px 18px; }
+  :host .panel #originalPath { width:100%; margin:0; }
+  :host .panel .proposal-pane-tabs { padding:4px 10px; }
+  :host .panel .proposal-write label { padding:12px 18px 0; }
+  :host .panel #proposalMd,:host .panel #proposalPreview { padding:16px 18px; font-size:16px; }
+  :host .panel .proposal-footer .btn { width:100%; }
+}
+:host .panel[data-workspace-mode="dev"]>.footer { display:none; }
+:host .panel:not([data-workspace-mode="memo"]):not([data-workspace-mode="preview"]) .memo-ai-feedback { display:none; }
+:host .panel.workspace-narrow .proposal-heading { flex-direction:column; align-items:flex-start; gap:12px; padding:18px; }
+:host .panel.workspace-narrow .proposal-heading h2 { font-size:20px; }
+:host .panel.workspace-narrow .proposal-footer .btn { width:100%; }

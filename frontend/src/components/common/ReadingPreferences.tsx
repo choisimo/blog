@@ -86,8 +86,8 @@ export function ReadingPreferences() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="fn-reading-settings" onCloseAutoFocus={event => {
         event.preventDefault();
-        if (trigger.current?.isConnected) trigger.current.focus();
-        else document.getElementById('main-content')?.focus();
+        if (trigger.current?.isConnected) trigger.current.focus({ preventScroll: true });
+        else document.getElementById('main-content')?.focus({ preventScroll: true });
       }}>
         <DialogHeader>
           <p className="fn-eyebrow">YOUR READING ROOM</p>

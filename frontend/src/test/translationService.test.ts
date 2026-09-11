@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getCachedTranslation,
+  getPublicTranslationGenerationStatus,
   getTranslationGenerationStatus,
   requestTranslationGeneration,
   TranslationApiError,
@@ -46,6 +48,26 @@ describe("translation service", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("uses public admission, read-only status and completed cache contracts without member credentials", async () => {
+    fetchMock
+      .mockResolvedValueOnce(Response.json({ ok: true, data: null, job: { ...validJob, status: 'queued' } }, { status: 202, headers: { 'Retry-After': '3' } }))
+      .mockResolvedValueOnce(Response.json({ ok: true, data: { job: { ...validJob, status: 'succeeded' } } }))
+      .mockResolvedValueOnce(Response.json({ ok: true, data: { title: 'Generated title', description: 'Generated description', content: '# Generated body', cached: true, isAiGenerated: true } }));
+    const signal = new AbortController().signal;
+    expect(await getCachedTranslation(request.year, request.slug, request.targetLang, { signal })).toMatchObject({ pending: true, job: { id: 'job-1', status: 'queued' }, retryAfterSeconds: 3 });
+    expect(await getPublicTranslationGenerationStatus(request, 'job-1', { signal })).toMatchObject({ status: 'succeeded' });
+    expect(await getCachedTranslation(request.year, request.slug, request.targetLang, { signal, readOnly: true, jobId: 'job-1' })).toMatchObject({ pending: false, translation: { content: '# Generated body', isAiGenerated: true } });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'https://api.example.com/api/v1/public/posts/2026/translation-hardening/translations/en',
+      'https://api.example.com/api/v1/public/posts/2026/translation-hardening/translations/en/status?jobId=job-1',
+      'https://api.example.com/api/v1/public/posts/2026/translation-hardening/translations/en?observe=true&jobId=job-1',
+    ]);
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(options).toEqual({ signal, cache: 'no-store' });
+    }
+    expect(mocks.getAuthHeadersAsync).not.toHaveBeenCalled();
   });
 
   it("returns validated async translation jobs", async () => {
