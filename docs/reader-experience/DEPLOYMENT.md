@@ -100,23 +100,27 @@ PASS는 각 행의 관측 범위에 한정한다. 후속 배포에서는 버전�
 | --- | --- | --- |
 | Kubernetes API rollout | `601c3e8`, API 1 ready / AI-worker 2 ready | PASS: 해당 rollout의 준비 상태 |
 | Argo CD | `Synced`, `Healthy` | PASS: 동기화·건강 상태 |
-| Production Worker | main PR #191 배포, version `01e8016f` | PASS: 해당 배포 확인 |
+| Production Worker | PR #193 실행 코드 `166b299c` 배포 및 실제 번역 검증 | PASS: origin 저장소를 통한 실행 |
 | 서명된 DB health | HTTP 200, `tableCount=71`, `ledgerCount=43` | PASS: 상태 저장소 health와 이력 개수 |
 | 서명된 DB 읽기 | 3회 모두 HTTP 200 | PASS: 검사한 읽기 요청 |
 | 서명 없는 DB 요청 | HTTP 401 | PASS: 검사한 비인증 요청 차단 |
 | 익명 세션 + 이미지 policy | HTTP 200, 기본 한도 20 | PASS: 인증·정책 조회 |
-| 실제 Summary | 기록값 `1109` | PASS: 해당 응답 |
-| 실제 Catalyst | 기록값 `238` | PASS: 해당 응답 |
+| 실제 Summary | 1,109자 응답 | PASS: 해당 응답과 표시 |
+| 실제 Catalyst | 238자 응답 | PASS: 해당 응답과 표시 |
 | Settings / context / proposal | 설정·context·proposal 동작 확인 | PASS: 검사한 동작 |
 | Chat 수정 PR #192 | `d01743fd`로 merge, visual 포함 전체 CI PASS | PASS: 해당 변경의 CI |
 | Frontend Pages | run `34642028134` SUCCESS | PASS: 해당 Pages 배포 |
 | 운영 Chat | 실제 응답, 메모 첨부 및 이미지 버튼 유지 | PASS: 응답·첨부·버튼 보존 |
-| 새 번역 | `queued` 확인 | **완료 미확인**; 실제 번역 결과까지 검증 필요 |
-| 새 UI 이미지 생성 | 1회 시도에서 HTTP 409 `UNKNOWN` 재발; 이전 시도는 provider 502 | **PNG 생성·표시·다운로드 미확인** |
+| 새 번역 | 기존 작업 `9237b643`이 1회 실행으로 `succeeded`; 제목 35자·설명 127자·본문 1,504자 | PASS: 새 결과 저장 및 영어 본문 표시 |
+| 번역 예약량 | 기존 작업 22,358 → 26,390, 일일 합계 1,627,220 | PASS: 실제 SQLite에서 예약량 보정; 200만 한도 이내 |
+| Worker 회귀 검사 | 39개 파일, 200개 테스트 및 TypeScript 통과 | PASS: 해당 변경의 CI |
+| 새 UI 이미지 생성 | 별도 두 요청 모두 provider 502 → Gateway 409 `UNKNOWN` | **PNG 생성·표시·다운로드 미확인** |
 
-Chat 검증 화면: `/tmp/blog-reader-ai-20260912/live-chat-session-fixed.png`.
+번역은 원래 작업 ID와 source version을 유지했다. 이전 1,493자 캐시와 다른 새 본문을 확인하고, 화면에 새 문단이 표시되며 이전 문단이 남지 않는지 검사했다. 최초 관측의 완료 직전 화면만으로 성공을 판정하지 않았다.
 
-남은 검증은 새 번역의 최종 성공 상태와 결과 표시, 이미지의 불확실한 결과 원인 확인 및 실제 PNG 저장·소유자 조회·다운로드·동일 키 중복 방지다. 이미지 버튼 보존은 이미지 생성 성공과 별개다. `UNKNOWN` 작업은 상태만 조회하고 자동 재생성하지 않는다.
+과거 작업이 일일 50회 시도를 소진해 검증 중에 1회만 임시 추가했다. 추가 작업은 아직 실행되지 않은 해당 ID로 제한했고, 시도 이력·사용량을 삭제하거나 환불하지 않았다. 200만 토큰 예약 한도와 게시글별 한도는 유지했다. 최종 소스의 일일 시도 한도는 다시 50이며, 최종 배포에서도 이 값을 확인한다.
+
+남은 검증은 이미지 서버의 502 원인 확인과 실제 PNG 저장·소유자 조회·다운로드·동일 키 중복 방지다. 기존 이미지 키로 상세 상태·로그를 조회하면 403으로 거부됐다. 이미지 버튼 보존은 이미지 생성 성공과 별개다. `UNKNOWN` 작업은 상태만 조회하고 자동 재생성하지 않는다.
 
 후속 운영 검증에서는 회원/익명 재접속, 다른 소유자 접근 차단, CORS, 만료 조회, private R2 공개 접근 차단 및 billing/한도 일치도 검사한 범위와 함께 기록한다.
 
