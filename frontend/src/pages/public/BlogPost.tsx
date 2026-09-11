@@ -547,7 +547,9 @@ ${description}
     for (let i=0;i<sourceSignature.length;i++) signature=Math.imul(signature^sourceSignature.charCodeAt(i),16777619);
     const stamp=String(signature>>>0);
     let resumeJobId:string|null=null;
-    try {const saved=JSON.parse(sessionStorage.getItem(scope)||'null');if(saved?.stamp===stamp)resumeJobId=saved.jobId;}catch{}
+    try {const saved=JSON.parse(sessionStorage.getItem(scope)||'null');if(saved?.stamp===stamp)resumeJobId=saved.jobId;}catch{
+      // Storage access or stale JSON must not prevent a fresh observation.
+    }
     setTranslationError(null);
     void observeTranslation({
       signal:controller.signal,resumeJobId,
@@ -561,7 +563,9 @@ ${description}
         try {
           if(value.status==='ready'||value.status==='idle'||value.error?.code==='SUPERSEDED'||(value.status==='paused'&&!value.job))sessionStorage.removeItem(scope);
           else if(value.job)sessionStorage.setItem(scope,JSON.stringify({stamp,jobId:value.job.id}));
-        }catch{}
+        }catch{
+          // Observation can continue when browser storage is unavailable.
+        }
       },
     });
     return ()=>controller.abort();

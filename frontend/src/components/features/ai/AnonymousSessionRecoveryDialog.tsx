@@ -30,6 +30,7 @@ export default function AnonymousSessionRecoveryDialog() {
   };
 
   useEffect(() => {
+    const requestGeneration = generation;
     const open = () => {
       if (openRef.current || accountActive()) return;
       try { expectedToken.current = localStorage.getItem('anon.token'); }
@@ -42,7 +43,7 @@ export default function AnonymousSessionRecoveryDialog() {
     };
     window.addEventListener('reader:anonymous-auth-required', open);
     return () => {
-      ++generation.current;
+      ++requestGeneration.current;
       controller.current?.abort();
       window.removeEventListener('reader:anonymous-auth-required', open);
     };

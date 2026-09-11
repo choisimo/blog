@@ -395,6 +395,8 @@ export default function DebateRoom({ topic, onClose }: DebateRoomProps) {
     () => sanitizeIntentOptions(getModeIntentOptions(safeTopic)),
     [safeTopic],
   );
+  // A topic change starts a fresh image request scope even when this dialog stays mounted.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const visualSession = useMemo(() => ({ key: crypto.randomUUID(), scope: preferenceScope() }), [safeTopic.title, safeTopic.context]);
   const [messages, setMessages] = useState<DebateMessage[]>([]);
   const [hasTopicText, setHasTopicText] = useState(false);

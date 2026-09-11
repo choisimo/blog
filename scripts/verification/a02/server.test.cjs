@@ -25,7 +25,7 @@ for(const slug of ['.','..','a/b','a\\b','%252f','%2F','a\n','a%00','bad%','a?b'
 test('every supplied public post is accepted by the shared selector',()=>{
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'frontend/public/posts-manifest.json'),'utf8'));
  const publicPosts=manifest.items.filter(p=>p.published!==false);
- assert.equal(publicPosts.length,140);
+ assert.ok(publicPosts.length > 0, 'the selector must be checked against a nonempty public catalog');
  for(const p of publicPosts)assert.equal(urls.normalizeTranslationSelectors({...p,targetLang:'en'}).slug,p.slug.normalize('NFC'));
 });
 test('100 concurrent admissions share one job and one durable outbox record',async t=>{

@@ -475,7 +475,7 @@ export async function getCachedTranslation(
   if(options?.readOnly)query.set('observe','true');
   if(options?.jobId)query.set('jobId',sharedJobId(options.jobId));
   const response = await fetch(
-    `${baseUrl}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}${query.size?'?'+query:''}`,
+    `${baseUrl}/api/v1/public/posts/${path.year}/${path.slug}/translations/${path.targetLang}${query.size ? `?${query}` : ''}`,
     { signal: options?.signal, cache:'no-store' },
   );
   const retryAfterSeconds = parseRetryAfterSeconds(
