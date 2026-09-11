@@ -1,14 +1,39 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { env, createExecutionContext } from 'cloudflare:test';
+import { env, createExecutionContext, fetchMock } from 'cloudflare:test';
 import { createBackendStateDatabase, withBackendState } from '../src/lib/backend-state-db';
 import worker from '../src/index';
 import type { Env } from '../src/types';
 
 const bindings = { ...env, ENV: 'production', BACKEND_ORIGIN: 'https://origin.example', BACKEND_KEY: 'test-key', GATEWAY_SIGNING_SECRET: 'test-signing-secret', STATE_STORE_BACKEND: 'origin' } as Env;
 const result = (results: unknown[] = [], changes = 0) => ({ success: true, results, meta: { changes, last_row_id: 0, duration: 1 } });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  fetchMock.deactivate();
+  fetchMock.enableNetConnect();
+});
 
 describe('backend state transport', () => {
+  it('sends SQL through the real Workers fetch implementation', async () => {
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock.get('https://origin.example').intercept({ path: '/internal/state-db/query', method: 'POST' })
+      .reply(200, { ok: true, results: [result([{ count: 1 }])] });
+    expect(await createBackendStateDatabase(bindings).prepare('SELECT 1 AS count').first('count')).toBe(1);
+    fetchMock.assertNoPendingInterceptors();
+  });
+  it('refuses redirects without forwarding SQL or credentials to another origin', async () => {
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock.get('https://origin.example').intercept({ path: '/internal/state-db/query', method: 'POST' })
+      .reply(307, { ok: true, results: [result([{ count: 1 }])] }, { headers: { location: 'https://redirect.example/state' } });
+    let forwarded = 0;
+    fetchMock.get('https://redirect.example').intercept({ path: '/state', method: 'POST' }).reply(() => {
+      forwarded++;
+      return { statusCode: 200, data: '{}' };
+    });
+    await expect(createBackendStateDatabase(bindings).prepare('SELECT 1').first()).rejects.toThrow('redirect refused');
+    expect(forwarded).toBe(0);
+  });
   it('keeps the Worker readiness endpoint available when origin storage cannot be reached', async () => {
     const fetcher = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Origin is not ready'));
     const response = await worker.fetch(new Request('https://example.com/_health'), bindings, createExecutionContext());
@@ -29,7 +54,7 @@ describe('backend state transport', () => {
     expect(values[1].results).toEqual([{ id: 'job-1', used: 0 }]);
     const [url, init] = fetcher.mock.calls[0];
     expect(String(url)).toBe('https://origin.example/internal/state-db/query');
-    expect(init?.redirect).toBe('error');
+    expect(init?.redirect).toBe('manual');
     const headers = new Headers(init?.headers);
     expect(headers.get('X-Backend-Key')).toBe('test-key');
     expect(headers.get('X-Gateway-Signature')).toMatch(/^v1:[a-f0-9]{64}$/);
