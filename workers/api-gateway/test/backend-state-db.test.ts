@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { env } from 'cloudflare:test';
+import { env, createExecutionContext } from 'cloudflare:test';
 import { createBackendStateDatabase, withBackendState } from '../src/lib/backend-state-db';
+import worker from '../src/index';
 import type { Env } from '../src/types';
 
 const bindings = { ...env, ENV: 'production', BACKEND_ORIGIN: 'https://origin.example', BACKEND_KEY: 'test-key', GATEWAY_SIGNING_SECRET: 'test-signing-secret', STATE_STORE_BACKEND: 'origin' } as Env;
@@ -8,6 +9,13 @@ const result = (results: unknown[] = [], changes = 0) => ({ success: true, resul
 afterEach(() => vi.restoreAllMocks());
 
 describe('backend state transport', () => {
+  it('keeps the Worker readiness endpoint available when origin storage cannot be reached', async () => {
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Origin is not ready'));
+    const response = await worker.fetch(new Request('https://example.com/_health'), bindings, createExecutionContext());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, worker: 'blog-api-gateway' });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it('reuses schema caches across requests and replaces the transport on secret rotation', () => {
     const first = withBackendState(bindings).DB;
     expect(withBackendState({ ...bindings }).DB).toBe(first);

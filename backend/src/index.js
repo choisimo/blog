@@ -169,7 +169,9 @@ function buildBackendReadinessChecks() {
           return dependencyNotConfigured(protectedRuntime);
         }
 
-        const configUrl = new URL("/api/v1/public/config", config.services.workerApiUrl);
+        // Public config reads Worker state from this API. Probing it here would
+        // require this Pod to be ready before it can ever become ready.
+        const configUrl = new URL("/_health", config.services.workerApiUrl);
         const response = await withReadinessTimeout("worker", () =>
           fetch(configUrl, {
             signal: AbortSignal.timeout(getReadinessCheckTimeoutMs()),

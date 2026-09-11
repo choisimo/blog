@@ -12,8 +12,8 @@ async function call(path, body) {
       'X-Gateway-Request-ID': id, 'X-Gateway-Signature': `v1:${signature}` },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const result = await response.json();
-  if (!response.ok || result.ok !== true) throw new Error(`Backend state verification failed: HTTP ${response.status}`);
+  const result = await response.json().catch(() => null);
+  if (!response.ok || result?.ok !== true) throw new Error(`Backend state verification failed: HTTP ${response.status}`);
   return result;
 }
 const health = await call('/internal/state-db/health');
