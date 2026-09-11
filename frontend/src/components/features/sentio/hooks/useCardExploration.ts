@@ -18,6 +18,7 @@ type Options = {
   paragraph: string;
   postTitle?: string;
   enabled: boolean;
+  purpose?: 'exploration' | 'evidence';
 };
 const REQUEST_TIMEOUT_MS = 120000;
 const MAX_HISTORY = 8;
@@ -27,6 +28,7 @@ export function useCardExploration({
   paragraph,
   postTitle,
   enabled,
+  purpose,
 }: Options) {
   const [states, setStates] = useState<Record<string, CardExplorationState>>(
     {}
@@ -83,7 +85,17 @@ export function useCardExploration({
   }, []);
 
   const explore = useCallback(
-    async (seed: ExplorationSeed, input: string) => {
+    async (
+      seed: ExplorationSeed,
+      input: string,
+      options?: { reuse?: boolean }
+    ) => {
+      if (
+        options?.reuse &&
+        (controllers.current.has(seed.id) ||
+          statesRef.current[seed.id]?.status === 'complete')
+      )
+        return;
       const question = input
         .replace(/[\u0000-\u001F\u007F]+/g, ' ')
         .trim()
@@ -130,6 +142,7 @@ export function useCardExploration({
           history: turns,
           enableRag,
           signal: controller.signal,
+          purpose,
         })) {
           if (!isCurrent() || controller.signal.aborted) return;
           draft = { question, ...snapshot };
@@ -165,6 +178,7 @@ export function useCardExploration({
       enabled,
       paragraph,
       postTitle,
+      purpose,
       scopeKey,
       stop,
       update,

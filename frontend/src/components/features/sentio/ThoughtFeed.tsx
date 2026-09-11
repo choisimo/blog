@@ -43,7 +43,7 @@ function normalizeCacheKey(value: unknown): string {
   return normalized || 'thought-feed';
 }
 
-export default function ThoughtFeed({
+function ThoughtFeedContent({
   paragraph,
   postTitle,
   cacheKey,
@@ -114,7 +114,7 @@ export default function ThoughtFeed({
       return (
         <div className='sentio-feed-status' role='status'>
           <Sparkles className='h-3.5 w-3.5' />
-          이어지는 질문을 모두 살펴봤어요.
+          모든 질문을 불러왔어요.
         </div>
       );
     }
@@ -141,11 +141,6 @@ export default function ThoughtFeed({
             ? '이어지는 질문을 준비하고 있어요'
             : '생각을 넓힐 질문을 찾고 있어요'}
         </p>
-        <p className='text-xs text-muted-foreground'>
-          {status === 'warming' && !loading
-            ? '질문이 준비되면 여기에 표시됩니다.'
-            : '이 문단에서 이어지는 질문과 설명을 정리합니다.'}
-        </p>
       </div>
     </div>
   );
@@ -161,16 +156,11 @@ export default function ThoughtFeed({
           아직 표시할 질문이 없습니다.
         </div>
       ) : (
-        <div className='sentio-results not-prose space-y-4' data-mode='chain'>
-          <div className='sentio-result-heading'>
-            <div>
-              <span className='sentio-result-label'>생각의 흐름</span>
-              <h4>질문에서 다음 질문으로</h4>
-              <p>
-                질문을 선택하면 같은 카드의 설명이 그 방향으로 실시간
-                갱신됩니다.
-              </p>
-            </div>
+        <div
+          className='sentio-results sentio-thought-path not-prose'
+          data-mode='chain'
+        >
+          <div className='sentio-result-status'>
             <AsyncArtifactStatusChip
               status={status}
               labels={{
@@ -193,6 +183,7 @@ export default function ThoughtFeed({
                 key={card.id}
                 card={card}
                 index={index}
+                readingPath
                 exploration={{
                   state: exploration.states[card.id],
                   questions: (card.bullets ?? [])
@@ -229,5 +220,15 @@ export default function ThoughtFeed({
         </div>
       )}
     </ModeReveal>
+  );
+}
+
+// Fallback card IDs can repeat across paragraphs; drafts belong to one paragraph.
+export default function ThoughtFeed(props: ThoughtFeedProps) {
+  return (
+    <ThoughtFeedContent
+      key={`${props.cacheKey}::${props.paragraph}`}
+      {...props}
+    />
   );
 }

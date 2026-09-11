@@ -34,7 +34,10 @@ import {
 } from '@/components/ui/tooltip';
 import PrismDeck from './PrismDeck';
 import ThoughtFeed from './ThoughtFeed';
+import CardPaperView from '@/components/features/sentio/CardPaperView';
+import ReadingSummary from '@/components/features/sentio/ReadingSummary';
 import './sentio.css';
+import './reading-panel.css';
 import ModeReveal from './ModeReveal';
 
 const ANSI_ESCAPE_PATTERN =
@@ -179,28 +182,23 @@ const ModeConfig: Record<
   {
     label: string;
     icon: React.ComponentType<{ className?: string }>;
-    description: string;
   }
 > = {
   idle: {
     label: 'AI 분석',
     icon: Sparkles,
-    description: '',
   },
   sketch: {
     label: '핵심 파악',
     icon: Lightbulb,
-    description: '문단의 요점과 핵심 메시지를 정리해요.',
   },
   prism: {
     label: '다각도 분석',
     icon: Layers,
-    description: '서로 다른 관점과 근거를 비교해요.',
   },
   chain: {
     label: '더 생각해보기',
     icon: Link2,
-    description: '새로운 질문을 따라 생각을 확장해요.',
   },
 };
 
@@ -489,7 +487,7 @@ export default function SparkInline({
       <div
         id={panelId}
         hidden={!open}
-        className='sentio-panel not-prose'
+        className='sentio-panel sentio-reading-panel not-prose'
         data-mode={activeMode}
         data-compact={compact}
         role='region'
@@ -509,11 +507,6 @@ export default function SparkInline({
             </span>
             <div>
               <p className='sentio-eyebrow'>AI와 함께 읽기</p>
-              <div className='sentio-heading-collapse' aria-hidden={compact}>
-                <div>
-                  <h3>이 문단에서 생각을 넓혀보세요</h3>
-                </div>
-              </div>
             </div>
           </div>
           <button
@@ -561,9 +554,6 @@ export default function SparkInline({
                     </span>
                     <span className='sentio-mode-copy'>
                       <span className='sentio-mode-title'>{config.label}</span>
-                      <span className='sentio-mode-description'>
-                        {config.description}
-                      </span>
                     </span>
                     <span className='sentio-mode-action' aria-hidden='true'>
                       {isLoading ? (
@@ -638,12 +628,6 @@ export default function SparkInline({
           </div>
         </div>
 
-        {activeMode === 'idle' && (
-          <p className='sentio-start-hint'>
-            궁금한 방식을 선택하면, 읽고 있는 문단을 바탕으로 분석을 시작합니다.
-          </p>
-        )}
-
         <div
           id={`${panelId}-result`}
           className='sentio-panel-content'
@@ -682,9 +666,6 @@ export default function SparkInline({
                       )}
                     >
                       {ModeConfig.sketch.label} 분석 중...
-                    </p>
-                    <p className='text-xs text-muted-foreground mt-0.5'>
-                      잠시만 기다려 주세요...
                     </p>
                   </div>
                 </div>
@@ -736,6 +717,18 @@ export default function SparkInline({
                       </span>
                       {sketchRes.mood}
                     </span>
+                    <CardPaperView
+                      title={ModeConfig.sketch.label}
+                      eyebrow='문단 요약'
+                      description={safePostTitle}
+                      meta={
+                        <span className='sentio-paper-mood'>
+                          {sketchRes.mood}
+                        </span>
+                      }
+                    >
+                      <ReadingSummary points={sketchRes.bullets} />
+                    </CardPaperView>
                   </div>
 
                   {/* Bullets */}
