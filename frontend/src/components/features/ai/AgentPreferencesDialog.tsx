@@ -24,6 +24,7 @@ export default function AgentPreferencesDialog() {
   const opener = useRef<HTMLElement | null>(null);
   function close() { generation.current++; openRef.current = false; setIsOpen(false); }
   useEffect(() => {
+    const requestGeneration = generation;
     const open = () => {
       if (openRef.current) return;
       const runId = ++generation.current;
@@ -44,7 +45,7 @@ export default function AgentPreferencesDialog() {
         .finally(() => { if (generation.current === runId) setLoading(false); });
     };
     window.addEventListener('reader:agent-settings', open);
-    return () => { window.removeEventListener('reader:agent-settings', open); generation.current++; };
+    return () => { window.removeEventListener('reader:agent-settings', open); requestGeneration.current++; };
   }, []);
   const change = <K extends keyof AgentPreferences>(key: K, value: AgentPreferences[K]) => setDraft(p => ({ ...p, [key]: value }));
   const save = async () => {
