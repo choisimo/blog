@@ -14,8 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { LiveReplyTarget, QuestionMode } from "../types";
 import type { SelectedBlockAttachment } from "@/services/chat";
+import type { MemoContext } from '../hooks/useMemoContext';
+import { MemoContextPreview } from './MemoContextPreview';
 
 type ChatInputProps = {
+  memoContext?: MemoContext;
+  memoContextEnabled?: boolean;
+  onToggleMemoContext?: () => void;
   input: string;
   onInputChange: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -126,6 +131,9 @@ function normalizePreviewUrl(value: unknown): string | null {
 }
 
 export function ChatInput({
+  memoContext,
+  memoContextEnabled = true,
+  onToggleMemoContext,
   input,
   onInputChange,
   onKeyDown,
@@ -301,6 +309,9 @@ export function ChatInput({
           onFileSelect={onFileSelect}
         />
       )}
+      {memoContext && onToggleMemoContext && <MemoContextPreview
+        memo={memoContext} enabled={memoContextEnabled} onToggle={onToggleMemoContext}
+      />}
     </div>
   );
 }

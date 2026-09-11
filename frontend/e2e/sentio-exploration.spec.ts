@@ -1,11 +1,16 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
-async function setup(page: Page, theme: string, baseURL: string | undefined) {
+async function setup(
+  page: Page,
+  theme: string,
+  baseURL: string | undefined,
+  longReading = false
+) {
   if (!baseURL) throw new Error('A Playwright baseURL is required');
   const appOrigin = new URL(baseURL).origin;
   await page.addInitScript(value => {
-    localStorage.setItem('theme', value);
+    localStorage.setItem('theme', value.theme);
     localStorage.setItem('site.language', 'ko');
     localStorage.setItem('aiMemo.fab.enabled', 'false');
     localStorage.setItem(
@@ -20,6 +25,9 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
     const originalFetch = window.fetch.bind(window);
     let turn = 0;
     let session = 0;
+    const readingText = value.longReading
+      ? '긴 설명에서도 문단을 끝까지 읽고 이어서 질문할 수 있어야 합니다. '.repeat(50)
+      : '';
     window.fetch = async (input, init) => {
       const url = new URL(
         typeof input === 'string'
@@ -49,7 +57,7 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
       if (url.pathname.endsWith('/chat/session'))
         return json({ id: `fixture-session-${++session}` });
       if (url.pathname.endsWith('/ai/sketch'))
-        return json({ mood: '분석적', bullets: ['핵심 요약 결과'] });
+        return json({ mood: '분석적', bullets: [`핵심 요약 결과 ${readingText}`] });
       if (url.pathname.endsWith('/lens-feed'))
         return json({
           items: [
@@ -58,7 +66,7 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
               personaId: 'analyst',
               angleKey: 'first',
               title: '첫 번째 관점',
-              summary: '첫 카드의 원래 설명',
+              summary: `첫 카드의 원래 설명 ${readingText}`,
               detail: '원래 근거',
               bullets: ['첫 번째 요점'],
               tags: [],
@@ -84,7 +92,7 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
               id: 'thought-a',
               trackKey: 'first',
               title: '첫 번째 질문',
-              body: '첫 카드의 원래 설명',
+              body: `첫 카드의 원래 설명 ${readingText}`,
               bullets: ['어떻게 적용할 수 있을까?'],
               tags: [],
             },
@@ -160,7 +168,7 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
       }
       return json({ ok: true, data: {} });
     };
-  }, theme);
+  }, { theme, longReading });
   // Fixture content and credentials must never reach external services.
   await page.route('**/*', route =>
     new URL(route.request().url()).origin !== appOrigin
@@ -432,6 +440,122 @@ for (const mode of ['prism', 'chain'] as const) {
       await expect(card).toContainText('생성을 중지했어요');
     });
   }
+}
+
+for (const scenario of [
+  { width: 320, height: 568, theme: 'light', mobile: true, reduced: false },
+  { width: 390, height: 844, theme: 'dark', mobile: true, reduced: false },
+  { width: 640, height: 960, theme: 'light', mobile: true, reduced: true },
+  { width: 844, height: 390, theme: 'terminal', mobile: true, reduced: false },
+  { width: 1280, height: 900, theme: 'light', mobile: false, reduced: false },
+]) {
+  test.describe(`paper viewport ${scenario.width}x${scenario.height}`, () => {
+    test.use({ hasTouch: scenario.mobile, isMobile: scenario.mobile });
+    test('fills mobile screens and keeps long content scrollable beneath the toolbar', async ({
+      page,
+      baseURL,
+    }) => {
+      await page.setViewportSize({
+        width: scenario.width,
+        height: scenario.height,
+      });
+      await page.emulateMedia({
+        reducedMotion: scenario.reduced ? 'reduce' : 'no-preference',
+      });
+      await setup(page, scenario.theme, baseURL, true);
+      const panel = page.locator('.sentio-panel:visible');
+      for (const mode of ['핵심 파악', '다각도 분석', '더 생각해보기']) {
+        await panel.getByRole('button', { name: new RegExp(mode) }).click();
+        const trigger = panel
+          .getByRole('button', { name: /크게 보기/ })
+          .first();
+        await trigger.click();
+        const dialog = page.getByRole('dialog');
+        const expected = scenario.mobile
+          ? { x: 0, y: 0, width: scenario.width, height: scenario.height }
+          : { x: 100, y: 24, width: 1080, height: 852 };
+        await expect.poll(() => dialog.boundingBox()).toEqual(expected);
+        await expect(page.locator('ai-memo-pad #launcher')).toBeHidden();
+        await expect(page.locator('ai-memo-pad #historyLauncher')).toBeHidden();
+        if (scenario.mobile) {
+          await expect(dialog).toHaveCSS('border-radius', '0px');
+          await expect(dialog).toHaveCSS('transform', 'none');
+        }
+        if (scenario.reduced)
+          await expect(dialog).toHaveCSS('animation-name', 'none');
+        const canvas = dialog.locator('.sentio-paper-canvas');
+        const toolbar = dialog.locator('.sentio-paper-toolbar');
+        const toolbarBefore = await toolbar.boundingBox();
+        const pageScroll = await page.evaluate(() => window.scrollY);
+        await canvas.evaluate(element => {
+          element.scrollTop = element.scrollHeight;
+        });
+        await expect
+          .poll(() => canvas.evaluate(element => element.scrollTop))
+          .toBeGreaterThan(0);
+        expect(await toolbar.boundingBox()).toEqual(toolbarBefore);
+        expect(await page.evaluate(() => window.scrollY)).toBe(pageScroll);
+        expect(
+          await canvas.evaluate(
+            element => element.scrollWidth <= element.clientWidth
+          )
+        ).toBe(true);
+        const close = dialog.getByRole('button', { name: '큰 화면 닫기' });
+        await expect(close).toBeInViewport();
+        const closeBounds = (await close.boundingBox())!;
+        expect(closeBounds.width).toBeGreaterThanOrEqual(44);
+        expect(closeBounds.height).toBeGreaterThanOrEqual(44);
+        if (mode === '더 생각해보기') {
+          const question = dialog.getByRole('textbox', {
+            name: '이 카드에 이어서 질문하기',
+          });
+          await question.fill('팝업을 닫아도 질문 유지');
+          await expect(question).toBeInViewport();
+          await page.keyboard.press('Escape');
+          await expect(panel.getByRole('textbox').first()).toHaveValue(
+            '팝업을 닫아도 질문 유지'
+          );
+        } else {
+          await close.click();
+        }
+        await expect(dialog).toHaveCount(0);
+        await expect(trigger).toBeFocused();
+        await expect(panel).toBeVisible();
+        if (scenario.theme === 'terminal') {
+          await expect(page.locator('ai-memo-pad #launcher')).toBeVisible();
+        }
+      }
+      await panel.getByRole('button', { name: /더 생각해보기/ }).click();
+      await panel
+        .getByRole('button', { name: /크게 보기/ })
+        .first()
+        .click();
+      await expect(page.getByRole('dialog')).toHaveCSS('opacity', '1');
+      if (scenario.mobile) {
+        const height = scenario.height - 120;
+        await page.setViewportSize({ width: scenario.width, height });
+        await expect.poll(() => page.getByRole('dialog').boundingBox()).toEqual({
+          x: 0,
+          y: 0,
+          width: scenario.width,
+          height,
+        });
+        await page.setViewportSize({
+          width: scenario.width,
+          height: scenario.height,
+        });
+        await expect.poll(() => page.getByRole('dialog').boundingBox()).toEqual({
+          x: 0,
+          y: 0,
+          width: scenario.width,
+          height: scenario.height,
+        });
+      }
+      await page.screenshot({
+        path: `verification-screenshots/sentio-paper-${scenario.theme}-${scenario.width}x${scenario.height}.png`,
+      });
+    });
+  });
 }
 
 // Component fixtures need source modules even when the main suite uses a built preview.

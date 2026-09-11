@@ -62,7 +62,7 @@
   // 기본값 설정
   const DEFAULT_API_URL = 'https://api.nodove.com';
   const DEFAULT_REPO_URL = 'https://github.com/choisimo/blog';
-  const AI_MEMO_ASSET_VERSION = '20260910-r07-1';
+  const AI_MEMO_ASSET_VERSION = '20260912-reader-ai';
   const CATALYST_PROMPT_MAX_LENGTH = 160;
   const BLOCK_SELECTORS = 'p, pre, code, blockquote, ul, ol, li, table, thead, tbody, tr, th, td, figure, figcaption, h1, h2, h3, h4, h5, h6, section, article, main';
   const MAX_BLOCK_PAYLOAD_CHARS = 6000;
@@ -331,6 +331,7 @@
     }
 
     disconnectedCallback() {
+      this._memoAiController?.abort();
       window.removeEventListener(
         'aiMemo:log',
         this._onExternalLog
@@ -755,150 +756,98 @@
       return (document.body?.innerText || '').trim();
     }
 
-    async summarizeWithGemini() {
-      const article = this.getArticleText();
-      const memo = this.$memo.value || '';
-      const limit = (s, max = 8000) =>
-        s && s.length > max ? `${s.slice(0, max)}\n…(truncated)` : s;
-      const instructions = [
-        '다음 페이지 본문과 나의 메모를 바탕으로 핵심 요약을 작성해 주세요.',
-        '- 한국어로 간결한 불릿 포인트 5~10개로 정리',
-        '- 중요 개념/용어는 강조',
-        '- 필요한 경우 간단한 예시 코드 포함',
-      ].join('\n');
+    publishMemoContext() {
+      window.dispatchEvent(new Event('aiMemo:contentChanged'));
+    }
 
-      const btn = this.$aiSummary;
-      const prevStatus = this.out.getStatus();
-      
+    setMemoAiFeedback(message, state) {
+      const feedback = this.shadowRoot.getElementById('memoAiFeedback');
+      if (!feedback) return;
+      feedback.hidden = false;
+      feedback.dataset.state = state;
+      feedback.querySelector('span').textContent = message;
+      feedback.querySelector('button').hidden = state !== 'error';
+    }
+
+    async requestMemoDocument(instructions, signal) {
+      const backend = this.getApiBase();
+      const headers = await this.getAiJsonHeaders(backend);
+      const article = this.getArticleText().slice(0, 6000);
+      const memo = (this.$memo?.value || '').slice(0, 6000);
+      const res = await fetch(`${backend}/api/v1/ai/summarize`, {
+        method: 'POST', headers, signal,
+        body: JSON.stringify({
+          input: `[페이지 본문]\n${article}\n\n[현재 메모]\n${memo}`,
+          instructions,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.ok === false || data?._fallback || data?.source === 'fallback' || data?.data?._fallback) {
+        throw new Error(res.status === 401 ? '인증을 확인한 뒤 다시 시도해 주세요.' : 'AI 결과를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+      const result = data?.data?.summary ?? data?.summary;
+      if (typeof result !== 'string' || !result.trim()) throw new Error('AI 응답에 생성된 내용이 없습니다. 다시 시도해 주세요.');
+      return result.trim();
+    }
+
+    async runMemoAI(kind, prompt = '') {
+      if (this._memoAiBusy) return;
+      if (kind === 'catalyst' && !prompt.trim()) {
+        this.out.toast('Catalyst 프롬프트를 입력하세요.');
+        return;
+      }
+      const label = kind === 'catalyst' ? 'Catalyst' : 'AI 요약';
+      this._lastMemoAiAction = { kind, prompt };
+      this._memoAiBusy = true;
+      this._memoAiController = new AbortController();
+      const timeout = setTimeout(() => this._memoAiController?.abort(), 125000);
+      const instructions = kind === 'catalyst'
+        ? `페이지와 메모를 참고해 다음 작업을 수행하세요: ${prompt}\n한국어 마크다운으로 구체적인 결과를 작성하세요. 단순 요약으로 대체하지 말고 요청한 관점, 예시와 근거를 전개하세요. JSON이나 결과 전체를 감싼 코드펜스는 사용하지 마세요.`
+        : '페이지 본문과 사용자의 메모를 함께 참고하여 한국어 마크다운 요약을 작성하세요. 핵심 개념, 주장과 근거를 5~10개 불릿으로 정리하고 중요한 용어를 강조하세요. 원문을 그대로 복사하거나 JSON으로 감싸지 마세요.';
+      for (const button of [this.$aiSummary, this.$catalystRun, this.$catalystBtn]) if (button) button.disabled = true;
+      if (this.$catalystInput) this.$catalystInput.disabled = true;
+      this.$catalystBox?.classList.add('loading');
+      this.setStatusState('busy');
+      this.out.setStatus(`${label} 생성 중…`);
+      this.setMemoAiFeedback(`${label} 생성 중… 작성 중인 메모는 그대로 보관됩니다.`, 'busy');
       try {
-        btn.disabled = true;
-        this.setStatusState('busy');
-        this.out.setStatus('AI 요약 중…');
-        
-        const backend = this.getApiBase();
-        const endpoint = `${backend}/api/v1/ai/summarize`;
-        const headers = await this.getAiJsonHeaders(backend);
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            input: [
-              '[페이지 본문]',
-              limit(article, 6000),
-              '',
-              '[나의 메모]',
-              limit(memo, 2000),
-            ].join('\n'),
-            instructions,
-          }),
-        });
-        if (!res.ok) {
-          const t = await res.text().catch(() => '');
-          throw new Error(`요약 실패(${res.status}) ${t.slice(0, 200)}`);
+        const result = await this.requestMemoDocument(instructions, this._memoAiController.signal);
+        const heading = kind === 'catalyst' ? prompt.replace(/[\r\n]+/g, ' ') : 'AI 요약';
+        this.out.append(`\n\n## ${heading}\n\n${result}\n`);
+        this.persistMemoContent();
+        this.$tabs?.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === 'preview'));
+        this.state.mode = 'preview';
+        this.updateMode();
+        this.applyPreviewPane('preview');
+        if (kind === 'catalyst') {
+          this.$catalystInput.value = '';
+          this.setCatalystOpen(false);
         }
-        const data = await res.json();
-        const out = (data?.data?.summary || data?.summary || '').toString();
-        if (!out) throw new Error('응답 파싱 실패');
-
-        const stamp = new Date().toLocaleString();
-        const block = `\n\n[AI 요약 @ ${stamp}]\n${out.trim()}\n`;
-        this.out.append(block);
-        this.out.toast('AI 요약이 메모에 추가되었습니다.');
         this.setStatusState('saved');
         this.out.setStatus('완료');
-        this.logEvent({ type: 'ai_summary_done', label: 'ok' });
+        this.setMemoAiFeedback(`${label} 결과를 메모에 추가했습니다. 미리보기에서 확인하세요.`, 'saved');
+        this.out.toast(`${label} 결과를 메모에 추가했습니다.`);
+        this.logEvent({ type: kind === 'catalyst' ? 'catalyst_run' : 'ai_summary_done', label: kind });
       } catch (err) {
-        console.error('Gemini summarize error:', err);
+        const message = err?.name === 'AbortError' ? '생성이 지연되어 중단했습니다. 메모는 보존되었습니다. 다시 시도해 주세요.' : err?.message || 'AI 생성에 실패했습니다.';
         this.setStatusState('error');
-        this.out.setStatus('오류');
-        this.out.toast(err?.message || '요약 중 오류가 발생했습니다.');
-        this.logEvent({ type: 'ai_summary_error', label: err?.message || 'error' });
+        this.out.setStatus('생성 실패');
+        this.setMemoAiFeedback(message, 'error');
+        this.out.toast(message);
       } finally {
-        btn.disabled = false;
-        setTimeout(() => {
-          this.setStatusState('idle');
-          this.out.setStatus(prevStatus || 'Ready');
-        }, 1400);
+        clearTimeout(timeout);
+        this._memoAiBusy = false;
+        this._memoAiController = null;
+        for (const button of [this.$aiSummary, this.$catalystRun, this.$catalystBtn]) if (button) button.disabled = false;
+        if (this.$catalystInput) this.$catalystInput.disabled = false;
+        this.$catalystBox?.classList.remove('loading');
+        this.syncCatalystInputState();
       }
     }
 
-
+    async summarizeWithGemini() { return this.runMemoAI('summary'); }
     async runCatalyst(promptText) {
-      const prompt = (promptText || this.$catalystInput?.value || '').trim();
-      if (!prompt) { this.out.toast('Catalyst 프롬프트를 입력하세요.'); return; }
-      const article = this.getArticleText();
-      const memo = this.$memo.value || '';
-      const limit = (s, max = 8000) => s && s.length > max ? `${s.slice(0, max)}\n…(truncated)` : s;
-      const instructions = [
-        '사용자 프롬프트를 "촉매"로 사용해 글의 새로운 관점을 제시하세요.',
-        '- 한국어로 작성하고, 구조적인 소제목과 간결한 문장을 사용',
-        '- 필요 시 불릿 목록, 표, 간단한 코드 예시를 포함',
-        `- 사용자 프롬프트: "${prompt.replace(/` + "`" + `/g, '\\`')}"`
-      ].join('\n');
-
-      const btn = this.$catalystRun || this.$catalystBtn; 
-      const inputEl = this.$catalystInput;
-      const catalystPanel = this.$catalystBox;
-      const prev = this.out.getStatus();
-      
-      try {
-        if (btn) btn.disabled = true;
-        if (inputEl) inputEl.disabled = true;
-        if (catalystPanel) catalystPanel.classList.add('loading');
-        this.setStatusState('busy');
-        this.out.setStatus('Catalyst 생성 중…');
-        
-        const backend = this.getApiBase();
-        const endpoint = `${backend}/api/v1/ai/summarize`;
-        const headers = await this.getAiJsonHeaders(backend);
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            input: [
-              '[페이지 본문]',
-              limit(article, 6000),
-              '',
-              '[현재 메모]',
-              limit(memo, 2000),
-            ].join('\n'),
-            instructions,
-          }),
-        });
-        if (!res.ok) {
-          const t = await res.text().catch(() => '');
-          throw new Error(`Catalyst 실패(${res.status}) ${t.slice(0, 200)}`);
-        }
-        const data = await res.json();
-        const out = (data?.data?.summary || data?.summary || '').toString();
-        if (!out) throw new Error('응답 파싱 실패');
-
-        const stamp = new Date().toLocaleString();
-        const block = `\n\n## ${prompt}\n[위 관점 @ ${stamp}]\n${out.trim()}\n`;
-        this.out.append(block);
-        this.out.toast('Catalyst 결과가 메모에 추가되었습니다.');
-        this.logEvent({ type: 'catalyst_run', label: prompt });
-        if (this.$catalystInput) this.$catalystInput.value = '';
-        this.syncCatalystInputState();
-        this.setCatalystOpen(false);
-        if (this.$catalystInput) this.$catalystInput.disabled = false;
-        this.setStatusState('saved');
-        this.out.setStatus('완료');
-      } catch (err) {
-        console.error('Catalyst error:', err);
-        this.setStatusState('error');
-        this.out.setStatus('오류');
-        this.out.toast(err?.message || 'Catalyst 생성 중 오류가 발생했습니다.');
-      } finally {
-        if (btn) btn.disabled = false;
-        if (inputEl) inputEl.disabled = false;
-        if (catalystPanel) catalystPanel.classList.remove('loading');
-        this.syncCatalystInputState();
-        setTimeout(() => { 
-          this.setStatusState('idle');
-          this.out.setStatus(prev || 'Ready'); 
-        }, 1400);
-      }
+      return this.runMemoAI('catalyst', (promptText || this.$catalystInput?.value || '').trim());
     }
 
     // ========================================================================
@@ -1400,6 +1349,7 @@
         if (this.$memo) this.$memo.value = content;
         if (this.$memoEditor) this.$memoEditor.value = content;
         this.state.memo = content;
+        this.publishMemoContext();
         LS.set(KEYS.memo, content);
 
         if (this.$memoPreview) {
@@ -1493,6 +1443,7 @@
         this.$memoTitleInput.value = next;
       }
       LS.set(KEYS.title, next);
+      this.publishMemoContext();
     }
 
     syncMemoLineNumberScroll() {
@@ -2306,26 +2257,39 @@
               </div>
             </div>
           </div>
+          <div id="memoAiFeedback" class="memo-ai-feedback" role="status" aria-live="polite" hidden>
+            <span></span><button id="memoAiRetry" type="button" hidden>다시 생성</button>
+          </div>
           <div id="previewBody" class="body"></div>
 
           <div id="devBody" class="body">
-            <div class="section">
-              <div class="label">원본 글</div>
-              <div id="originalPath" class="small" style="opacity:0.8"></div>
-            </div>
-            <div class="section">
-              <label class="label" for="proposalMd">새 버전 마크다운</label>
-              <textarea id="proposalMd" class="textarea" spellcheck="false" placeholder="원문을 불러오거나 이곳에 수정된 마크다운을 붙여넣으세요"></textarea>
-              <div class="row" style="margin-top:8px; gap:8px;">
-                <button id="loadOriginalMd" class="btn secondary">원문 불러오기</button>
-                <button id="proposeNewVersion" class="btn">PR 생성 제안</button>
+            <div class="proposal-workspace" data-pane="write">
+              <header class="proposal-heading">
+                <div><p class="proposal-eyebrow">함께 다듬는 글</p><h2>더 나은 설명을 제안해 보세요</h2>
+                  <p>빠진 예시를 더하거나, 이해하기 어려웠던 문장을 고쳐 주세요.</p></div>
+                <button id="loadOriginalMd" class="btn secondary" type="button">원문 불러오기</button>
+              </header>
+              <div class="proposal-source"><span>수정할 글</span><strong id="proposalSourceTitle"></strong><span id="originalPath"></span></div>
+              <div class="proposal-pane-tabs" role="tablist" aria-label="제안 편집 보기">
+                <button type="button" role="tab" id="proposalWriteTab" aria-controls="proposalWritePane" aria-selected="true" data-proposal-pane="write">작성</button>
+                <button type="button" role="tab" id="proposalPreviewTab" aria-controls="proposalPreviewPane" aria-selected="false" data-proposal-pane="preview" tabindex="-1">미리보기</button>
+                <span id="proposalStats">0 문자</span>
               </div>
-            </div>
-            <div class="small muted" style="margin-top:6px;">
-              - 원문을 불러온 후 필요한 수정을 하고 PR을 생성하세요. PR에는 원본과의 관계가 frontmatter의 derivedFrom으로 표시됩니다.
-            </div>
-            <div class="section">
-              <a id="prLink" class="small" target="_blank" rel="noopener" style="display:none;">PR 열기 →</a>
+              <div class="proposal-content">
+                <section id="proposalWritePane" class="proposal-write" role="tabpanel" aria-labelledby="proposalWriteTab">
+                  <label for="proposalMd">제안할 글</label>
+                  <textarea id="proposalMd" class="textarea" spellcheck="false" placeholder="# 제목\n\n원문을 불러와 문장을 다듬고, 예시와 근거를 더해 보세요."></textarea>
+                </section>
+                <section id="proposalPreviewPane" class="proposal-preview" role="tabpanel" aria-labelledby="proposalPreviewTab" hidden>
+                  <div id="proposalPreview" class="preview-md"></div>
+                </section>
+              </div>
+              <footer class="proposal-footer">
+                <div><p id="proposalFeedback" role="status" aria-live="polite">작성한 내용은 이 기기에 저장됩니다.</p>
+                  <p class="proposal-note">제안을 보내면 검토할 PR이 생성됩니다.</p></div>
+                <a id="prLink" target="_blank" rel="noopener noreferrer" hidden>생성된 PR 보기 →</a>
+                <button id="proposeNewVersion" class="btn" type="button">수정 제안 보내기</button>
+              </footer>
             </div>
           </div>
 
@@ -2973,6 +2937,7 @@
       // content
       this.setMemoTitle(this.state.title || '새 메모');
       this.$memo.value = this.state.memo || '';
+      this.publishMemoContext();
       if (this.$memoEditor) this.$memoEditor.value = this.state.memo || '';
       if (this.$memoPreview) this.renderMarkdownToPreview(this.state.memo || '');
       this.updateMemoChrome(this.state.memo || '');
@@ -3011,6 +2976,7 @@
       // dev content
       if (this.$proposalMd)
         this.$proposalMd.value = this.state.proposalMd || '';
+      this.updateProposalPreview();
 
       // announce aria labels for important actions (a11y)
       if (this.$memoToGraph) this.$memoToGraph.setAttribute('aria-label', '그래프에 추가');
@@ -3957,6 +3923,7 @@
        
        const updateMemoState = (value) => {
          this.state.memo = value;
+         this.publishMemoContext();
          this.syncCodeMode(value);
          this.updateMemoChrome(value);
          this.setMemoAutoSaveText('저장 중…');
@@ -3986,6 +3953,9 @@
          scheduleMemoSave();
        };
 
+      this.shadowRoot.getElementById('memoAiRetry')?.addEventListener('click', () => {
+        if (this._lastMemoAiAction) this.runMemoAI(this._lastMemoAiAction.kind, this._lastMemoAiAction.prompt);
+      });
       this.$memo.addEventListener('input', saveMemo);
       this.$memo.addEventListener('change', saveMemo);
       this.$memo.addEventListener('scroll', () => this.syncMemoLineNumberScroll());
@@ -4015,6 +3985,7 @@
           this.setStatusState('busy');
           this.scheduleRenderPreview(this.state.memo);
           if (this.$memo.value !== this.state.memo) this.$memo.value = this.state.memo;
+          this.publishMemoContext();
           scheduleEditorSave();
         };
         this.$memoEditor.addEventListener('input', saveAndRender);
@@ -4079,10 +4050,23 @@
           this.logEvent({ type: 'reset_position', label: 'settings' });
         });
       }
+      const proposalTabs = Array.from(this.shadowRoot.querySelectorAll('[data-proposal-pane]'));
+      proposalTabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => this.setProposalPane(tab.dataset.proposalPane));
+        tab.addEventListener('keydown', event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - index;
+          proposalTabs[next].click();
+          proposalTabs[next].focus();
+        });
+      });
       if (this.$proposalMd) {
         const persistProposal = () => {
           this.state.proposalMd = this.$proposalMd.value;
-          LS.set(KEYS.proposalMd, this.state.proposalMd);
+          this._proposalEditVersion = (this._proposalEditVersion || 0) + 1;
+          this.persistProposalContent();
+          this.updateProposalPreview();
         };
         this.$proposalMd.addEventListener('input', persistProposal);
         this.$proposalMd.addEventListener('change', persistProposal);
@@ -4683,6 +4667,41 @@
       return `/posts/${year}/${slug}.md`;
     }
 
+    setProposalPane(pane) {
+      const preview = pane === 'preview';
+      this.shadowRoot.querySelector('.proposal-workspace').dataset.pane = preview ? 'preview' : 'write';
+      for (const tab of this.shadowRoot.querySelectorAll('[data-proposal-pane]')) {
+        const selected = tab.dataset.proposalPane === (preview ? 'preview' : 'write');
+        tab.setAttribute('aria-selected', String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      }
+      this.shadowRoot.getElementById('proposalWritePane').hidden = preview;
+      this.shadowRoot.getElementById('proposalPreviewPane').hidden = !preview;
+      this.updateProposalPreview();
+    }
+
+    updateProposalPreview() {
+      const text = this.$proposalMd?.value || '';
+      const stats = this.shadowRoot.getElementById('proposalStats');
+      if (stats) stats.textContent = `${text.length.toLocaleString('ko-KR')} 문자`;
+      const preview = this.shadowRoot.getElementById('proposalPreview');
+      if (preview) preview.innerHTML = text.trim() ? this.markdownToHtml(text) : '<p class="proposal-empty">작성한 글이 여기에 표시됩니다.</p>';
+    }
+
+    setProposalFeedback(message, state = 'idle') {
+      const feedback = this.shadowRoot.getElementById('proposalFeedback');
+      if (feedback) { feedback.textContent = message; feedback.dataset.state = state; }
+    }
+
+    persistProposalContent() {
+      const saved = LS.set(KEYS.proposalMd, this.state.proposalMd || '');
+      this._proposalSaveFailed = !saved;
+      this.setProposalFeedback(saved ? '작성한 내용을 이 기기에 저장했습니다.'
+        : '기기에 저장하지 못했습니다. 이 창을 닫기 전에 작성 내용을 복사하세요. 다시 편집하면 저장을 재시도합니다.',
+      saved ? 'saved' : 'error');
+      return saved;
+    }
+
     async maybeLoadOriginalMarkdown(force = false) {
       const prev = this.out.getStatus();
       try {
@@ -4694,32 +4713,48 @@
           return;
         }
         const mdPath = this.buildOriginalMarkdownPath(info);
+        this.shadowRoot.getElementById('proposalSourceTitle').textContent = document.querySelector('main h1')?.textContent || document.title;
         if (this.$originalPath) this.$originalPath.textContent = `${mdPath}`;
 
         if (this._originalLoaded && !force) return;
 
+        const editVersion = this._proposalEditVersion || 0;
+        const draftAtRequest = this.$proposalMd?.value || '';
         const origin = location.origin;
         const url = `${origin}${mdPath}`;
         this.out.setStatus('원문 불러오는 중…');
+        this.setProposalFeedback('원문을 불러오고 있습니다.', 'busy');
         const res = await fetch(url);
         if (!res.ok) throw new Error(`원문 로드 실패(${res.status})`);
         const text = await res.text();
+        if ((this._proposalEditVersion || 0) !== editVersion ||
+            (this.$proposalMd?.value || '') !== draftAtRequest ||
+            this.buildOriginalMarkdownPath(this.getCurrentPostInfo()) !== mdPath) {
+          if (!this._proposalSaveFailed) {
+            this.setProposalFeedback('불러오는 동안 작성 내용이 변경되어 원문으로 덮어쓰지 않았습니다.');
+          }
+          return;
+        }
+        let saved = !this._proposalSaveFailed;
         if (this.$proposalMd) {
           if (force || !this.$proposalMd.value) {
             this.$proposalMd.value = text;
             this.state.proposalMd = text;
-            LS.set(KEYS.proposalMd, text);
+            saved = this.persistProposalContent();
+            this.updateProposalPreview();
             this.out.toast(
               '원문을 불러왔습니다. 내용을 편집한 뒤 PR을 생성하세요.'
             );
           }
         }
         this._originalLoaded = true;
+        if (saved) this.setProposalFeedback('원문을 참고해 수정할 내용을 작성해 주세요.');
         this.out.setStatus('완료');
       } catch (err) {
         console.error('maybeLoadOriginalMarkdown error:', err);
         this.out.setStatus('오류');
         this.out.toast(err?.message || '원문을 불러오지 못했습니다.');
+        this.setProposalFeedback('원문을 불러오지 못했습니다. 작성 내용은 유지됩니다.', 'error');
       } finally {
         setTimeout(() => { this.out.setStatus(prev || 'Ready'); }, 1400);
       }
@@ -4756,6 +4791,7 @@
 
         if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = true;
         this.out.setStatus('PR 생성 요청 중…');
+        this.setProposalFeedback('수정 제안을 보내고 있습니다…', 'busy');
         const adminToken = LS.get(KEYS.adminToken, '');
         const headers = { 'Content-Type': 'application/json' };
         if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
@@ -4773,14 +4809,17 @@
         const prUrl = payloadData.prUrl || payloadData.url || payloadData.html_url;
         if (prUrl && this.$prLink) {
           this.$prLink.href = prUrl;
+          this.$prLink.hidden = false;
           this.$prLink.style.display = '';
         }
         this.out.toast(prUrl ? 'PR이 생성되었습니다.' : 'PR 생성 대기열에 등록되었습니다.');
+        this.setProposalFeedback(prUrl ? '제안을 보냈습니다. PR에서 검토 상태를 확인하세요.' : '제안을 접수했습니다.', 'saved');
         this.out.setStatus(prUrl ? '완료' : '대기열 등록됨');
       } catch (err) {
         console.error('proposeNewVersion error:', err);
         this.out.setStatus('오류');
         this.out.toast(err?.message || 'PR 생성 요청에 실패했습니다.');
+        this.setProposalFeedback('제안을 보내지 못했습니다. 로그인과 연결 상태를 확인하고 다시 시도해 주세요. 작성 내용은 유지됩니다.', 'error');
       } finally {
         setTimeout(() => { this.out.setStatus(prev || 'Ready'); }, 1400);
         if (this.$proposeNewVersion) this.$proposeNewVersion.disabled = false;

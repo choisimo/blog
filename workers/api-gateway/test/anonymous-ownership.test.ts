@@ -74,10 +74,10 @@ describe('R07-1 anonymous ownership at the public Worker boundary', () => {
     expect((await send(`/images/generations/${key}`, a.token)).status).toBe(401);
   });
 
-  it('keeps guests at five and never treats an AI role setting as account membership', async () => {
+  it('gives guests 20 free images without treating an AI role setting as account membership', async () => {
     const a = await fresh(); const policy = await send('/images/generation-policy', a.token);
     expect(policy.status).toBe(200);
-    expect(await policy.json()).toMatchObject({ data: { tier: 'guest', dailyLimit: 5 } });
+    expect(await policy.json()).toMatchObject({ data: { tier: 'guest', dailyLimit: 20 } });
     // A renewed access token may not be used as administrator credentials.
     const admin = await send('/images/presign', a.token, 'POST', {});
     expect(admin.status).toBe(403);

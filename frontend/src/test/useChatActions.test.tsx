@@ -43,6 +43,7 @@ type HookHandle = {
 };
 
 function Harness({
+  memoContext,
   currentLiveRoom = 'room:lobby',
   input,
   liveReplyTarget = null,
@@ -50,6 +51,7 @@ function Harness({
   selectedBlockAttachments: initialSelectedBlockAttachments = [],
   sendVisitorMessage = vi.fn().mockResolvedValue(undefined),
 }: {
+  memoContext?: { title: string; content: string; truncated: boolean } | null;
   currentLiveRoom?: string;
   input: string;
   liveReplyTarget?: LiveReplyTarget | null;
@@ -79,6 +81,7 @@ function Harness({
     setMessages((prev) => [...prev, message]);
   };
   const api = useChatActions({
+    memoContext,
     canSend: true,
     input: value,
     setInput,
@@ -116,6 +119,20 @@ function Harness({
 }
 
 describe('useChatActions', () => {
+  it('sends the connected memo as a snapshot and excludes it after disconnecting', async () => {
+    serviceMocks.streamChatEvents.mockImplementation(async function* () { yield { type: 'text', text: 'ok' }; });
+    let handle: HookHandle | null = null;
+    const onReady = (next: HookHandle) => { handle = next; };
+    const { rerender } = render(<Harness input='Explain this' onReady={onReady}
+      memoContext={{ title: 'Draft', content: '**unsaved memo**', truncated: false }} />);
+    await act(async () => { await handle?.api.send(); });
+    expect(serviceMocks.streamChatEvents).toHaveBeenLastCalledWith(expect.objectContaining({
+      selectedBlockAttachments: [expect.objectContaining({ name: 'Draft.md', markdown: '**unsaved memo**' })],
+    }));
+    rerender(<Harness input='Explain this' onReady={onReady} memoContext={null} />);
+    await act(async () => { await handle?.api.send(); });
+    expect(serviceMocks.streamChatEvents).toHaveBeenLastCalledWith(expect.objectContaining({ selectedBlockAttachments: [] }));
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     serviceMocks.createChatIdempotencyKey.mockReturnValue('idem-key');

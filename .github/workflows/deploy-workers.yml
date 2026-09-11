@@ -14,6 +14,7 @@ on:
       - 'workers/**'
       - 'shared/**'
       - 'scripts/worker-deploy-matrix.mjs'
+      - 'scripts/ensure-reader-image-bucket.mjs'
       - '.github/workflows/deploy-workers.yml'
 
 permissions:
@@ -141,6 +142,15 @@ jobs:
           npx wrangler d1 execute blog-db-prod --env production --remote --command "SELECT session_token_hash FROM user_sessions LIMIT 0"
           npx wrangler d1 execute blog-db-prod --env production --remote --command "SELECT key, markdown FROM site_content_blocks LIMIT 0"
           npx wrangler d1 execute blog-db-prod --env production --remote --command "SELECT scope, idempotency_key FROM idempotency_records LIMIT 0"
+          npx wrangler d1 execute blog-db-prod --env production --remote --command "SELECT id, state FROM reader_image_jobs LIMIT 0"
+          npx wrangler d1 execute blog-db-prod --env production --remote --command "SELECT id, status FROM translation_jobs LIMIT 0"
+
+      - name: Ensure private reader image storage
+        if: ${{ matrix.id == 'api-gateway' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ensure-reader-image-bucket.mjs
 
       - name: Deploy worker
         working-directory: workers/${{ matrix.path }}

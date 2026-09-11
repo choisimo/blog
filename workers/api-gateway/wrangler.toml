@@ -110,14 +110,14 @@ PUBLIC_SITE_URL = "https://noblog.nodove.com"
 FEATURE_AI_ENABLED = "true"
 FEATURE_RAG_ENABLED = "true"
 FEATURE_TERMINAL_ENABLED = "false"
-# Activate only after migration 0041, backend dispatch and staging verification.
-TRANSLATION_EXECUTION_ENABLED = "false"
+# Reader-requested generation; background warming remains independently disabled.
+TRANSLATION_EXECUTION_ENABLED = "true"
 TRANSLATION_WARM_ENABLED = "false"
 TRANSLATION_MAX_CONCURRENT = "2"
 TRANSLATION_DAILY_ATTEMPTS = "50"
 TRANSLATION_DAILY_TOKEN_BUDGET = "2000000"
 TRANSLATION_POST_DAILY_ATTEMPTS = "6"
-FEATURE_READER_IMAGES = "false"
+FEATURE_READER_IMAGES = "true"
 MEMBER_IMAGE_DAILY_LIMIT = "20"
 IMAGE_GLOBAL_DAILY_LIMIT = "500"
 FEATURE_AI_INLINE = "true"
@@ -132,6 +132,10 @@ migrations_dir = "../migrations"
 [[env.production.r2_buckets]]
 binding = "R2"
 bucket_name = "blog"
+
+[[env.production.r2_buckets]]
+binding = "READER_IMAGES_R2"
+bucket_name = "blog-reader-images-prod"
 
 [[env.production.kv_namespaces]]
 binding = "KV"
@@ -174,10 +178,6 @@ IMAGE_GLOBAL_DAILY_LIMIT = "500"
 # [[r2_buckets]]
 # binding = "READER_IMAGES_R2"
 # bucket_name = "blog-reader-images-dev"
-#
-# [[env.production.r2_buckets]]
-# binding = "READER_IMAGES_R2"
-# bucket_name = "blog-reader-images-prod"
 #
 # [[env.staging.r2_buckets]]
 # binding = "READER_IMAGES_R2"

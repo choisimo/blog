@@ -54,6 +54,7 @@ data:
   FEATURE_CODE_EXECUTION_ENABLED: "false"
   FEATURE_COMMENTS_ENABLED: "true"
   FEATURE_ADMIN_AI_IMAGE_ENABLED: "true"
+  FEATURE_READER_IMAGES: "true"
   USE_CONSUL: "false"
   POSTGRES_DB: "bloganalytics"
   POSTGRES_USER: "bloguser"

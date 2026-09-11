@@ -24,16 +24,34 @@ export async function observeTranslation(input:{
   let job:TranslationJobStatus|null=null;
   let translation:TranslationResult|null=null;
   let retryAfter=3;
+  const lookup=async()=>{
+    const result=await Promise.race([input.lookup({signal:controller.signal}),cancelled]);
+    translation=result.translation;job=result.job;retryAfter=result.retryAfterSeconds??3;
+    if(!result.pending && !job) {
+      emit(translation && !result.stale ? {status:'ready',translation} : {
+        status:'error',translation,error:{code:'NOT_AVAILABLE',message:'Translation is not available yet. Please try again.',retryable:true},
+      });
+      return false;
+    }
+    return true;
+  };
   try {
     emit({status:'warming'});
     if(input.resumeJobId) {
-      job=await Promise.race([input.status(input.resumeJobId,{signal:controller.signal}),cancelled]);
+      try {
+        job=await Promise.race([input.status(input.resumeJobId,{signal:controller.signal}),cancelled]);
+      } catch(error) {
+        // A saved pointer can outlive server retention. Rejoin by published post
+        // only for an authoritative 404, never on a timeout or lost connection.
+        if((error as {status?:number})?.status!==404)throw error;
+        if(!await lookup())return;
+      }
     } else {
-      const result=await Promise.race([input.lookup({signal:controller.signal}),cancelled]);
-      translation=result.translation;job=result.job;retryAfter=result.retryAfterSeconds??3;
-      if(!result.pending && !job){emit({status:translation?'ready':'idle',translation});return;}
+      if(!await lookup())return;
     }
-    for(let poll=0;poll<40;poll++) {
+    // The observation deadline is the sole time limit. A poll-count cap used to
+    // abandon valid jobs before even one four-minute executor attempt finished.
+    for(;;) {
       if(job?.status==='failed') {emit({status:'error',translation,job,error:job.error||{code:'UNKNOWN',message:'Translation failed',retryable:false}});return;}
       if(job?.status==='succeeded') {
         const result=await Promise.race([input.lookup({signal:controller.signal,readOnly:true,jobId:job.id}),cancelled]);
@@ -51,11 +69,17 @@ export async function observeTranslation(input:{
         const result=await Promise.race([input.lookup({signal:controller.signal,readOnly:true}),cancelled]);
         if(result.translation)translation=result.translation;
         job=result.job;retryAfter=result.retryAfterSeconds??3;
-        if(!result.pending && !job){emit({status:translation?'ready':'idle',translation});return;}
+        if(!result.pending && !job){
+          emit(result.translation && !result.stale ? {status:'ready',translation:result.translation} : {status:'paused',translation});return;
+        }
       }
     }
-    emit({status:'paused',translation,job});
-  } catch {
+  } catch(error) {
+    const issue=error as {status?:number;code?:string;message?:string;retryable?:boolean};
+    if(!controller.signal.aborted && typeof issue?.status==='number') {
+      emit({status:'error',translation,job,error:{code:issue.code,message:issue.message||'Translation request failed',retryable:issue.retryable===true}});
+      return;
+    }
     // Network/observation deadlines do not establish that durable server work failed.
     if(!input.signal.aborted)emit({status:'paused',translation,job});
   } finally {

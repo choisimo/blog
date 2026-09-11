@@ -308,10 +308,16 @@ ai.post('/summarize', requireAuth, async (c) => {
     return badRequest(c, promptError);
   }
 
-  const aiService = createAIService(c.env);
-  const result = await aiService.summarize(content, { instructions });
-
-  return success(c, result);
+  if (instructions !== undefined && (typeof instructions !== 'string' || instructions.length > 4000)) {
+    return badRequest(c, 'instructions must be text up to 4000 characters');
+  }
+  try {
+    const aiService = createAIService(c.env);
+    const result = await aiService.summarize(content, { instructions });
+    return success(c, result);
+  } catch {
+    return error(c, 'AI 결과를 생성하지 못했습니다. 메모를 유지한 채 다시 시도해 주세요.', 503, 'AI_GENERATION_FAILED');
+  }
 });
 
 // ============================================================================

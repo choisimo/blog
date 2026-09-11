@@ -547,12 +547,13 @@ ${description}
     for (let i=0;i<sourceSignature.length;i++) signature=Math.imul(signature^sourceSignature.charCodeAt(i),16777619);
     const stamp=String(signature>>>0);
     let resumeJobId:string|null=null;
-    try {const saved=JSON.parse(sessionStorage.getItem(scope)||'null');if(saved?.stamp===stamp)resumeJobId=saved.jobId;}catch{
+    try {const saved=JSON.parse(sessionStorage.getItem(scope)||'null');if(saved?.stamp===stamp && typeof saved.jobId==='string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(saved.jobId))resumeJobId=saved.jobId;}catch{
       // Storage access or stale JSON must not prevent a fresh observation.
     }
     setTranslationError(null);
     void observeTranslation({
-      signal:controller.signal,resumeJobId,
+      // A full translation can need three checkpointed attempts of four minutes.
+      signal:controller.signal,resumeJobId,budgetMs:15*60_000,
       lookup:options=>getCachedTranslation(year,slug,language,options),
       status:(id,options)=>getPublicTranslationGenerationStatus({year,slug,targetLang:language},id,options),
       onChange:value=>{
@@ -572,10 +573,15 @@ ${description}
   }, [hasNativeTranslation, language, post, slug, translationRetryNonce, year]);
 
   const handleRetryTranslation = useCallback(() => {
+    // Rejoin the authoritative job and wake eligible work on explicit retry.
+    // No force-refresh: terminal jobs and completed provider stages stay fenced.
+    try {sessionStorage.removeItem(`translation-observation:${JSON.stringify([year,slug,language])}`);}catch{
+      // Unavailable storage must not disable the retry action.
+    }
     setTranslationError(null);
     setTranslationStatus('warming');
     setTranslationRetryNonce(prev => prev + 1);
-  }, []);
+  }, [year, slug, language]);
 
   // sync inline feature flag from localStorage and storage events
   useEffect(() => {

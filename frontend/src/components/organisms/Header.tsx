@@ -106,6 +106,7 @@ export function Header() {
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
   const preferencesTrigger = useRef<HTMLButtonElement>(null);
+  const pendingReadingSettings = useRef(false);
   const searchPanel = useRef<HTMLDivElement>(null);
   const menuOpenedAtPath = useRef("");
   const location = useLocation();
@@ -202,7 +203,7 @@ export function Header() {
           </div>
           <nav className="ui-header__navigation" aria-label="Global">{renderNavigation()}</nav>
           <div className="ui-header__actions">
-            <Button type="button" variant="ghost" size="icon" className="ui-icon-button fn-serif fn-reading-settings-trigger" aria-label="읽기 환경" aria-haspopup="dialog" title="읽기 환경 · Alt+A" onClick={() => window.dispatchEvent(new Event('fieldnotes:reading-settings'))}>Aa</Button>
+            <Button type="button" variant="ghost" size="icon" className="ui-icon-button fn-serif fn-reading-settings-trigger" aria-label="읽기 환경" aria-haspopup="dialog" title="읽기 환경 · Alt+A" onClick={event => window.dispatchEvent(new CustomEvent('fieldnotes:reading-settings', { detail: { trigger: event.currentTarget } }))}>Aa</Button>
             {!isHome && (
               <Button ref={searchTrigger} type="button" variant="ghost" size="icon"
                 onClick={() => setSearchSheetOpen(true)} className="ui-icon-button" aria-label="검색"
@@ -218,10 +219,18 @@ export function Header() {
                     <Settings className="h-5 w-5" aria-hidden="true" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="ui-preferences-menu">
-                  <DropdownMenuItem onSelect={() => {
-                    window.setTimeout(() => window.dispatchEvent(new CustomEvent('fieldnotes:reading-settings', { detail: { trigger: preferencesTrigger.current } })), 0);
-                  }}>읽기 환경</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="ui-preferences-menu"
+                  onCloseAutoFocus={event => {
+                    event.preventDefault();
+                    // Finish the menu's focus scope before opening another modal.
+                    if (pendingReadingSettings.current) {
+                      pendingReadingSettings.current = false;
+                      window.dispatchEvent(new CustomEvent('fieldnotes:reading-settings', { detail: { trigger: preferencesTrigger.current } }));
+                    } else {
+                      preferencesTrigger.current?.focus({ preventScroll: true });
+                    }
+                  }}>
+                  <DropdownMenuItem onSelect={() => { pendingReadingSettings.current = true; }}>읽기 환경</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>언어 설정</DropdownMenuLabel>
                   <DropdownMenuItem role="menuitemradio" aria-checked={language === "ko"} onClick={() => setLanguage("ko")}>

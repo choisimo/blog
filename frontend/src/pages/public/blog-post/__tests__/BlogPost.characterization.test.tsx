@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, test, expect, vi } from 'vitest';
 
@@ -511,6 +511,57 @@ test('polls the public translation route until the translation is ready', async 
   expect(screen.getByText('Polled Translation')).toBeInTheDocument();
 
   vi.useRealTimers();
+});
+
+test('automatically rerenders title and body when a durable translation completes after two minutes', async () => {
+  vi.useFakeTimers();
+  hoisted.currentLanguage = 'en';
+  const job = { id: 'slow-job', status: 'running' as const, statusUrl: '/status', cacheUrl: '/cache', generateUrl: '/generate' };
+  vi.mocked(translateService.getCachedTranslation)
+    .mockResolvedValueOnce({ translation: null, pending: true, job })
+    .mockResolvedValueOnce({ translation: { title: 'Generated title', description: 'Generated description', content: '# Generated body', cached: true }, pending: false, job: null });
+  let polls = 0;
+  vi.mocked(translateService.getPublicTranslationGenerationStatus).mockImplementation(async () => ({ ...job, status: ++polls > 40 ? 'succeeded' : 'running' }));
+  renderBlogPost();
+  await act(async () => { await Promise.resolve(); });
+  expect(screen.getByText('Test Post')).toBeInTheDocument();
+  await act(async () => { await vi.advanceTimersByTimeAsync(123_000); });
+  expect(screen.getByText('Generated title')).toBeInTheDocument();
+  expect(screen.getByText('# Generated body')).toBeInTheDocument();
+  expect(translateService.getCachedTranslation).toHaveBeenCalledTimes(2);
+  expect(translateService.getCachedTranslation).toHaveBeenLastCalledWith('2024', 'test-post', 'en', expect.objectContaining({ readOnly: true, jobId: 'slow-job' }));
+});
+
+test('explicit status retry rejoins a deferred job and renders the completed translation', async () => {
+  hoisted.currentLanguage = 'en';
+  const job = { id: 'deferred-job', status: 'deferred' as const, statusUrl: '/status', cacheUrl: '/cache', generateUrl: '/generate', retryAt: new Date(Date.now() + 60_000).toISOString() };
+  vi.mocked(translateService.getCachedTranslation)
+    .mockResolvedValueOnce({ translation: null, pending: true, job })
+    .mockResolvedValueOnce({ translation: { title: 'Retried title', description: 'Retried description', content: '# Retried body', cached: true }, pending: false, job: null });
+  renderBlogPost();
+  const retry = await screen.findByRole('button', { name: 'Check translation status' });
+  expect(sessionStorage.getItem('translation-observation:["2024","test-post","en"]')).toContain('deferred-job');
+  fireEvent.click(retry);
+  expect(await screen.findByText('Retried title')).toBeInTheDocument();
+  expect(screen.getByText('# Retried body')).toBeInTheDocument();
+  expect(translateService.getCachedTranslation).toHaveBeenCalledTimes(2);
+  expect(translateService.getPublicTranslationGenerationStatus).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('translation-observation:["2024","test-post","en"]')).toBeNull();
+});
+
+test('renders an admission error and retries without losing the original article', async () => {
+  hoisted.currentLanguage = 'en';
+  vi.mocked(translateService.getCachedTranslation)
+    .mockRejectedValueOnce(new translateService.TranslationApiError('Translation temporarily unavailable', { status: 503, code: 'BACKEND_UNAVAILABLE', retryable: true }))
+    .mockResolvedValueOnce({ translation: { title: 'Recovered title', description: 'Recovered description', content: '# Recovered body', cached: true }, pending: false, job: null });
+  renderBlogPost();
+  const error = await screen.findByText('Translation temporarily unavailable');
+  expect(screen.getByText('Test Post')).toBeInTheDocument();
+  fireEvent.click(within(error.parentElement!).getByRole('button'));
+  expect(await screen.findByText('Recovered title')).toBeInTheDocument();
+  expect(screen.getByText('# Recovered body')).toBeInTheDocument();
+  expect(screen.queryByText('Translation temporarily unavailable')).not.toBeInTheDocument();
+  expect(translateService.getCachedTranslation).toHaveBeenCalledTimes(2);
 });
 
 test('renders without related posts when none found', async () => {

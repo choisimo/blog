@@ -41,6 +41,7 @@ import {
 } from './components';
 import { streamChatEvents } from '@/services/chat';
 import type { SelectedBlockAttachment } from '@/services/chat';
+import { useMemoContext } from './hooks/useMemoContext';
 
 const ANSI_ESCAPE_PATTERN = /\u001B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g;
 const WIDGET_CONTROL_TEXT_PATTERN =
@@ -89,6 +90,8 @@ export default function ChatWidget(props: {
     initialMessage: props.initialMessage,
     initialSelectedBlockAttachments: props.initialSelectedBlockAttachments,
   });
+  const memoContext = useMemoContext();
+  const showMemoContext = !state.livePinned && !state.liveReplyTarget && !state.input.trimStart().startsWith('/live');
   const {
     focusInput,
     push,
@@ -184,6 +187,7 @@ export default function ChatWidget(props: {
 
   // Chat actions
   const actions = useChatActions({
+    memoContext: showMemoContext && memoContext.enabled ? memoContext.memo : null,
     canSend: state.canSend,
     input: state.input,
     setInput: state.setInput,
@@ -609,6 +613,9 @@ export default function ChatWidget(props: {
 
               {/* Input area */}
               <ChatInput
+                memoContext={showMemoContext ? memoContext.memo : undefined}
+                memoContextEnabled={memoContext.enabled}
+                onToggleMemoContext={() => memoContext.setEnabled(enabled => !enabled)}
                 input={state.input}
                 onInputChange={state.setInput}
                 onKeyDown={onKeyDown}
