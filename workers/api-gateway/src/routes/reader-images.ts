@@ -142,9 +142,10 @@ router.post('/generate', requireAuth, async c => {
     const headers = new Headers({ 'Content-Type': 'application/json', 'X-Backend-Key': c.env.BACKEND_KEY!, 'X-Request-ID': id });
     await attachOriginSignatureHeaders({ env: c.env, headers, method: 'POST', pathAndQuery: path, requestId: id });
     const response = await fetch(new URL(path, c.env.BACKEND_ORIGIN), {
-      method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(300000),
+      method: 'POST', headers, redirect: 'manual', signal: AbortSignal.timeout(300000),
       body: JSON.stringify({ ...input, requestId: id }),
     });
+    if (response.status >= 300 && response.status < 400) throw new Error('Image origin redirect refused');
     const data = await response.json() as { ok?: boolean; data?: { b64: string; width: number; height: number }; error?: { code?: string } };
     if (!response.ok || !data.ok || !data.data) {
       // Only an explicit upstream rejection proves that no image was generated.

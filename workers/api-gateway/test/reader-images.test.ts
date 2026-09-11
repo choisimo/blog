@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:test';
+import { env, fetchMock } from 'cloudflare:test';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signJwt } from '../src/lib/jwt';
@@ -25,7 +25,11 @@ beforeEach(async () => {
   app = new Hono<HonoEnv>();
   app.route('/api/v1/images', readerImages);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  fetchMock.deactivate();
+  fetchMock.enableNetConnect();
+});
 
 function send(path: string, body?: unknown, auth = token, requestKey = key) {
   return app.request(`https://example.com/api/v1/images${path}`, {
@@ -40,6 +44,31 @@ function upstreamImage() {
 }
 
 describe('reader image generation and private rendering', () => {
+  it('renders through the real Workers fetch implementation', async () => {
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock.get(bindings.BACKEND_ORIGIN!).intercept({ path: '/api/v1/images/render-private', method: 'POST' })
+      .reply(200, await upstreamImage().text());
+    expect((await send('/generate', input)).status).toBe(201);
+    expect(await (await send('/generation-policy')).json()).toMatchObject({ data: { used: 1, remaining: 19 } });
+    fetchMock.assertNoPendingInterceptors();
+  });
+
+  it('does not forward a signed image request on redirect or replay an uncertain result', async () => {
+    fetchMock.activate();
+    fetchMock.disableNetConnect();
+    fetchMock.get(bindings.BACKEND_ORIGIN!).intercept({ path: '/api/v1/images/render-private', method: 'POST' })
+      .reply(307, await upstreamImage().text(), { headers: { location: 'https://redirect.example/image' } });
+    let forwarded = 0;
+    fetchMock.get('https://redirect.example').intercept({ path: '/image', method: 'POST' }).reply(() => {
+      forwarded++;
+      return { statusCode: 200, data: '{}' };
+    });
+    expect(await (await send('/generate', input)).json()).toMatchObject({ error: { code: 'IMAGE_OUTCOME_UNKNOWN' } });
+    expect(await (await send('/generate', input)).json()).toMatchObject({ error: { code: 'IMAGE_OUTCOME_UNKNOWN' } });
+    expect(forwarded).toBe(0);
+    expect(await (await send('/generation-policy')).json()).toMatchObject({ data: { used: 1, remaining: 19 } });
+  });
   it('defaults both guest and member to 20 images and reports matching enabled state', async () => {
     expect(DEFAULT_FREE_IMAGE_LIMIT).toBe(20);
     expect(await (await send('/generation-policy')).json()).toMatchObject({ data: {

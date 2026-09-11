@@ -29,7 +29,7 @@ export function createBackendStateDatabase(env: Env): D1Database {
     let response: Response;
     try {
       response = await fetch(new URL(path, origin), {
-        method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(20_000),
+        method: 'POST', headers, redirect: 'manual', signal: AbortSignal.timeout(20_000),
         body: JSON.stringify({ statements, atomic: true }),
       });
     } catch (error) {
@@ -38,6 +38,12 @@ export function createBackendStateDatabase(env: Env): D1Database {
       const code = /redirect/i.test(message) ? 'REDIRECT' : /different request|request context/i.test(message) ? 'REQUEST_CONTEXT' : /timeout|abort/i.test(message) ? 'TIMEOUT' : 'TRANSPORT';
       console.error(`[backend-state] phase=transport status=0 code=${code}`);
       throw error;
+    }
+    // This Workers compatibility runtime accepts only follow/manual. Never
+    // forward signed credentials or SQL to a redirect destination.
+    if (response.status >= 300 && response.status < 400) {
+      console.error(`[backend-state] phase=response status=${response.status} code=REDIRECT`);
+      throw new Error('Backend state redirect refused');
     }
     let data: { ok?: boolean; results?: Result[]; error?: { code?: string; message?: string } };
     try { data = await response.json(); }
