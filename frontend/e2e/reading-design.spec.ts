@@ -155,6 +155,8 @@ test('mobile TOC has a single close control and a labelled keyboard scroll viewp
   await page.setViewportSize({ width: 390, height: 844 });
   await openFixture(page);
   await page.evaluate(() => window.scrollTo(0, 700));
+  await expect(page.locator('.fn-reader-mobilebar')).toHaveAttribute('data-scroll-hidden', 'true');
+  await page.evaluate(() => window.scrollBy({ top: -80, behavior: 'instant' }));
   const trigger = page.getByTestId('toc-mobile-trigger');
   await expect(trigger).toBeVisible();
   await trigger.click();

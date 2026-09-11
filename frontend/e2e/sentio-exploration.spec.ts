@@ -9,7 +9,12 @@ async function setup(page: Page, theme: string, baseURL: string | undefined) {
     localStorage.setItem('aiMemo.fab.enabled', 'false');
     localStorage.setItem(
       'anon.token',
-      `fixture.${btoa(JSON.stringify({ sub: 'test-reader', exp: Math.floor(Date.now() / 1000) + 3600 }))}.fixture`
+      // The browser checks continuity claims; fixture requests never leave this page.
+      `fixture.${btoa(JSON.stringify({
+        sub: 'anon-00000000-0000-0000-0000-000000000001',
+        role: 'anonymous', tokenClass: 'anonymous', type: 'access',
+        exp: Math.floor(Date.now() / 1000) + 172800,
+      })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}.fixture`
     );
     const originalFetch = window.fetch.bind(window);
     let turn = 0;
