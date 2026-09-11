@@ -1,6 +1,7 @@
 import type { JwtPayload } from '../types';
 
-export const GUEST_IMAGE_LIMIT = 5;
+export const DEFAULT_FREE_IMAGE_LIMIT = 20;
+export const GUEST_IMAGE_LIMIT = DEFAULT_FREE_IMAGE_LIMIT;
 export const IMAGE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 export const IMAGE_COUNTED_STATES = "'reserved','complete','unknown'";
 

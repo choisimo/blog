@@ -34,6 +34,7 @@ test('KST midnight resets, not UTC midnight',()=>{
  assert.deepEqual(policy.imageDay(Date.parse('2026-09-09T15:00:00Z')), {day:'2026-09-10',resetAt:'2026-09-10T15:00:00.000Z'});
 });
 test('limits are bounded; malformed env does not make the endpoint unlimited',()=>{
+ assert.equal(policy.DEFAULT_FREE_IMAGE_LIMIT,20);assert.equal(policy.GUEST_IMAGE_LIMIT,20);
  for(const v of [undefined,'','0','-5','Infinity','10001','2.5']) assert.equal(policy.boundedLimit(v,20),20);
  assert.equal(policy.boundedLimit('37',20),37);
 });
@@ -51,14 +52,14 @@ test('network IDs are keyed and rotate daily without keeping raw addresses',asyn
  assert.notEqual(a,await policy.privateNetworkKey('local-test-secret','2026-09-11','192.0.2.1'));
  assert.notEqual(a,await policy.privateNetworkKey('another-secret','2026-09-10','192.0.2.1'));
 });
-test('guest reservation caps at five under simultaneous promises',async()=>{
+test('guest burst reservation caps at five under simultaneous promises',async()=>{
  const {db,raw}=fixture(); const results=await Promise.all(Array.from({length:16},(_,i)=>repo.reserveImageJob(db,input('g'+i))));
  assert.equal(results.filter(Boolean).length,5);assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM reader_image_jobs').get().n,5);raw.close();
 });
-test('new guest tokens on the same network do not replenish the five-image budget',async()=>{
- const {db,raw}=fixture();for(let i=0;i<5;i++)assert.equal(await repo.reserveImageJob(db,input('n'+i,{owner:'guest-'+i})),true);
- assert.equal(await repo.reserveImageJob(db,input('fresh',{owner:'fresh-token',now:now+61000})),false);
- const usage=await repo.imageUsage(db,'fresh-token','network-a','2026-09-10',false);assert.deepEqual(usage,{used:0,networkUsed:5});raw.close();
+test('new guest tokens on the same network do not replenish the 20-image budget',async()=>{
+ const {db,raw}=fixture();for(let i=0;i<20;i++)assert.equal(await repo.reserveImageJob(db,input('n'+i,{owner:'guest-'+i,limit:20,now:now+i*61000})),true);
+ assert.equal(await repo.reserveImageJob(db,input('fresh',{owner:'fresh-token',limit:20,now:now+21*61000})),false);
+ const usage=await repo.imageUsage(db,'fresh-token','network-a','2026-09-10',false);assert.deepEqual(usage,{used:0,networkUsed:20});raw.close();
 });
 test('different guest networks have independent limits, subject to the global budget',async()=>{
  const {db,raw}=fixture();for(let i=0;i<5;i++)assert.equal(await repo.reserveImageJob(db,input('a'+i)),true);

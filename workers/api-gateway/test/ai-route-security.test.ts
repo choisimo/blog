@@ -38,6 +38,39 @@ afterEach(() => {
 });
 
 describe('AI route security guards', () => {
+  it('preserves Markdown containing a JSON summary example', async () => {
+    const document = '## API 설명\n\n응답 예시:\n```json\n{"summary":"예제"}\n```\n\n이후 설명도 유지합니다.';
+    vi.spyOn(AIService.prototype, 'generate').mockResolvedValue(document);
+    expect(await new AIService(env).summarize('input')).toEqual({ summary: document });
+  });
+
+  it('unwraps a complete JSON summary response', async () => {
+    vi.spyOn(AIService.prototype, 'generate').mockResolvedValue('{"summary":"## 실제 요약"}');
+    expect(await new AIService(env).summarize('input')).toEqual({ summary: '## 실제 요약' });
+  });
+
+  it('returns generated Markdown for memo actions and honors Catalyst instructions', async () => {
+    const generate = vi.spyOn(AIService.prototype, 'generate').mockResolvedValue('## 새 관점\n\n- **실제 생성문**');
+    const token = await createUserToken();
+    const response = await createApp().request('https://example.com/api/v1/ai/summarize', {
+      method: 'POST', headers: { 'content-type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ input: 'article and memo', instructions: '새 관점으로 전개하세요' }),
+    }, env);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, data: { summary: '## 새 관점\n\n- **실제 생성문**' } });
+    expect(generate).toHaveBeenCalledWith('article and memo', expect.objectContaining({ systemPrompt: '새 관점으로 전개하세요', timeout: 120000 }));
+  });
+
+  it('does not disguise failed memo generation as an extract of the original', async () => {
+    vi.spyOn(AIService.prototype, 'generate').mockRejectedValue(new Error('provider failed'));
+    const token = await createUserToken();
+    const response = await createApp().request('https://example.com/api/v1/ai/summarize', {
+      method: 'POST', headers: { 'content-type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ input: 'keep my draft' }),
+    }, env);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ ok: false, error: { code: 'AI_GENERATION_FAILED' } });
+  });
   it('rejects unauthenticated paid generation requests', async () => {
     const response = await createApp().request(
       'https://example.com/api/v1/ai/generate',

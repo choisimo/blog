@@ -4,13 +4,24 @@ import { requireAuth } from '../middleware/auth';
 import { success, error } from '../lib/response';
 import { isOriginAllowed } from '../lib/cors';
 import { attachOriginSignatureHeaders } from '../lib/origin-signature';
-import { boundedLimit, digest, GUEST_IMAGE_LIMIT, IMAGE_RETENTION_MS, imageDay,
+import { boundedLimit, digest, DEFAULT_FREE_IMAGE_LIMIT, GUEST_IMAGE_LIMIT, IMAGE_RETENTION_MS, imageDay,
   isRegisteredImageUser, parseImageInput, privateNetworkKey } from '../lib/reader-image-policy';
 import { findImageJob, imageUsage, reserveImageJob, finishImageJob, type ImageJob } from '../lib/reader-image-repository';
 
 const router = new Hono<HonoEnv>();
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+function imageConfigured(c: Context<HonoEnv>) {
+  return Boolean(c.env.DB && c.env.READER_IMAGES_R2 && c.env.BACKEND_ORIGIN && c.env.BACKEND_KEY &&
+    (!['production', 'staging'].includes(c.env.ENV) || c.env.GATEWAY_SIGNING_SECRET || c.env.BACKEND_GATEWAY_SIGNING_SECRET));
+}
+function failedJobResponse(c: Context<HonoEnv>, code = 'IMAGE_REJECTED') {
+  if (code === 'IMAGE_PROVIDER_UNAVAILABLE')
+    return error(c, '이미지 생성 연결을 확인하고 있습니다. 사용량은 차감하지 않았습니다.', 503, code);
+  if (code === 'IMAGE_PROVIDER_RATE_LIMIT')
+    return error(c, '이미지 생성 서비스가 혼잡합니다. 사용량은 차감하지 않았습니다. 잠시 후 다시 시도하세요.', 429, code);
+  return error(c, '이미지 생성이 거절되었습니다. 사용량은 차감하지 않았습니다. 내용을 바꿔 다시 요청하세요.', 422, code);
+}
 
 async function principal(c: Context<HonoEnv>) {
   const claims = c.get('user');
@@ -23,7 +34,7 @@ async function principal(c: Context<HonoEnv>) {
   const owner = await digest(`${member ? 'account' : 'guest'}:${claims.sub}`);
   const network = member ? owner : await privateNetworkKey(c.env.JWT_SECRET, day, address || 'local-development');
   return { member, owner, network, day, resetAt,
-    limit: member ? boundedLimit(c.env.MEMBER_IMAGE_DAILY_LIMIT, 20) : GUEST_IMAGE_LIMIT };
+    limit: member ? boundedLimit(c.env.MEMBER_IMAGE_DAILY_LIMIT, DEFAULT_FREE_IMAGE_LIMIT) : GUEST_IMAGE_LIMIT };
 }
 async function policy(c: Context<HonoEnv>, p: Awaited<ReturnType<typeof principal>>) {
   const usage = await imageUsage(c.env.DB, p.owner, p.network, p.day, p.member);
@@ -32,11 +43,11 @@ async function policy(c: Context<HonoEnv>, p: Awaited<ReturnType<typeof principa
   return { tier: p.member ? 'member' : 'guest', dailyLimit: p.limit,
     used: usage.used, remaining, resetAt: p.resetAt, timezone: 'Asia/Seoul',
     networkLimited: !p.member && usage.networkUsed >= GUEST_IMAGE_LIMIT,
-    retentionDays: 7, enabled: c.env.FEATURE_READER_IMAGES === 'true' && Boolean(c.env.READER_IMAGES_R2 && c.env.BACKEND_ORIGIN && c.env.BACKEND_KEY) };
+    retentionDays: 7, enabled: c.env.FEATURE_READER_IMAGES === 'true' && imageConfigured(c) };
 }
 function jobResponse(c: Context<HonoEnv>, job: ImageJob) {
   if (job.state === 'complete' && job.result_json) return success(c, JSON.parse(job.result_json));
-  if (job.state === 'failed') return error(c, '이미지 생성이 거절되었습니다. 내용을 바꿔 다시 요청하세요.', 422, job.error_code || 'IMAGE_REJECTED');
+  if (job.state === 'failed') return failedJobResponse(c, job.error_code || 'IMAGE_REJECTED');
   return error(c, '생성 결과를 아직 확인하지 못했습니다. 다시 생성하지 않고 상태만 확인합니다.', 409,
     job.state === 'unknown' ? 'IMAGE_OUTCOME_UNKNOWN' : 'IMAGE_IN_PROGRESS');
 }
@@ -77,8 +88,7 @@ router.get('/generated/:id', requireAuth, async c => {
 });
 router.post('/generate', requireAuth, async c => {
   if (c.env.FEATURE_READER_IMAGES !== 'true') return error(c, '이미지 생성이 아직 활성화되지 않았습니다.', 503, 'IMAGE_DISABLED');
-  if (!c.env.DB || !c.env.READER_IMAGES_R2 || !c.env.BACKEND_ORIGIN || !c.env.BACKEND_KEY ||
-      (['production','staging'].includes(c.env.ENV) && !c.env.GATEWAY_SIGNING_SECRET && !c.env.BACKEND_GATEWAY_SIGNING_SECRET))
+  if (!imageConfigured(c))
     return error(c, '이미지 생성 설정이 준비되지 않았습니다.', 503, 'IMAGE_UNAVAILABLE');
   const origin = c.req.header('Origin');
   if (origin && !await isOriginAllowed(origin, c.env)) return error(c, '허용되지 않은 요청입니다.', 403, 'FORBIDDEN_ORIGIN');
@@ -138,10 +148,12 @@ router.post('/generate', requireAuth, async c => {
     const data = await response.json() as { ok?: boolean; data?: { b64: string; width: number; height: number }; error?: { code?: string } };
     if (!response.ok || !data.ok || !data.data) {
       // Only an explicit upstream rejection proves that no image was generated.
-      const rejected = data.error?.code === 'IMAGE_REJECTED' || data.error?.code === 'IMAGE_DISABLED';
-      await finishImageJob(c.env.DB, id, rejected ? 'failed' : 'unknown', null, rejected ? 'IMAGE_REJECTED' : 'IMAGE_OUTCOME_UNKNOWN');
-      return error(c, rejected ? '이미지 생성이 거절되었습니다. 사용량은 차감하지 않았습니다.' : '생성 결과를 확인할 수 없습니다. 중복 생성을 방지하기 위해 상태를 보관합니다.',
-        rejected ? 422 : 409, rejected ? 'IMAGE_REJECTED' : 'IMAGE_OUTCOME_UNKNOWN');
+      const upstreamCode = data.error?.code || '';
+      const rejected = ['IMAGE_REJECTED', 'IMAGE_DISABLED', 'IMAGE_PROVIDER_UNAVAILABLE', 'IMAGE_PROVIDER_RATE_LIMIT'].includes(upstreamCode);
+      const code = upstreamCode === 'IMAGE_DISABLED' ? 'IMAGE_PROVIDER_UNAVAILABLE' : upstreamCode;
+      await finishImageJob(c.env.DB, id, rejected ? 'failed' : 'unknown', null, rejected ? code : 'IMAGE_OUTCOME_UNKNOWN');
+      if (rejected) return failedJobResponse(c, code);
+      return error(c, '생성 결과를 확인할 수 없습니다. 중복 생성을 방지하기 위해 상태를 보관합니다.', 409, 'IMAGE_OUTCOME_UNKNOWN');
     }
     if (![data.data.width, data.data.height].every(n => Number.isInteger(n) && n >= 32 && n <= 4096)) throw new Error('Invalid dimensions');
     const b64 = data.data.b64;

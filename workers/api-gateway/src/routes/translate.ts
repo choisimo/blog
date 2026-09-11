@@ -55,7 +55,9 @@ export async function lookup(c:Context<HonoEnv>,create=true,mode:'public'|'inter
   const cached=await getValidCachedTranslation(c.env.DB,source,p.targetLang);
   if(cached && !options.refreshKey)return success(c,buildTranslationResponse(cached));
   if(!joined)joined=await getLatestTranslationJob(c.env.DB,p.year,p.slug,p.targetLang,version);
-  if(create && (!joined || options.refreshKey)) {
+  // Admission also promotes an existing warm job to interactive priority. Merely
+  // reading the latest row strands it when background warming is disabled.
+  if(create && (!queryId || options.refreshKey)) {
     joined=(await startTranslationJob(c.env,source,p.targetLang,{...options,origin:c.req.url,priority:'interactive'})).job;
   }
   if(!joined)return error(c,'Translation is not ready',404,'NOT_READY');

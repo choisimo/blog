@@ -1,5 +1,5 @@
 import { normalizeTaskDataForMode } from './llm';
-import { parseStructuredResponse } from '@blog/shared/runtime/structured-response';
+import { parseStructuredResponse, isStructuredResponseText } from '@blog/shared/runtime/structured-response';
 /**
  * Unified AI Service for Cloudflare Workers
  *
@@ -302,12 +302,25 @@ export class AIService {
     content: string,
     options: { instructions?: string; temperature?: number } = {}
   ): Promise<{ summary: string; keyPoints?: string[] }> {
-    const result = await this.task<{ summary: string; keyPoints?: string[] }>(
-      'summary',
-      { content, prompt: options.instructions },
-      { temperature: options.temperature }
-    );
-    return result.data;
+    // Memo actions need the provider's document, never an extractive fallback.
+    // Catalyst instructions describe a transformation, not necessarily a summary.
+    const text = await this.generate(content, {
+      systemPrompt: options.instructions || '주어진 글의 핵심을 한국어 마크다운으로 간결하고 충실하게 요약하세요.',
+      temperature: options.temperature ?? 0.4,
+      maxTokens: 2400,
+      timeout: 120_000,
+    });
+    // Only unwrap a complete JSON response. JSON examples inside Markdown belong
+    // to the generated document and must not replace the surrounding prose.
+    let parsed: { summary?: unknown } | null = null;
+    try {
+      parsed = JSON.parse(text.trim());
+    } catch { /* The provider normally returns Markdown. */ }
+    const summary = typeof parsed?.summary === 'string' ? parsed.summary.trim() : text.trim();
+    if (!summary || isStructuredResponseText(summary)) {
+      throw new Error('AI did not return a readable document');
+    }
+    return { summary };
   }
 
   /**
