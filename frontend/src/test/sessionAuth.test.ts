@@ -25,11 +25,11 @@ describe('session auth token boundaries', () => {
     expect(normalizeHeaderToken('token%0Dvalue')).toBeNull();
   });
 
-  it('removes stored anonymous tokens that fail encoded-newline normalization', () => {
+  it('does not expose malformed stored proof as a header and retains it for explicit recovery', () => {
     window.localStorage.setItem(ANON_TOKEN_KEY, 'token%0avalue');
 
     expect(getStoredAnonymousToken()).toBeNull();
-    expect(window.localStorage.getItem(ANON_TOKEN_KEY)).toBeNull();
+    expect(window.localStorage.getItem(ANON_TOKEN_KEY)).toBe('token%0avalue');
   });
 
   it('does not store invalid anonymous tokens with encoded newlines', () => {

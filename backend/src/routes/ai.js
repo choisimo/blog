@@ -906,17 +906,24 @@ router.post("/chain", async (req, res, next) => {
 // Response: { ok: true, data: { text: string } }
 router.post("/generate", rateLimitMiddleware(), async (req, res, next) => {
   try {
-    const { prompt, temperature } = req.body || {};
+    const { prompt, temperature, maxTokens, timeout, model, systemPrompt } = req.body || {};
     if (!prompt || typeof prompt !== "string") {
       return res.status(400).json({ ok: false, error: "prompt is required" });
+    }
+    if ((maxTokens != null && (!Number.isInteger(maxTokens) || maxTokens<1 || maxTokens>16000)) ||
+        (timeout != null && (!Number.isFinite(timeout) || timeout<1 || timeout>240000)) ||
+        (model != null && (typeof model!=='string' || model.length>128)) ||
+        (systemPrompt != null && (typeof systemPrompt!=='string' || systemPrompt.length>8000))) {
+      return res.status(400).json({ok:false,error:'Invalid generation options'});
     }
     return await runIdempotent(
       req,
       res,
       "ai.generate",
-      { prompt, temperature },
+      { prompt, temperature, maxTokens, model, systemPrompt },
       async () => {
         const text = await aiService.generate(String(prompt), {
+          maxTokens, timeout, model, systemPrompt,
           temperature:
             typeof temperature === "number"
               ? temperature

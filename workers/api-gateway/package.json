@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.ts\"",
     "migrations:apply": "wrangler d1 migrations apply blog-db --local",
-    "migrations:apply:prod": "wrangler d1 migrations apply blog-db-prod --env production --remote"
+    "migrations:apply:prod": "wrangler d1 migrations apply blog-db-prod --env production --remote",
+    "test:translation": "vitest run test/translation-job-repository.test.ts test/translation-jobs.test.ts test/translation-routes.test.ts"
   },
   "dependencies": {
     "@blog/shared": "file:../../shared",

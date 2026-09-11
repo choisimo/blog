@@ -30,6 +30,7 @@ export type GenerateOptions = {
   maxTokens?: number;
   model?: string;
   systemPrompt?: string;
+  idempotencyKey?: string;
   timeout?: number;
 };
 
@@ -148,11 +149,12 @@ export class AIService {
   private async request<T>(
     endpoint: string,
     body: unknown,
-    options: { timeout?: number } = {}
+    options: { timeout?: number; idempotencyKey?: string } = {}
   ): Promise<T> {
     const baseUrl = await this.getBaseUrl();
     const url = `${baseUrl.replace(/\/$/, '')}/api/v1/ai${endpoint}`;
     const headers = await this.buildHeaders();
+    if (options.idempotencyKey) headers.set('Idempotency-Key', options.idempotencyKey);
     await attachOriginSignatureHeadersForUrl({
       env: this.env,
       headers,
@@ -174,8 +176,8 @@ export class AIService {
       });
 
       if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`Backend AI error: ${res.status} ${txt.slice(0, 200)}`);
+        await res.body?.cancel().catch(() => {});
+        throw Object.assign(new Error(`Backend AI error: ${res.status}`), {status:res.status,code:'AI_ERROR'});
       }
 
       const payload = (await res.json()) as { ok?: boolean; data?: T; error?: string };
@@ -202,8 +204,9 @@ export class AIService {
         maxTokens: options.maxTokens,
         model: options.model,
         systemPrompt: options.systemPrompt,
+        timeout: options.timeout,
       },
-      { timeout: options.timeout }
+      { timeout: options.timeout, idempotencyKey: options.idempotencyKey }
     );
 
     return result.text;

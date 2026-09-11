@@ -1,0 +1,31 @@
+{
+  "scope": "Opaque-origin DOM fixture for the production memo and shared auth runtime.\nUses memory Storage, fixture fetch and an asset-loader substitution. It does NOT\nverify real Storage persistence, Web Locks, cross-tab behavior or the React dialog.\n",
+  "passed": 6,
+  "checks": [
+    {
+      "name": "production memo mounts with existing draft",
+      "pass": true
+    },
+    {
+      "name": "memo and canonical application runtime join one same-tab issuance",
+      "pass": true
+    },
+    {
+      "name": "actual memo transient refresh failure keeps owner",
+      "pass": true
+    },
+    {
+      "name": "401 reports recovery without replacing credentials or leaking event tokens",
+      "pass": true
+    },
+    {
+      "name": "actual memo rejects wrong-owner successful response",
+      "pass": true
+    },
+    {
+      "name": "explicit session change does not delete current editor or fixture Storage",
+      "pass": true
+    }
+  ],
+  "pageErrors": []
+}

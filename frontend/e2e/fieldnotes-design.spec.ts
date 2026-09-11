@@ -164,8 +164,10 @@ for (const theme of ['light', 'dark']) {
       await memo.evaluate(async element => {
         await Promise.all(element.getAnimations().map(animation => animation.finished));
       });
-      await expect.poll(async () => Math.round((await memo.boundingBox())!.height)).toBe(width > 850 ? 976 : 940);
-      await expect.poll(async () => Math.abs((await memo.boundingBox())!.y - (width > 850 ? 12 : 60))).toBeLessThan(1);
+      const expectedTop = width <= 640 ? 0 : width > 850 ? 12 : 60;
+      const expectedHeight = width <= 640 ? 1000 : width > 850 ? 976 : 940;
+      await expect.poll(async () => Math.round((await memo.boundingBox())!.height)).toBe(expectedHeight);
+      await expect.poll(async () => Math.abs((await memo.boundingBox())!.y - expectedTop)).toBeLessThan(1);
       const box = (await memo.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
@@ -174,7 +176,7 @@ for (const theme of ['light', 'dark']) {
         expect(box.width).toBe(420);
         expect(box.y).toBe(12);
       } else {
-        expect(Math.abs(box.y - 60)).toBeLessThan(1);
+        expect(Math.abs(box.y - expectedTop)).toBeLessThan(1);
       }
       const editor = memo.locator('textarea.memo-input');
       const draft = `검토 메모 ${theme} ${width}\n본문을 읽으며 남긴 생각`;
@@ -211,6 +213,9 @@ test('real code, table and mobile TOC use the refined reader surfaces', async ({
   await table.scrollIntoViewIfNeeded();
   expect(await table.evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  // Scrolling up reveals the compact reading actions after reading down the page.
+  await expect(page.locator('.fn-reader-mobilebar')).toHaveAttribute('data-scroll-hidden', 'true');
+  await page.evaluate(() => window.scrollBy({ top: -80, behavior: 'instant' }));
   const trigger=page.locator('.fn-reader-toc-trigger');
   await expect(trigger).toHaveText('목차');
   await trigger.click();
@@ -235,7 +240,11 @@ test('TOC follows large section jumps and opens at the current mobile section', 
     const last = page.locator('.article-flow h2').last();
     const title = (await last.innerText()).replace(/\s+/g, ' ').trim();
     await last.evaluate(element => window.scrollTo({ top: element.getBoundingClientRect().top + window.scrollY - 110, behavior: 'instant' }));
-    if (width < 850) await page.locator('.fn-reader-toc-trigger').click();
+    if (width < 850) {
+      await expect(page.locator('.fn-reader-mobilebar')).toHaveAttribute('data-scroll-hidden', 'true');
+      await page.evaluate(() => window.scrollBy({ top: -32, behavior: 'instant' }));
+      await page.locator('.fn-reader-toc-trigger').click();
+    }
     const toc = page.locator(width < 850 ? '.ui-toc-drawer' : '.rd-left');
     const active = toc.locator('.ui-toc-item[aria-current="location"]');
     await expect(active).toHaveAttribute('title', title);

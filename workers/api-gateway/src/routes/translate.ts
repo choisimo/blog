@@ -1,607 +1,141 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { HonoEnv } from '../types';
 import { success, error } from '../lib/response';
 import { requireAuth, requireAdmin } from '../middleware/auth';
-import {
-  buildTranslationJobKey,
-  getTranslationJobById,
-  getTranslationJobByKey,
-  startTranslationJob,
-  type TranslationJobError,
-  type TranslationJobResultSummary,
-  type TranslationJobSnapshot,
-} from './lib/translation-jobs';
-import {
-  buildTranslationResponse,
-  fetchPublishedPost,
-  getCachedTranslationRecord,
-  getValidCachedTranslation,
-  hashContent,
-  isSuspiciousTranslation,
-  normalizeTranslationLang,
-  translateAndCachePost,
-  type SourcePost,
-  type SupportedTranslationLang,
-  type TranslationResponseData,
-} from '../lib/translation-service';
-import { enqueueTranslationGeneration } from '../lib/ai-artifact-outbox';
-import {
-  enqueueNotificationDelivery,
-  flushNotificationOutbox,
-} from '../lib/notification-outbox';
-import { ERROR_MESSAGES } from '../config/defaults';
+import { normalizeTranslationSelectors, normalizeTranslationJobId } from '../../../../shared/src/contracts/translation-path.js';
 import { buildRouteBoundaryHeaders } from '../../../../shared/src/contracts/service-boundaries.js';
+import {
+  startTranslationJob, presentTranslationJob, getTranslationJobById,
+  getLatestTranslationJob, wakeTranslationExecutor,
+} from './lib/translation-jobs';
+import { recoverExpiredTranslationJobs, invalidateTranslationCache } from '../lib/translation-job-repository';
+import {
+  fetchPublishedPost, getValidCachedTranslation, getCachedTranslationRecord,
+  buildTranslationResponse, translationSourceVersion, isSuspiciousTranslation,
+} from '../lib/translation-service';
 
-const app = new Hono<HonoEnv>();
-
-app.use('*', async (c, next) => {
+const app=new Hono<HonoEnv>();
+app.use('*',async(c,next)=>{
   await next();
-  const headers = buildRouteBoundaryHeaders('translate', {
-    responder: 'worker',
-    edgeMode: 'native',
-    originMode: 'worker',
-  });
-  for (const [key, value] of Object.entries(headers) as [string, string][]) {
-    c.res.headers.set(key, value);
+  for(const [key,value] of Object.entries(buildRouteBoundaryHeaders('translate',{responder:'worker',edgeMode:'native',originMode:'worker'}))) {
+    c.res.headers.set(key,value as string);
   }
 });
-const LEGACY_TRANSLATE_SUNSET = 'Tue, 30 Jun 2026 00:00:00 GMT';
-
-type GenerateOptions = {
-  sourceLang?: string;
-  forceRefresh?: boolean;
-  respondAsync?: boolean;
-};
-
-type TranslationRequestBody = {
-  year: string;
-  slug: string;
-  targetLang: string;
-  sourceLang?: string;
-  title?: string;
-  description?: string;
-  content?: string;
-  forceRefresh?: boolean;
-  respondAsync?: boolean;
-};
-
-type GenerateErrorInfo = {
-  status: ContentfulStatusCode;
-  code?: string;
-  message: string;
-  retryable: boolean;
-  retryAfterSeconds?: number;
-};
-
-function summarizeTranslationResult(result: TranslationResponseData): TranslationJobResultSummary {
-  return {
-    source: result.cached ? 'cache' : result.isAiGenerated ? 'generated' : 'passthrough',
-    cached: result.cached,
-    isAiGenerated: Boolean(result.isAiGenerated),
-    translationAvailable: Boolean(result.content),
-    createdAt: result.createdAt,
-    updatedAt: result.updatedAt,
-  };
+function selector(c:Context<HonoEnv>) {
+  try { return normalizeTranslationSelectors(c.req.param() as {year:string;slug:string;targetLang:string},false); }
+  catch { throw Object.assign(new Error('Invalid translation selectors'),{code:'BAD_REQUEST',status:400}); }
 }
-
-function normalizeGenerateError(err: unknown): GenerateErrorInfo {
-  const message = err instanceof Error ? err.message : 'Translation failed';
-
-  let status: ContentfulStatusCode = 500;
-  let errorMessage = message;
-  let code = 'UNKNOWN';
-  let retryable = false;
-  let retryAfterSeconds: number | undefined;
-
-  if (message.includes('Backend AI error')) {
-    status = 502;
-    errorMessage = ERROR_MESSAGES.AI_SERVER_ERROR;
-    code = 'AI_ERROR';
-    retryable = true;
-    retryAfterSeconds = 30;
-  } else if (message.includes('timeout') || message.includes('TIMEOUT')) {
-    status = 504;
-    errorMessage = ERROR_MESSAGES.AI_TIMEOUT;
-    code = 'AI_TIMEOUT';
-    retryable = true;
-    retryAfterSeconds = 30;
-  }
-
-  return {
-    status,
-    code,
-    message: errorMessage,
-    retryable,
-    retryAfterSeconds,
-  };
+function handleError(c:Context<HonoEnv>,err:unknown) {
+  const issue=err as {status?:number;code?:string};
+  const status=issue.status===400 || (err instanceof Error && err.message.startsWith('Invalid translation'))?400:issue.status===429?429:issue.status===404?404:503;
+  c.header('Cache-Control','no-store');
+  if(status===503 || status===429)c.header('Retry-After','30');
+  return error(c,status===400?'Invalid translation request':status===404?'Published post not found':'Translation service unavailable',status,
+    status===400?'BAD_REQUEST':status===404?'NOT_AVAILABLE':issue.code==='TRANSLATION_CAPACITY'?'TRANSLATION_CAPACITY':'BACKEND_UNAVAILABLE');
 }
-
-function applyJobHeaders(c: Context<HonoEnv>, job: TranslationJobSnapshot) {
-  c.header('Cache-Control', 'no-store');
-  c.header('X-Translation-Job-Id', job.id);
-  c.header('Location', job.statusUrl);
-}
-
-function applyLegacyRouteHeaders(c: Context<HonoEnv>, successorPath?: string) {
-  c.header('Deprecation', 'true');
-  c.header('Sunset', LEGACY_TRANSLATE_SUNSET);
-  if (successorPath) {
-    c.header('Link', `<${successorPath}>; rel="successor-version"`);
+function headersForJob(c:Context<HonoEnv>,job:ReturnType<typeof presentTranslationJob>) {
+  c.header('Cache-Control','no-store'); c.header('X-Translation-Job-Id',job.id);
+  c.header('Location',`${job.statusUrl}?jobId=${encodeURIComponent(job.id)}`);
+  if(['queued','running','deferred'].includes(job.status)) {
+    const seconds=job.retryAt?Math.max(3,Math.ceil((Date.parse(job.retryAt)-Date.now())/1000)):3;
+    c.header('Retry-After',String(seconds));
   }
 }
-
-function buildLegacySuccessorPath(
-  params: { year?: string; slug?: string; targetLang?: string },
-  routeType: 'generate' | 'cache' | 'status' | 'delete'
-) {
-  const year = params.year || '{year}';
-  const slug = params.slug || '{slug}';
-  const targetLang = params.targetLang || '{targetLang}';
-
-  if (routeType === 'generate') {
-    return `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/generate`;
+export async function lookup(c:Context<HonoEnv>,create=true,mode:'public'|'internal'='public',options:{refreshKey?:string;requestedBy?:string}={}) {
+  const p=selector(c);
+  const source=await fetchPublishedPost(c.env,p.year,p.slug);
+  if(!source)throw Object.assign(new Error('Not found'),{status:404});
+  const version=await translationSourceVersion(source,p.targetLang);
+  const queryId=c.req.query('jobId');
+  let joined=queryId?await getTranslationJobById(c.env.DB,normalizeTranslationJobId(queryId)):null;
+  if(queryId && (!joined || joined.key!==`${p.year}:${p.slug}:${p.targetLang}`))return error(c,'Translation job not found',404,'NOT_FOUND');
+  c.header('Cache-Control','no-store');
+  if(source.sourceLang===p.targetLang)return success(c,{title:source.title,description:source.description,content:source.content,cached:false,isAiGenerated:false});
+  const cached=await getValidCachedTranslation(c.env.DB,source,p.targetLang);
+  if(cached && !options.refreshKey)return success(c,buildTranslationResponse(cached));
+  if(!joined)joined=await getLatestTranslationJob(c.env.DB,p.year,p.slug,p.targetLang,version);
+  if(create && (!joined || options.refreshKey)) {
+    joined=(await startTranslationJob(c.env,source,p.targetLang,{...options,origin:c.req.url,priority:'interactive'})).job;
   }
-  if (routeType === 'cache') {
-    return `/api/v1/public/posts/${year}/${slug}/translations/${targetLang}/cache`;
+  if(!joined)return error(c,'Translation is not ready',404,'NOT_READY');
+  const job=presentTranslationJob(joined,c.req.url,mode);
+  if(joined.source_version!==version && !joined.source_version.startsWith('legacy:')) {
+    job.status='failed';job.error={code:'SUPERSEDED',message:'원문이 변경되었습니다.',retryable:false};
   }
-  if (routeType === 'status') {
-    return `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/generate/status`;
+  headersForJob(c,job);
+  if(create && ['queued','deferred'].includes(job.status)) {
+    c.executionCtx.waitUntil(wakeTranslationExecutor(c.env,joined).catch(()=>false));
   }
-  return `/api/v1/internal/posts/${year}/${slug}/translations/${targetLang}/cache`;
+  const stale=await getCachedTranslationRecord(c.env.DB,p.year,p.slug,p.targetLang);
+  const data=stale && !isSuspiciousTranslation(source.content,stale.content)?{
+    ...buildTranslationResponse(stale),stale:true,warming:['queued','deferred','running'].includes(job.status),
+  }:null;
+  return c.json({ok:true,data,job},job.status==='failed'||job.status==='succeeded'||data?200:202);
 }
-
-function markLegacyTranslateRoute(
-  c: Context<HonoEnv>,
-  routeType: 'generate' | 'cache' | 'status' | 'delete'
-) {
-  applyLegacyRouteHeaders(c, buildLegacySuccessorPath(c.req.param(), routeType));
+export async function cached(c:Context<HonoEnv>) {
+  try { return await lookup(c,c.req.query('observe')!=='true'); }catch(err){return handleError(c,err);}
 }
-
-function buildTranslationJobUrls(
-  requestUrl: string,
-  year: string,
-  slug: string,
-  targetLang: string
-) {
-  const origin = new URL(requestUrl).origin;
-  const basePath = `${origin}/api/v1`;
-  return {
-    cacheUrl: `${basePath}/public/posts/${year}/${slug}/translations/${targetLang}/cache`,
-    generateUrl: `${basePath}/internal/posts/${year}/${slug}/translations/${targetLang}/generate`,
-    statusUrl: `${basePath}/internal/posts/${year}/${slug}/translations/${targetLang}/generate/status`,
-  };
-}
-
-function getAuthenticatedUserId(c: Context<HonoEnv>): string | undefined {
-  const user = c.get('user') as { sub?: string } | undefined;
-  return typeof user?.sub === 'string' && user.sub ? user.sub : undefined;
-}
-
-async function notifyTranslationJob(
-  c: Context<HonoEnv>,
-  userId: string | undefined,
-  jobId: string,
-  urls: ReturnType<typeof buildTranslationJobUrls>,
-  sourcePost: SourcePost,
-  targetLang: SupportedTranslationLang,
-  input: {
-    type: 'success' | 'error';
-    title: string;
-    message: string;
-  }
-) {
-  if (!userId || !jobId) {
-    return;
-  }
-
-  await enqueueNotificationDelivery(
-    c.env,
-    {
-      event: 'notification',
-      type: input.type,
-      title: input.title,
-      message: input.message,
-      userId,
-      sourceId: jobId,
-      payload: {
-        jobId,
-        resultRef: urls.cacheUrl,
-        statusUrl: urls.statusUrl,
-        cacheUrl: urls.cacheUrl,
-        generateUrl: urls.generateUrl,
-        translation: {
-          year: sourcePost.year,
-          slug: sourcePost.slug,
-          targetLang,
-        },
-      },
-    },
-    { idempotencyKey: `translation-notification:${jobId}:${input.type}` }
-  );
-
-  c.executionCtx.waitUntil(
-    flushNotificationOutbox(c.env, { limit: 10 }).catch((error) => {
-      console.error('Failed to flush translation notification outbox:', error);
-    })
-  );
-}
-
-function wantsAsyncResponse(c: Context<HonoEnv>, options: GenerateOptions = {}) {
-  if (options.respondAsync) {
-    return true;
-  }
-  if (c.req.query('async') === 'true') {
-    return true;
-  }
-  const prefer = c.req.header('Prefer') || '';
-  if (prefer.toLowerCase().includes('respond-async')) {
-    return true;
-  }
-  return c.req.header('X-Response-Mode') === 'async';
-}
-
-async function getImmediateTranslationResult(
-  sourcePost: SourcePost,
-  targetLang: SupportedTranslationLang,
-  options: GenerateOptions = {},
-  c: Context<HonoEnv>
-): Promise<TranslationResponseData | null> {
-  if (!options.forceRefresh) {
-    const cached = await getValidCachedTranslation(c.env.DB, sourcePost, targetLang);
-    if (cached) {
-      return buildTranslationResponse(cached);
-    }
-  }
-
-  const sourceLang = normalizeTranslationLang(options.sourceLang) || sourcePost.sourceLang;
-  if (sourceLang === targetLang) {
-    return {
-      title: sourcePost.title,
-      description: sourcePost.description,
-      content: sourcePost.content,
-      cached: false,
-      isAiGenerated: false,
-    };
-  }
-
-  return null;
-}
-
-function buildGenerateSuccessResponse(
-  c: Context<HonoEnv>,
-  data: TranslationResponseData,
-  job?: TranslationJobSnapshot
-) {
-  if (job) {
-    applyJobHeaders(c, job);
-    return c.json({ ok: true, data, job }, 200);
-  }
-
-  return success(c, data);
-}
-
-async function handleGenerateError(c: Context<HonoEnv>, err: unknown) {
-  console.error('[translate] Translation failed:', err);
-  const details = normalizeGenerateError(err);
-
-  if (details.retryAfterSeconds) {
-    c.header('Retry-After', String(details.retryAfterSeconds));
-  }
-
-  return error(c, details.message, details.status, details.code);
-}
-
-async function sendCachedTranslation(c: Context<HonoEnv>) {
+export async function status(c:Context<HonoEnv>,mode:'public'|'internal'='public') {
   try {
-    const { year, slug, targetLang } = c.req.param();
-    const normalizedTargetLang = normalizeTranslationLang(targetLang);
-
-    if (!normalizedTargetLang) {
-      return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
+    const p=selector(c);
+    const source=await fetchPublishedPost(c.env,p.year,p.slug);
+    if(!source)return error(c,'Published post not found',404,'NOT_AVAILABLE');
+    const version=await translationSourceVersion(source,p.targetLang);
+    await recoverExpiredTranslationJobs(c.env.DB);
+    const id=c.req.query('jobId');
+    const record=id?await getTranslationJobById(c.env.DB,normalizeTranslationJobId(id)):
+      await getLatestTranslationJob(c.env.DB,p.year,p.slug,p.targetLang,version);
+    if(!record || record.key!==`${p.year}:${p.slug}:${p.targetLang}`)return error(c,'Translation job not found',404,'NOT_FOUND');
+    const job=presentTranslationJob(record,c.req.url,mode);
+    if(record.source_version!==version && !record.source_version.startsWith('legacy:')) {
+      job.status='failed';job.error={code:'SUPERSEDED',message:'원문이 변경되었습니다.',retryable:false};
     }
-
-    const sourcePost = await fetchPublishedPost(c.env, year, slug);
-    if (!sourcePost) {
-      return error(c, 'Published post not found', 404, 'NOT_AVAILABLE');
-    }
-
-    const cached = await getValidCachedTranslation(c.env.DB, sourcePost, normalizedTargetLang);
-    if (cached) {
-      return success(c, buildTranslationResponse(cached));
-    }
-
-    await enqueueTranslationGeneration(c.env, {
-      year,
-      slug,
-      targetLang: normalizedTargetLang,
-      priority: 'interactive',
-    });
-
-    const stale = await getCachedTranslationRecord(c.env.DB, year, slug, normalizedTargetLang);
-    if (stale && !isSuspiciousTranslation(sourcePost.content, stale.content)) {
-      return success(c, {
-        ...buildTranslationResponse(stale),
-        stale: true,
-        warming: true,
-      });
-    }
-
-    c.header('Retry-After', '15');
-    return c.json({ ok: true, data: null }, 202);
-  } catch (err) {
-    console.error('Failed to get translation:', err);
-    return error(c, 'Failed to get translation', 500, 'INTERNAL_ERROR');
-  }
+    headersForJob(c,job);return success(c,{job});
+  }catch(err){return handleError(c,err);}
 }
-
-async function deleteCachedTranslation(c: Context<HonoEnv>) {
+export async function generate(c:Context<HonoEnv>) {
   try {
-    const { year, slug, targetLang } = c.req.param();
-    const normalizedTargetLang = normalizeTranslationLang(targetLang);
-
-    if (!normalizedTargetLang) {
-      return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
+    const body=await c.req.json<{forceRefresh?:boolean;sourceLang?:string}>().catch(()=>({}));
+    let refreshKey:string|undefined;
+    if('forceRefresh' in body && body.forceRefresh) {
+      // Reading is public. A new paid revision is an administrative operation.
+      const denied=await requireAdmin(c,async()=>{});if(denied)return denied;
+      refreshKey=c.req.header('Idempotency-Key');
+      if(!refreshKey || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(refreshKey))return error(c,'A stable Idempotency-Key is required for regeneration',400,'BAD_REQUEST');
     }
-
-    await c.env.DB.prepare(
-      `DELETE FROM post_translations_cache
-       WHERE post_slug = ? AND year = ? AND target_lang = ?`
-    )
-      .bind(slug, year, normalizedTargetLang)
-      .run();
-
-    return success(c, { deleted: true });
-  } catch (err) {
-    console.error('Failed to delete translation:', err);
-    return error(c, 'Failed to delete translation', 500, 'INTERNAL_ERROR');
-  }
+    return await lookup(c,true,'internal',{refreshKey,requestedBy:c.get('user')?.sub});
+  }catch(err){return handleError(c,err);}
 }
-
-async function sendTranslationJobStatus(c: Context<HonoEnv>) {
-  const { year, slug, targetLang } = c.req.param();
-  const normalizedTargetLang = normalizeTranslationLang(targetLang);
-
-  if (!normalizedTargetLang) {
-    return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
-  }
-
-  const jobId = c.req.query('jobId');
-  const key = buildTranslationJobKey(year, slug, normalizedTargetLang);
-  const sourcePost = jobId ? null : await fetchPublishedPost(c.env, year, slug).catch(() => null);
-  const job = jobId
-    ? await getTranslationJobById(c.env.DB, jobId)
-    : sourcePost
-      ? await getTranslationJobByKey(c.env.DB, key, hashContent(sourcePost.content))
-      : null;
-
-  if (!job || job.key !== key) {
-    return error(c, 'Translation job not found', 404, 'NOT_FOUND');
-  }
-
-  applyJobHeaders(c, job);
-  if (job.status === 'running') {
-    c.header('Retry-After', '3');
-  } else if (job.error?.retryAfterSeconds) {
-    c.header('Retry-After', String(job.error.retryAfterSeconds));
-  }
-
-  return success(c, { job });
+export async function remove(c:Context<HonoEnv>) {
+  try {const p=selector(c);await invalidateTranslationCache(c.env.DB,p.year,p.slug,p.targetLang);return success(c,{deleted:true});}
+  catch(err){return handleError(c,err);}
 }
-
-async function generateFromSourcePost(
-  c: Context<HonoEnv>,
-  sourcePost: SourcePost,
-  targetLang: string,
-  options: GenerateOptions = {}
-) {
-  const normalizedTargetLang = normalizeTranslationLang(targetLang);
-  if (!normalizedTargetLang) {
-    return error(c, `Unsupported target language: ${targetLang}`, 400, 'BAD_REQUEST');
-  }
-
-  const immediate = await getImmediateTranslationResult(
-    sourcePost,
-    normalizedTargetLang,
-    options,
-    c
-  );
-  if (immediate) {
-    return buildGenerateSuccessResponse(c, immediate);
-  }
-
-  const sourceLang = normalizeTranslationLang(options.sourceLang) || sourcePost.sourceLang;
-  const contentHash = hashContent(sourcePost.content);
-  const urls = buildTranslationJobUrls(
-    c.req.url,
-    sourcePost.year,
-    sourcePost.slug,
-    normalizedTargetLang
-  );
-  const userId = getAuthenticatedUserId(c);
-  const job = await startTranslationJob<TranslationResponseData>(c.env.DB, {
-    key: buildTranslationJobKey(sourcePost.year, sourcePost.slug, normalizedTargetLang),
-    year: sourcePost.year,
-    slug: sourcePost.slug,
-    targetLang: normalizedTargetLang,
-    sourceLang,
-    forceRefresh: options.forceRefresh,
-    contentHash,
-    urls,
-    runner: async () =>
-      translateAndCachePost(c.env, c.env.DB, {
-        year: sourcePost.year,
-        slug: sourcePost.slug,
-        targetLang: normalizedTargetLang,
-        sourceLang,
-        title: sourcePost.title,
-        description: sourcePost.description,
-        content: sourcePost.content,
-        forceRefresh: options.forceRefresh,
-      }),
-    resolveRemoteResult: async () => {
-      const cached = await getCachedTranslationRecord(
-        c.env.DB,
-        sourcePost.year,
-        sourcePost.slug,
-        normalizedTargetLang
-      );
-      if (
-        cached &&
-        cached.content_hash === contentHash &&
-        !isSuspiciousTranslation(sourcePost.content, cached.content)
-      ) {
-        return buildTranslationResponse(cached);
-      }
-
-      throw new Error('Translation job completed without a valid cached translation');
-    },
-    summarizeResult: summarizeTranslationResult,
-    normalizeError: (err): TranslationJobError => {
-      const details = normalizeGenerateError(err);
-      return {
-        status: details.status,
-        code: details.code,
-        message: details.message,
-        retryable: details.retryable,
-        retryAfterSeconds: details.retryAfterSeconds,
-      };
-    },
-    onSuccess: async (_result, settledJob) => {
-      await notifyTranslationJob(c, userId, settledJob.id, urls, sourcePost, normalizedTargetLang, {
-        type: 'success',
-        title: '번역 준비 완료',
-        message: `${sourcePost.title} 번역이 준비되었습니다.`,
-      });
-    },
-    onFailure: async (_error, settledJob, details) => {
-      await notifyTranslationJob(c, userId, settledJob.id, urls, sourcePost, normalizedTargetLang, {
-        type: 'error',
-        title: '번역 준비 실패',
-        message: details.message,
-      });
-    },
-  });
-
-  if (wantsAsyncResponse(c, options)) {
-    applyJobHeaders(c, job.job);
-    c.header('Retry-After', '3');
-    if (job.created) {
-      c.executionCtx.waitUntil(job.wait.catch(() => void 0));
-    }
-    return c.json({ ok: true, data: null, job: job.job }, 202);
-  }
-
+app.get('/public/posts/:year/:slug/translations/:targetLang',cached);
+app.get('/public/posts/:year/:slug/translations/:targetLang/cache',cached);
+app.get('/public/posts/:year/:slug/translations/:targetLang/status',c=>status(c));
+app.post('/internal/posts/:year/:slug/translations/:targetLang/generate',requireAuth,generate);
+app.get('/internal/posts/:year/:slug/translations/:targetLang/generate/status',requireAuth,c=>status(c,'internal'));
+app.get('/internal/posts/:year/:slug/translations/:targetLang/status',requireAuth,c=>status(c,'internal'));
+app.delete('/internal/posts/:year/:slug/translations/:targetLang',requireAdmin,remove);
+app.delete('/internal/posts/:year/:slug/translations/:targetLang/cache',requireAdmin,remove);
+function legacy(c:Context<HonoEnv>,suffix='cache') {
+  c.header('Deprecation','true');c.header('Sunset','Tue, 30 Jun 2026 00:00:00 GMT');
+  try { const p=selector(c);c.header('Link',`</api/v1/public/posts/${p.year}/${encodeURIComponent(p.slug)}/translations/${p.targetLang}/${suffix}>; rel="successor-version"`); } catch {}
+}
+app.get('/translate/:year/:slug/:targetLang',c=>{legacy(c);return cached(c);});
+app.get('/translate/:year/:slug/:targetLang/status',requireAuth,c=>{legacy(c,'status');return status(c,'internal');});
+app.delete('/translate/:year/:slug/:targetLang',requireAdmin,c=>{legacy(c);return remove(c);});
+// Legacy bodies may name a published post, but cannot poison a public cache with supplied private content.
+app.post('/translate',requireAuth,async c=>{
   try {
-    const data = await job.wait;
-    const latestJob = (await getTranslationJobById(c.env.DB, job.job.id)) || job.job;
-    return buildGenerateSuccessResponse(c, data, latestJob);
-  } catch (err) {
-    const latestJob = await getTranslationJobById(c.env.DB, job.job.id);
-    if (latestJob) {
-      applyJobHeaders(c, latestJob);
-    }
-    return handleGenerateError(c, err);
-  }
-}
-
-app.post(
-  '/internal/posts/:year/:slug/translations/:targetLang/generate',
-  requireAuth,
-  async (c) => {
-    const { year, slug, targetLang } = c.req.param();
-    const body = await c.req.json<GenerateOptions>().catch(() => ({}));
-
-    try {
-      const sourcePost = await fetchPublishedPost(c.env, year, slug);
-      if (!sourcePost) {
-        return error(c, 'Published post not found', 404, 'NOT_AVAILABLE');
-      }
-
-      return generateFromSourcePost(c, sourcePost, targetLang, body);
-    } catch (err) {
-      return handleGenerateError(c, err);
-    }
-  }
-);
-
-app.get(
-  '/internal/posts/:year/:slug/translations/:targetLang/generate/status',
-  requireAuth,
-  sendTranslationJobStatus
-);
-app.get(
-  '/internal/posts/:year/:slug/translations/:targetLang/status',
-  requireAuth,
-  sendTranslationJobStatus
-);
-
-app.get('/public/posts/:year/:slug/translations/:targetLang', sendCachedTranslation);
-app.get('/public/posts/:year/:slug/translations/:targetLang/cache', sendCachedTranslation);
-
-app.delete(
-  '/internal/posts/:year/:slug/translations/:targetLang',
-  requireAdmin,
-  deleteCachedTranslation
-);
-app.delete(
-  '/internal/posts/:year/:slug/translations/:targetLang/cache',
-  requireAdmin,
-  deleteCachedTranslation
-);
-
-app.post('/translate', requireAuth, async (c) => {
-  markLegacyTranslateRoute(c, 'generate');
-  const body = await c.req
-    .json<TranslationRequestBody>()
-    .catch(() => ({}) as TranslationRequestBody);
-
-  if (!body.year || !body.slug || !body.targetLang) {
-    return error(c, 'year, slug, and targetLang are required', 400, 'BAD_REQUEST');
-  }
-
-  try {
-    const fetchedSourcePost = await fetchPublishedPost(c.env, body.year, body.slug);
-    const sourcePost =
-      fetchedSourcePost ||
-      (body.title && body.content
-        ? {
-            year: body.year,
-            slug: body.slug,
-            title: body.title,
-            description: body.description || '',
-            content: body.content,
-            sourceLang: normalizeTranslationLang(body.sourceLang) || 'ko',
-          }
-        : null);
-
-    if (!sourcePost) {
-      return error(c, 'Published post not found', 404, 'NOT_AVAILABLE');
-    }
-
-    return generateFromSourcePost(c, sourcePost, body.targetLang, {
-      sourceLang: body.sourceLang,
-      forceRefresh: body.forceRefresh,
-      respondAsync: body.respondAsync,
-    });
-  } catch (err) {
-    return handleGenerateError(c, err);
-  }
+    const body=await c.req.json();const p=normalizeTranslationSelectors(body);
+    c.header('Deprecation','true');c.header('Sunset','Tue, 30 Jun 2026 00:00:00 GMT');
+    const url=new URL(c.req.url);url.pathname=`/internal/posts/${p.year}/${encodeURIComponent(p.slug)}/translations/${p.targetLang}/generate`;
+    const request=new Request(url,{method:'POST',headers:c.req.raw.headers,body:JSON.stringify(body)});
+    const response=await app.fetch(request,c.env,c.executionCtx);
+    response.headers.set('Deprecation','true');response.headers.set('Sunset','Tue, 30 Jun 2026 00:00:00 GMT');
+    return response;
+  }catch(err){return handleError(c,err);}
 });
-
-app.get('/translate/:year/:slug/:targetLang', async (c) => {
-  markLegacyTranslateRoute(c, 'cache');
-  return sendCachedTranslation(c);
-});
-app.get('/translate/:year/:slug/:targetLang/status', requireAuth, async (c) => {
-  markLegacyTranslateRoute(c, 'status');
-  return sendTranslationJobStatus(c);
-});
-
-app.delete('/translate/:year/:slug/:targetLang', requireAdmin, async (c) => {
-  markLegacyTranslateRoute(c, 'delete');
-  return deleteCachedTranslation(c);
-});
-
 export default app;

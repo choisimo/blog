@@ -15,7 +15,10 @@ import { getDomainOutboxRepository } from "../repositories/domain-outbox.reposit
 
 const logger = createLogger('images-route');
 
+import readerImageRender from './readerImageRender.js';
+
 const router = Router();
+router.use('/', readerImageRender);
 const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif"]);
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",

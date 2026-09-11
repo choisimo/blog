@@ -7,7 +7,10 @@ import {
   releaseIdempotencyClaim,
 } from '../lib/idempotency';
 
+import agentPreferences from './agent-preferences';
+
 const user = new Hono<HonoEnv>();
+user.route('/agent-preferences', agentPreferences);
 
 function generateId(): string {
   return crypto.randomUUID();

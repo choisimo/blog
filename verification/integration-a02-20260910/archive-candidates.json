@@ -1,0 +1,1150 @@
+[
+  {
+    "path": "INTEGRATED-DELIVERY.md",
+    "kind": "added"
+  },
+  {
+    "path": "INTEGRATED-RELEASE.md",
+    "kind": "added"
+  },
+  {
+    "path": "MANIFEST.sha256",
+    "kind": "added"
+  },
+  {
+    "path": "READER-EXPERIENCE.md",
+    "kind": "added"
+  },
+  {
+    "path": "backend/.env.example",
+    "kind": "modified"
+  },
+  {
+    "path": "backend/src/routes/ai.js",
+    "kind": "modified"
+  },
+  {
+    "path": "backend/src/routes/chat.js",
+    "kind": "modified"
+  },
+  {
+    "path": "backend/src/routes/images.js",
+    "kind": "modified"
+  },
+  {
+    "path": "backend/src/routes/readerImageRender.js",
+    "kind": "added"
+  },
+  {
+    "path": "backend/src/routes/translate.js",
+    "kind": "modified"
+  },
+  {
+    "path": "backend/src/services/ai-image/litellm-image-generation.service.js",
+    "kind": "modified"
+  },
+  {
+    "path": "backend/src/services/translation-dispatch.service.js",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/README.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/analysis.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/diagnostics/content-inventory.json",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/diagnostics/live-readonly-attempts.json",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/diagnostics/reproduce.mjs",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/diagnostics/results.json",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/diagnostics/source-integrity.json",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/source-evidence.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/ai-seo-audit/tasks.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/anonymous-r07-1/DEPLOYMENT.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/anonymous-r07-1/IMPLEMENTATION.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/generated/route-governance.snapshot.json",
+    "kind": "modified"
+  },
+  {
+    "path": "docs/implementation-plan/CURRENT-STATUS.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/reader-experience/DEPLOYMENT.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/reader-experience/PLAN.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/reader-experience/tasks.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/seo-a01/DEPLOYMENT.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/seo-a01/IMPLEMENTATION.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/translation-a02/DEPLOYMENT.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "docs/translation-a02/IMPLEMENTATION.ko.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/index.html",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/package.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/ai-memo/ai-memo.js",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/ai-memo/anonymous-session.js",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/ai-memo/memo-workspace.css",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/posts/2024/manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/posts/2025/manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/posts/2026/manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/posts/posts-manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/posts-manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--agentverse.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--ai-pair-programmer.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--ai_agent_arena.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--ai_agent_dev-application.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--ai_module.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--aiosk.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--aisubtitlegenerator.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--anime_heaven.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--astaralgorithm.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--audionotes.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--awesome-llm-apps.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--backup_strategy.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--blog.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--boardweb.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--cbt-latest.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--choisimo.github.io.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--code-merger.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--code-shorts.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--code_repository.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--compiler-study-program.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--confighub.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--cpp_loadbalancing_algorithm.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--crawler.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--crawler_supporter.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--custom-blog.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--deep-dive.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--dev-web-server.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--document.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--dothechi.com.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--env_variables_manager.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--examcollector.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--failure_coach_ai.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--firstmate.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--game-repository.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--images.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--jb_team_3people-tigers.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--kb-moodfinancial_diary.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--kb_financial_concierge.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--kotlin_webscrapper.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--magi-agent.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--medower.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--munder-difflin.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--newsinsight.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--nexus-stream.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--nginx-admins-handbook.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--nginx-file-browser.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--nodove_project_flutter.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--objectdetectionapp.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--post-manager.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--program_updater.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--saemangeum-insight-board.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--se_pair_programming.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--se_team_j.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--sftp_file_tracker.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--shopping_web.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--slidecraft-ai.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--springsecurityreactauthorization.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--system-design-primer.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--system-prompts-and-models-of-ai-tools.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--tone-ai-devops.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--toyprojects.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--ubuntu_socket_programming.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--unity_project_2405.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--vid_to_sub.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--weatherapp.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--wsd-assignment-03.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--wsd-movie.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/project-data/choisimo--xiaoxin_pad_2024_settings.md",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/public/projects-manifest.json",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/rss.xml",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/public/sitemap.xml",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/scripts/generate-projects-manifest.js",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/scripts/rebuild-github-project-data.mjs",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/scripts/sync-anonymous-session.mjs",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/App.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/components/features/ai/AgentPreferencesDialog.tsx",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/components/features/ai/AnonymousSessionRecoveryDialog.tsx",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/components/features/ai/GeneratedImageCard.tsx",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/components/features/chat/widget/components/ChatHeader.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/components/features/chat/widget/components/ChatMessages.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/components/features/chat/widget/hooks/useChatActions.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/components/features/chat/widget/index.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/components/features/chat/widget/types.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/components/features/debate/DebateRoom.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/pages/public/BlogPost.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/pages/public/blog-post/BlogPostHeader.test.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/pages/public/blog-post/BlogPostHeader.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/pages/public/blog-post/__tests__/BlogPost.characterization.test.tsx",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/services/chat/api.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/services/chat/context.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/services/content/projectService.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/services/content/translate.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/services/content/translationObservation.ts",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/services/personal/agentPreferences.ts",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/services/personal/readerImages.ts",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/services/session/auth.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/services/session/userContentAuth.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/styles/reader-assistant.css",
+    "kind": "added"
+  },
+  {
+    "path": "frontend/src/test/authService.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/test/sessionAuth.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "frontend/src/test/translationService.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "package.json",
+    "kind": "modified"
+  },
+  {
+    "path": "scripts/verification/a02/backend-options.test.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/a02/dispatch.test.mjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/a02/observer.test.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/a02/server.test.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/a02/support.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/a02/syntax.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/anonymous-r07-1.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/anonymous_r07_browser.py",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/anonymous_r07_fixture_browser.py",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/r07-1/client.test.mjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/r07-1/principal.test.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/r07-1/server.test.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/r07-1/support.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/r07-1/syntax.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/reader-image-contracts.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/reader-source-syntax.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/reader_workspace_browser.py",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/seo-a01-offline.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "scripts/verification/translation-a02.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "shared/package.json",
+    "kind": "modified"
+  },
+  {
+    "path": "shared/src/contracts/agent-preferences.d.ts",
+    "kind": "added"
+  },
+  {
+    "path": "shared/src/contracts/agent-preferences.js",
+    "kind": "added"
+  },
+  {
+    "path": "shared/src/contracts/service-boundaries.js",
+    "kind": "modified"
+  },
+  {
+    "path": "shared/src/contracts/translation-path.d.ts",
+    "kind": "added"
+  },
+  {
+    "path": "shared/src/contracts/translation-path.js",
+    "kind": "added"
+  },
+  {
+    "path": "shared/src/contracts/translation.d.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "shared/src/contracts/translation.js",
+    "kind": "modified"
+  },
+  {
+    "path": "shared/src/runtime/anonymous-session.d.ts",
+    "kind": "added"
+  },
+  {
+    "path": "shared/src/runtime/anonymous-session.js",
+    "kind": "added"
+  },
+  {
+    "path": "shared/test/translation-contract.test.js",
+    "kind": "added"
+  },
+  {
+    "path": "tasks.md",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/README.md",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/a01-install-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/baseline-missing-imports.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/browser-fixture.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/browser-runtime-attempt.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/contracts.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/image-regression.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/seo-regression.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/source-changes.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/syntax.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/worker-runtime-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/anonymous-r07-1/worker-typecheck.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/api-test-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/diagnostics.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/frontend-test-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/reader-contracts.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/reader-to-integrated-diff.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/review-snapshot.cjs",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/review-summary.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/seo-typecheck-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/source-preservation.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/pr-plan-20260910/syntax.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/browser-dark.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/browser-light.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/browser-terminal.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/changed-files.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/contracts-drift.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/contracts.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/delivery.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/dependency-install.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-dark-1360.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-dark-320.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-dark-390.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-light-1360.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-light-320.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-light-390.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-terminal-1360.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-terminal-320.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/memo-terminal-390.png",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/patch-check.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/routes-check.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/reader-experience/syntax.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/dependency-offline-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/reader-image-regression.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/registry-connectivity.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/results.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/runtime-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/source-checks.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/source-integrity.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/typecheck-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/seo-a01/unit-tests.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/README.md",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/contracts.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/dependency-attempt.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/dispatch.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/observer.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/regression-anonymous.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/regression-images.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/regression-seo.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/runtime-gates.log",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/server.tap",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/source-changes.json",
+    "kind": "added"
+  },
+  {
+    "path": "verification/translation-a02/syntax.json",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/package.json",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/index.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/ai-artifact-outbox.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/ai-service.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/anonymous-auth-service.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/anonymous-identity.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/auth-helpers.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/backend-proxy.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/domain-outbox.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/forwarded-access.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/jwt.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/reader-image-policy.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/reader-image-repository.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/reader-image-retention.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/translation-job-repository.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/lib/translation-service.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/middleware/auth.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/middleware/error.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/agent-preferences.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/auth.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/images.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/internal.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/lib/translation-jobs.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/reader-images.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/translate.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/routes/user.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/src/types.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/test/anonymous-ownership.test.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/api-gateway/test/auth-contract.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/test/translation-job-repository.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/test/translation-jobs.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/test/translation-routes.test.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/api-gateway/wrangler.toml",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/migrations/0039_reader_image_jobs.sql",
+    "kind": "added"
+  },
+  {
+    "path": "workers/migrations/0040_anonymous_identity_revocations.sql",
+    "kind": "added"
+  },
+  {
+    "path": "workers/migrations/0041_translation_execution.sql",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/package-lock.json",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/seo-gateway/package.json",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/seo-gateway/src/index.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/seo-gateway/src/meta-rewriter.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/seo-gateway/src/post-resolver.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/seo-gateway/src/request-policy.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/src/types.ts",
+    "kind": "modified"
+  },
+  {
+    "path": "workers/seo-gateway/test/gateway-routing.test.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/test/helpers/fixtures.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/test/meta-rewriter.test.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/test/post-resolver.test.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/test/request-policy.test.ts",
+    "kind": "added"
+  },
+  {
+    "path": "workers/seo-gateway/test/runtime/html-rewriter.test.mjs",
+    "kind": "added"
+  }
+]

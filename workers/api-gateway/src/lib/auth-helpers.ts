@@ -1,3 +1,4 @@
+import { AnonymousAuthError, readBearerToken } from './anonymous-identity';
 import { verifyJwt } from './jwt';
 import type { Env } from '../types';
 
@@ -9,7 +10,7 @@ export async function getUserIdFromToken(c: { req: { header(name: string): strin
   const authHeader = c.req.header('Authorization');
   if (!authHeader) return null;
 
-  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const token = readBearerToken(authHeader);
   if (!token) return null;
 
   try {
@@ -17,7 +18,8 @@ export async function getUserIdFromToken(c: { req: { header(name: string): strin
     // Reject refresh tokens
     if (payload.type === 'refresh') return null;
     return payload.sub || null;
-  } catch {
+  } catch (cause) {
+    if (cause instanceof AnonymousAuthError && cause.status === 503) throw cause;
     return null;
   }
 }

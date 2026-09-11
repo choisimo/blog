@@ -3,6 +3,7 @@ export type Env = {
   // Bindings
   DB: D1Database;
   R2: R2Bucket;
+  READER_IMAGES_R2?: R2Bucket; // Dedicated private bucket; never enable r2.dev/custom-domain public access.
   KV: KVNamespace;
 
   // Secrets
@@ -36,6 +37,12 @@ export type Env = {
   AI_DEFAULT_MODEL?: string; // e.g., gpt-4.1 (forced by gateway)
   AI_VISION_MODEL?: string; // e.g., gpt-4o
   PERPLEXITY_MODEL?: string; // e.g., sonar
+  TRANSLATION_EXECUTION_ENABLED?: string;
+  TRANSLATION_WARM_ENABLED?: string;
+  TRANSLATION_MAX_CONCURRENT?: string;
+  TRANSLATION_DAILY_ATTEMPTS?: string;
+  TRANSLATION_DAILY_TOKEN_BUDGET?: string;
+  TRANSLATION_POST_DAILY_ATTEMPTS?: string;
   AI_WARM_MAX_QUEUE_LENGTH?: string;
   AI_WARM_MAX_DLQ_LENGTH?: string;
   AI_WARM_SCAN_INTERVAL_MS?: string;
@@ -56,6 +63,9 @@ export type Env = {
   ENV: 'development' | 'staging' | 'production';
   ALLOWED_ORIGINS?: string;
   FEATURE_AI_ENABLED?: string;
+  FEATURE_READER_IMAGES?: string;
+  MEMBER_IMAGE_DAILY_LIMIT?: string;
+  IMAGE_GLOBAL_DAILY_LIMIT?: string;
   FEATURE_RAG_ENABLED?: string;
   FEATURE_TERMINAL_ENABLED?: string;
   FEATURE_AI_INLINE?: string;

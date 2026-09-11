@@ -39,7 +39,19 @@
       "types": "./src/contracts/data-ownership.d.ts",
       "default": "./src/contracts/data-ownership.js"
     },
-    "./contracts/workers": "./src/contracts/workers.js"
+    "./contracts/workers": "./src/contracts/workers.js",
+    "./contracts/agent-preferences": {
+      "types": "./src/contracts/agent-preferences.d.ts",
+      "default": "./src/contracts/agent-preferences.js"
+    },
+    "./runtime/anonymous-session": {
+      "types": "./src/runtime/anonymous-session.d.ts",
+      "default": "./src/runtime/anonymous-session.js"
+    },
+    "./contracts/translation-path": {
+      "types": "./src/contracts/translation-path.d.ts",
+      "default": "./src/contracts/translation-path.js"
+    }
   },
   "dependencies": {
     "zod": "^3.23.8"

@@ -175,6 +175,7 @@ async function collectAuthSemantics() {
     workerAuthRouteSource,
     backendJwtSource,
     workerJwtSource,
+    workerAnonymousAuthSource,
   ] = await Promise.all([
     readSource(authSemanticsFiles.backendUserAuth),
     readSource(authSemanticsFiles.workerUserAuth),
@@ -182,6 +183,7 @@ async function collectAuthSemantics() {
     readSource(authSemanticsFiles.workerAuthRoutes),
     readSource("backend/src/lib/jwt.js"),
     readSource("workers/api-gateway/src/lib/jwt.ts"),
+    readSource("workers/api-gateway/src/lib/anonymous-auth-service.ts"),
   ]);
 
   return {
@@ -205,9 +207,10 @@ async function collectAuthSemantics() {
         /type: 'access'/.test(backendAuthRouteSource) &&
         /tokenClass: 'anonymous'/.test(backendAuthRouteSource),
       worker:
-        /role: 'anonymous'/.test(workerAuthRouteSource) &&
-        /type: 'access'/.test(workerAuthRouteSource) &&
-        /tokenClass: 'anonymous'/.test(workerAuthRouteSource),
+        /issueAnonymousToken/.test(workerAuthRouteSource) &&
+        /role: 'anonymous'/.test(workerAnonymousAuthSource) &&
+        /type: 'access'/.test(workerAnonymousAuthSource) &&
+        /tokenClass: 'anonymous'/.test(workerAnonymousAuthSource),
     },
     legacyAnonymousCompat: {
       backend:

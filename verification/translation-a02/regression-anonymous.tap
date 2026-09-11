@@ -1,0 +1,516 @@
+TAP version 13
+# Subtest: first visit stores only the server subject and retains local memo
+ok 1 - first visit stores only the server subject and retains local memo
+  ---
+  duration_ms: 33.296221
+  type: 'test'
+  ...
+# Subtest: 100 simultaneous first requests are one logical request
+ok 2 - 100 simultaneous first requests are one logical request
+  ---
+  duration_ms: 16.239301
+  type: 'test'
+  ...
+# Subtest: far-from-expiry proof is used without an extra request
+ok 3 - far-from-expiry proof is used without an extra request
+  ---
+  duration_ms: 0.766882
+  type: 'test'
+  ...
+# Subtest: renewal sends old proof and retains the same exact subject
+ok 4 - renewal sends old proof and retains the same exact subject
+  ---
+  duration_ms: 1.709382
+  type: 'test'
+  ...
+# Subtest: transient 500 keeps valid proof; no fresh issuance
+ok 5 - transient 500 keeps valid proof; no fresh issuance
+  ---
+  duration_ms: 1.72297
+  type: 'test'
+  ...
+# Subtest: transient 502 keeps valid proof; no fresh issuance
+ok 6 - transient 502 keeps valid proof; no fresh issuance
+  ---
+  duration_ms: 1.443482
+  type: 'test'
+  ...
+# Subtest: transient 503 keeps valid proof; no fresh issuance
+ok 7 - transient 503 keeps valid proof; no fresh issuance
+  ---
+  duration_ms: 1.001605
+  type: 'test'
+  ...
+# Subtest: transient 504 keeps valid proof; no fresh issuance
+ok 8 - transient 504 keeps valid proof; no fresh issuance
+  ---
+  duration_ms: 3.579802
+  type: 'test'
+  ...
+# Subtest: transient 429 keeps valid proof; no fresh issuance
+ok 9 - transient 429 keeps valid proof; no fresh issuance
+  ---
+  duration_ms: 1.288682
+  type: 'test'
+  ...
+# Subtest: network failure preserves valid proof
+ok 10 - network failure preserves valid proof
+  ---
+  duration_ms: 1.513864
+  type: 'test'
+  ...
+# Subtest: forced refresh after a rejected operation never replays the rejected proof on 503
+ok 11 - forced refresh after a rejected operation never replays the rejected proof on 503
+  ---
+  duration_ms: 2.259187
+  type: 'test'
+  ...
+# Subtest: definitive 401 keeps proof and requires explicit recovery
+ok 12 - definitive 401 keeps proof and requires explicit recovery
+  ---
+  duration_ms: 1.208321
+  type: 'test'
+  ...
+# Subtest: definitive 403 keeps proof and requires explicit recovery
+ok 13 - definitive 403 keeps proof and requires explicit recovery
+  ---
+  duration_ms: 0.717189
+  type: 'test'
+  ...
+# Subtest: expired/malformed stored proof is not silently cleared (276 chars)
+ok 14 - expired/malformed stored proof is not silently cleared (276 chars)
+  ---
+  duration_ms: 4.487357
+  type: 'test'
+  ...
+# Subtest: expired/malformed stored proof is not silently cleared (12 chars)
+ok 15 - expired/malformed stored proof is not silently cleared (12 chars)
+  ---
+  duration_ms: 0.420144
+  type: 'test'
+  ...
+# Subtest: expired/malformed stored proof is not silently cleared (14 chars)
+ok 16 - expired/malformed stored proof is not silently cleared (14 chars)
+  ---
+  duration_ms: 0.225761
+  type: 'test'
+  ...
+# Subtest: renewal to a different owner is refused even after HTTP 200
+ok 17 - renewal to a different owner is refused even after HTTP 200
+  ---
+  duration_ms: 4.828606
+  type: 'test'
+  ...
+# Subtest: malformed success cannot be saved
+ok 18 - malformed success cannot be saved
+  ---
+  duration_ms: 0.588568
+  type: 'test'
+  ...
+# Subtest: late refresh does not overwrite a changed storage credential
+ok 19 - late refresh does not overwrite a changed storage credential
+  ---
+  duration_ms: 0.822399
+  type: 'test'
+  ...
+# Subtest: late initial issue cannot overwrite another tab
+ok 20 - late initial issue cannot overwrite another tab
+  ---
+  duration_ms: 1.061421
+  type: 'test'
+  ...
+# Subtest: Web Lock is acquired before reading credential and issuing
+ok 21 - Web Lock is acquired before reading credential and issuing
+  ---
+  duration_ms: 0.502129
+  type: 'test'
+  ...
+# Subtest: unavailable storage prevents creation instead of making ephemeral owners
+ok 22 - unavailable storage prevents creation instead of making ephemeral owners
+  ---
+  duration_ms: 0.203837
+  type: 'test'
+  ...
+# Subtest: failed storage write does not report a new session as established
+ok 23 - failed storage write does not report a new session as established
+  ---
+  duration_ms: 0.483809
+  type: 'test'
+  ...
+# Subtest: explicit new identity requires confirmation and expected stored credential
+ok 24 - explicit new identity requires confirmation and expected stored credential
+  ---
+  duration_ms: 2.6046
+  type: 'test'
+  ...
+# Subtest: failed explicit reset preserves old credential and draft
+ok 25 - failed explicit reset preserves old credential and draft
+  ---
+  duration_ms: 0.562864
+  type: 'test'
+  ...
+# Subtest: explicit reset rejects stale dialog state without a request
+ok 26 - explicit reset rejects stale dialog state without a request
+  ---
+  duration_ms: 0.422998
+  type: 'test'
+  ...
+# Subtest: closing/reset cancellation before result prevents local identity change
+ok 27 - closing/reset cancellation before result prevents local identity change
+  ---
+  duration_ms: 1.024009
+  type: 'test'
+  ...
+# Subtest: account login during explicit reset prevents a new guest credential commit
+ok 28 - account login during explicit reset prevents a new guest credential commit
+  ---
+  duration_ms: 3.812301
+  type: 'test'
+  ...
+# Subtest: checked-in memo module is byte-for-byte the canonical runtime
+ok 29 - checked-in memo module is byte-for-byte the canonical runtime
+  ---
+  duration_ms: 2.148823
+  type: 'test'
+  ...
+# Subtest: a request queued behind an explicit owner change does not resume under the new owner
+ok 30 - a request queued behind an explicit owner change does not resume under the new owner
+  ---
+  duration_ms: 0.872724
+  type: 'test'
+  ...
+# Subtest: valid member is used without anonymous requests
+ok 31 - valid member is used without anonymous requests
+  ---
+  duration_ms: 1.986106
+  type: 'test'
+  ...
+# Subtest: expired member session cannot become an anonymous operation
+ok 32 - expired member session cannot become an anonymous operation
+  ---
+  duration_ms: 0.91634
+  type: 'test'
+  ...
+# Subtest: failed member operation does not clear auth or retry as a guest
+ok 33 - failed member operation does not clear auth or retry as a guest
+  ---
+  duration_ms: 0.630721
+  type: 'test'
+  ...
+# Subtest: near-expiry guest is renewed instead of being cleared by principal selection
+ok 34 - near-expiry guest is renewed instead of being cleared by principal selection
+  ---
+  duration_ms: 19.9721
+  type: 'test'
+  ...
+# Subtest: guest auth retry preserves owner on a temporary server failure
+ok 35 - guest auth retry preserves owner on a temporary server failure
+  ---
+  duration_ms: 0.969072
+  type: 'test'
+  ...
+# Subtest: login during pending anonymous acquisition stops the prior operation
+ok 36 - login during pending anonymous acquisition stops the prior operation
+  ---
+  duration_ms: 2.961734
+  type: 'test'
+  ...
+# Subtest: invalid stored header is not exposed and is not erased implicitly
+ok 37 - invalid stored header is not exposed and is not erased implicitly
+  ---
+  duration_ms: 0.200448
+  type: 'test'
+  ...
+# (node:1420) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: server mints an unpredictable subject; body cannot select roles, sub or tier
+ok 38 - server mints an unpredictable subject; body cannot select roles, sub or tier
+  ---
+  duration_ms: 16.208331
+  type: 'test'
+  ...
+# Subtest: 100 fresh visits get 100 distinct server subjects
+ok 39 - 100 fresh visits get 100 distinct server subjects
+  ---
+  duration_ms: 28.288715
+  type: 'test'
+  ...
+# Subtest: an ID hint without proof cannot claim an owner (anon-11111111-1111-4111-8111-111111111111)
+ok 40 - an ID hint without proof cannot claim an owner (anon-11111111-1111-4111-8111-111111111111)
+  ---
+  duration_ms: 2.178379
+  type: 'test'
+  ...
+# Subtest: an ID hint without proof cannot claim an owner (admin)
+ok 41 - an ID hint without proof cannot claim an owner (admin)
+  ---
+  duration_ms: 1.766
+  type: 'test'
+  ...
+# Subtest: an ID hint without proof cannot claim an owner (null)
+ok 42 - an ID hint without proof cannot claim an owner (null)
+  ---
+  duration_ms: 1.61627
+  type: 'test'
+  ...
+# Subtest: an ID hint without proof cannot claim an owner (1)
+ok 43 - an ID hint without proof cannot claim an owner (1)
+  ---
+  duration_ms: 1.215093
+  type: 'test'
+  ...
+# Subtest: an ID hint without proof cannot claim an owner ()
+ok 44 - an ID hint without proof cannot claim an owner ()
+  ---
+  duration_ms: 1.005885
+  type: 'test'
+  ...
+# Subtest: fingerprint and IP hints never recover the supplied ID
+ok 45 - fingerprint and IP hints never recover the supplied ID
+  ---
+  duration_ms: 7.424575
+  type: 'test'
+  ...
+# Subtest: valid proof and matching ID preserve exact subject and all prior tokens
+ok 46 - valid proof and matching ID preserve exact subject and all prior tokens
+  ---
+  duration_ms: 5.637434
+  type: 'test'
+  ...
+# Subtest: another valid owner cannot recover a known ID
+ok 47 - another valid owner cannot recover a known ID
+  ---
+  duration_ms: 2.874887
+  type: 'test'
+  ...
+# Subtest: canonical legacy anonymous access proof without jti remains valid
+ok 48 - canonical legacy anonymous access proof without jti remains valid
+  ---
+  duration_ms: 3.024969
+  type: 'test'
+  ...
+# Subtest: 100 concurrent renewals stay on one owner, with distinct token IDs
+ok 49 - 100 concurrent renewals stay on one owner, with distinct token IDs
+  ---
+  duration_ms: 34.524204
+  type: 'test'
+  ...
+# Subtest: invalid renewal cannot issue a new owner (undefined)
+ok 50 - invalid renewal cannot issue a new owner (undefined)
+  ---
+  duration_ms: 1.082062
+  type: 'test'
+  ...
+# Subtest: invalid renewal cannot issue a new owner ()
+ok 51 - invalid renewal cannot issue a new owner ()
+  ---
+  duration_ms: 0.88943
+  type: 'test'
+  ...
+# Subtest: invalid renewal cannot issue a new owner (Basic xyz)
+ok 52 - invalid renewal cannot issue a new owner (Basic xyz)
+  ---
+  duration_ms: 0.803201
+  type: 'test'
+  ...
+# Subtest: invalid renewal cannot issue a new owner (token)
+ok 53 - invalid renewal cannot issue a new owner (token)
+  ---
+  duration_ms: 0.961235
+  type: 'test'
+  ...
+# Subtest: invalid renewal cannot issue a new owner (Bearer x.y.z)
+ok 54 - invalid renewal cannot issue a new owner (Bearer x.y.z)
+  ---
+  duration_ms: 0.728091
+  type: 'test'
+  ...
+# Subtest: invalid renewal cannot issue a new owner (Bearer x.y.z)
+ok 55 - invalid renewal cannot issue a new owner (Bearer x.y.z)
+  ---
+  duration_ms: 0.753051
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {}
+ok 56 - reject malformed, expired or wrong-purpose claims: {}
+  ---
+  duration_ms: 2.652362
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"exp":null}
+ok 57 - reject malformed, expired or wrong-purpose claims: {"exp":null}
+  ---
+  duration_ms: 4.328975
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"exp":1789021237}
+ok 58 - reject malformed, expired or wrong-purpose claims: {"exp":1789021237}
+  ---
+  duration_ms: 3.019101
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"exp":0}
+ok 59 - reject malformed, expired or wrong-purpose claims: {"exp":0}
+  ---
+  duration_ms: 1.970916
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"nbf":1789031237}
+ok 60 - reject malformed, expired or wrong-purpose claims: {"nbf":1789031237}
+  ---
+  duration_ms: 1.604617
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"iss":"different"}
+ok 61 - reject malformed, expired or wrong-purpose claims: {"iss":"different"}
+  ---
+  duration_ms: 6.588464
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"aud":"different"}
+ok 62 - reject malformed, expired or wrong-purpose claims: {"aud":"different"}
+  ---
+  duration_ms: 5.682975
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"role":"admin"}
+ok 63 - reject malformed, expired or wrong-purpose claims: {"role":"admin"}
+  ---
+  duration_ms: 2.052013
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {}
+ok 64 - reject malformed, expired or wrong-purpose claims: {}
+  ---
+  duration_ms: 2.975931
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"type":"refresh"}
+ok 65 - reject malformed, expired or wrong-purpose claims: {"type":"refresh"}
+  ---
+  duration_ms: 1.632548
+  type: 'test'
+  ...
+# Subtest: reject malformed, expired or wrong-purpose claims: {"sub":"anon-invalid"}
+ok 66 - reject malformed, expired or wrong-purpose claims: {"sub":"anon-invalid"}
+  ---
+  duration_ms: 1.526733
+  type: 'test'
+  ...
+# Subtest: the allowlisted JWT header is mandatory: {"alg":"none","typ":"JWT"}
+ok 67 - the allowlisted JWT header is mandatory: {"alg":"none","typ":"JWT"}
+  ---
+  duration_ms: 0.928835
+  type: 'test'
+  ...
+# Subtest: the allowlisted JWT header is mandatory: {"alg":"HS512","typ":"JWT"}
+ok 68 - the allowlisted JWT header is mandatory: {"alg":"HS512","typ":"JWT"}
+  ---
+  duration_ms: 0.823777
+  type: 'test'
+  ...
+# Subtest: the allowlisted JWT header is mandatory: {"alg":"HS256","typ":"access"}
+ok 69 - the allowlisted JWT header is mandatory: {"alg":"HS256","typ":"access"}
+  ---
+  duration_ms: 0.683665
+  type: 'test'
+  ...
+# Subtest: the allowlisted JWT header is mandatory: {"alg":"HS256","typ":"JWT","crit":["unknown"]}
+ok 70 - the allowlisted JWT header is mandatory: {"alg":"HS256","typ":"JWT","crit":["unknown"]}
+  ---
+  duration_ms: 0.657392
+  type: 'test'
+  ...
+# Subtest: tampered signature and attacker-signed proof fail
+ok 71 - tampered signature and attacker-signed proof fail
+  ---
+  duration_ms: 2.369538
+  type: 'test'
+  ...
+# Subtest: member/admin tokens cannot be exchanged into anonymous ownership
+ok 72 - member/admin tokens cannot be exchanged into anonymous ownership
+  ---
+  duration_ms: 1.65901
+  type: 'test'
+  ...
+# Subtest: revocation invalidates old and renewed proof but does not delete personal content
+ok 73 - revocation invalidates old and renewed proof but does not delete personal content
+  ---
+  duration_ms: 22.65838
+  type: 'test'
+  ...
+# Subtest: revocation is idempotent and does not affect another anonymous owner
+ok 74 - revocation is idempotent and does not affect another anonymous owner
+  ---
+  duration_ms: 2.76784
+  type: 'test'
+  ...
+# Subtest: revocation/renewal race cannot produce an authorized post-revocation token
+ok 75 - revocation/renewal race cannot produce an authorized post-revocation token
+  ---
+  duration_ms: 2.368065
+  type: 'test'
+  ...
+# Subtest: missing revocation migration fails closed with 503 rather than resetting an identity
+ok 76 - missing revocation migration fails closed with 503 rather than resetting an identity
+  ---
+  duration_ms: 6.137742
+  type: 'test'
+  ...
+# Subtest: admin access/refresh authentication remains independent of anonymous revocation storage
+ok 77 - admin access/refresh authentication remains independent of anonymous revocation storage
+  ---
+  duration_ms: 3.358357
+  type: 'test'
+  ...
+# Subtest: authorized downstream errors are not mislabeled as expired tokens
+ok 78 - authorized downstream errors are not mislabeled as expired tokens
+  ---
+  duration_ms: 2.125229
+  type: 'test'
+  ...
+# Subtest: canonical anonymous proof resolves same memo user before and after renewal
+ok 79 - canonical anonymous proof resolves same memo user before and after renewal
+  ---
+  duration_ms: 3.679126
+  type: 'test'
+  ...
+# Subtest: image ownership hash, guest five-image count and account role separation survive renewal
+ok 80 - image ownership hash, guest five-image count and account role separation survive renewal
+  ---
+  duration_ms: 4.491633
+  type: 'test'
+  ...
+# Subtest: Bearer extraction rejects absent schemes and whitespace/control smuggling
+ok 81 - Bearer extraction rejects absent schemes and whitespace/control smuggling
+  ---
+  duration_ms: 0.195554
+  type: 'test'
+  ...
+# Subtest: all forwarding paths can reject revoked user proof before origin calls
+ok 82 - all forwarding paths can reject revoked user proof before origin calls
+  ---
+  duration_ms: 17.200501
+  type: 'test'
+  ...
+# Subtest: forwarding guard preserves 503 for an unavailable anonymous revocation store
+ok 83 - forwarding guard preserves 503 for an unavailable anonymous revocation store
+  ---
+  duration_ms: 2.715494
+  type: 'test'
+  ...
+# Subtest: forwarding without user credentials remains subject to existing route policy
+ok 84 - forwarding without user credentials remains subject to existing route policy
+  ---
+  duration_ms: 1.098034
+  type: 'test'
+  ...
+1..84
+# tests 84
+# suites 0
+# pass 84
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 740.186449

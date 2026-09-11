@@ -1,0 +1,26 @@
+[
+  {
+    "theme": "light",
+    "width": 320,
+    "checks": "PASS",
+    "consoleErrors": [],
+    "storage": "memory-adapter",
+    "memoHeight": 556
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "checks": "PASS",
+    "consoleErrors": [],
+    "storage": "memory-adapter",
+    "memoHeight": 556
+  },
+  {
+    "theme": "light",
+    "width": 1360,
+    "checks": "PASS",
+    "consoleErrors": [],
+    "storage": "memory-adapter",
+    "memoHeight": 457
+  }
+]

@@ -1,3 +1,4 @@
+import { preferenceScope } from '@/services/personal/agentPreferences';
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/ui/use-mobile';
@@ -298,6 +299,7 @@ export default function ChatWidget(props: {
       `3-5문장 이내로 핵심 논거를 제시하세요.\n\n주제: ${topic}`;
 
     const rounds = 2;
+    const visualScope = preferenceScope();
 
     const runDebateTurn = async (params: {
       prompt: string;
@@ -331,6 +333,9 @@ export default function ChatWidget(props: {
         );
       }
 
+      if (!params.signal.aborted && text.trim() && params.id.startsWith('debate_pro_1_')) {
+        setMessages(prev => prev.map(m => m.id === params.id ? { ...m, visualPrompt: topic, visualScope, visualPurpose: 'debate' } : m));
+      }
       return text;
     };
 

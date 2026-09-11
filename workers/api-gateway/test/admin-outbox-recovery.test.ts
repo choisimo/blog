@@ -103,6 +103,7 @@ beforeEach(async () => {
     scanned: 1,
     skipped: false,
     reason: 'ok',
+    translations: { processed: 0, failed: 0, deferred: 0, enabled: false },
   });
 });
 
@@ -115,6 +116,7 @@ describe('admin outbox recovery routes', () => {
       scanned: 3,
       skipped: false,
       reason: 'ok',
+    translations: { processed: 0, failed: 0, deferred: 0, enabled: false },
     };
     outboxMocks.flushAiArtifactOutbox.mockResolvedValueOnce(flushResult);
 

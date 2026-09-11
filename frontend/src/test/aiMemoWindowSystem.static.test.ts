@@ -39,8 +39,12 @@ describe("AI Memo window system assets", () => {
 
     expect(js).toContain("anonymousToken: 'anon.token'");
     expect(js).toContain("getAiJsonHeaders");
-    expect(js).toContain("/api/v1/auth/anonymous");
-    expect(js).toContain("Authorization: `Bearer ${token}`");
+    const runtime = readFileSync(resolve(root, "public/ai-memo/anonymous-session.js"), "utf8");
+    const sharedRuntime = readFileSync(resolve(root, "../shared/src/runtime/anonymous-session.js"), "utf8");
+    expect(runtime).toBe(sharedRuntime);
+    expect(runtime).toContain("/api/v1/auth/anonymous");
+    expect(js).toContain("runtime.getAnonymousSession({ apiBase });");
+    expect(js).toContain("headers.Authorization = `Bearer ${token}`;");
     expect(js).toContain("const headers = await this.getAiJsonHeaders(backend);");
   });
 

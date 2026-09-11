@@ -1,0 +1,684 @@
+# A01 isolated Node unit tests; TypeScript 5.8.3; 12 source/test files transpiled.
+# External fetch is fixture-backed. Actual HTMLRewriter/runtime verification: npm run test:runtime in workers/seo-gateway.
+TAP version 13
+# Subtest: isCrawler detects common crawler user agents
+ok 1 - isCrawler detects common crawler user agents
+  ---
+  duration_ms: 1.501771
+  type: 'test'
+  ...
+# Subtest: isCrawler ignores normal browser traffic
+ok 2 - isCrawler ignores normal browser traffic
+  ---
+  duration_ms: 0.548929
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /robots.txt
+ok 3 - resource parity: Googlebot /robots.txt
+  ---
+  duration_ms: 34.719596
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /sitemap.xml
+ok 4 - resource parity: Googlebot /sitemap.xml
+  ---
+  duration_ms: 1.282811
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /rss.xml
+ok 5 - resource parity: Googlebot /rss.xml
+  ---
+  duration_ms: 1.328003
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /assets/app.js
+ok 6 - resource parity: Googlebot /assets/app.js
+  ---
+  duration_ms: 1.351932
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /assets/app.css
+ok 7 - resource parity: Googlebot /assets/app.css
+  ---
+  duration_ms: 2.785366
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /images/cover.png
+ok 8 - resource parity: Googlebot /images/cover.png
+  ---
+  duration_ms: 1.141635
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /posts-manifest.json
+ok 9 - resource parity: Googlebot /posts-manifest.json
+  ---
+  duration_ms: 1.787587
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /posts/2026/a.md
+ok 10 - resource parity: Googlebot /posts/2026/a.md
+  ---
+  duration_ms: 1.16451
+  type: 'test'
+  ...
+# Subtest: resource parity: Googlebot /posts/2026/a-simulator.html
+ok 11 - resource parity: Googlebot /posts/2026/a-simulator.html
+  ---
+  duration_ms: 1.967607
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /robots.txt
+ok 12 - resource parity: Bingbot /robots.txt
+  ---
+  duration_ms: 1.15796
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /sitemap.xml
+ok 13 - resource parity: Bingbot /sitemap.xml
+  ---
+  duration_ms: 0.8485
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /rss.xml
+ok 14 - resource parity: Bingbot /rss.xml
+  ---
+  duration_ms: 0.701187
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /assets/app.js
+ok 15 - resource parity: Bingbot /assets/app.js
+  ---
+  duration_ms: 1.830644
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /assets/app.css
+ok 16 - resource parity: Bingbot /assets/app.css
+  ---
+  duration_ms: 0.512815
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /images/cover.png
+ok 17 - resource parity: Bingbot /images/cover.png
+  ---
+  duration_ms: 0.422
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /posts-manifest.json
+ok 18 - resource parity: Bingbot /posts-manifest.json
+  ---
+  duration_ms: 0.345219
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /posts/2026/a.md
+ok 19 - resource parity: Bingbot /posts/2026/a.md
+  ---
+  duration_ms: 0.431921
+  type: 'test'
+  ...
+# Subtest: resource parity: Bingbot /posts/2026/a-simulator.html
+ok 20 - resource parity: Bingbot /posts/2026/a-simulator.html
+  ---
+  duration_ms: 0.507075
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /robots.txt
+ok 21 - resource parity: Mozilla/5.0 /robots.txt
+  ---
+  duration_ms: 0.349728
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /sitemap.xml
+ok 22 - resource parity: Mozilla/5.0 /sitemap.xml
+  ---
+  duration_ms: 0.406737
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /rss.xml
+ok 23 - resource parity: Mozilla/5.0 /rss.xml
+  ---
+  duration_ms: 0.670267
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /assets/app.js
+ok 24 - resource parity: Mozilla/5.0 /assets/app.js
+  ---
+  duration_ms: 1.763548
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /assets/app.css
+ok 25 - resource parity: Mozilla/5.0 /assets/app.css
+  ---
+  duration_ms: 1.414271
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /images/cover.png
+ok 26 - resource parity: Mozilla/5.0 /images/cover.png
+  ---
+  duration_ms: 0.831526
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /posts-manifest.json
+ok 27 - resource parity: Mozilla/5.0 /posts-manifest.json
+  ---
+  duration_ms: 0.63913
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /posts/2026/a.md
+ok 28 - resource parity: Mozilla/5.0 /posts/2026/a.md
+  ---
+  duration_ms: 0.683075
+  type: 'test'
+  ...
+# Subtest: resource parity: Mozilla/5.0 /posts/2026/a-simulator.html
+ok 29 - resource parity: Mozilla/5.0 /posts/2026/a-simulator.html
+  ---
+  duration_ms: 2.844691
+  type: 'test'
+  ...
+# Subtest: conditional asset requests forward validators, never user credentials, and keep 304
+ok 30 - conditional asset requests forward validators, never user credentials, and keep 304
+  ---
+  duration_ms: 0.653401
+  type: 'test'
+  ...
+# Subtest: resource HEAD preserves content length and validator headers with no body
+ok 31 - resource HEAD preserves content length and validator headers with no body
+  ---
+  duration_ms: 0.416356
+  type: 'test'
+  ...
+# Subtest: range response stays 206 with Content-Range and unchanged bytes
+ok 32 - range response stays 206 with Content-Range and unchanged bytes
+  ---
+  duration_ms: 8.405816
+  type: 'test'
+  ...
+# Subtest: resource origin status 404 is preserved and not cached as success
+ok 33 - resource origin status 404 is preserved and not cached as success
+  ---
+  duration_ms: 0.692485
+  type: 'test'
+  ...
+# Subtest: resource origin status 403 is preserved and not cached as success
+ok 34 - resource origin status 403 is preserved and not cached as success
+  ---
+  duration_ms: 1.341224
+  type: 'test'
+  ...
+# Subtest: resource origin status 503 is preserved and not cached as success
+ok 35 - resource origin status 503 is preserved and not cached as success
+  ---
+  duration_ms: 1.280831
+  type: 'test'
+  ...
+# Subtest: HTML origin fallback cannot masquerade as JS, PNG or JSON
+ok 36 - HTML origin fallback cannot masquerade as JS, PNG or JSON
+  ---
+  duration_ms: 3.424809
+  type: 'test'
+  ...
+# Subtest: only a missing MIME is supplemented
+ok 37 - only a missing MIME is supplemented
+  ---
+  duration_ms: 0.723834
+  type: 'test'
+  ...
+# Subtest: page HEAD strips shell-specific validators, keeps CSP and noncanonical Link
+ok 38 - page HEAD strips shell-specific validators, keeps CSP and noncanonical Link
+  ---
+  duration_ms: 9.982918
+  type: 'test'
+  ...
+# Subtest: page status: Googlebot missing public article vs origin failure
+ok 39 - page status: Googlebot missing public article vs origin failure
+  ---
+  duration_ms: 2.482428
+  type: 'test'
+  ...
+# Subtest: page status: Bingbot missing public article vs origin failure
+ok 40 - page status: Bingbot missing public article vs origin failure
+  ---
+  duration_ms: 1.891407
+  type: 'test'
+  ...
+# Subtest: page status: Mozilla/5.0 missing public article vs origin failure
+ok 41 - page status: Mozilla/5.0 missing public article vs origin failure
+  ---
+  duration_ms: 3.222733
+  type: 'test'
+  ...
+# Subtest: a resolved page with missing or unavailable shell is not turned into a post 404
+ok 42 - a resolved page with missing or unavailable shell is not turned into a post 404
+  ---
+  duration_ms: 1.43598
+  type: 'test'
+  ...
+# Subtest: alias and decomposed Unicode URLs redirect to their verified canonical only
+ok 43 - alias and decomposed Unicode URLs redirect to their verified canonical only
+  ---
+  duration_ms: 1.466326
+  type: 'test'
+  ...
+# Subtest: unsafe input, unsupported methods and missing routes do not make origin calls
+ok 44 - unsafe input, unsupported methods and missing routes do not make origin calls
+  ---
+  duration_ms: 0.846696
+  type: 'test'
+  ...
+# Subtest: network/timeout produce retryable 5xx without exposing exception messages
+ok 45 - network/timeout produce retryable 5xx without exposing exception messages
+  ---
+  duration_ms: 1.686191
+  type: 'test'
+  ...
+# Subtest: owned metadata removal handles duplicate tags and case-insensitive values
+ok 46 - owned metadata removal handles duplicate tags and case-insensitive values
+  ---
+  duration_ms: 1.692963
+  type: 'test'
+  ...
+# Subtest: unowned head elements and conservative robots policy are preserved
+ok 47 - unowned head elements and conservative robots policy are preserved
+  ---
+  duration_ms: 0.39723
+  type: 'test'
+  ...
+# Subtest: head insertion emits one escaped title, description, canonical and unique article tags
+ok 48 - head insertion emits one escaped title, description, canonical and unique article tags
+  ---
+  duration_ms: 0.746559
+  type: 'test'
+  ...
+# Subtest: each request has a fresh injector; private pages replace indexable robots hints
+ok 49 - each request has a fresh injector; private pages replace indexable robots hints
+  ---
+  duration_ms: 0.352454
+  type: 'test'
+  ...
+# Subtest: projects and actual public routes have their own canonical without fetching manifests
+ok 50 - projects and actual public routes have their own canonical without fetching manifests
+  ---
+  duration_ms: 7.213999
+  type: 'test'
+  ...
+# Subtest: unpublished article is not exposed; canonical aliases resolve the same public article
+ok 51 - unpublished article is not exposed; canonical aliases resolve the same public article
+  ---
+  duration_ms: 53.287762
+  type: 'test'
+  ...
+# Subtest: encoded Korean, spaces, NFC and dotted titles resolve without fabricated slug titles
+ok 52 - encoded Korean, spaces, NFC and dotted titles resolve without fabricated slug titles
+  ---
+  duration_ms: 3.174603
+  type: 'test'
+  ...
+# Subtest: supplied source manifest: every published post is resolvable (not a live-site probe)
+ok 53 - supplied source manifest: every published post is resolvable (not a live-site probe)
+  ---
+  duration_ms: 24.403746
+  type: 'test'
+  ...
+# Subtest: manifest status 404 is not mistaken for deleted articles
+ok 54 - manifest status 404 is not mistaken for deleted articles
+  ---
+  duration_ms: 1.244772
+  type: 'test'
+  ...
+# Subtest: manifest status 503 is not mistaken for deleted articles
+ok 55 - manifest status 503 is not mistaken for deleted articles
+  ---
+  duration_ms: 0.752257
+  type: 'test'
+  ...
+# Subtest: manifest status 502 is not mistaken for deleted articles
+ok 56 - manifest status 502 is not mistaken for deleted articles
+  ---
+  duration_ms: 0.625108
+  type: 'test'
+  ...
+# Subtest: manifest status 504 is not mistaken for deleted articles
+ok 57 - manifest status 504 is not mistaken for deleted articles
+  ---
+  duration_ms: 0.530525
+  type: 'test'
+  ...
+# Subtest: manifest status 301 is not mistaken for deleted articles
+ok 58 - manifest status 301 is not mistaken for deleted articles
+  ---
+  duration_ms: 0.899724
+  type: 'test'
+  ...
+# Subtest: malformed/incomplete/ambiguous manifests fail closed without poisoning cache
+ok 59 - malformed/incomplete/ambiguous manifests fail closed without poisoning cache
+  ---
+  duration_ms: 6.204472
+  type: 'test'
+  ...
+# Subtest: manifest network failure and invalid JSON differ
+ok 60 - manifest network failure and invalid JSON differ
+  ---
+  duration_ms: 1.340839
+  type: 'test'
+  ...
+# Subtest: manifest cache is bounded by TTL and scoped to the configured raw origin
+ok 61 - manifest cache is bounded by TTL and scoped to the configured raw origin
+  ---
+  duration_ms: 2.378753
+  type: 'test'
+  ...
+# Subtest: known admin and error routes remain available but not indexable
+ok 62 - known admin and error routes remain available but not indexable
+  ---
+  duration_ms: 0.743071
+  type: 'test'
+  ...
+# Subtest: custom images have no invented dimensions; unsafe image URLs use the existing OG fallback
+ok 63 - custom images have no invented dimensions; unsafe image URLs use the existing OG fallback
+  ---
+  duration_ms: 1.398068
+  type: 'test'
+  ...
+# Subtest: resolver stays aligned with all declared frontend routes (admin shell remains private)
+ok 64 - resolver stays aligned with all declared frontend routes (admin shell remains private)
+  ---
+  duration_ms: 2.377556
+  type: 'test'
+  ...
+# Subtest: path: preserves valid published slug 감동을_잃어버린_그대들에게
+ok 65 - path: preserves valid published slug 감동을_잃어버린_그대들에게
+  ---
+  duration_ms: 3.653688
+  type: 'test'
+  ...
+# Subtest: path: preserves valid published slug Container Network Interface
+ok 66 - path: preserves valid published slug Container Network Interface
+  ---
+  duration_ms: 0.47227
+  type: 'test'
+  ...
+# Subtest: path: preserves valid published slug _index
+ok 67 - path: preserves valid published slug _index
+  ---
+  duration_ms: 0.244655
+  type: 'test'
+  ...
+# Subtest: path: preserves valid published slug node.js
+ok 68 - path: preserves valid published slug node.js
+  ---
+  duration_ms: 0.256117
+  type: 'test'
+  ...
+# Subtest: path: preserves valid published slug v1.2
+ok 69 - path: preserves valid published slug v1.2
+  ---
+  duration_ms: 0.253576
+  type: 'test'
+  ...
+# Subtest: path: NFC comparison does not double-decode manifest text
+ok 70 - path: NFC comparison does not double-decode manifest text
+  ---
+  duration_ms: 2.179433
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %2Fetc
+ok 71 - path: rejects unsafe or repeatedly encoded segment %2Fetc
+  ---
+  duration_ms: 0.347256
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %5cpath
+ok 72 - path: rejects unsafe or repeatedly encoded segment %5cpath
+  ---
+  duration_ms: 0.259116
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %00bad
+ok 73 - path: rejects unsafe or repeatedly encoded segment %00bad
+  ---
+  duration_ms: 0.41966
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %7Fbad
+ok 74 - path: rejects unsafe or repeatedly encoded segment %7Fbad
+  ---
+  duration_ms: 1.631317
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %C2%85bad
+ok 75 - path: rejects unsafe or repeatedly encoded segment %C2%85bad
+  ---
+  duration_ms: 0.256913
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %3Fquery
+ok 76 - path: rejects unsafe or repeatedly encoded segment %3Fquery
+  ---
+  duration_ms: 1.496197
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %23hash
+ok 77 - path: rejects unsafe or repeatedly encoded segment %23hash
+  ---
+  duration_ms: 0.135228
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %252e%252e
+ok 78 - path: rejects unsafe or repeatedly encoded segment %252e%252e
+  ---
+  duration_ms: 0.297984
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %252F
+ok 79 - path: rejects unsafe or repeatedly encoded segment %252F
+  ---
+  duration_ms: 0.125198
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %
+ok 80 - path: rejects unsafe or repeatedly encoded segment %
+  ---
+  duration_ms: 0.202687
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment %ED%A0%80
+ok 81 - path: rejects unsafe or repeatedly encoded segment %ED%A0%80
+  ---
+  duration_ms: 0.1074
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment .
+ok 82 - path: rejects unsafe or repeatedly encoded segment .
+  ---
+  duration_ms: 4.575283
+  type: 'test'
+  ...
+# Subtest: path: rejects unsafe or repeatedly encoded segment ..
+ok 83 - path: rejects unsafe or repeatedly encoded segment ..
+  ---
+  duration_ms: 0.114027
+  type: 'test'
+  ...
+# Subtest: path: rejects repeated separators
+ok 84 - path: rejects repeated separators
+  ---
+  duration_ms: 0.198264
+  type: 'test'
+  ...
+# Subtest: route classification: /robots.txt
+ok 85 - route classification: /robots.txt
+  ---
+  duration_ms: 0.40785
+  type: 'test'
+  ...
+# Subtest: route classification: /sitemap.xml
+ok 86 - route classification: /sitemap.xml
+  ---
+  duration_ms: 0.237858
+  type: 'test'
+  ...
+# Subtest: route classification: /rss.xml
+ok 87 - route classification: /rss.xml
+  ---
+  duration_ms: 0.078331
+  type: 'test'
+  ...
+# Subtest: route classification: /atom.xml
+ok 88 - route classification: /atom.xml
+  ---
+  duration_ms: 0.061239
+  type: 'test'
+  ...
+# Subtest: route classification: /posts-manifest.json
+ok 89 - route classification: /posts-manifest.json
+  ---
+  duration_ms: 0.103215
+  type: 'test'
+  ...
+# Subtest: route classification: /projects-manifest.json
+ok 90 - route classification: /projects-manifest.json
+  ---
+  duration_ms: 0.082256
+  type: 'test'
+  ...
+# Subtest: route classification: /posts/2026/a.md
+ok 91 - route classification: /posts/2026/a.md
+  ---
+  duration_ms: 0.980702
+  type: 'test'
+  ...
+# Subtest: route classification: /posts/2026/manifest.json
+ok 92 - route classification: /posts/2026/manifest.json
+  ---
+  duration_ms: 0.112935
+  type: 'test'
+  ...
+# Subtest: route classification: /project-data/a.md
+ok 93 - route classification: /project-data/a.md
+  ---
+  duration_ms: 0.092935
+  type: 'test'
+  ...
+# Subtest: route classification: /assets/config.json
+ok 94 - route classification: /assets/config.json
+  ---
+  duration_ms: 0.162212
+  type: 'test'
+  ...
+# Subtest: route classification: /assets/index-D1e2F3g4.js
+ok 95 - route classification: /assets/index-D1e2F3g4.js
+  ---
+  duration_ms: 0.12357
+  type: 'test'
+  ...
+# Subtest: route classification: /assets/app.css
+ok 96 - route classification: /assets/app.css
+  ---
+  duration_ms: 0.062946
+  type: 'test'
+  ...
+# Subtest: route classification: /images/cover.png
+ok 97 - route classification: /images/cover.png
+  ---
+  duration_ms: 0.05821
+  type: 'test'
+  ...
+# Subtest: route classification: /ai-memo/ai-memo.js
+ok 98 - route classification: /ai-memo/ai-memo.js
+  ---
+  duration_ms: 0.150595
+  type: 'test'
+  ...
+# Subtest: route classification: /posts/2026/a-simulator.html
+ok 99 - route classification: /posts/2026/a-simulator.html
+  ---
+  duration_ms: 0.065911
+  type: 'test'
+  ...
+# Subtest: route classification: /site.webmanifest
+ok 100 - route classification: /site.webmanifest
+  ---
+  duration_ms: 0.056233
+  type: 'test'
+  ...
+# Subtest: route classification: /post/2026/node.js
+ok 101 - route classification: /post/2026/node.js
+  ---
+  duration_ms: 0.06434
+  type: 'test'
+  ...
+# Subtest: route classification: /post/2026/a/index.html
+ok 102 - route classification: /post/2026/a/index.html
+  ---
+  duration_ms: 0.056392
+  type: 'test'
+  ...
+# Subtest: route classification: /blog/2026/title.html
+ok 103 - route classification: /blog/2026/title.html
+  ---
+  duration_ms: 0.05294
+  type: 'test'
+  ...
+# Subtest: route classification: /admin/config/chat.js
+ok 104 - route classification: /admin/config/chat.js
+  ---
+  duration_ms: 0.053529
+  type: 'test'
+  ...
+# Subtest: route classification: /unknown.route
+ok 105 - route classification: /unknown.route
+  ---
+  duration_ms: 0.051554
+  type: 'test'
+  ...
+# Subtest: route classification: /index.html
+ok 106 - route classification: /index.html
+  ---
+  duration_ms: 0.091262
+  type: 'test'
+  ...
+# Subtest: origin: preserves configured base path and rejects unsafe config
+ok 107 - origin: preserves configured base path and rejects unsafe config
+  ---
+  duration_ms: 1.114619
+  type: 'test'
+  ...
+# Subtest: cache: mutable content never inherits a year-long or independent CDN policy
+ok 108 - cache: mutable content never inherits a year-long or independent CDN policy
+  ---
+  duration_ms: 42.228755
+  type: 'test'
+  ...
+# Subtest: cache: private/no-store/no-cache restrictions outrank hashed names
+ok 109 - cache: private/no-store/no-cache restrictions outrank hashed names
+  ---
+  duration_ms: 1.390692
+  type: 'test'
+  ...
+# Subtest: canonical HTTP Link removal preserves preload URLs/quoted commas
+ok 110 - canonical HTTP Link removal preserves preload URLs/quoted commas
+  ---
+  duration_ms: 0.869828
+  type: 'test'
+  ...
+# Subtest: Link metadata text cannot be mistaken for the canonical relation parameter
+ok 111 - Link metadata text cannot be mistaken for the canonical relation parameter
+  ---
+  duration_ms: 0.321193
+  type: 'test'
+  ...
+# Subtest: hash-shaped asset rules do not match a production suffix or extend an explicit origin TTL
+ok 112 - hash-shaped asset rules do not match a production suffix or extend an explicit origin TTL
+  ---
+  duration_ms: 0.824448
+  type: 'test'
+  ...
+1..112
+# tests 112
+# suites 0
+# pass 112
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 294.710832

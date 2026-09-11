@@ -1,0 +1,183 @@
+{
+  "scope": "Source parse/transpile only, including declarations; not semantic type checking",
+  "compiler": "5.8.3",
+  "checked": 35,
+  "passed": 35,
+  "results": [
+    {
+      "file": "backend/src/routes/ai.js",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "backend/src/routes/translate.js",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/pages/public/BlogPost.tsx",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/pages/public/blog-post/BlogPostHeader.test.tsx",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/pages/public/blog-post/BlogPostHeader.tsx",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/pages/public/blog-post/__tests__/BlogPost.characterization.test.tsx",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/content/translate.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/test/translationService.test.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "shared/src/contracts/translation.d.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "shared/src/contracts/translation.js",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/ai-artifact-outbox.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/ai-service.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/domain-outbox.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/translation-job-repository.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/translation-service.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/internal.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/lib/translation-jobs.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/translate.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/types.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/test/translation-job-repository.test.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/test/translation-jobs.test.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/test/translation-routes.test.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "backend/src/services/translation-dispatch.service.js",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/content/translationObservation.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/a02/backend-options.test.cjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/a02/dispatch.test.mjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/a02/observer.test.cjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/a02/server.test.cjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/a02/support.cjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/a02/syntax.cjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/translation-a02.cjs",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "shared/src/contracts/translation-path.d.ts",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "shared/src/contracts/translation-path.js",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "file": "shared/test/translation-contract.test.js",
+      "passed": true,
+      "errors": []
+    }
+  ]
+}

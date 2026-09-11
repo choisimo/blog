@@ -1,6 +1,1355 @@
 {
-  "total": 0,
-  "items": [],
-  "generatedAt": "2026-09-08T00:01:03.168Z",
+  "total": 68,
+  "items": [
+    {
+      "id": "choisimo--blog",
+      "title": "blog",
+      "description": "개인 블로그의 React 프론트엔드, Cloudflare Workers 게이트웨이, Node.js 백엔드와 k3s 배포 설정을 함께 관리하는 저장소입니다. D1·R2·KV를 사용하는 구성과 운영 문서를 포함합니다.",
+      "date": "2026-09-07",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/blog",
+      "codeUrl": "https://github.com/choisimo/blog/tree/66a196bc0c729e1b9753824fdf6a4adfa2c01569",
+      "featured": false
+    },
+    {
+      "id": "choisimo--firstmate",
+      "title": "firstmate",
+      "description": "하나의 에이전트가 여러 코딩 에이전트와 격리된 Git 작업 공간을 조율하는 firstmate의 포크 저장소입니다.",
+      "date": "2026-08-15",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "포크",
+        "Shell"
+      ],
+      "stack": [
+        "Shell"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/firstmate",
+      "codeUrl": "https://github.com/choisimo/firstmate/tree/f1a4af426d7199c1781bc91ccd143b8e1f732d10",
+      "featured": false
+    },
+    {
+      "id": "choisimo--munder-difflin",
+      "title": "munder-difflin",
+      "description": "여러 코딩 CLI 에이전트를 로컬에서 조율하고 작업 모습을 시각화하는 Munder Difflin의 포크 저장소입니다. Electron·React 기반 멀티 에이전트 도구를 다룹니다.",
+      "date": "2026-08-15",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "포크",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/munder-difflin",
+      "codeUrl": "https://github.com/choisimo/munder-difflin/tree/00a6a73ce123f0f0aee2333424a22582815d8db4",
+      "featured": false
+    },
+    {
+      "id": "choisimo--document",
+      "title": "document",
+      "description": "인프라·개발·보안·알고리즘 기술 문서 허브입니다. MkDocs 출판 소스, 구버전 자료, 자동화 스크립트, 알고리즘 예제와 문서 검증 도구를 함께 관리합니다.",
+      "date": "2026-08-13",
+      "category": "문서",
+      "tags": [
+        "문서",
+        "원본",
+        "HTML"
+      ],
+      "stack": [
+        "HTML"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/document",
+      "codeUrl": "https://github.com/choisimo/document/tree/3f3b95d77124afbbfb94b01ad0ab844779692e7b",
+      "featured": false
+    },
+    {
+      "id": "choisimo--code-shorts",
+      "title": "code-shorts",
+      "description": "알고리즘과 인프라 개념을 이미지·실습 노트·예제로 정리한 개인 학습 아카이브입니다. Git, Kubernetes, Linux, Python, Rust 자료를 주제별로 보관합니다.",
+      "date": "2026-06-29",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/code-shorts",
+      "codeUrl": "https://github.com/choisimo/code-shorts/tree/acb792f18389ea8ec68672ec8c9a1cd804fb0966",
+      "featured": false
+    },
+    {
+      "id": "choisimo--images",
+      "title": "images",
+      "description": "현재 커밋이 없는 공개 저장소입니다. 이미지 자료나 구현된 기능을 확인할 파일이 아직 없습니다.",
+      "date": "2026-06-07",
+      "category": "준비 저장소",
+      "tags": [
+        "준비 저장소",
+        "원본"
+      ],
+      "stack": [],
+      "status": "빈 저장소",
+      "type": "link",
+      "url": "https://github.com/choisimo/images",
+      "codeUrl": "https://github.com/choisimo/images",
+      "featured": false
+    },
+    {
+      "id": "choisimo--aiosk",
+      "title": "AIOSK",
+      "description": "음식점의 메뉴 조회·주문·주문 관리 흐름을 다루는 키오스크 MVP입니다. React 키오스크 화면, Express API, MySQL 모델과 EJS 관리자 화면을 함께 관리합니다.",
+      "date": "2026-06-01",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AIOSK",
+      "codeUrl": "https://github.com/choisimo/AIOSK/tree/64e8b0a957803c546dda862e12f3c6e81c97acca",
+      "featured": false
+    },
+    {
+      "id": "choisimo--cbt-latest",
+      "title": "CBT-latest",
+      "description": "CBT-Diary: 일기 내용을 바탕으로 감정을 분석하고 인지행동치료(CBT) 관점의 제안을 다루는 프로젝트입니다. 인증 서버, 클라이언트, AI, 데이터베이스 디렉터리를 포함합니다.",
+      "date": "2026-06-01",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "Java"
+      ],
+      "stack": [
+        "Java"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/CBT-latest",
+      "codeUrl": "https://github.com/choisimo/CBT-latest/tree/83c34e4832b8a86d5f3577948b12d37b96aad046",
+      "featured": false
+    },
+    {
+      "id": "choisimo--newsinsight",
+      "title": "NewsInsight",
+      "description": "뉴스 수집, 팩트체킹, 심층 분석과 AI 리포팅을 한 작업 화면으로 묶는 프로젝트입니다. React 프론트엔드, Spring Boot 백엔드와 관련 분석·인프라 문서를 포함합니다.",
+      "date": "2026-06-01",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/NewsInsight",
+      "codeUrl": "https://github.com/choisimo/NewsInsight/tree/0aeca9a773050a3d4a0c30f0693f207ad78fdc98",
+      "featured": false
+    },
+    {
+      "id": "choisimo--vid_to_sub",
+      "title": "vid_to_sub",
+      "description": "영상에서 자막·전사 파일을 생성하는 Python CLI·TUI 도구입니다. ffmpeg와 Whisper 계열 백엔드, 선택적인 번역 API·후편집 에이전트 연동을 포함합니다.",
+      "date": "2026-06-01",
+      "category": "미디어",
+      "tags": [
+        "미디어",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/vid_to_sub",
+      "codeUrl": "https://github.com/choisimo/vid_to_sub/tree/6ad96ba2b8a6f4dc6f34128fe810ac0b817c39d0",
+      "featured": false
+    },
+    {
+      "id": "choisimo--medower",
+      "title": "medower",
+      "description": "브라우저 네트워크에서 영상 요청을 감지하고 선택한 항목을 내려받는 PyQt6 데스크톱 앱입니다. mitmproxy 감지, yt-dlp 다운로드와 진행률·취소 UI를 포함합니다.",
+      "date": "2026-04-03",
+      "category": "미디어",
+      "tags": [
+        "미디어",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/medower",
+      "codeUrl": "https://github.com/choisimo/medower/tree/4b543af00eefe84d3d519c0d19b918d8ba0ee7da",
+      "featured": false
+    },
+    {
+      "id": "choisimo--dothechi.com",
+      "title": "dothechi.com",
+      "description": "Flutter 앱과 auth·chat·main 디렉터리를 함께 관리하는 웹·앱 저장소입니다. README는 Nginx 인증 프록시와 SSE 연결 설정을 중심으로 설명합니다.",
+      "date": "2026-02-22",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "Dart"
+      ],
+      "stack": [
+        "Dart"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/dothechi.com",
+      "codeUrl": "https://github.com/choisimo/dothechi.com/tree/26956f6b4d9697149ca7a3e2bb4dec414c176806",
+      "featured": false
+    },
+    {
+      "id": "choisimo--failure_coach_ai",
+      "title": "Failure_Coach_AI",
+      "description": "마음 거울: 자기 성찰 질문과 응답 기록을 중심으로 대화를 이어가는 AI 챗봇입니다. React 화면, 사용자 페르소나 설정과 Cloudflare Worker 게이트웨이 구성을 포함합니다.",
+      "date": "2026-02-22",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Failure_Coach_AI",
+      "codeUrl": "https://github.com/choisimo/Failure_Coach_AI/tree/2644eff51ea93d2dd26f4896f9867d8a66baf6e2",
+      "featured": false
+    },
+    {
+      "id": "choisimo--ai_agent_arena",
+      "title": "AI_Agent_Arena",
+      "description": "26-02 디렉터리에 Python 소스를 둔 공개 저장소입니다. 루트 README와 GitHub 소개가 없어 에이전트 기능의 구체적인 범위는 문서로 확인되지 않았습니다.",
+      "date": "2026-02-19",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI_Agent_Arena",
+      "codeUrl": "https://github.com/choisimo/AI_Agent_Arena/tree/4e7b24ff1a21a6fde7703dfac73e0e6cc7297eca",
+      "featured": false
+    },
+    {
+      "id": "choisimo--system-prompts-and-models-of-ai-tools",
+      "title": "system-prompts-and-models-of-ai-tools",
+      "description": "여러 AI 도구의 시스템 프롬프트·내부 도구·모델 관련 자료를 모은 공개 저장소의 포크입니다.",
+      "date": "2026-01-08",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "포크"
+      ],
+      "stack": [],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/system-prompts-and-models-of-ai-tools",
+      "codeUrl": "https://github.com/choisimo/system-prompts-and-models-of-ai-tools/tree/6b2157ca3eaa6e562cd457a88770dc307c0933f1",
+      "featured": false
+    },
+    {
+      "id": "choisimo--program_updater",
+      "title": "Program_Updater",
+      "description": "설정 파일에 따라 프로그램의 새 버전을 확인하고 갱신하는 Docker 기반 도구입니다. GitHub Release, 직접 URL, 전용 API 등 여러 업데이트 소스와 주기 실행을 다룹니다.",
+      "date": "2025-12-07",
+      "category": "인프라",
+      "tags": [
+        "인프라",
+        "원본",
+        "Shell"
+      ],
+      "stack": [
+        "Shell"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Program_Updater",
+      "codeUrl": "https://github.com/choisimo/Program_Updater/tree/b44678c6b0d4e4b8c0ae7b57f9729bad5ca1899b",
+      "featured": false
+    },
+    {
+      "id": "choisimo--magi-agent",
+      "title": "MAGI-Agent",
+      "description": "에이전트의 할루시네이션을 줄이기 위한 아이디어를 구현한 프로토타입입니다. RAG 수집·검색, 워크플로 조율, 다중 에이전트 합의와 GitOps 자동화를 서비스 단위로 구성합니다.",
+      "date": "2025-10-02",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/MAGI-Agent",
+      "codeUrl": "https://github.com/choisimo/MAGI-Agent/tree/45e84b5ca813d07d4e816d0834c27b31e8148391",
+      "featured": false
+    },
+    {
+      "id": "choisimo--tone-ai-devops",
+      "title": "Tone-AI-Devops",
+      "description": "자연어와 다이어그램으로 클라우드 배포·운영을 돕는 플랫폼을 구상한 프로젝트입니다. React 기반 화면과 설계 문서, Supabase 디렉터리를 포함합니다.",
+      "date": "2025-10-02",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Tone-AI-Devops",
+      "codeUrl": "https://github.com/choisimo/Tone-AI-Devops/tree/d9da69f88b9c9d7197958fa362bdb46dcfe4c840",
+      "featured": false
+    },
+    {
+      "id": "choisimo--slidecraft-ai",
+      "title": "SlideCraft-ai",
+      "description": "텍스트·이미지·PDF 입력을 활용한 AI 프레젠테이션 생성·편집을 주제로 한 웹 프로젝트입니다. React 편집 화면, 백엔드와 관련 설계 문서를 포함합니다.",
+      "date": "2025-09-30",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/SlideCraft-ai",
+      "codeUrl": "https://github.com/choisimo/SlideCraft-ai/tree/c65aceaa76e9ae3d1fb41e2f626cbaacee9f2b99",
+      "featured": false
+    },
+    {
+      "id": "choisimo--ai-pair-programmer",
+      "title": "AI-pair-programmer",
+      "description": "코드 분석·문서화·API 일관성 검사를 주제로 한 AI 페어 프로그래머 웹 프로젝트입니다. README는 React 기반 소개 화면과 코드 예시, 로드맵 구성을 설명합니다.",
+      "date": "2025-09-26",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI-pair-programmer",
+      "codeUrl": "https://github.com/choisimo/AI-pair-programmer/tree/1f9fd1f0d413ef862856f9aab43dc2aa47a3a54b",
+      "featured": false
+    },
+    {
+      "id": "choisimo--nexus-stream",
+      "title": "Nexus-Stream",
+      "description": "조직의 지식·문서와 협업 흐름을 다루는 초기 MVP입니다. README는 인증·지식 관리와 UI가 부분 구현 상태이며 운영 배포 준비가 끝나지 않았다고 명시합니다.",
+      "date": "2025-09-25",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Nexus-Stream",
+      "codeUrl": "https://github.com/choisimo/Nexus-Stream/tree/147fb47f50d65517ba56b04a56b1c6235585f424",
+      "featured": false
+    },
+    {
+      "id": "choisimo--game-repository",
+      "title": "Game-Repository",
+      "description": "여러 게임을 만들어 보는 저장소입니다. 현재 animal_stacking_game과 docs 디렉터리를 포함하며 GitHub의 주요 언어는 Dart입니다.",
+      "date": "2025-09-17",
+      "category": "게임",
+      "tags": [
+        "게임",
+        "원본",
+        "Dart"
+      ],
+      "stack": [
+        "Dart"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Game-Repository",
+      "codeUrl": "https://github.com/choisimo/Game-Repository/tree/6da0351d0fcfe665fa08ef99f6d580489a37ccf8",
+      "featured": false
+    },
+    {
+      "id": "choisimo--awesome-llm-apps",
+      "title": "awesome-llm-apps",
+      "description": "AI 에이전트, RAG, 음성 에이전트 등 LLM 앱 예제와 튜토리얼을 모은 awesome-llm-apps의 포크 저장소입니다.",
+      "date": "2025-09-15",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "포크",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/awesome-llm-apps",
+      "codeUrl": "https://github.com/choisimo/awesome-llm-apps/tree/f08e7b677e70cc40be3835b4094cdf21da0985ae",
+      "featured": false
+    },
+    {
+      "id": "choisimo--jb_team_3people-tigers",
+      "title": "JB_Team_3people-tigers",
+      "description": "AI 수요 예측을 활용한 지역 제약 산업 발전을 주제로 한 삼인성호 팀 프로젝트의 포크 저장소입니다. 계획서·발표 자료와 프로젝트 소스 디렉터리를 포함합니다.",
+      "date": "2025-09-14",
+      "category": "연구",
+      "tags": [
+        "연구",
+        "포크",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/JB_Team_3people-tigers",
+      "codeUrl": "https://github.com/choisimo/JB_Team_3people-tigers/tree/75309efdf8fc32ab13ecdf4e852c2fdce34a6351",
+      "featured": false
+    },
+    {
+      "id": "choisimo--confighub",
+      "title": "ConfigHub",
+      "description": "프로젝트·환경별 설정값을 편집하고 GitHub의 설정 매니페스트와 연동하는 웹 도구입니다. React 프론트엔드와 Supabase 인증·데이터 연동, 로컬 모의 데이터를 포함합니다.",
+      "date": "2025-08-31",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/ConfigHub",
+      "codeUrl": "https://github.com/choisimo/ConfigHub/tree/55384b66a01755b9373cd30156c3d0ed5043ff75",
+      "featured": false
+    },
+    {
+      "id": "choisimo--deep-dive",
+      "title": "Deep-Dive",
+      "description": "가상 에이전트의 성격·가치관·상호작용으로 사회 시나리오를 탐색하는 실험적 대시보드입니다. React Flow 기반 관계 시각화와 시뮬레이션 제어 화면을 소개합니다.",
+      "date": "2025-08-31",
+      "category": "시뮬레이션",
+      "tags": [
+        "시뮬레이션",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Deep-Dive",
+      "codeUrl": "https://github.com/choisimo/Deep-Dive/tree/7bc13312b2be2c551a086a9b4bc3d2462b824c54",
+      "featured": false
+    },
+    {
+      "id": "choisimo--crawler",
+      "title": "Crawler",
+      "description": "Selenium 웹 자동화 환경을 구성하고 JSON 설정으로 크롤링 작업을 실행하는 도구입니다. Linux 설치 스크립트와 Gemini를 활용한 작업 설정 생성 절차를 포함합니다.",
+      "date": "2025-08-28",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "Shell"
+      ],
+      "stack": [
+        "Shell"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Crawler",
+      "codeUrl": "https://github.com/choisimo/Crawler/tree/109dcda4ad3ad1720e093a0bc277c0e8c93d3b3a",
+      "featured": false
+    },
+    {
+      "id": "choisimo--post-manager",
+      "title": "post-manager",
+      "description": "블로그 글 관리 화면과 문서 변환 도구를 묶은 저장소입니다. Gemini 콘텐츠 생성 연동, GitHub Pages 게시 흐름과 DOCX·PDF의 Markdown 변환을 소개합니다.",
+      "date": "2025-08-27",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/post-manager",
+      "codeUrl": "https://github.com/choisimo/post-manager/tree/ff4b5e372eaffa85f1f7b0be4327d710b8bac7ee",
+      "featured": false
+    },
+    {
+      "id": "choisimo--kb-moodfinancial_diary",
+      "title": "kb-MoodFinancial_Diary",
+      "description": "감정과 소비의 연결을 기록·분석해 금융 습관을 돌아보는 MoodFinance AI 프로젝트입니다. 프론트엔드·백엔드와 제품 비전, 사용자 스토리, 스프린트 계획 문서를 포함합니다.",
+      "date": "2025-08-25",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/kb-MoodFinancial_Diary",
+      "codeUrl": "https://github.com/choisimo/kb-MoodFinancial_Diary/tree/79f780f60119d0c04868237f84ae23f20abb995c",
+      "featured": false
+    },
+    {
+      "id": "choisimo--custom-blog",
+      "title": "custom-blog",
+      "description": "Flutter 프론트엔드, Spring Boot 백엔드와 FastAPI AI 서버를 묶은 별도의 블로그 프로젝트입니다. Kafka, 여러 데이터 저장소와 Docker Compose 구성을 문서화합니다.",
+      "date": "2025-08-04",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "Dart"
+      ],
+      "stack": [
+        "Dart"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/custom-blog",
+      "codeUrl": "https://github.com/choisimo/custom-blog/tree/e2348c383ffccfc02ac0a1a4738fb14fd3627224",
+      "featured": false
+    },
+    {
+      "id": "choisimo--env_variables_manager",
+      "title": "env_variables_manager",
+      "description": "여러 프로젝트의 .env 파일을 웹에서 관리하는 도구입니다. 파일 검색·편집·백업, AI 도우미와 터미널 연동을 소개하는 Node.js 프로젝트입니다.",
+      "date": "2025-08-04",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/env_variables_manager",
+      "codeUrl": "https://github.com/choisimo/env_variables_manager/tree/a457c1b91a2d91d2478201a57fbdc4c38cc0e6a7",
+      "featured": false
+    },
+    {
+      "id": "choisimo--kb_financial_concierge",
+      "title": "kb_financial_concierge",
+      "description": "디지털 금융 이용이 어려운 사용자를 위한 접근성 중심 금융 UI 프로젝트입니다. 사용자 유형에 따른 화면 조정과 음성·키보드 접근을 소개하며 백엔드는 README에서 예정 사항으로 구분합니다.",
+      "date": "2025-08-04",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/kb_financial_concierge",
+      "codeUrl": "https://github.com/choisimo/kb_financial_concierge/tree/1491ca913a204e093a5e485a58f0ce07a568f35f",
+      "featured": false
+    },
+    {
+      "id": "choisimo--saemangeum-insight-board",
+      "title": "saemangeum-insight-board",
+      "description": "새만금 공공데이터를 활용해 투자·기업·재생에너지·교통 현황을 살펴보는 대시보드입니다. KPI 화면, 공간정보 시각화와 정책 시나리오 분석을 주제로 구성합니다.",
+      "date": "2025-07-31",
+      "category": "데이터",
+      "tags": [
+        "데이터",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/saemangeum-insight-board",
+      "codeUrl": "https://github.com/choisimo/saemangeum-insight-board/tree/063553bc3f18d6d5542e59b6299a79388d3686b8",
+      "featured": false
+    },
+    {
+      "id": "choisimo--choisimo.github.io",
+      "title": "choisimo.github.io",
+      "description": "개인 웹사이트 저장소입니다. Hugo 설정, 콘텐츠·레이아웃·테마 관련 디렉터리와 문서 가져오기 스크립트를 포함합니다.",
+      "date": "2025-07-30",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "SCSS"
+      ],
+      "stack": [
+        "SCSS"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/choisimo.github.io",
+      "codeUrl": "https://github.com/choisimo/choisimo.github.io/tree/47f2867ce7a2b484517179ade6959c03e0b8279c",
+      "featured": false
+    },
+    {
+      "id": "choisimo--ai_agent_dev-application",
+      "title": "AI_agent_dev-application",
+      "description": "Gemini API와 채팅하며 개발 작업을 돕는 Flutter 앱입니다. README에 Firebase 인증, 프로젝트 관리, Git 연동과 코드 하이라이팅이 소개되어 있습니다.",
+      "date": "2025-07-28",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "Dart"
+      ],
+      "stack": [
+        "Dart"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI_agent_dev-application",
+      "codeUrl": "https://github.com/choisimo/AI_agent_dev-application/tree/86e629dfc569ebd2cd8a55bf57bd6414ed79af76",
+      "featured": false
+    },
+    {
+      "id": "choisimo--anime_heaven",
+      "title": "anime_heaven",
+      "description": "애니메이션 탐색·인기 작품·커뮤니티를 주제로 만든 팬 사이트 데모입니다. React, TypeScript, Tailwind CSS 기반 화면과 미리보기 이미지를 포함합니다.",
+      "date": "2025-07-23",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/anime_heaven",
+      "codeUrl": "https://github.com/choisimo/anime_heaven/tree/0ca7978a530c2867627a95eea57df3342c3e3e09",
+      "featured": false
+    },
+    {
+      "id": "choisimo--sftp_file_tracker",
+      "title": "sftp_file_tracker",
+      "description": "로컬 폴더나 원격 SFTP 서버의 새 파일을 감지해 웹훅으로 알리는 Node.js 서비스입니다. 파일 감시, 중복 알림 관리와 Docker·PM2 실행 구성을 포함합니다.",
+      "date": "2025-07-20",
+      "category": "인프라",
+      "tags": [
+        "인프라",
+        "원본",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/sftp_file_tracker",
+      "codeUrl": "https://github.com/choisimo/sftp_file_tracker/tree/abf6a91ccae8649ee280aca7579ec5823460e667",
+      "featured": false
+    },
+    {
+      "id": "choisimo--nginx-file-browser",
+      "title": "nginx-file-browser",
+      "description": "AI 파일 분석 기능을 주제로 소개한 TypeScript 파일 브라우저 프로젝트입니다. 앱·컴포넌트 소스와 Docker·Compose 구성을 포함합니다.",
+      "date": "2025-06-27",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/nginx-file-browser",
+      "codeUrl": "https://github.com/choisimo/nginx-file-browser/tree/e8514eeff0c7ff9b09af87fedb24066224b048de",
+      "featured": false
+    },
+    {
+      "id": "choisimo--objectdetectionapp",
+      "title": "ObjectDetectionApp",
+      "description": "Next.js 설정과 app·components·types 디렉터리를 갖춘 TypeScript 프로젝트입니다. README가 제목만 담고 있어 객체 탐지 모델이나 지원 입력 형식은 확인되지 않았습니다.",
+      "date": "2025-06-21",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/ObjectDetectionApp",
+      "codeUrl": "https://github.com/choisimo/ObjectDetectionApp/tree/256a7fae662e3a8f72adef0dcf66ccafd7d8717e",
+      "featured": false
+    },
+    {
+      "id": "choisimo--code_repository",
+      "title": "code_repository",
+      "description": "알고리즘, 자료구조, 운영체제, 언어별 예제와 개인 실험 코드를 보관하는 학습 저장소입니다. 책·강의·기술 문서를 따라 작성한 코드와 프로젝트를 모읍니다.",
+      "date": "2025-06-15",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/code_repository",
+      "codeUrl": "https://github.com/choisimo/code_repository/tree/380f385daf36c4bf0a963b8ef0a458f7dc699cf5",
+      "featured": false
+    },
+    {
+      "id": "choisimo--ai_module",
+      "title": "AI_module",
+      "description": "FastAPI 백엔드와 프론트엔드 디렉터리 구조를 정리한 Python 프로젝트입니다. README는 초기 구조 안내이며 구체적인 AI 기능과 실행 절차는 아직 설명하지 않습니다.",
+      "date": "2025-05-29",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AI_module",
+      "codeUrl": "https://github.com/choisimo/AI_module/tree/443b65276905eec43ac8e91bfbcc27008e498e02",
+      "featured": false
+    },
+    {
+      "id": "choisimo--toyprojects",
+      "title": "ToyProjects",
+      "description": "github-commander, nginx-file-browser, web-linux-commander를 한곳에 모은 웹 도구 실험 저장소입니다.",
+      "date": "2025-05-29",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/ToyProjects",
+      "codeUrl": "https://github.com/choisimo/ToyProjects/tree/df54f9abfa9847852cb563bdaec9a71f42fd90e2",
+      "featured": false
+    },
+    {
+      "id": "choisimo--compiler-study-program",
+      "title": "compiler-study-program",
+      "description": "Next.js 설정과 TypeScript 앱 소스를 포함한 컴파일러 학습 관련 저장소입니다. 루트 README가 없어 제공하는 학습 단계나 실행 기능은 확인되지 않았습니다.",
+      "date": "2025-05-27",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/compiler-study-program",
+      "codeUrl": "https://github.com/choisimo/compiler-study-program/tree/2a4e45a7c741480e5bc7fedc47262b7bdb500858",
+      "featured": false
+    },
+    {
+      "id": "choisimo--code-merger",
+      "title": "code-merger",
+      "description": "Next.js 설정과 app·components 디렉터리를 갖춘 TypeScript 웹 프로젝트입니다. 루트 README가 없어 코드 병합 기능의 지원 범위는 확인되지 않았습니다.",
+      "date": "2025-05-26",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "TypeScript"
+      ],
+      "stack": [
+        "TypeScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/code-merger",
+      "codeUrl": "https://github.com/choisimo/code-merger/tree/6d0e8e15eaaa8a802bd8a57d4acf4b2904cc6fdb",
+      "featured": false
+    },
+    {
+      "id": "choisimo--dev-web-server",
+      "title": "dev-web-server",
+      "description": "app.py, requirements.txt, templates와 개발 이력 데이터베이스를 포함한 Python 웹 프로젝트입니다. 루트 README가 없어 서비스의 구체적인 기능 범위는 확인되지 않았습니다.",
+      "date": "2025-05-25",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/dev-web-server",
+      "codeUrl": "https://github.com/choisimo/dev-web-server/tree/51b135bc3cffb4ce3b2064cc70cb81f89709b13b",
+      "featured": false
+    },
+    {
+      "id": "choisimo--examcollector",
+      "title": "ExamCollector",
+      "description": "Local-LLM 활용을 소개한 Python 저장소입니다. 모델·실행 결과·설명 자료와 src 디렉터리를 포함하지만 루트 README는 없어 수집·분석 기능의 상세 범위는 확인되지 않았습니다.",
+      "date": "2025-05-16",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/ExamCollector",
+      "codeUrl": "https://github.com/choisimo/ExamCollector/tree/c7ea4f818b53cf5c60488b6503178f43bc3e5f45",
+      "featured": false
+    },
+    {
+      "id": "choisimo--weatherapp",
+      "title": "WeatherApp",
+      "description": "네이버 지도와 공공데이터 날씨 API를 이용한 앱을 안내하는 저장소입니다. 현재 README와 라이선스만 있으며 원본 Spring Boot·Vue.js 코드는 별도 코드 저장소에 있다고 설명합니다.",
+      "date": "2025-05-15",
+      "category": "문서",
+      "tags": [
+        "문서",
+        "원본"
+      ],
+      "stack": [],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/WeatherApp",
+      "codeUrl": "https://github.com/choisimo/WeatherApp/tree/ac356ef9fee1ccfea0339ff303887588ecc05fe1",
+      "featured": false
+    },
+    {
+      "id": "choisimo--backup_strategy",
+      "title": "backup_strategy",
+      "description": "파일·디렉터리 백업 자동화와 백업 전략을 정리하는 저장소입니다. Shell 스크립트와 C++ 디렉터리, 전체·증분·차등 백업에 관한 문서를 포함합니다.",
+      "date": "2025-04-23",
+      "category": "인프라",
+      "tags": [
+        "인프라",
+        "원본",
+        "Shell"
+      ],
+      "stack": [
+        "Shell"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/backup_strategy",
+      "codeUrl": "https://github.com/choisimo/backup_strategy/tree/75615c5fbd4a9e256d9689f881a4accf182e3bea",
+      "featured": false
+    },
+    {
+      "id": "choisimo--crawler_supporter",
+      "title": "Crawler_supporter",
+      "description": "현재 커밋이 없는 공개 저장소입니다. 구현된 기능이나 사용 언어를 확인할 소스가 아직 없습니다.",
+      "date": "2025-04-17",
+      "category": "준비 저장소",
+      "tags": [
+        "준비 저장소",
+        "원본"
+      ],
+      "stack": [],
+      "status": "빈 저장소",
+      "type": "link",
+      "url": "https://github.com/choisimo/Crawler_supporter",
+      "codeUrl": "https://github.com/choisimo/Crawler_supporter",
+      "featured": false
+    },
+    {
+      "id": "choisimo--xiaoxin_pad_2024_settings",
+      "title": "Xiaoxin_pad_2024_settings",
+      "description": "Lenovo Xiaoxin Pad 2024의 ADB 준비·앱 설치·기본 앱 정리를 안내하는 자료입니다. Windows 배치 스크립트와 기기별 설정 절차를 포함합니다.",
+      "date": "2025-02-28",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "Batchfile"
+      ],
+      "stack": [
+        "Batchfile"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Xiaoxin_pad_2024_settings",
+      "codeUrl": "https://github.com/choisimo/Xiaoxin_pad_2024_settings/tree/c471bd794f8422f59df885aa90f5c94941162c38",
+      "featured": false
+    },
+    {
+      "id": "choisimo--aisubtitlegenerator",
+      "title": "AISubtitleGenerator",
+      "description": "script 디렉터리에 Python 코드를 둔 자막 관련 저장소입니다. 루트 README와 GitHub 소개가 없어 지원 모델·출력 형식은 확인되지 않았습니다.",
+      "date": "2025-01-19",
+      "category": "미디어",
+      "tags": [
+        "미디어",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AISubtitleGenerator",
+      "codeUrl": "https://github.com/choisimo/AISubtitleGenerator/tree/5b8702f729efe9ef1ec35da4e70f6ce48b7b2162",
+      "featured": false
+    },
+    {
+      "id": "choisimo--kotlin_webscrapper",
+      "title": "Kotlin_WebScrapper",
+      "description": "Kotlin 코드가 있는 backend 디렉터리를 포함한 웹 수집 관련 저장소입니다. README가 제목만 담고 있어 대상 사이트·수집 방식은 확인되지 않았습니다.",
+      "date": "2025-01-13",
+      "category": "개발 도구",
+      "tags": [
+        "개발 도구",
+        "원본",
+        "Kotlin"
+      ],
+      "stack": [
+        "Kotlin"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/Kotlin_WebScrapper",
+      "codeUrl": "https://github.com/choisimo/Kotlin_WebScrapper/tree/3e9a58e39e03461c929a82175d33961f317ebc15",
+      "featured": false
+    },
+    {
+      "id": "choisimo--wsd-movie",
+      "title": "WSD-movie",
+      "description": "React로 만든 넷플릭스 형태의 영화 웹사이트 학습 프로젝트입니다. React Router 라우팅과 Axios 요청 처리를 포함합니다.",
+      "date": "2024-12-26",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "CSS"
+      ],
+      "stack": [
+        "CSS"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/WSD-movie",
+      "codeUrl": "https://github.com/choisimo/WSD-movie/tree/3fb7ee9e82647105df54df8d6e6b83377e9f37bb",
+      "featured": false
+    },
+    {
+      "id": "choisimo--wsd-assignment-03",
+      "title": "WSD-Assignment-03",
+      "description": "구인구직 백엔드를 주제로 한 Spring Boot 과제입니다. README에 사용자 인증, 댓글·북마크·검색 기록 API와 MariaDB·Redis 구성을 설명합니다.",
+      "date": "2024-12-23",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Java"
+      ],
+      "stack": [
+        "Java"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/WSD-Assignment-03",
+      "codeUrl": "https://github.com/choisimo/WSD-Assignment-03/tree/18baa1be07cb5ca7fa4f829e8fb4655cca5084fe",
+      "featured": false
+    },
+    {
+      "id": "choisimo--se_team_j",
+      "title": "SE_Team_J",
+      "description": "소프트웨어 공학 J조 팀 프로젝트입니다. 모델 참조, 사용자 정의 테스트 케이스와 회의록을 보관하며 README에 테스트 자료의 사용 범위를 안내합니다.",
+      "date": "2024-12-11",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/SE_Team_J",
+      "codeUrl": "https://github.com/choisimo/SE_Team_J/tree/0b11872235d9dec6cd8c893f9132449be317b520",
+      "featured": false
+    },
+    {
+      "id": "choisimo--nodove_project_flutter",
+      "title": "nodove_project_flutter",
+      "description": "Flutter 프론트엔드와 Spring Boot 백엔드를 함께 관리하는 프로젝트입니다. README에 Flutter 개발 환경과 MariaDB·Redis 데이터베이스 구성이 정리되어 있습니다.",
+      "date": "2024-12-10",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "Dart"
+      ],
+      "stack": [
+        "Dart"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/nodove_project_flutter",
+      "codeUrl": "https://github.com/choisimo/nodove_project_flutter/tree/fc4dd2c82456c8555ec6e60e22260eb30913afe3",
+      "featured": false
+    },
+    {
+      "id": "choisimo--astaralgorithm",
+      "title": "AStarAlgorithm",
+      "description": "Astar1.py, Astar2.py, Node.py와 main.py를 포함한 Python A* 알고리즘 실습 저장소입니다.",
+      "date": "2024-12-09",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/AStarAlgorithm",
+      "codeUrl": "https://github.com/choisimo/AStarAlgorithm/tree/1a01f076c6000c62440e7145c5ed321719ca50ff",
+      "featured": false
+    },
+    {
+      "id": "choisimo--cpp_loadbalancing_algorithm",
+      "title": "CPP_LoadBalancing_algorithm",
+      "description": "트래픽 처리와 정렬 알고리즘을 비교하는 C++ 학기 프로젝트입니다. README에 Quick·Merge·Heap·Greedy 정렬 구성과 CMake 실행 절차가 정리되어 있습니다.",
+      "date": "2024-12-06",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Makefile"
+      ],
+      "stack": [
+        "Makefile"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/CPP_LoadBalancing_algorithm",
+      "codeUrl": "https://github.com/choisimo/CPP_LoadBalancing_algorithm/tree/09b411f015f41df4c9e1cb2216ec0b24fc81323a",
+      "featured": false
+    },
+    {
+      "id": "choisimo--system-design-primer",
+      "title": "system-design-primer",
+      "description": "대규모 시스템 설계 개념과 설계 면접 학습 자료를 정리한 system-design-primer의 포크 저장소입니다.",
+      "date": "2024-12-02",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "포크",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/system-design-primer",
+      "codeUrl": "https://github.com/choisimo/system-design-primer/tree/40d5d2edccd00b4a66fb0e24d887d8b1a0d7ea0e",
+      "featured": false
+    },
+    {
+      "id": "choisimo--se_pair_programming",
+      "title": "SE_Pair_Programming",
+      "description": "2024년 소프트웨어 공학 페어 프로그래밍 실습 저장소입니다. code 디렉터리에 Python 코드를 보관합니다.",
+      "date": "2024-11-28",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/SE_Pair_Programming",
+      "codeUrl": "https://github.com/choisimo/SE_Pair_Programming/tree/97441709d975be74e48ffeebbef73ee6f46555d1",
+      "featured": false
+    },
+    {
+      "id": "choisimo--nginx-admins-handbook",
+      "title": "nginx-admins-handbook",
+      "description": "NGINX의 구성·성능·보안·운영 관련 지침을 정리한 nginx-admins-handbook의 포크 저장소입니다.",
+      "date": "2024-11-19",
+      "category": "문서",
+      "tags": [
+        "문서",
+        "포크",
+        "Shell"
+      ],
+      "stack": [
+        "Shell"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/nginx-admins-handbook",
+      "codeUrl": "https://github.com/choisimo/nginx-admins-handbook/tree/5aea1f81a2fd7bd505af82cfebbdb5ac8526ff2d",
+      "featured": false
+    },
+    {
+      "id": "choisimo--shopping_web",
+      "title": "shopping_web",
+      "description": "쇼핑 웹사이트를 만드는 팀 프로젝트 저장소입니다. README의 프로젝트 소개와 main 디렉터리에 구현 자료를 보관합니다.",
+      "date": "2024-10-25",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/shopping_web",
+      "codeUrl": "https://github.com/choisimo/shopping_web/tree/f12cd3ba15212d986bf0b6d58426548c645dbe07",
+      "featured": false
+    },
+    {
+      "id": "choisimo--boardweb",
+      "title": "boardWeb",
+      "description": "바닐라 웹 기술과 JSP·Servlet을 학습하기 위한 웹 프로젝트입니다. 게시판·로그인 디렉터리와 Tomcat 배포 구조를 포함합니다.",
+      "date": "2024-10-10",
+      "category": "웹",
+      "tags": [
+        "웹",
+        "원본",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/boardWeb",
+      "codeUrl": "https://github.com/choisimo/boardWeb/tree/4e0aa9e5627294588d89b5d45687e8b6cd2743f4",
+      "featured": false
+    },
+    {
+      "id": "choisimo--ubuntu_socket_programming",
+      "title": "ubuntu_socket_programming",
+      "description": "C 소켓 통신으로 사물함 예약·조회·체크아웃·시간 연장을 처리하는 클라이언트·서버 학습 프로젝트입니다. CLI 화면과 소켓 통신 실습 코드를 포함합니다.",
+      "date": "2024-10-10",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "C"
+      ],
+      "stack": [
+        "C"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/ubuntu_socket_programming",
+      "codeUrl": "https://github.com/choisimo/ubuntu_socket_programming/tree/20a20c6fd8945728754d4c192acd70d8e4b7c5ff",
+      "featured": false
+    },
+    {
+      "id": "choisimo--agentverse",
+      "title": "AgentVerse",
+      "description": "여러 LLM 에이전트의 협업과 환경 시뮬레이션을 다루는 AgentVerse의 포크 저장소입니다.",
+      "date": "2024-09-09",
+      "category": "AI",
+      "tags": [
+        "AI",
+        "포크",
+        "JavaScript"
+      ],
+      "stack": [
+        "JavaScript"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/AgentVerse",
+      "codeUrl": "https://github.com/choisimo/AgentVerse/tree/f90c4bd9680fdd3bcff8c52c9170911a59b23478",
+      "featured": false
+    },
+    {
+      "id": "choisimo--audionotes",
+      "title": "AudioNotes",
+      "description": "FunASR와 Qwen2를 이용해 음성·영상 내용을 구조화된 Markdown 노트로 정리하는 AudioNotes의 포크 저장소입니다.",
+      "date": "2024-07-26",
+      "category": "미디어",
+      "tags": [
+        "미디어",
+        "포크",
+        "Python"
+      ],
+      "stack": [
+        "Python"
+      ],
+      "status": "포크",
+      "type": "link",
+      "url": "https://github.com/choisimo/AudioNotes",
+      "codeUrl": "https://github.com/choisimo/AudioNotes/tree/0ead89566d4a7bea2df200822fcbc10cbf010edb",
+      "featured": false
+    },
+    {
+      "id": "choisimo--unity_project_2405",
+      "title": "unity_project_2405",
+      "description": "2024년 5월부터의 Unity 실습을 보관하는 C# 저장소입니다. train, Train_demo1과 날짜별 프로젝트 디렉터리를 포함합니다.",
+      "date": "2024-06-21",
+      "category": "게임",
+      "tags": [
+        "게임",
+        "원본",
+        "C#"
+      ],
+      "stack": [
+        "C#"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/unity_project_2405",
+      "codeUrl": "https://github.com/choisimo/unity_project_2405/tree/beaf4b492b4fe18e7ea4ea2c629b3b522bb0df5d",
+      "featured": false
+    },
+    {
+      "id": "choisimo--springsecurityreactauthorization",
+      "title": "SpringSecurityReactAuthorization",
+      "description": "Spring Security와 React를 연결해 권한 처리를 다루는 학습 프로젝트입니다. backend와 frontend 디렉터리로 나뉜 소스를 포함합니다.",
+      "date": "2024-03-07",
+      "category": "학습",
+      "tags": [
+        "학습",
+        "원본",
+        "Java"
+      ],
+      "stack": [
+        "Java"
+      ],
+      "status": "공개",
+      "type": "link",
+      "url": "https://github.com/choisimo/SpringSecurityReactAuthorization",
+      "codeUrl": "https://github.com/choisimo/SpringSecurityReactAuthorization/tree/a8c344176a309e40757c9677a11d9ff83cec3f19",
+      "featured": false
+    }
+  ],
+  "generatedAt": "2026-09-11T00:40:29.188Z",
   "format": 1
 }

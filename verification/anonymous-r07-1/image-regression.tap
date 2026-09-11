@@ -1,0 +1,184 @@
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+# Subtest: membership is verified role + verified email, never token presence
+ok 1 - membership is verified role + verified email, never token presence
+  ---
+  duration_ms: 1.065223
+  type: 'test'
+  ...
+# Subtest: KST midnight resets, not UTC midnight
+ok 2 - KST midnight resets, not UTC midnight
+  ---
+  duration_ms: 1.111248
+  type: 'test'
+  ...
+# Subtest: limits are bounded; malformed env does not make the endpoint unlimited
+ok 3 - limits are bounded; malformed env does not make the endpoint unlimited
+  ---
+  duration_ms: 0.373207
+  type: 'test'
+  ...
+# Subtest: image input rejects client-controlled count, tier, model and principal
+ok 4 - image input rejects client-controlled count, tier, model and principal
+  ---
+  duration_ms: 0.400256
+  type: 'test'
+  ...
+# Subtest: image input validates enums, control-only strings and byte-independent limits
+ok 5 - image input validates enums, control-only strings and byte-independent limits
+  ---
+  duration_ms: 0.19067
+  type: 'test'
+  ...
+# Subtest: network IDs are keyed and rotate daily without keeping raw addresses
+ok 6 - network IDs are keyed and rotate daily without keeping raw addresses
+  ---
+  duration_ms: 8.096698
+  type: 'test'
+  ...
+# Subtest: guest reservation caps at five under simultaneous promises
+ok 7 - guest reservation caps at five under simultaneous promises
+  ---
+  duration_ms: 2.700409
+  type: 'test'
+  ...
+# Subtest: new guest tokens on the same network do not replenish the five-image budget
+ok 8 - new guest tokens on the same network do not replenish the five-image budget
+  ---
+  duration_ms: 1.517423
+  type: 'test'
+  ...
+# Subtest: different guest networks have independent limits, subject to the global budget
+ok 9 - different guest networks have independent limits, subject to the global budget
+  ---
+  duration_ms: 1.341481
+  type: 'test'
+  ...
+# Subtest: member daily limit is configurable and not the guest network limit
+ok 10 - member daily limit is configurable and not the guest network limit
+  ---
+  duration_ms: 2.570286
+  type: 'test'
+  ...
+# Subtest: global cap covers guests and members together
+ok 11 - global cap covers guests and members together
+  ---
+  duration_ms: 0.949386
+  type: 'test'
+  ...
+# Subtest: same request ID cannot reserve twice; another owner cannot read its row
+ok 12 - same request ID cannot reserve twice; another owner cannot read its row
+  ---
+  duration_ms: 0.759921
+  type: 'test'
+  ...
+# Subtest: explicit rejection releases daily capacity; unknown outcome stays counted
+ok 13 - explicit rejection releases daily capacity; unknown outcome stays counted
+  ---
+  duration_ms: 1.41597
+  type: 'test'
+  ...
+# Subtest: rejected attempts still consume burst allowance to prevent a failure loop
+ok 14 - rejected attempts still consume burst allowance to prevent a failure loop
+  ---
+  duration_ms: 1.474132
+  type: 'test'
+  ...
+# Subtest: finalization changes only a reserved job, never a completed result
+ok 15 - finalization changes only a reserved job, never a completed result
+  ---
+  duration_ms: 0.726073
+  type: 'test'
+  ...
+# Subtest: tomorrow has a new daily budget; old idempotency row remains
+ok 16 - tomorrow has a new daily budget; old idempotency row remains
+  ---
+  duration_ms: 1.154587
+  type: 'test'
+  ...
+# Subtest: retention deletes complete and orphan unknown objects, preserving recent ones
+ok 17 - retention deletes complete and orphan unknown objects, preserving recent ones
+  ---
+  duration_ms: 1.400027
+  type: 'test'
+  ...
+# Subtest: storage deletion failure preserves the object pointer for later cleanup
+ok 18 - storage deletion failure preserves the object pointer for later cleanup
+  ---
+  duration_ms: 0.995337
+  type: 'test'
+  ...
+# Subtest: normalization strips security fields and keeps only allowed preferences
+ok 19 - normalization strips security fields and keeps only allowed preferences
+  ---
+  duration_ms: 8.715763
+  type: 'test'
+  ...
+# Subtest: preference context is data with factuality safeguards, not an authorization grant
+ok 20 - preference context is data with factuality safeguards, not an authorization grant
+  ---
+  duration_ms: 0.552626
+  type: 'test'
+  ...
+# Subtest: illustration modes support relevant automatic, debate automatic, manual and off
+ok 21 - illustration modes support relevant automatic, debate automatic, manual and off
+  ---
+  duration_ms: 0.44409
+  type: 'test'
+  ...
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: atomic SQL also caps parallel independent SQLite connections
+ok 22 - atomic SQL also caps parallel independent SQLite connections
+  ---
+  duration_ms: 105.213682
+  type: 'test'
+  ...
+# Subtest: origin renderer cannot fall through via case, trailing slash or encoded path variants
+ok 23 - origin renderer cannot fall through via case, trailing slash or encoded path variants
+  ---
+  duration_ms: 0.39211
+  type: 'test'
+  ...
+# Subtest: preference compare-and-swap SQL rejects a stale second device save
+ok 24 - preference compare-and-swap SQL rejects a stale second device save
+  ---
+  duration_ms: 0.642748
+  type: 'test'
+  ...
+(node:1432) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: public image and preference endpoints retain Worker ownership in the route contract
+ok 25 - public image and preference endpoints retain Worker ownership in the route contract
+  ---
+  duration_ms: 8.081415
+  type: 'test'
+  ...
+# Subtest: interactive prompts no longer override chosen tone, length and language
+ok 26 - interactive prompts no longer override chosen tone, length and language
+  ---
+  duration_ms: 0.512823
+  type: 'test'
+  ...
+1..26
+# tests 26
+# suites 0
+# pass 26
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 164.241241

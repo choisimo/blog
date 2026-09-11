@@ -1,0 +1,25 @@
+{
+  "env": "production",
+  "siteBaseUrl": "https://noblog.nodove.com",
+  "apiBaseUrl": "https://api.nodove.com",
+  "chatBaseUrl": "https://api.nodove.com",
+  "chatWsBaseUrl": null,
+  "terminalGatewayUrl": null,
+  "ai": {
+    "modelSelectionEnabled": false,
+    "defaultModel": "gpt-5.3-codex-spark",
+    "visionModel": null
+  },
+  "features": {
+    "aiEnabled": true,
+    "ragEnabled": true,
+    "terminalEnabled": false,
+    "aiInline": true,
+    "codeExecutionEnabled": false,
+    "commentsEnabled": true
+  },
+  "capabilities": {
+    "supportsChatWebSocket": false,
+    "hasTerminalGatewayUrl": false
+  }
+}

@@ -1,3 +1,4 @@
+import { GeneratedImageCard } from '@/components/features/ai/GeneratedImageCard';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Terminal, ChevronRight, CornerUpLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -485,14 +486,14 @@ const TerminalMessage = React.memo(function TerminalMessage({
                 isTerminal
               />
             ) : null}
-            {!m.pending && messageText.trim() ? (
+            {messageText.trim() ? (
               <>
                 {isMobile ? (
                   <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {messageText}
                   </span>
                 ) : (
-                  <ChatMarkdown content={messageText} isStreaming={false} />
+                  <ChatMarkdown content={messageText} isStreaming={Boolean(m.pending)} />
                 )}
               </>
             ) : (
@@ -504,6 +505,7 @@ const TerminalMessage = React.memo(function TerminalMessage({
               </div>
             )}
           </div>
+          {!m.pending && m.channel !== "live" && m.visualPrompt && <GeneratedImageCard requestKey={m.id} prompt={m.visualPrompt} expectedScope={m.visualScope} purpose={m.visualPurpose} automatic />}
           <Sources
             sources={m.sources}
             isTerminal
@@ -648,13 +650,13 @@ const DefaultMessage = React.memo(function DefaultMessage({
                 ) : null}
               </div>
             ) : null}
-            {!m.pending && messageText.trim() ? (
+            {messageText.trim() ? (
               isMobile ? (
                 <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                   {messageText}
                 </span>
               ) : (
-                <ChatMarkdown content={messageText} isStreaming={false} />
+                <ChatMarkdown content={messageText} isStreaming={Boolean(m.pending)} />
               )
             ) : (
               <div className="space-y-2">
@@ -666,6 +668,7 @@ const DefaultMessage = React.memo(function DefaultMessage({
                 ) : null}
               </div>
             )}
+            {!m.pending && m.channel !== "live" && m.visualPrompt && <GeneratedImageCard requestKey={m.id} prompt={m.visualPrompt} expectedScope={m.visualScope} purpose={m.visualPurpose} automatic />}
           </>
         ) : isUser ? (
           <div className="space-y-2">

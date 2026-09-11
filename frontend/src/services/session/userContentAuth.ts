@@ -1,7 +1,5 @@
 import { bearerAuth } from "@/lib/auth";
 import {
-  clearAnonymousToken,
-  getStoredAnonymousToken,
   getValidAnonymousToken,
   isTokenExpired,
   parseJwtPayload,
@@ -84,23 +82,21 @@ export function getSessionAuthToken(): string | null {
 }
 
 export async function getPrincipalToken(): Promise<string> {
+  const previousSession = useAuthStore.getState();
+  const hadAccountSession = Boolean(previousSession.accessToken || previousSession.refreshToken);
   const sessionToken = await getValidSessionToken();
   if (sessionToken) {
     return sessionToken;
   }
 
-  const rawStoredAnonymousToken = getStoredAnonymousToken();
-  const storedAnonymousToken = normalizePrincipalToken(rawStoredAnonymousToken);
-  if (storedAnonymousToken) {
-    if (!isTokenExpired(storedAnonymousToken, 60)) {
-      return storedAnonymousToken;
-    }
-    clearAnonymousToken();
-  } else if (rawStoredAnonymousToken) {
-    clearAnonymousToken();
+  if (hadAccountSession) {
+    throw new Error("로그인이 만료되었습니다. 익명 계정으로 자동 전환하지 않습니다.");
   }
 
   const anonymousToken = normalizePrincipalToken(await getValidAnonymousToken());
+  if (useAuthStore.getState().accessToken || useAuthStore.getState().refreshToken) {
+    throw new Error("계정이 변경되었습니다. 요청을 다시 확인하세요.");
+  }
   if (!anonymousToken) {
     throw new Error("No principal token available");
   }
@@ -109,9 +105,15 @@ export async function getPrincipalToken(): Promise<string> {
 }
 
 export async function refreshPrincipalTokenAfterAuthFailure(): Promise<string> {
-  useAuthStore.getState().clearAuth();
-  clearAnonymousToken();
-  const anonymousToken = normalizePrincipalToken(await getValidAnonymousToken());
+  const account = useAuthStore.getState();
+  if (account.accessToken || account.refreshToken) {
+    // Do not replay a failed member operation under a guest identity.
+    throw new Error("로그인 자격을 다시 확인하세요. 기존 작업은 유지됩니다.");
+  }
+  const anonymousToken = normalizePrincipalToken(await getValidAnonymousToken({ forceRefresh: true }));
+  if (useAuthStore.getState().accessToken || useAuthStore.getState().refreshToken) {
+    throw new Error("계정이 변경되었습니다. 요청을 다시 확인하세요.");
+  }
   if (!anonymousToken) {
     throw new Error("No principal token available");
   }

@@ -1,0 +1,97 @@
+{
+  "checks": [
+    {
+      "width": 1440,
+      "docWidth": 1425,
+      "scrollWidth": 718,
+      "panelWidth": 718,
+      "allCardsDisplayed": true,
+      "font": "Georgia, \"Noto Serif KR\", \"Noto Serif CJK KR\", \"Nanum Myeongjo\", Batang, serif",
+      "line": "1px",
+      "borderRadius": "12px"
+    },
+    {
+      "width": 768,
+      "docWidth": 753,
+      "scrollWidth": 703,
+      "panelWidth": 703,
+      "allCardsDisplayed": true,
+      "font": "Georgia, \"Noto Serif KR\", \"Noto Serif CJK KR\", \"Nanum Myeongjo\", Batang, serif",
+      "line": "1px",
+      "borderRadius": "12px"
+    },
+    {
+      "width": 390,
+      "docWidth": 375,
+      "scrollWidth": 329,
+      "panelWidth": 329,
+      "allCardsDisplayed": true,
+      "font": "Georgia, \"Noto Serif KR\", \"Noto Serif CJK KR\", \"Nanum Myeongjo\", Batang, serif",
+      "line": "1px",
+      "borderRadius": "12px"
+    },
+    {
+      "width": 320,
+      "docWidth": 305,
+      "scrollWidth": 259,
+      "panelWidth": 259,
+      "allCardsDisplayed": true,
+      "font": "Georgia, \"Noto Serif KR\", \"Noto Serif CJK KR\", \"Nanum Myeongjo\", Batang, serif",
+      "line": "1px",
+      "borderRadius": "12px"
+    }
+  ],
+  "cardCount": 7,
+  "removedQuestionNavigation": true,
+  "draftRetainedAcrossModes": true,
+  "expandedView": true,
+  "realResponseCharacters": null,
+  "darkMode": true,
+  "errors": [],
+  "responses": [
+    {
+      "path": "/api/v1/public/config",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/analytics/heartbeat",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/comments",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/auth/anonymous",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/comments/stream",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/comments/reactions/batch",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/analytics/view",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/thought-feed",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/chat/session/SESSION/thought-feed",
+      "status": 200
+    },
+    {
+      "path": "/api/v1/rag/search",
+      "status": 200
+    }
+  ]
+}

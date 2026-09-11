@@ -41,18 +41,15 @@ import type {
 } from './feed-contract';
 import {
   fetchPublishedPost,
-  getValidCachedTranslation,
-  hashContent,
-  translateAndCachePost,
   type SupportedTranslationLang,
 } from './translation-service';
 import { attachOriginSignatureHeaders } from './origin-signature';
+import { startTranslationJob, drainTranslationJobs } from '../routes/lib/translation-jobs';
 
 export const AI_ARTIFACT_STREAM = 'ai.artifact.generate';
 const FEED_SCHEMA_VERSION = '2';
 const LENS_PROMPT_VERSION = 'feed-lens-v1';
 const THOUGHT_PROMPT_VERSION = 'feed-thought-v1';
-const TRANSLATION_PROMPT_VERSION = 'translate-v2';
 const DEFAULT_FEED_MAX_PAGES = 2;
 const MAX_QUEUE_LENGTH = 20;
 const MAX_DLQ_LENGTH = 5;
@@ -70,17 +67,6 @@ type FeedGeneratePayload = {
   generationVersionHash: string;
   count: number;
   maxPages: number;
-  priority: 'interactive' | 'publish' | 'revisit' | 'hot' | 'idle';
-};
-
-type TranslationGeneratePayload = {
-  artifactType: 'translation';
-  year: string;
-  slug: string;
-  targetLang: SupportedTranslationLang;
-  sourceHash: string;
-  promptVersion: string;
-  forceRefresh?: boolean;
   priority: 'interactive' | 'publish' | 'revisit' | 'hot' | 'idle';
 };
 
@@ -311,67 +297,16 @@ export async function enqueueFeedArtifactGeneration(
   };
 }
 
-export async function enqueueTranslationGeneration(
-  env: Env,
-  input: {
-    year: string;
-    slug: string;
-    targetLang: SupportedTranslationLang;
-    forceRefresh?: boolean;
-    priority?: 'interactive' | 'publish' | 'revisit' | 'hot' | 'idle';
-  }
-) {
-  await ensureAiArtifactSchema(env.DB);
-  const sourcePost = await fetchPublishedPost(env, input.year, input.slug);
-  if (!sourcePost) {
-    throw new Error('Published post not found');
-  }
-
-  const sourceHash = `sha256:${hashContent(sourcePost.content)}`;
-  const scopeKey = `${input.year}:${input.slug}:${input.targetLang}`;
-  const modelRoute = (await getAiDefaultModel(env)) || 'default';
-  const generationVersionHash = await buildGenerationVersionHash({
-    sourceHash,
-    artifactType: 'translation',
-    promptVersion: TRANSLATION_PROMPT_VERSION,
-    schemaVersion: '1',
-    modelRoute,
-  });
-
-  const payload: TranslationGeneratePayload = {
-    artifactType: 'translation',
-    year: input.year,
-    slug: input.slug,
-    targetLang: input.targetLang,
-    sourceHash,
-    promptVersion: TRANSLATION_PROMPT_VERSION,
-    forceRefresh: input.forceRefresh,
-    priority: input.priority ?? 'interactive',
-  };
-
-  const event = await appendOrReuseOutboxEvent(env, {
-    aggregateId: scopeKey,
-    eventType: 'translation.generate',
-    payload,
-    idempotencyKey: `translation|${scopeKey}|${generationVersionHash}|p:0`,
-  });
-
-  await upsertWarmCandidate(env.DB, {
-    artifactType: 'translation',
-    scopeKey,
-    sourceRef: JSON.stringify({ year: input.year, slug: input.slug }),
-    targetLang: input.targetLang,
-    priority: payload.priority,
-    targetPages: 1,
-    meta: { forceRefresh: Boolean(input.forceRefresh) },
-  });
-
-  return {
-    event,
-    scopeKey,
-    sourceHash,
-    generationVersionHash,
-  };
+export async function enqueueTranslationGeneration(env:Env,input:{
+  year:string;slug:string;targetLang:SupportedTranslationLang;forceRefresh?:boolean;
+  priority?:'interactive'|'publish'|'revisit'|'hot'|'idle';
+}) {
+  const source=await fetchPublishedPost(env,input.year,input.slug);
+  if(!source)throw new Error('Published post not found');
+  // Warm-up is not approval for a new paid revision; forced regeneration uses the admin route.
+  const {job}=await startTranslationJob(env,source,input.targetLang,{priority:input.priority||'publish'});
+  const event=await getDomainOutboxEventByIdempotencyKey(env.DB,AI_ARTIFACT_STREAM,job.id);
+  return {event,scopeKey:job.key,sourceHash:job.source_version,generationVersionHash:job.content_hash};
 }
 
 async function generateLensPages(env: Env, payload: FeedGeneratePayload) {
@@ -555,37 +490,10 @@ export async function processFeedEvent(env: Env, payload: FeedGeneratePayload) {
   });
 }
 
-async function processTranslationEvent(env: Env, payload: TranslationGeneratePayload) {
-  const sourcePost = await fetchPublishedPost(env, payload.year, payload.slug);
-  if (!sourcePost) {
-    throw new Error('Published post not found');
-  }
-
-  // Skip if source and target languages are the same
-  if (sourcePost.sourceLang === payload.targetLang) {
-    return;
-  }
-
-  const cached = await getValidCachedTranslation(env.DB, sourcePost, payload.targetLang);
-  if (cached && !payload.forceRefresh) {
-    return;
-  }
-
-  await translateAndCachePost(env, env.DB, {
-    year: sourcePost.year,
-    slug: sourcePost.slug,
-    targetLang: payload.targetLang,
-    sourceLang: sourcePost.sourceLang,
-    title: sourcePost.title,
-    description: sourcePost.description,
-    content: sourcePost.content,
-    forceRefresh: payload.forceRefresh,
-  });
-}
-
 export async function flushAiArtifactOutbox(env: Env, options: { limit?: number } = {}) {
   await ensureAiArtifactSchema(env.DB);
 
+  const translations = await drainTranslationJobs(env, {limit:1,allowWarm:false});
   const resource = await getWarmResourceSnapshot(env);
   await recordSchedulerDecision(env.DB, {
     schedulerId: 'artifact-scheduler',
@@ -604,13 +512,14 @@ export async function flushAiArtifactOutbox(env: Env, options: { limit?: number 
       deadLettered: 0,
       scanned: 0,
       skipped: true,
-      reason: resource.reason,
+      reason: resource.reason, translations,
     };
   }
 
   const events = await claimDomainOutboxEvents(env.DB, {
     stream: AI_ARTIFACT_STREAM,
     limit: options.limit ?? 8,
+    excludeEventTypes: ['translation.generate'],
   });
 
   let processed = 0;
@@ -618,9 +527,7 @@ export async function flushAiArtifactOutbox(env: Env, options: { limit?: number 
 
   for (const event of events) {
     try {
-      if (event.eventType === 'translation.generate') {
-        await processTranslationEvent(env, event.payload as TranslationGeneratePayload);
-      } else if (
+      if (
         event.eventType === 'feed.lens.generate' ||
         event.eventType === 'feed.thought.generate'
       ) {
@@ -647,7 +554,7 @@ export async function flushAiArtifactOutbox(env: Env, options: { limit?: number 
     deadLettered,
     scanned: events.length,
     skipped: false,
-    reason: resource.reason,
+    reason: resource.reason, translations,
   };
 }
 

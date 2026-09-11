@@ -1,3 +1,6 @@
+import { rejectInvalidForwardedAccess } from './lib/forwarded-access';
+import { isPrivateReaderRenderPath } from './lib/reader-image-policy';
+import { cleanupReaderImages } from './lib/reader-image-retention';
 /**
  * Blog API Gateway - Unified Cloudflare Worker
  *
@@ -26,6 +29,7 @@ import {
 } from './lib/origin-signature';
 import type { Env } from './types';
 import { flushAiArtifactOutbox } from './lib/ai-artifact-outbox';
+import { drainTranslationJobs } from './routes/lib/translation-jobs';
 import { flushNotificationOutbox } from './lib/notification-outbox';
 import {
   replaceActiveEditorPicks,
@@ -45,6 +49,13 @@ function isPublicEdgeBlockedBackendPath(pathname: string): boolean {
 }
 
 async function proxyToBackend(request: Request, env: Env): Promise<Response> {
+  const rejection = await rejectInvalidForwardedAccess(request, env);
+  if (rejection) {
+    for (const [key, value] of Object.entries(await getCorsHeadersForRequest(request, env))) {
+      rejection.headers.set(key, value);
+    }
+    return rejection;
+  }
   const backendOrigin = env.BACKEND_ORIGIN;
   const url = new URL(request.url);
 
@@ -62,7 +73,7 @@ async function proxyToBackend(request: Request, env: Env): Promise<Response> {
     );
   }
 
-  if (isPublicEdgeBlockedBackendPath(url.pathname)) {
+  if (isPublicEdgeBlockedBackendPath(url.pathname) || isPrivateReaderRenderPath(url.pathname)) {
     const corsHeaders = await getCorsHeadersForRequest(request, env);
     return new Response(
       JSON.stringify({
@@ -380,6 +391,14 @@ app.onError(errorHandler);
 // =============================================================================
 
 async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+  if (event.cron === "* * * * *") {
+    await drainTranslationJobs(env, {limit:1}).catch(() => console.error('Translation recovery is unavailable'));
+    return;
+  }
+  if (event.cron === "30 * * * *") {
+    await cleanupReaderImages(env).catch(err => console.error("Reader image retention failed:", err));
+    return;
+  }
   console.log(`Cron triggered at ${new Date().toISOString()}`);
 
   try {
@@ -460,9 +479,12 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
     });
     console.log('Notification outbox scheduler result:', notificationResult);
 
+
     console.log('Cron job completed successfully');
   } catch (err) {
     console.error('Cron job failed:', err);
+  } finally {
+    await cleanupReaderImages(env).catch(err => console.error('Reader image retention failed:', err));
   }
 }
 

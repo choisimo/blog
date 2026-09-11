@@ -4,6 +4,7 @@
  * 채팅 관련 API 호출 함수들
  */
 
+import { getAgentPreferences } from '@/services/personal/agentPreferences';
 import { getApiBaseUrl } from "@/utils/network/apiBase";
 import { bearerAuth } from "@/lib/auth";
 import { getPrincipalToken } from "@/services/session/userContentAuth";
@@ -397,6 +398,7 @@ export async function* streamChatEvents(
       parts,
       context: { page },
       enableRag,
+      agentPreferences: getAgentPreferences(),
     }),
     signal: input.signal,
   });
@@ -618,7 +620,7 @@ export async function invokeChatAggregate(input: {
   const res = await fetch(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, agentPreferences: getAgentPreferences() }),
     signal: input.signal,
   });
 

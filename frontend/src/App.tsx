@@ -1,3 +1,5 @@
+import AnonymousSessionRecoveryDialog from '@/components/features/ai/AnonymousSessionRecoveryDialog';
+import AgentPreferencesDialog from '@/components/features/ai/AgentPreferencesDialog';
 import {
   lazy,
   Suspense,
@@ -43,6 +45,7 @@ const AdminAuthCallback = lazy(() => import("./pages/admin/AdminAuthCallback"));
 import "./App.css";
 import { PublicShell } from "@/components/organisms/layout";
 import { ReadingPreferences } from "@/components/common/ReadingPreferences";
+import { useIsMobile } from "@/hooks/ui/use-mobile";
 const VisitedPostsMinimap = lazy(() =>
   import("@/components/features/navigation/VisitedPostsMinimap").then((m) => ({
     default: m.VisitedPostsMinimap,
@@ -121,7 +124,7 @@ function RouteMain({ children }: { children: ReactNode }) {
       tabIndex={-1}
       className={
         insightWorkspaceActive || adminWorkspaceActive
-          ? "ui-main-content ui-workspace-route flex-1"
+          ? "ui-main-content ui-workspace-route flex-1 pb-[calc(68px+env(safe-area-inset-bottom,0px))] md:pb-0"
           : "ui-main-content flex-1 pb-[calc(110px+env(safe-area-inset-bottom,0px))] md:pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-[calc(96px+env(safe-area-inset-bottom,0px))]"
       }
     >
@@ -144,25 +147,32 @@ function GlobalAssistants({ fabOn }: { fabOn: boolean }) {
   const insightWorkspaceActive = useInsightWorkspaceActive();
   const cleanBlogListing = useCleanBlogListing();
   const adminWorkspaceActive = useAdminWorkspaceActive();
+  const isMobile = useIsMobile();
+  const [retainMobileOwners, setRetainMobileOwners] = useState(false);
+  const desktopToolbarHidden = !isMobile && (insightWorkspaceActive || cleanBlogListing || adminWorkspaceActive);
+
+  useEffect(() => {
+    if (isMobile) setRetainMobileOwners(true);
+  }, [isMobile]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (cleanBlogListing || adminWorkspaceActive) {
+    if (!isMobile && !retainMobileOwners && (cleanBlogListing || adminWorkspaceActive)) {
       document.querySelectorAll("ai-memo-pad").forEach((el) => el.remove());
       return;
     }
     ensureAIMemoPadMounted();
-  }, [cleanBlogListing, adminWorkspaceActive]);
+  }, [cleanBlogListing, adminWorkspaceActive, isMobile, retainMobileOwners]);
 
-  if (insightWorkspaceActive || cleanBlogListing || adminWorkspaceActive) return null;
+  if (desktopToolbarHidden && !retainMobileOwners) return null;
 
   return (
     <>
       <Suspense fallback={null}>
-        {!fabOn && !readingDeskActive && <VisitedPostsMinimap />}
+        {!desktopToolbarHidden && !fabOn && !readingDeskActive && <VisitedPostsMinimap />}
       </Suspense>
       <Suspense fallback={null}>
-        <FloatingActionBar />
+        <FloatingActionBar toolbarHidden={desktopToolbarHidden} />
       </Suspense>
     </>
   );
@@ -361,6 +371,8 @@ function App() {
                   </RouteMain>
                   <RouteFooter />
                   <GlobalAssistants fabOn={fabOn} />
+                  <AgentPreferencesDialog />
+                  <AnonymousSessionRecoveryDialog />
                   <Toaster />
                 </PublicShell>
               </TooltipProvider>

@@ -93,13 +93,13 @@ describe('auth contract', () => {
       },
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(401);
     const payload = (await response.json()) as {
       ok: boolean;
       error: { code: string; message: string };
     };
     expect(payload.ok).toBe(false);
-    expect(payload.error.message).toBe('Not an anonymous token');
+    expect(payload.error.code).toBe('ANONYMOUS_PROOF_INVALID');
   });
 
   it('revokes the full refresh token family when a rotated token is reused', async () => {

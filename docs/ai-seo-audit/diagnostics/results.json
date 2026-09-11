@@ -1,0 +1,205 @@
+{
+  "scope": "Source-code reproductions with isolated dependencies; not production or full-suite tests.",
+  "source": "/mnt/data/blog-audit/source/blog",
+  "checks": [
+    {
+      "id": "T01-published-slug-rejection",
+      "observed": {
+        "all": 282,
+        "published": 140,
+        "rejected": [
+          {
+            "year": "2026",
+            "slug": "Container Network Interface"
+          },
+          {
+            "year": "2025",
+            "slug": "감동을_잃어버린_그대들에게"
+          },
+          {
+            "year": "2024",
+            "slug": "_index"
+          }
+        ]
+      },
+      "expectation": "Every published canonical post is reachable by translation; slash/traversal/control characters remain forbidden.",
+      "note": ""
+    },
+    {
+      "id": "P01-error-cached-as-empty",
+      "observed": {
+        "firstCount": 0,
+        "secondCount": 0,
+        "afterExplicitCacheClearCount": 1,
+        "networkCalls": 2,
+        "errorLogs": [
+          "Error loading projects manifest: Error: Failed to load projects manifest: 503"
+        ]
+      },
+      "expectation": "A failed load must not become a successful empty cache; retry must refetch.",
+      "note": ""
+    },
+    {
+      "id": "S01-crawler-resource-routing",
+      "observed": [
+        {
+          "ua": "Googlebot",
+          "route": "/robots.txt",
+          "status": 200,
+          "type": "text/html; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/sitemap.xml",
+          "status": 200,
+          "type": "text/html; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/images/cover.png",
+          "status": 200,
+          "type": "text/html; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/assets/app.js",
+          "status": 200,
+          "type": "text/html; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/blog/2026/definitely-missing-post",
+          "status": 200,
+          "type": "text/html; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/posts-manifest.json?v=5963320",
+            "https://origin.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/robots.txt",
+          "status": 200,
+          "type": "text/plain; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/robots.txt"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/sitemap.xml",
+          "status": 200,
+          "type": "application/xml",
+          "originRequests": [
+            "https://origin.test/blog/sitemap.xml"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/images/cover.png",
+          "status": 200,
+          "type": "image/png",
+          "originRequests": [
+            "https://origin.test/blog/images/cover.png"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/assets/app.js",
+          "status": 200,
+          "type": "application/javascript; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/assets/app.js"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/blog/2026/definitely-missing-post",
+          "status": 200,
+          "type": "text/html; charset=utf-8",
+          "originRequests": [
+            "https://origin.test/blog/index.html"
+          ]
+        }
+      ],
+      "expectation": "robots/sitemap/image/JS preserve actual content types regardless of UA; nonexistent pages return 404.",
+      "note": "HTMLRewriter passthrough does not affect response routing/status. Upstream requests are mocked."
+    },
+    {
+      "id": "S02-project-canonical-and-encoded-slug",
+      "observed": {
+        "projects": {
+          "title": "Nodove Blog",
+          "description": "Tech & Programming Blog",
+          "ogImage": "https://api.test/api/v1/og?title=Nodove+Blog&format=png&subtitle=Tech+%26+Programming",
+          "url": "https://blog.test",
+          "type": "website"
+        },
+        "encodedPost": {
+          "title": "%EA%B0%90%EB%8F%99%EC%9D%84_%EC%9E%83%EC%96%B4%EB%B2%84%EB%A6%B0_%EA%B7%B8%EB%8C%80%EB%93%A4%EC%97%90%EA%B2%8C | Nodove Blog",
+          "description": "",
+          "ogImage": "https://api.test/api/v1/og?title=%25EA%25B0%2590%25EB%258F%2599%25EC%259D%2584_%25EC%259E%2583%25EC%2596%25B4%25EB%25B2%2584%25EB%25A6%25B0_%25EA%25B7%25B8%25EB%258C%2580%25EB%2593%25A4%25EC%2597%2590%25EA%25B2%258C&format=png",
+          "url": "https://blog.test/blog/2025/%EA%B0%90%EB%8F%99%EC%9D%84_%EC%9E%83%EC%96%B4%EB%B2%84%EB%A6%B0_%EA%B7%B8%EB%8C%80%EB%93%A4%EC%97%90%EA%B2%8C",
+          "type": "article"
+        },
+        "expectedTitle": "감동을 잃어버린 그대들에게"
+      },
+      "expectation": "Projects canonical is /projects; decoded published slug resolves its actual title.",
+      "note": ""
+    },
+    {
+      "id": "T02-truncated-and-unvalidated-save",
+      "observed": {
+        "sourceChars": 50000,
+        "bodySentChars": 30045,
+        "truncationMarker": true,
+        "generatedChars": 100,
+        "suspicious": true,
+        "dbWrites": 1,
+        "returnedAsAiGenerated": true
+      },
+      "expectation": "Full source content represented; suspicious/incomplete output not promoted into valid translation cache.",
+      "note": "AI outputs and D1 are mocks; application translation function is executed unchanged after import isolation."
+    },
+    {
+      "id": "S03-metadata-only-static-html",
+      "observed": {
+        "articleBodyPresent": false,
+        "emptyReactRoot": true,
+        "rawScriptCloseInStructuredData": true
+      },
+      "expectation": "Published HTML contains semantic article body, with inline JSON safe against script termination.",
+      "note": "Synthetic title is a serialization test, not a demonstrated external attack."
+    },
+    {
+      "id": "P02-catalog-vs-display-manifest",
+      "observed": {
+        "catalog": {
+          "public": 68,
+          "original": 59,
+          "forks": 9,
+          "empty": 2
+        },
+        "catalogCheckedAt": "2026-09-07T19:45:06.055365+00:00",
+        "manifestTotal": 0,
+        "manifestItems": 0,
+        "manifestGeneratedAt": "2026-09-09T23:04:19.700Z"
+      },
+      "expectation": "An intentional full public catalog must not be silently transformed into an empty display manifest.",
+      "note": ""
+    }
+  ],
+  "completed": true
+}

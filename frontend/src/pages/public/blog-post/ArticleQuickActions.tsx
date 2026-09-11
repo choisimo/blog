@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { TocDrawer } from '@/components/features/blog';
 import { cn, throttle } from '@/lib/utils';
+import MobileActionBar from '@/components/molecules/MobileActionBar';
+import { useScrollHide } from '@/hooks/ui/useScrollHide';
+import { useIsMobile } from '@/hooks/ui/use-mobile';
 import { ArticleDeskActions } from './ArticleDeskActions';
 
 type ArticleQuickActionsProps = {
@@ -17,22 +20,22 @@ const HAS_CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]/;
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 function normalizeQuickActionText(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
+  if (typeof value !== 'string') return undefined;
   const normalized = value
-    .replace(CONTROL_TEXT_PATTERN, " ")
-    .replace(COLLAPSED_WHITESPACE_PATTERN, " ")
+    .replace(CONTROL_TEXT_PATTERN, ' ')
+    .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
     .trim();
   return normalized || undefined;
 }
 
 function normalizeQuickActionPostId(value: unknown): string | null {
-  if (typeof value !== "string") return null;
+  if (typeof value !== 'string') return null;
   const normalized = value.trim();
   if (
     !normalized ||
     HAS_CONTROL_TEXT_PATTERN.test(normalized) ||
-    normalized.includes("\\") ||
-    normalized.includes("//")
+    normalized.includes('\\') ||
+    normalized.includes('//')
   ) {
     return null;
   }
@@ -47,6 +50,12 @@ export function ArticleQuickActions({
   language = 'ko',
 }: ArticleQuickActionsProps) {
   const [showTop, setShowTop] = useState(false);
+  const isMobile = useIsMobile();
+  const scrollHidden = useScrollHide({
+    enabled: isMobile,
+    resetKey: postId,
+    revealAtBottom: false,
+  });
   const safePostId = normalizeQuickActionPostId(postId);
   const safeTocPostTitle = normalizeQuickActionText(tocPostTitle);
 
@@ -56,7 +65,7 @@ export function ArticleQuickActions({
 
   const throttledUpdate = useMemo(
     () => throttle(updateVisibility, 120),
-    [updateVisibility],
+    [updateVisibility]
   );
 
   useEffect(() => {
@@ -75,9 +84,11 @@ export function ArticleQuickActions({
   }, []);
 
   if (!safePostId) return null;
+  const Container = isTerminal ? 'div' : MobileActionBar;
 
   return (
-    <div
+    <Container
+      {...(!isTerminal ? { scrollHidden } : {})}
       className={cn(
         'rd-quick-actions fn-reader-mobilebar fixed z-[var(--z-fab-bar)] flex flex-col gap-1 rounded-lg border p-1 print:hidden',
         'transition-opacity duration-200 pointer-events-none',
@@ -136,6 +147,6 @@ export function ArticleQuickActions({
           </button>
         </div>
       )}
-    </div>
+    </Container>
   );
 }

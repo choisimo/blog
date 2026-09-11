@@ -71,7 +71,12 @@ export function ArticleDeskActions({
       {flags.aiEnabled && (
         <button
           type='button'
-          className='rd-rail-action'
+          className={
+            compact
+              ? 'rd-rail-action mobile-action-bar__button'
+              : 'rd-rail-action'
+          }
+          data-primary='true'
           onClick={askAboutArticle}
         >
           <Sparkles aria-hidden='true' />
@@ -84,7 +89,15 @@ export function ArticleDeskActions({
               : 'Ask about this note'}
         </button>
       )}
-      <button type='button' className='rd-rail-action' onClick={openMemo}>
+      <button
+        type='button'
+        className={
+          compact
+            ? 'rd-rail-action mobile-action-bar__button'
+            : 'rd-rail-action'
+        }
+        onClick={openMemo}
+      >
         <NotebookPen aria-hidden='true' />
         {compact
           ? korean

@@ -1,0 +1,20 @@
+{
+  "basis": "blog-integrated-with-pr-tasks-20260910.zip",
+  "inputFileCount": 1980,
+  "unchangedInputFiles": 1972,
+  "changedInputFiles": [
+    "tasks.md",
+    "workers/seo-gateway/package-lock.json",
+    "workers/seo-gateway/package.json",
+    "workers/seo-gateway/src/index.ts",
+    "workers/seo-gateway/src/meta-rewriter.ts",
+    "workers/seo-gateway/src/post-resolver.ts",
+    "workers/seo-gateway/src/types.ts",
+    "workers/seo-gateway/test/gateway-routing.test.ts"
+  ],
+  "missingInputFiles": [],
+  "applicationChangesOutsideSeoGateway": [],
+  "privateReaderSourcesPreserved": true,
+  "blogContentManifestsPreserved": true,
+  "note": "Added diagnostics/reports are not part of the original input count; no frontend prebuild or content generator executed."
+}

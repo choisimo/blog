@@ -12,6 +12,10 @@ export interface PostMeta {
   ogImage: string;
   url: string;
   type: 'article' | 'website';
+  ogImageWidth?: number;
+  ogImageHeight?: number;
+  noIndex?: boolean;
+  httpStatus?: number;
   publishedTime?: string;
   author?: string;
   category?: string;
@@ -34,5 +38,6 @@ export interface ManifestItem {
 
 export interface Manifest {
   format?: number;
-  items?: ManifestItem[];
+  total?: number;
+  items: ManifestItem[];
 }

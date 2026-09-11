@@ -728,12 +728,12 @@
     padding: 7px;
     font-size: 11px;
   }
-  :root:not(.terminal) .fn-reader-mobilebar .rd-rail-action:first-child {
+  :root:not(.terminal) .fn-reader-mobilebar .rd-rail-action[data-primary='true'] {
     background: var(--rd-ink);
     color: hsl(var(--background));
     border-radius: 5px;
   }
-  :root:not(.terminal) .fn-reader-mobilebar .rd-rail-action:first-child svg {
+  :root:not(.terminal) .fn-reader-mobilebar .rd-rail-action[data-primary='true'] svg {
     color: inherit;
   }
   :root:not(.terminal) .fn-reader-mobilebar .rd-mobile-settings {

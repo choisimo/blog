@@ -1,0 +1,11 @@
+{
+  "extends": "../config/tsconfig.app.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["./*.ts", "./*.tsx", "../src/vite-env.d.ts"]
+}

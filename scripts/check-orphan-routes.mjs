@@ -46,6 +46,18 @@ const mountedFromIndex = collectImportedRouteNames(
 );
 
 const mountedRoutes = new Set([...mountedFromRegistry, ...mountedFromIndex]);
+// Registered routers may compose other route modules. Only follow imports
+// reachable from registered roots so disconnected groups still count as orphans.
+for (const routeName of mountedRoutes) {
+  if (!routeFiles.includes(routeName)) continue;
+  const source = await fs.readFile(path.join(routeDir, `${routeName}.js`), "utf8");
+  for (const importedName of collectImportedRouteNames(
+    source,
+    /from\s+['"]\.\/([A-Za-z0-9_-]+)\.js['"]/g,
+  )) {
+    mountedRoutes.add(importedName);
+  }
+}
 const orphanRoutes = routeFiles.filter((name) => !mountedRoutes.has(name));
 
 if (orphanRoutes.length > 0) {

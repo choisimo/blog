@@ -1,96 +1,26 @@
-import { env } from 'cloudflare:test';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { execute } from '../src/lib/d1';
-import {
-  claimTranslationJobLease,
-  settleTranslationJobLease,
-} from '../src/lib/translation-job-repository';
-import {
-  startTranslationJob,
-  type TranslationJobSnapshot,
-} from '../src/routes/lib/translation-jobs';
-
-function buildRunningJob(): TranslationJobSnapshot & { contentHash: string } {
-  return {
-    id: 'translation-job-remote-owner',
-    key: '2026:remote-owner:en',
-    status: 'running',
-    year: '2026',
-    slug: 'remote-owner',
-    targetLang: 'en',
-    sourceLang: 'ko',
-    forceRefresh: true,
-    contentHash: 'hash-remote-owner',
-    createdAt: '2026-03-27T10:00:00.000Z',
-    updatedAt: '2026-03-27T10:00:00.000Z',
-    startedAt: '2026-03-27T10:00:00.000Z',
-    statusUrl: 'https://example.com/status/remote-owner',
-    cacheUrl: 'https://example.com/cache/remote-owner',
-    generateUrl: 'https://example.com/generate/remote-owner',
-  };
-}
-
-beforeEach(async () => {
-  await execute(env.DB, 'DELETE FROM translation_jobs');
-});
-
-describe('translation-jobs', () => {
-  it('waits for an existing durable job instead of starting a duplicate runner', async () => {
-    const running = buildRunningJob();
-    const claim = await claimTranslationJobLease(env.DB, {
-      ...running,
-      lockToken: 'remote-owner-lock',
-      lockExpiresAt: '2099-03-27T10:10:00.000Z',
-    });
-
-    const runner = vi.fn(async () => 'local-result');
-    const resolveRemoteResult = vi.fn(async () => 'remote-result');
-
-    const handle = await startTranslationJob<string>(env.DB, {
-      key: running.key,
-      year: running.year,
-      slug: running.slug,
-      targetLang: running.targetLang,
-      sourceLang: running.sourceLang,
-      forceRefresh: running.forceRefresh,
-      contentHash: running.contentHash,
-      urls: {
-        statusUrl: running.statusUrl,
-        cacheUrl: running.cacheUrl,
-        generateUrl: running.generateUrl,
-      },
-      runner,
-      resolveRemoteResult,
-    });
-
-    expect(handle.created).toBe(false);
-    expect(handle.job.id).toBe(running.id);
-    expect(runner).not.toHaveBeenCalled();
-
-    const waitPromise = handle.wait;
-    await settleTranslationJobLease(env.DB, {
-      id: running.id,
-      lockToken: 'remote-owner-lock',
-      leaseVersion: claim.leaseVersion,
-      status: 'succeeded',
-      updatedAt: '2026-03-27T10:02:00.000Z',
-      completedAt: '2026-03-27T10:02:00.000Z',
-      result: {
-        source: 'generated',
-        cached: false,
-        isAiGenerated: true,
-        translationAvailable: true,
-      },
-    });
-
-    await expect(waitPromise).resolves.toBe('remote-result');
-    expect(resolveRemoteResult).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: running.id,
-        status: 'succeeded',
-      })
-    );
-    expect(runner).not.toHaveBeenCalled();
+import {env} from 'cloudflare:test';
+import {beforeEach,describe,expect,it} from 'vitest';
+import {startTranslationJob,presentTranslationJob,translationPolicy} from '../src/routes/lib/translation-jobs';
+import type {Env} from '../src/types';
+const source={year:'2026',slug:'한글 글',title:'Title',description:'Description',content:'# Body',sourceLang:'ko' as const};
+const bindings=()=>({...env,ENV:'development',BACKEND_ORIGIN:'https://backend.test',TRANSLATION_EXECUTION_ENABLED:'true'}) as Env;
+beforeEach(async()=>{for(const name of ['translation_attempts','translation_jobs','domain_outbox'])await env.DB.prepare(`DELETE FROM ${name}`).run();});
+describe('translation orchestration admission',()=>{
+  it('joins public, internal and warm requests without starting provider work',async()=>{
+    const a=await startTranslationJob(bindings(),source,'en',{priority:'publish'});
+    const b=await startTranslationJob(bindings(),source,'en',{priority:'interactive'});
+    expect(a.job.id).toBe(b.job.id);expect(b.job.priority).toBe(100);expect(b.job.status).toBe('queued');
+  });
+  it('renders public URLs independently of who first admitted the job',async()=>{
+    const a=await startTranslationJob(bindings(),source,'en',{origin:'https://internal.test'});
+    const result=presentTranslationJob(a.job,'https://public-api.test');
+    expect(result.statusUrl).toContain('https://public-api.test/api/v1/public/');expect(result.statusUrl).toContain(encodeURIComponent(source.slug));
+  });
+  it('reports execution disabled without changing a caller identity or any image policy',async()=>{
+    const a=await startTranslationJob({...bindings(),TRANSLATION_EXECUTION_ENABLED:'false'},source,'en');
+    expect(a.job.status).toBe('deferred');expect(presentTranslationJob(a.job,'https://test').error?.code).toBe('EXECUTION_DISABLED');
+  });
+  it('rejects malformed operational limits instead of accidentally disabling the cap',()=>{
+    expect(()=>translationPolicy({...bindings(),TRANSLATION_DAILY_ATTEMPTS:'unlimited'})).toThrow();
   });
 });

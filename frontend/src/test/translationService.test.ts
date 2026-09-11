@@ -139,13 +139,13 @@ describe("translation service", () => {
       {
         year: " 2026 ",
         slug: " translation-hardening ",
-        targetLang: " en-US ",
+        targetLang: " en ",
       },
       " job-1 ",
     );
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.example.com/api/v1/internal/posts/2026/translation-hardening/translations/en-US/generate/status?jobId=job-1",
+      "https://api.example.com/api/v1/internal/posts/2026/translation-hardening/translations/en/generate/status?jobId=job-1",
       expect.objectContaining({
         method: "GET",
       }),
@@ -174,7 +174,7 @@ describe("translation service", () => {
         data: null,
         job: {
           ...validJob,
-          status: "queued",
+          status: "invalid-status",
         },
       }),
     });

@@ -558,6 +558,7 @@ export default function InsightWorkspacePage() {
 
   useEffect(() => {
     const closeMemoPanel = () => {
+      if (window.matchMedia('(max-width: 767px)').matches) return;
       try {
         localStorage.setItem('aiMemo.isOpen', 'false');
       } catch {

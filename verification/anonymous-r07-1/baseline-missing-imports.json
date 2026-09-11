@@ -1,0 +1,9 @@
+{
+  "scope": "existing registry imports; not introduced by R07-1",
+  "missing": [
+    {
+      "importer": "workers/api-gateway/src/routes/registry.ts",
+      "import": "./secrets"
+    }
+  ]
+}

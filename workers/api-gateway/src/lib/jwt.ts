@@ -1,4 +1,5 @@
 import type { Env, JwtPayload } from '../types';
+import { AnonymousAuthError, assertAnonymousClaims, assertAnonymousNotRevoked, isAnonymousIdentity } from './anonymous-identity';
 
 // Simple HS256 JWT implementation for Cloudflare Workers
 // Using Web Crypto API (available in Workers runtime)
@@ -37,6 +38,9 @@ function constantTimeEqual(left: string, right: string): boolean {
 }
 
 async function hmacSign(message: string, secret: string): Promise<string> {
+  if (typeof secret !== 'string' || !secret.trim()) {
+    throw new AnonymousAuthError('AUTH_UNAVAILABLE', 503, 'Authentication configuration unavailable');
+  }
   const key = await crypto.subtle.importKey(
     'raw',
     encoder.encode(secret),
@@ -84,10 +88,19 @@ export async function signJwt(
  * Verify and decode a JWT token
  */
 export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
+  if (typeof token !== 'string' || token.length > 8192 ||
+      !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
+    throw new Error('Invalid token format');
+  }
   const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Invalid token format');
 
   const [headerB64, payloadB64, signatureB64] = parts;
+  let header: { alg?: string; typ?: string; crit?: unknown };
+  try { header = JSON.parse(decoder.decode(base64UrlDecode(headerB64!))); }
+  catch { throw new Error('Invalid token header'); }
+  if (!header || header.alg !== 'HS256' || header.typ !== 'JWT' || header.crit !== undefined) {
+    throw new Error('Unsupported token header');
+  }
   const message = `${headerB64}.${payloadB64}`;
 
   // Verify signature
@@ -97,16 +110,23 @@ export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
   }
 
   // Decode payload
-  const payloadJson = decoder.decode(base64UrlDecode(payloadB64!));
-  const payload = JSON.parse(payloadJson) as JwtPayload;
+  let payload: JwtPayload;
+  try { payload = JSON.parse(decoder.decode(base64UrlDecode(payloadB64!))) as JwtPayload; }
+  catch { throw new Error('Invalid token claims'); }
 
   const now = Math.floor(Date.now() / 1000);
 
-  if (payload.exp && payload.exp < now) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) ||
+      typeof payload.sub !== 'string' || !payload.sub || payload.sub.length > 256 ||
+      /[\s\u0000-\u001f\u007f]/.test(payload.sub) || typeof payload.role !== 'string') {
+    throw new Error('Invalid token claims');
+  }
+
+  if (!Number.isSafeInteger(payload.exp) || payload.exp! <= now) {
     throw new Error('Token expired');
   }
 
-  if (!payload.nbf || payload.nbf > now) {
+  if (!Number.isSafeInteger(payload.nbf) || payload.nbf! > now) {
     throw new Error('Token not yet valid');
   }
 
@@ -116,6 +136,11 @@ export async function verifyJwt(token: string, env: Env): Promise<JwtPayload> {
 
   if (!payload.aud || payload.aud !== JWT_AUDIENCE) {
     throw new Error('Invalid token audience');
+  }
+
+  if (isAnonymousIdentity(payload)) {
+    assertAnonymousClaims(payload);
+    await assertAnonymousNotRevoked(env, payload.sub);
   }
 
   return payload;

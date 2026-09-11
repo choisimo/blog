@@ -23,7 +23,7 @@ import type {
 import type { TranslationResult } from '@/services/content/translate';
 import { SafeDescriptionMarkdown } from '@/components/features/blog/SafeDescriptionMarkdown';
 import { ArticleReadingTools } from './ArticleReadingTools';
-import type { AsyncArtifactStatus } from '@/components/features/sentio/hooks/useAsyncArtifact';
+import type { TranslationUiStatus } from '@/services/content/translationObservation';
 
 interface BlogPostHeaderProps {
   post: BlogPostType;
@@ -34,7 +34,7 @@ interface BlogPostHeaderProps {
   setLanguage: (lang: SupportedLanguage) => void;
   availableLanguages: SupportedLanguage[];
   resolveLanguageName: (code: string) => string;
-  translationStatus: AsyncArtifactStatus;
+  translationStatus: TranslationUiStatus;
   aiTranslation: TranslationResult | null;
   hasNativeTranslation: boolean;
   translationError: { message: string; retryable: boolean } | null;
@@ -119,7 +119,6 @@ export function BlogPostHeader({
   translatingLabel,
   aiTranslatedLabel,
   translationFailedLabel,
-  showingOriginalLabel,
   retryLabel,
 }: BlogPostHeaderProps) {
   const navigate = useNavigate();
@@ -277,44 +276,10 @@ export function BlogPostHeader({
             )}
           </div>
 
-          {/* Translation error message */}
           {translationError && (
-            <div
-              className={cn(
-                'rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400',
-                isTerminal && 'font-mono'
-              )}
-            >
-              <div className='flex items-start justify-between gap-3'>
-                <div>
-                  <p className='font-medium mb-1'>{translationFailedLabel}</p>
-                  <p className='text-xs opacity-80'>
-                    {safeTranslationErrorMessage}
-                  </p>
-                  <p className='text-xs mt-1 opacity-60'>
-                    {showingOriginalLabel}
-                  </p>
-                </div>
-                {translationError.retryable && (
-                  <Button
-                    data-ui-variant='outline'
-                    size='sm'
-                    onClick={onRetryTranslation}
-                    className={[
-                      'ui-control',
-                      cn(
-                        'shrink-0 text-xs h-8',
-                        isTerminal &&
-                          'font-mono border-primary/40 text-primary hover:bg-primary/10'
-                      ),
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {retryLabel}
-                  </Button>
-                )}
-              </div>
+            <div role='status' className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
+              <span>{safeTranslationErrorMessage || translationFailedLabel}</span>
+              {translationError.retryable && <button type='button' className='underline underline-offset-4' onClick={onRetryTranslation}>{retryLabel}</button>}
             </div>
           )}
 
@@ -380,6 +345,12 @@ export function BlogPostHeader({
             <div className='ui-article-language fn-language-strip'>
               <Languages aria-hidden='true' className='h-4 w-4 text-primary' />
               <span className='sr-only'>{readingLanguageLabel}</span>
+              {(translationStatus==='paused'||translationStatus==='deferred') && (
+                <button type='button' onClick={onRetryTranslation} className='text-xs underline underline-offset-4'
+                  aria-label={language==='ko'?'번역 상태 확인':'Check translation status'}>
+                  {translationStatus==='deferred' ? (language==='ko'?'번역 대기 · 상태 확인':'Queued · check status') : (language==='ko'?'상태 확인':'Check status')}
+                </button>
+              )}
               <div
                 className='ui-article-language__options'
                 role='group'
@@ -390,7 +361,6 @@ export function BlogPostHeader({
                     key={code}
                     type='button'
                     onClick={() => setLanguage(code)}
-                    disabled={isTranslationWarming}
                     aria-pressed={language === code}
                     className='ui-article-language__option'
                   >

@@ -1,0 +1,48 @@
+{
+  "task": "A01",
+  "date": "2026-09-10",
+  "inputArchive": "blog-integrated-with-pr-tasks-20260910.zip",
+  "inputSha256": "2a4cedfdaf47def72355ac87d5923920a20113390437f9719a55a00ba6fcade3",
+  "implementation": "source-applied",
+  "prOverallStatus": "runtime-and-staging-verification-pending",
+  "node": "22.16.0",
+  "offlineTranspiler": "TypeScript 5.8.3",
+  "tests": {
+    "seoUnit": {
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0,
+      "externalFetch": "fixtures",
+      "htmlRewriter": "handler decisions only; no engine substitute"
+    },
+    "publishedManifestLookup": {
+      "publishedPostsChecked": 140,
+      "liveSite": false
+    },
+    "readerImageContracts": {
+      "passed": 26,
+      "failed": 0,
+      "storage": "local SQLite"
+    },
+    "runtime": {
+      "status": "not-executed",
+      "attemptExitCode": 1,
+      "reason": "esbuild/miniflare dependencies unavailable"
+    },
+    "workspaceTypecheck": {
+      "status": "not-executed",
+      "attemptExitCode": 2,
+      "reason": "TS2688 @cloudflare/workers-types missing"
+    },
+    "staging": {
+      "status": "not-executed"
+    },
+    "production": {
+      "status": "not-deployed"
+    },
+    "providerCalls": 0
+  },
+  "next": "Complete A01 locked typecheck, runtime and staging verification; then A02. R07-1 remains mandatory before reader image enablement.",
+  "postMarkdownSourcesAbsent": true,
+  "frontendPrebuildRun": false
+}

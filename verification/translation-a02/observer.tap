@@ -1,0 +1,90 @@
+TAP version 13
+# (node:1031) ExperimentalWarning: The MockTimers API is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: immediate valid cache renders ready without a status poll
+ok 1 - immediate valid cache renders ready without a status poll
+  ---
+  duration_ms: 2.27799
+  type: 'test'
+  ...
+# Subtest: observation budget expiry becomes paused, not AI_TIMEOUT or a server failure
+ok 2 - observation budget expiry becomes paused, not AI_TIMEOUT or a server failure
+  ---
+  duration_ms: 1.034739
+  type: 'test'
+  ...
+# Subtest: a request that ignores AbortSignal cannot prevent observation from ending
+ok 3 - a request that ignores AbortSignal cannot prevent observation from ending
+  ---
+  duration_ms: 0.477778
+  type: 'test'
+  ...
+# Subtest: polling uses the saved ID and a read-only cache read after success
+ok 4 - polling uses the saved ID and a read-only cache read after success
+  ---
+  duration_ms: 0.612105
+  type: 'test'
+  ...
+# Subtest: resume starts with status lookup, never a new admission
+ok 5 - resume starts with status lookup, never a new admission
+  ---
+  duration_ms: 0.50888
+  type: 'test'
+  ...
+# Subtest: terminal failed job preserves stale text and never submits a retry
+ok 6 - terminal failed job preserves stale text and never submits a retry
+  ---
+  duration_ms: 0.424092
+  type: 'test'
+  ...
+# Subtest: deferred budget state is visible without clearing the text while waiting
+ok 7 - deferred budget state is visible without clearing the text while waiting
+  ---
+  duration_ms: 0.780137
+  type: 'test'
+  ...
+# Subtest: network disconnection during status polling preserves text and permits reconnection
+ok 8 - network disconnection during status polling preserves text and permits reconnection
+  ---
+  duration_ms: 0.485809
+  type: 'test'
+  ...
+# Subtest: changing language aborts observation and discards a late response
+ok 9 - changing language aborts observation and discards a late response
+  ---
+  duration_ms: 0.468682
+  type: 'test'
+  ...
+# Subtest: closing the page does not call a generation cancellation endpoint
+ok 10 - closing the page does not call a generation cancellation endpoint
+  ---
+  duration_ms: 0.538671
+  type: 'test'
+  ...
+# Subtest: legacy 202 without a job is polled with observation-only flags
+ok 11 - legacy 202 without a job is polled with observation-only flags
+  ---
+  duration_ms: 0.320479
+  type: 'test'
+  ...
+# Subtest: succeeded status without validated cache does not show a false ready result
+ok 12 - succeeded status without validated cache does not show a false ready result
+  ---
+  duration_ms: 0.21302
+  type: 'test'
+  ...
+# Subtest: a failed resumed job does not fall through to a new generating GET
+ok 13 - a failed resumed job does not fall through to a new generating GET
+  ---
+  duration_ms: 0.211429
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 346.049554

@@ -1,0 +1,153 @@
+{
+  "scope": "TypeScript parse/transpile only; not workspace typecheck or build",
+  "compilerVersion": "5.8.3",
+  "checked": 29,
+  "passed": 29,
+  "results": [
+    {
+      "file": "frontend/public/ai-memo/ai-memo.js",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/src/App.tsx",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/session/auth.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/src/services/session/userContentAuth.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/src/test/authService.test.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/src/test/sessionAuth.test.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/index.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/auth-helpers.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/backend-proxy.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/jwt.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/middleware/auth.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/middleware/error.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/routes/auth.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/test/auth-contract.test.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/public/ai-memo/anonymous-session.js",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/scripts/sync-anonymous-session.mjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "frontend/src/components/features/ai/AnonymousSessionRecoveryDialog.tsx",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/anonymous-r07-1.cjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/r07-1/client.test.mjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/r07-1/principal.test.cjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/r07-1/server.test.cjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/r07-1/support.cjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "scripts/verification/r07-1/syntax.cjs",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "shared/src/runtime/anonymous-session.d.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "shared/src/runtime/anonymous-session.js",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/anonymous-auth-service.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/anonymous-identity.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/src/lib/forwarded-access.ts",
+      "syntax": "PASS",
+      "errors": []
+    },
+    {
+      "file": "workers/api-gateway/test/anonymous-ownership.test.ts",
+      "syntax": "PASS",
+      "errors": []
+    }
+  ]
+}

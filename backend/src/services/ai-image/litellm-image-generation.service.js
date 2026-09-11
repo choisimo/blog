@@ -235,6 +235,7 @@ export class LiteLLMImageGenerationService {
           'Content-Type': 'application/json',
           Accept: 'application/json',
           'X-Request-ID': requestId,
+          'Idempotency-Key': requestId,
         },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(imageConfig.timeoutMs),

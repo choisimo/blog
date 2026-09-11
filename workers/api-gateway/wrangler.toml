@@ -57,6 +57,16 @@ ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173,http://localhost:
 ASSETS_BASE_URL = "https://assets-b.nodove.com"
 API_BASE_URL = "https://api.nodove.com"
 FEATURE_TERMINAL_ENABLED = "false"
+# Activate only after migration 0041, backend dispatch and staging verification.
+TRANSLATION_EXECUTION_ENABLED = "false"
+TRANSLATION_WARM_ENABLED = "false"
+TRANSLATION_MAX_CONCURRENT = "2"
+TRANSLATION_DAILY_ATTEMPTS = "50"
+TRANSLATION_DAILY_TOKEN_BUDGET = "2000000"
+TRANSLATION_POST_DAILY_ATTEMPTS = "6"
+FEATURE_READER_IMAGES = "false"
+MEMBER_IMAGE_DAILY_LIMIT = "20"
+IMAGE_GLOBAL_DAILY_LIMIT = "500"
 
 # D1 Database binding (development)
 [[d1_databases]]
@@ -75,9 +85,9 @@ bucket_name = "blog"
 binding = "KV"
 id = "8bb28b36c3cb42da8ed7aca89f8cf0fe"
 
-# Cron triggers for scheduled tasks (daily at 6 AM UTC)
+# Daily maintenance (06:00 UTC) and private reader-image retention (hourly at :30)
 [triggers]
-crons = ["0 6 * * *"]
+crons = ["0 6 * * *", "30 * * * *", "* * * * *"]
 
 # =============================================================================
 # Production environment
@@ -88,6 +98,9 @@ routes = [
   { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
 ]
 
+[env.production.triggers]
+crons = ["0 6 * * *", "30 * * * *", "* * * * *"]
+
 [env.production.vars]
 ENV = "production"
 ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,https://nodove.com"
@@ -97,6 +110,16 @@ PUBLIC_SITE_URL = "https://noblog.nodove.com"
 FEATURE_AI_ENABLED = "true"
 FEATURE_RAG_ENABLED = "true"
 FEATURE_TERMINAL_ENABLED = "false"
+# Activate only after migration 0041, backend dispatch and staging verification.
+TRANSLATION_EXECUTION_ENABLED = "false"
+TRANSLATION_WARM_ENABLED = "false"
+TRANSLATION_MAX_CONCURRENT = "2"
+TRANSLATION_DAILY_ATTEMPTS = "50"
+TRANSLATION_DAILY_TOKEN_BUDGET = "2000000"
+TRANSLATION_POST_DAILY_ATTEMPTS = "6"
+FEATURE_READER_IMAGES = "false"
+MEMBER_IMAGE_DAILY_LIMIT = "20"
+IMAGE_GLOBAL_DAILY_LIMIT = "500"
 FEATURE_AI_INLINE = "true"
 FEATURE_COMMENTS_ENABLED = "true"
 
@@ -127,7 +150,36 @@ routes = [
   { pattern = "api-staging.nodove.com/*", zone_name = "nodove.com" }
 ]
 
+[env.staging.triggers]
+crons = ["0 6 * * *", "30 * * * *", "* * * * *"]
+
 [env.staging.vars]
 ENV = "staging"
 ALLOWED_ORIGINS = "https://blog-test.nodove.com,http://localhost:5173"
 FEATURE_TERMINAL_ENABLED = "false"
+# Activate only after migration 0041, backend dispatch and staging verification.
+TRANSLATION_EXECUTION_ENABLED = "false"
+TRANSLATION_WARM_ENABLED = "false"
+TRANSLATION_MAX_CONCURRENT = "2"
+TRANSLATION_DAILY_ATTEMPTS = "50"
+TRANSLATION_DAILY_TOKEN_BUDGET = "2000000"
+TRANSLATION_POST_DAILY_ATTEMPTS = "6"
+FEATURE_READER_IMAGES = "false"
+MEMBER_IMAGE_DAILY_LIMIT = "20"
+IMAGE_GLOBAL_DAILY_LIMIT = "500"
+
+# Reader images need a SEPARATE PRIVATE bucket. Do not bind the public blog bucket.
+# Create each bucket, disable r2.dev + public custom domains, then uncomment the
+# matching environment binding. Apply migration 0039 BEFORE enabling the feature.
+# [[r2_buckets]]
+# binding = "READER_IMAGES_R2"
+# bucket_name = "blog-reader-images-dev"
+#
+# [[env.production.r2_buckets]]
+# binding = "READER_IMAGES_R2"
+# bucket_name = "blog-reader-images-prod"
+#
+# [[env.staging.r2_buckets]]
+# binding = "READER_IMAGES_R2"
+# bucket_name = "blog-reader-images-staging"
+# Staging also needs its own existing DB/KV bindings; do not reuse production data.

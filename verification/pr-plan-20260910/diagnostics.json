@@ -1,0 +1,201 @@
+{
+  "scope": "Source functions executed with isolated fetch and passthrough HTMLRewriter; NOT deployed Worker/HTML transformation/E2E tests.",
+  "diagnostics": [
+    {
+      "id": "D01-resource-routing",
+      "observed": [
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/robots.txt",
+          "status": 200,
+          "contentType": "text/plain; charset=utf-8",
+          "cacheControl": "public, max-age=31536000, immutable",
+          "originRequests": [
+            "https://raw.test/public/robots.txt"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/sitemap.xml",
+          "status": 200,
+          "contentType": "application/xml",
+          "cacheControl": "public, max-age=31536000, immutable",
+          "originRequests": [
+            "https://raw.test/public/sitemap.xml"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/assets/app.js",
+          "status": 200,
+          "contentType": "application/javascript; charset=utf-8",
+          "cacheControl": "public, max-age=31536000, immutable",
+          "originRequests": [
+            "https://pages.test/blog/assets/app.js"
+          ]
+        },
+        {
+          "ua": "Mozilla/5.0",
+          "route": "/images/cover.png",
+          "status": 200,
+          "contentType": "image/png",
+          "cacheControl": "public, max-age=31536000, immutable",
+          "originRequests": [
+            "https://pages.test/blog/images/cover.png"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/robots.txt",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/sitemap.xml",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/assets/app.js",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Googlebot",
+          "route": "/images/cover.png",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Bingbot",
+          "route": "/robots.txt",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Bingbot",
+          "route": "/sitemap.xml",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Bingbot",
+          "route": "/assets/app.js",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        },
+        {
+          "ua": "Bingbot",
+          "route": "/images/cover.png",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "cacheControl": "public, max-age=300",
+          "originRequests": [
+            "https://pages.test/blog/index.html"
+          ]
+        }
+      ],
+      "remaining": "A01: crawler asset bypass and immutable control-file caching remain unresolved."
+    },
+    {
+      "id": "D02-page-resolution",
+      "observed": {
+        "projectsCanonical": "https://site.test",
+        "encodedTitle": "%EA%B0%90%EB%8F%99%EC%9D%84_%EC%9E%83%EC%96%B4%EB%B2%84%EB%A6%B0_%EA%B7%B8%EB%8C%80%EB%93%A4%EC%97%90%EA%B2%8C | Snapshot",
+        "missingStatus": 200
+      },
+      "remaining": "A01: Projects self-canonical, decoded slug lookup and missing-page 404 remain unresolved."
+    },
+    {
+      "id": "D03-project-total-failure",
+      "observed": {
+        "returned": [],
+        "networkCalls": 2,
+        "rejected": false
+      },
+      "remaining": "A03: total network failure is still exposed as an empty successful result to the UI (not cached)."
+    },
+    {
+      "id": "D04-project-retry-after-total-failure",
+      "observed": {
+        "count": 1,
+        "id": "live",
+        "networkCalls": 3
+      },
+      "remaining": "None for this narrow path: second request fetches again after both sources fail."
+    },
+    {
+      "id": "D05-project-fallback-revalidation",
+      "observed": {
+        "firstId": "catalog-sample",
+        "laterId": "catalog-sample",
+        "networkCalls": 2
+      },
+      "remaining": "A03: cached fallback prevents later primary-manifest revalidation; IDs also differ across sources."
+    },
+    {
+      "id": "D06-project-generator-current-catalog",
+      "observed": {
+        "exitCode": 0,
+        "generated": 68,
+        "uniqueIds": 68,
+        "existingManifestItemsMatch": true
+      },
+      "remaining": "A03: strict release gate and full YAML support are not verified by this count/items check."
+    },
+    {
+      "id": "D07-project-YAML-regression",
+      "observed": {
+        "description": "|",
+        "tags": []
+      },
+      "remaining": "A03: lightweight line/JSON parser loses YAML multiline strings and block arrays. Restore compatible parser before deployment."
+    },
+    {
+      "id": "D08-literal-control-bytes",
+      "observed": {
+        "bytes": [
+          {
+            "offset": 6088,
+            "value": 0
+          },
+          {
+            "offset": 6090,
+            "value": 31
+          }
+        ]
+      },
+      "remaining": "A02: replace embedded control bytes with escaped source literals while preserving validation; explicit dot-segment rejection is still needed."
+    }
+  ]
+}
