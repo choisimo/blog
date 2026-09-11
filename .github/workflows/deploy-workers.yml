@@ -6,8 +6,12 @@ on:
       operation:
         description: 'Deploy workers or inspect the admin Access configuration'
         type: choice
-        options: [deploy, inspect-admin-access]
+        options: [deploy, inspect-admin-access, export-state]
         default: deploy
+      export_public_key:
+        description: 'RSA public key for encrypting a migration export'
+        type: string
+        required: false
   push:
     branches: [main]
     paths:
@@ -21,6 +25,32 @@ permissions:
   contents: read
 
 jobs:
+  export-state:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'export-state'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+        working-directory: workers/api-gateway
+      - name: Export and encrypt existing D1 data
+        working-directory: workers/api-gateway
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STATE_EXPORT_PUBLIC_KEY: ${{ inputs.export_public_key }}
+        run: |
+          umask 077
+          npx wrangler d1 export blog-db-prod --env production --remote --output=/tmp/worker-state.sql
+          node ../../scripts/seal-state-export.mjs /tmp/worker-state.sql /tmp/worker-state.sealed
+          rm /tmp/worker-state.sql
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-worker-state
+          path: /tmp/worker-state.sealed
+          retention-days: 1
   inspect-admin-access:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'inspect-admin-access'
     runs-on: ubuntu-latest
@@ -35,7 +65,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/inspect-admin-access.mjs
   build-matrix:
-    if: github.event_name != 'workflow_dispatch' || inputs.operation != 'inspect-admin-access'
+    if: github.event_name != 'workflow_dispatch' || inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
