@@ -1,3 +1,4 @@
+import { isStructuredResponseText } from "@blog/shared/runtime/structured-response";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ChatMarkdown from "@/components/molecules/ChatMarkdown";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ function toText(value: unknown): string {
 }
 
 function toDisplayText(value: unknown, fallback = ""): string {
+  if (isStructuredResponseText(value)) return fallback;
   const normalized = toText(value)
     .replace(DISPLAY_ANSI_ESCAPE_PATTERN, "")
     .replace(DISPLAY_CONTROL_PATTERN, " ")
@@ -307,7 +309,7 @@ function parseVisualizationFence(
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function parseQuizRichContent(content: string): QuizRichSegment[] {
-  const input = typeof content === "string" ? content : "";
+  const input = typeof content === "string" && !isStructuredResponseText(content) ? content : "";
   if (!input.trim()) return [{ type: "markdown", text: "" }];
 
   const segments: QuizRichSegment[] = [];
@@ -315,7 +317,7 @@ export function parseQuizRichContent(content: string): QuizRichSegment[] {
   const fenceRe = /```([^\n`]*)\n([\s\S]*?)```/g;
 
   const pushMarkdown = (text: string) => {
-    if (!text) return;
+    if (!text || isStructuredResponseText(text)) return;
     const prev = segments[segments.length - 1];
     if (prev?.type === "markdown") {
       prev.text += text;

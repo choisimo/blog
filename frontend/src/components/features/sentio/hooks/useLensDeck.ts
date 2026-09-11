@@ -1,3 +1,4 @@
+import { hasStructuredResponseText, isStructuredResponseText } from '@blog/shared/runtime/structured-response';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   invokeChatTask,
@@ -74,7 +75,7 @@ const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 function normalizeDisplayText(value: unknown, fallback = ''): string {
-  if (typeof value !== 'string') return fallback;
+  if (typeof value !== 'string' || isStructuredResponseText(value)) return fallback;
   const normalized = value
     .replace(CONTROL_TEXT_PATTERN, ' ')
     .replace(COLLAPSED_WHITESPACE_PATTERN, ' ')
@@ -83,7 +84,7 @@ function normalizeDisplayText(value: unknown, fallback = ''): string {
 }
 
 function normalizeCardKey(value: unknown, fallback: string): string {
-  if (typeof value !== 'string') return fallback;
+  if (typeof value !== 'string' || isStructuredResponseText(value)) return fallback;
   const normalized = value
     .trim()
     .replace(CONTROL_TEXT_PATTERN, '-')
@@ -119,7 +120,7 @@ function normalizePersonaId(value: unknown, index: number): LensCardData['person
 }
 
 function normalizeLensCard(card: unknown, index: number): LensCardData | null {
-  if (!card || typeof card !== 'object') return null;
+  if (!card || typeof card !== 'object' || hasStructuredResponseText(card)) return null;
   const raw = card as Partial<LensCardData>;
   const fallbackKey = `lens-${index + 1}`;
   const angleKey = normalizeCardKey(raw.angleKey ?? raw.id, fallbackKey);
@@ -203,6 +204,7 @@ function isFallbackTaskResponse(raw: unknown): boolean {
 function normalizePrismFacets(data: PrismTaskData | null): PrismFacet[] {
   if (!data || !Array.isArray(data.facets)) return [];
   return data.facets
+    .filter(facet => facet && !hasStructuredResponseText(facet))
     .map(facet => ({
       title: normalizeDisplayText(facet.title),
       points: Array.isArray(facet.points)
@@ -265,7 +267,7 @@ function mergeCards(
 function resolveResponseSource(
   response: { source?: string; warming?: boolean } | null | undefined
 ): Exclude<LensDeckSource, 'fallback'> {
-  if (response?.source === 'warming' || response?.warming === true) {
+  if (response?.source === 'warming' || response?.source === 'warming-fallback' || response?.warming === true) {
     return 'warming';
   }
   return 'feed';

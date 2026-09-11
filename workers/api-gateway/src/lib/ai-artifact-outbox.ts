@@ -1,3 +1,4 @@
+import { hasStructuredResponseText } from '@blog/shared/runtime/structured-response';
 import type { Env } from '../types';
 import { getAiDefaultModel } from './config';
 import { getProvidersFromDB } from './provider-config';
@@ -47,7 +48,8 @@ import { attachOriginSignatureHeaders } from './origin-signature';
 import { startTranslationJob, drainTranslationJobs } from '../routes/lib/translation-jobs';
 
 export const AI_ARTIFACT_STREAM = 'ai.artifact.generate';
-const FEED_SCHEMA_VERSION = '2';
+// Version 3 rejects serialized response text previously stored as display content.
+const FEED_SCHEMA_VERSION = '3';
 const LENS_PROMPT_VERSION = 'feed-lens-v1';
 const THOUGHT_PROMPT_VERSION = 'feed-thought-v1';
 const DEFAULT_FEED_MAX_PAGES = 2;
@@ -630,7 +632,7 @@ export async function getServeableFeedPage<T extends LensCard | ThoughtCard>(
     generationVersionHash,
     input.pageNo
   );
-  if (exact) {
+  if (exact && !hasStructuredResponseText(exact.payload.items)) {
     const readState = await buildItemReadStates(env.DB, {
       userKey: input.sessionId,
       artifactType: input.artifactType,
@@ -656,7 +658,7 @@ export async function getServeableFeedPage<T extends LensCard | ThoughtCard>(
     scopeKey,
     input.pageNo
   );
-  if (stale) {
+  if (stale && !hasStructuredResponseText(stale.payload.items)) {
     const readState = await buildItemReadStates(env.DB, {
       userKey: input.sessionId,
       artifactType: input.artifactType,

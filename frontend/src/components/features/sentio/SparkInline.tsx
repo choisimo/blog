@@ -1,3 +1,4 @@
+import { isStructuredResponseText } from '@blog/shared/runtime/structured-response';
 import React, {
   useCallback,
   useEffect,
@@ -46,7 +47,7 @@ const CONTROL_TEXT_PATTERN = /[\u0000-\u001F\u007F]+/g;
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 export function normalizeDisplayText(value: unknown, fallback = ''): string {
-  if (typeof value !== 'string') return fallback;
+  if (typeof value !== 'string' || isStructuredResponseText(value)) return fallback;
   const normalized = value
     .replace(ANSI_ESCAPE_PATTERN, ' ')
     .replace(CONTROL_TEXT_PATTERN, ' ')

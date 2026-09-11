@@ -1,3 +1,5 @@
+import { parseStructuredResponse, isStructuredResponseText } from "@blog/shared/runtime/structured-response";
+import { normalizeTaskData } from "../quiz.service.js";
 /**
  * Unified AI Service
  *
@@ -516,19 +518,17 @@ export class AIService {
         temperature,
       });
 
-      const json = this.tryParseJson(text);
-      if (json && typeof json === "object") {
-        return { ok: true, data: json };
-      }
+      const data = normalizeTaskData(mode, text, payload);
+      if (data) return { ok: true, data };
 
-      return { ok: true, data: this._getFallbackData(mode, payload) };
+      return { ok: true, data: this._getFallbackData(mode, payload), source: "fallback", _fallback: true };
     } catch (error) {
       logger.warn(
         { operation: "task", mode },
         "Task generation failed, using fallback",
         { error: error.message },
       );
-      return { ok: true, data: this._getFallbackData(mode, payload) };
+      return { ok: true, data: this._getFallbackData(mode, payload), source: "fallback", _fallback: true };
     }
   }
 
@@ -609,7 +609,9 @@ export class AIService {
   }
 
   _getFallbackData(mode, payload) {
-    const paragraph = payload.paragraph || payload.content || "";
+    const input = payload.paragraph || payload.content || "";
+    const paragraph = typeof input === "string" && !isStructuredResponseText(input)
+      ? input : "응답을 생성하지 못했습니다. 다시 시도해 주세요.";
 
     switch (mode) {
       case "sketch": {
@@ -675,34 +677,7 @@ export class AIService {
   }
 
   tryParseJson(text) {
-    if (!text) return null;
-
-    try {
-      return JSON.parse(text);
-    } catch {
-      /* continue */
-    }
-
-    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fence?.[1]) {
-      try {
-        return JSON.parse(fence[1].trim());
-      } catch {
-        /* continue */
-      }
-    }
-
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(text.slice(start, end + 1));
-      } catch {
-        /* continue */
-      }
-    }
-
-    return null;
+    return parseStructuredResponse(text);
   }
 
   _estimateTokens(text) {

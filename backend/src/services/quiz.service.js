@@ -4,7 +4,7 @@
  * Extracted from routes/chat.js to keep route handlers thin.
  */
 
-import { tryParseJson } from "../lib/ai-service.js";
+import { parseStructuredResponse, isStructuredResponseText, hasStructuredResponseText } from "@blog/shared/runtime/structured-response";
 import {
   AI_TEMPERATURES,
   TEXT_LIMITS,
@@ -155,7 +155,7 @@ function inferCorrectOptionIndex(answer, options) {
 }
 
 export function normalizeQuizQuestion(value) {
-  if (!value || typeof value !== "object") return null;
+  if (!value || typeof value !== "object" || hasStructuredResponseText(value)) return null;
 
   const question = toText(
     value.question ?? value.q ?? value.prompt ?? value.title,
@@ -207,29 +207,37 @@ export function normalizeQuizQuestion(value) {
   return result;
 }
 
-export function extractQuizItems(value) {
+export function extractQuizItems(value, depth = 0) {
+  if (depth > 12) return [];
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
-    const parsed = tryParseJson(value);
-    return parsed ? extractQuizItems(parsed) : [];
+    const parsed = parseStructuredResponse(value);
+    return parsed ? extractQuizItems(parsed, depth + 1) : [];
   }
   if (!value || typeof value !== "object") return [];
+  if (value.ok === false || value._fallback === true || value.source === "fallback") return [];
 
   if (Array.isArray(value.quiz)) return value.quiz;
   if (Array.isArray(value.questions)) return value.questions;
   if (Array.isArray(value.items)) return value.items;
 
-  if ("data" in value) return extractQuizItems(value.data);
-  if ("result" in value) return extractQuizItems(value.result);
+  if ("data" in value) return extractQuizItems(value.data, depth + 1);
+  if ("result" in value) return extractQuizItems(value.result, depth + 1);
+  for (const key of ["output", "payload", "text"]) {
+    if (key in value) {
+      const items = extractQuizItems(value[key], depth + 1);
+      if (items.length) return items;
+    }
+  }
   if ("_raw" in value) {
     const rawData = value._raw;
-    if (typeof rawData === "string") return extractQuizItems(rawData);
+    if (typeof rawData === "string") return extractQuizItems(rawData, depth + 1);
     if (
       rawData &&
       typeof rawData === "object" &&
       typeof rawData.text === "string"
     ) {
-      return extractQuizItems(rawData.text);
+      return extractQuizItems(rawData.text, depth + 1);
     }
   }
 
@@ -317,21 +325,71 @@ function normalizeVisualTaskData(mode, value, payload = {}) {
   };
 }
 
-export function normalizeTaskData(mode, value, payload = {}) {
-  if (mode === "quiz") return normalizeQuizData(value, clampQuizCount(payload.quizCount, 2));
-  if (VISUAL_TASK_MODES.has(mode)) return normalizeVisualTaskData(mode, value, payload);
-  return value;
+const TASK_ENVELOPE_KEYS = ["data", "result", "output", "payload", "_raw", "text"];
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isDisplayText = (value) => typeof value === "string" && value.trim().length > 0 && !isStructuredResponseText(value);
+const isTextList = (value) => Array.isArray(value) && value.length > 0 && value.every(isDisplayText);
+
+export function normalizeTaskData(mode, value, payload = {}, depth = 0) {
+  if (depth > 12) return null;
+  if (typeof value === "string") {
+    const parsed = parseStructuredResponse(value);
+    return parsed !== null && parsed !== value
+      ? normalizeTaskData(mode, parsed, payload, depth + 1) : null;
+  }
+  if (isRecord(value) && (value.ok === false || value._fallback === true || value.source === "fallback")) return null;
+  let normalized = null;
+  if (mode === "quiz") normalized = normalizeQuizData(value, clampQuizCount(payload.quizCount, 2));
+  else if (VISUAL_TASK_MODES.has(mode)) normalized = normalizeVisualTaskData(mode, value, payload);
+  else if (isRecord(value)) {
+    switch (mode) {
+      case "sketch":
+        if (isDisplayText(value.mood) && isTextList(value.bullets))
+          normalized = { mood: value.mood, bullets: value.bullets };
+        break;
+      case "prism":
+        if (Array.isArray(value.facets) && value.facets.length && value.facets.every(facet =>
+          isRecord(facet) && isDisplayText(facet.title) && isTextList(facet.points)))
+          normalized = { facets: value.facets.map(({ title, points }) => ({ title, points })) };
+        break;
+      case "chain":
+        if (Array.isArray(value.questions) && value.questions.length && value.questions.every(question =>
+          isRecord(question) && isDisplayText(question.q) && isDisplayText(question.why)))
+          normalized = { questions: value.questions.map(({ q, why }) => ({ q, why })) };
+        break;
+      case "summary":
+        if (isDisplayText(value.summary) && (value.keyPoints === undefined ||
+          (Array.isArray(value.keyPoints) && value.keyPoints.every(isDisplayText))))
+          normalized = { summary: value.summary, ...(value.keyPoints === undefined ? {} : { keyPoints: value.keyPoints }) };
+        break;
+      default:
+        normalized = value;
+    }
+  }
+  if (normalized && !hasStructuredResponseText(normalized)) return normalized;
+  if (isRecord(value)) {
+    for (const key of TASK_ENVELOPE_KEYS) {
+      if (!(key in value)) continue;
+      const result = normalizeTaskData(mode, value[key], payload, depth + 1);
+      if (result) return result;
+    }
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
 // Project task data from raw text when JSON parse fails
 // ---------------------------------------------------------------------------
 
-export function projectTaskDataFromText(mode, text, payload) {
-  const rawText = String(text || "").trim();
-  if (!rawText) {
-    return getFallbackData(mode, payload);
+export function projectTaskDataFromText(mode, text, payload = {}) {
+  const recovered = normalizeTaskData(mode, text, payload);
+  if (recovered) return recovered;
+  // A failed structured response is not prose. The route marks its safe fallback.
+  if ((parseStructuredResponse(text) !== null && /^\s*(?:[\[{"]|```(?:json)?\s*[\[{])/.test(text)) || isStructuredResponseText(text)) {
+    throw new Error("Invalid structured task response");
   }
+  const rawText = String(text || "").trim();
+  if (!rawText) throw new Error("Empty task response");
 
   const lines = extractMeaningfulLines(rawText);
   const cleanedLines = lines
@@ -716,8 +774,10 @@ export function buildTaskPrompt(mode, payload) {
 // Fallback data when AI fails
 // ---------------------------------------------------------------------------
 
-export function getFallbackData(mode, payload) {
-  const text = payload.paragraph || payload.content || payload.prompt || "";
+export function getFallbackData(mode, payload = {}) {
+  const input = payload.paragraph || payload.content || payload.prompt || "";
+  const text = typeof input === "string" && !isStructuredResponseText(input)
+    ? input : "응답을 생성하지 못했습니다. 다시 시도해 주세요.";
   const sentences = text
     .replace(/\n+/g, " ")
     .split(/[.!?]\s+/)

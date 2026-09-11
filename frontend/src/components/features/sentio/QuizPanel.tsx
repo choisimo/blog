@@ -1,3 +1,4 @@
+import { isStructuredResponseText } from "@blog/shared/runtime/structured-response";
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -49,7 +50,7 @@ const ANSI_ESCAPE_PATTERN =
 const COLLAPSED_WHITESPACE_PATTERN = /\s+/g;
 
 export function normalizeQuizPanelText(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
+  if (typeof value !== "string" || isStructuredResponseText(value)) return undefined;
   const normalized = value
     .replace(ANSI_ESCAPE_PATTERN, "")
     .replace(CONTROL_TEXT_PATTERN, " ")

@@ -16,7 +16,11 @@ import {
   type ThoughtCard,
   type ThoughtFeedResponse,
 } from './feed-contract';
-import { tryParseJson } from './llm';
+import {
+  parseStructuredResponse,
+  hasStructuredResponseText,
+  isStructuredResponseText,
+} from '@blog/shared/runtime/structured-response';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
@@ -160,21 +164,22 @@ function splitBlocks(text: string, limit: number): string[] {
     .slice(0, limit);
 }
 
-function extractItems(raw: unknown, keys: string[]): unknown[] {
+function extractItems(raw: unknown, keys: string[], depth = 0): unknown[] {
+  if (depth > 8) return [];
   if (Array.isArray(raw)) return raw;
   if (typeof raw === 'string') {
-    const parsed = tryParseJson(raw);
-    return parsed ? extractItems(parsed, keys) : [];
+    const parsed = parseStructuredResponse(raw);
+    return parsed && parsed !== raw ? extractItems(parsed, keys, depth + 1) : [];
   }
-  if (!isRecord(raw)) return [];
+  if (!isRecord(raw) || raw.ok === false || raw._fallback === true || raw.source === 'fallback') return [];
   for (const key of keys) {
     if (Array.isArray(raw[key])) return raw[key] as unknown[];
   }
-  if ('data' in raw) return extractItems(raw.data, keys);
-  if ('result' in raw) return extractItems(raw.result, keys);
-  if ('output' in raw) return extractItems(raw.output, keys);
-  if ('payload' in raw) return extractItems(raw.payload, keys);
-  if ('_raw' in raw) return extractItems(raw._raw, keys);
+  for (const key of ['data', 'result', 'output', 'payload', '_raw', 'text']) {
+    if (!(key in raw)) continue;
+    const items = extractItems(raw[key], keys, depth + 1);
+    if (items.length) return items;
+  }
   return [];
 }
 
@@ -191,7 +196,7 @@ function normalizeLensCard(
   index: number,
   request: NormalizedLensFeedRequest
 ): LensCard | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value) || Array.isArray(value) || hasStructuredResponseText(value)) return null;
 
   const title =
     toText(value.title ?? value.heading ?? value.name) ||
@@ -228,7 +233,7 @@ function normalizeThoughtCard(
   index: number,
   request: NormalizedThoughtFeedRequest
 ): ThoughtCard | null {
-  if (!isRecord(value)) return null;
+  if (!isRecord(value) || Array.isArray(value) || hasStructuredResponseText(value)) return null;
 
   const title =
     toText(value.title ?? value.question ?? value.heading) ||
@@ -395,7 +400,7 @@ export function normalizeLensFeedResponse(
   const projected =
     candidates.length > 0
       ? candidates
-      : typeof raw === 'string'
+      : typeof raw === 'string' && !isStructuredResponseText(raw) && !(parseStructuredResponse(raw) !== null && /^\s*(?:[\[{"]|```(?:json)?\s*[\[{])/.test(raw))
         ? projectLensCardsFromText(raw, request)
         : [];
 
@@ -416,7 +421,7 @@ export function normalizeThoughtFeedResponse(
   const projected =
     candidates.length > 0
       ? candidates
-      : typeof raw === 'string'
+      : typeof raw === 'string' && !isStructuredResponseText(raw) && !(parseStructuredResponse(raw) !== null && /^\s*(?:[\[{"]|```(?:json)?\s*[\[{])/.test(raw))
         ? projectThoughtCardsFromText(raw, request)
         : [];
 
