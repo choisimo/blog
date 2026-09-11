@@ -104,19 +104,22 @@ export async function recoverExpiredTranslationJobs(db: D1Database, now = new Da
   ]);
 }
 
-export async function claimNextTranslationJob(db: D1Database, policy: TranslationExecutionPolicy, now = new Date().toISOString()) {
+export async function claimNextTranslationJob(db: D1Database, policy: TranslationExecutionPolicy, now = new Date().toISOString(), options:{preferRecentWake?:boolean}={}) {
   await recoverExpiredTranslationJobs(db, now);
   if (!policy.enabled) {
     await execute(db, `UPDATE translation_jobs SET status='deferred', error_json='{"code":"EXECUTION_DISABLED","message":"Translation execution is paused","retryable":true}',updated_at=?
       WHERE status IN ('queued','deferred')`, now);
     return null;
   }
+  // Backend callbacks serve recent reader wakes first; cron keeps the aged FIFO order.
   const candidates = await queryAll<TranslationJobRow>(db,
     `SELECT j.* FROM translation_jobs j JOIN domain_outbox o ON o.id=j.outbox_id
       WHERE j.status IN ('queued','deferred') AND j.available_at<=? AND j.attempts<?
         AND o.status='pending' AND (?=1 OR j.priority>=100)
-      ORDER BY CASE WHEN j.created_at<=? THEN 1 ELSE 0 END DESC,j.priority DESC,j.created_at ASC,j.rowid ASC LIMIT 12`,
-    now,policy.maxAttempts,policy.allowWarm ? 1 : 0,new Date(Date.parse(now)-600_000).toISOString());
+      ORDER BY CASE WHEN ?=1 AND j.last_wake_at>=? AND j.last_wake_at<=? THEN 1 ELSE 0 END DESC,
+        CASE WHEN j.created_at<=? THEN 1 ELSE 0 END DESC,j.priority DESC,j.created_at ASC,j.rowid ASC LIMIT 12`,
+    now,policy.maxAttempts,policy.allowWarm ? 1 : 0,options.preferRecentWake ? 1 : 0,
+    new Date(Date.parse(now)-60_000).toISOString(),now,new Date(Date.parse(now)-600_000).toISOString());
   const day = translationQuotaDay(now);
   for (const candidate of candidates) {
     const token = crypto.randomUUID();
@@ -147,6 +150,42 @@ export async function claimNextTranslationJob(db: D1Database, policy: Translatio
       JSON.stringify({ code: quota ? 'TRANSLATION_BUDGET' : 'EXECUTOR_BUSY', message: quota ? 'Daily translation budget reached' : 'Waiting for an execution slot', retryable:true }), now,candidate.id);
   }
   return null;
+}
+
+/** Reconcile pre-upgrade jobs against their current attempt before submitting AI work. */
+export async function reserveTranslationExecutionBudget(db: D1Database, job: TranslationJobRow, requiredBudget: number,
+  dailyTokenBudget: number, now = new Date().toISOString()): Promise<{ready:true;tokenBudget:number}|{ready:false;retryAt:string}> {
+  if (!Number.isSafeInteger(requiredBudget) || requiredBudget<0 || !Number.isSafeInteger(dailyTokenBudget) || dailyTokenBudget<0) {
+    throw new Error('Invalid translation reservation');
+  }
+  const results = await db.batch([
+    db.prepare(`WITH reservation AS (
+      SELECT a.id,a.day,MAX(j.token_budget,a.token_budget,?) AS target
+      FROM translation_jobs j JOIN translation_attempts a ON a.id=j.lock_token AND a.job_id=j.id
+      WHERE j.id=? AND j.status='running' AND j.lock_token=? AND j.lease_version=? AND j.lock_expires_at>? AND j.active_stage IS NULL
+    ) UPDATE translation_attempts SET token_budget=(SELECT target FROM reservation)
+      WHERE id=(SELECT id FROM reservation)
+        AND (token_budget>=(SELECT target FROM reservation) OR
+          (SELECT COALESCE(SUM(a.token_budget),0) FROM translation_attempts a WHERE a.day=(SELECT day FROM reservation))
+            +(SELECT target FROM reservation)-token_budget<=?)`)
+      .bind(requiredBudget,job.id,job.lock_token,job.lease_version,now,dailyTokenBudget),
+    // A denied top-up must not raise the job budget independently of its reservation.
+    db.prepare(`UPDATE translation_jobs SET token_budget=(SELECT token_budget FROM translation_attempts WHERE id=? AND job_id=translation_jobs.id),updated_at=?
+      WHERE id=? AND status='running' AND lock_token=? AND lease_version=? AND lock_expires_at>? AND active_stage IS NULL
+        AND EXISTS(SELECT 1 FROM translation_attempts WHERE id=? AND job_id=translation_jobs.id AND token_budget>=MAX(translation_jobs.token_budget,?))`)
+      .bind(job.lock_token,now,job.id,job.lock_token,job.lease_version,now,job.lock_token,requiredBudget),
+    db.prepare(`SELECT j.token_budget,a.token_budget AS reserved,a.day
+      FROM translation_jobs j JOIN translation_attempts a ON a.id=j.lock_token AND a.job_id=j.id
+      WHERE j.id=? AND j.status='running' AND j.lock_token=? AND j.lease_version=? AND j.lock_expires_at>? AND j.active_stage IS NULL`)
+      .bind(job.id,job.lock_token,job.lease_version,now),
+  ]);
+  const current=results[2].results?.[0] as {token_budget:number;reserved:number;day:string}|undefined;
+  if (!current) throw Object.assign(new Error('Translation lease lost'),{code:'LEASE_LOST'});
+  if (current.token_budget>=requiredBudget && current.reserved>=current.token_budget) {
+    return {ready:true,tokenBudget:current.token_budget};
+  }
+  // Charge the attempt's original quota day even if source loading crossed midnight.
+  return {ready:false,retryAt:nextQuotaDay(`${current.day}T00:00:00+09:00`)};
 }
 
 export async function markTranslationStage(db: D1Database, job: TranslationJobRow, stage: string, now = new Date().toISOString()) {

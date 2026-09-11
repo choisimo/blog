@@ -34,6 +34,13 @@ export type SourcePost = {
   sourceLang: SupportedTranslationLang;
 };
 
+export function translationTokenBudget(source: SourcePost): number {
+  // Conservative reservation units, not measured provider billing: source UTF-8
+  // bytes plus all configured maximum outputs and prompt overhead.
+  return new TextEncoder().encode(source.title+source.description+source.content).length
+    +MAX_TOKENS.TRANSLATE_TITLE+MAX_TOKENS.TRANSLATE_DESC+MAX_TOKENS.TRANSLATE_CONTENT+4000;
+}
+
 export type TranslationCache = {
   id: number;
   post_slug: string;
