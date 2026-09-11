@@ -181,3 +181,66 @@ test('network/timeout produce retryable 5xx without exposing exception messages'
     fetch.mock.restore();
   }
 });
+
+for (const protocol of ['http:', 'https:']) {
+  test(`Pages CNAME ${protocol} redirect serves the resolved page instead of a 502`, async () => {
+    const calls: string[] = [];
+    mock.method(globalThis, 'fetch', (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(inputUrl(input));
+      assert.equal(init?.method, 'HEAD');
+      assert.equal(init?.redirect, 'manual');
+      if (calls.length === 1) return new Response(null, {
+        status: 301, headers: { Location: `${protocol}//site.example/index.html` },
+      });
+      return new Response(null, { headers: { 'Content-Type': 'text/html', ETag: '"shell"' } });
+    });
+    const response = await worker.fetch(new Request('https://site.example/', { method: 'HEAD' }), env);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('X-SEO-Gateway'), 'active');
+    assert.equal(response.headers.get('ETag'), null);
+    assert.deepEqual(calls, [`${env.GITHUB_PAGES_ORIGIN}/index.html`, `${protocol}//site.example/index.html`]);
+  });
+}
+
+test('Pages asset redirect keeps query, bytes and validators without leaking credentials', async () => {
+  const calls: string[] = [];
+  mock.method(globalThis, 'fetch', (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push(inputUrl(input));
+    const headers = new Headers(init?.headers);
+    assert.equal(headers.get('If-None-Match'), '"asset"');
+    assert.equal(headers.get('Cookie'), null);
+    assert.equal(headers.get('Authorization'), null);
+    if (calls.length === 1) return new Response(null, {
+      status: 301, headers: { Location: 'http://site.example/assets/app.js?v=3' },
+    });
+    return new Response('export const restored = true;', { headers: { 'Content-Type': 'application/javascript', ETag: '"asset"' } });
+  });
+  const response = await worker.fetch(new Request('https://site.example/assets/app.js?v=3', {
+    headers: { 'If-None-Match': '"asset"', Cookie: 'private=1', Authorization: 'Bearer private' },
+  }), env);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'export const restored = true;');
+  assert.equal(response.headers.get('ETag'), '"asset"');
+  assert.deepEqual(calls, [`${env.GITHUB_PAGES_ORIGIN}/assets/app.js?v=3`, 'http://site.example/assets/app.js?v=3']);
+});
+
+for (const location of ['https://untrusted.example/index.html', 'https://user:password@site.example/index.html', 'https://site.example:8443/index.html']) {
+  test(`rejects an unapproved origin redirect: ${location}`, async () => {
+    const fetch = mock.method(globalThis, 'fetch', () => new Response(null, { status: 302, headers: { Location: location } }));
+    const response = await worker.fetch(new Request('https://site.example/', { method: 'HEAD' }), env);
+    assert.equal(response.status, 502);
+    assert.equal(response.headers.get('X-SEO-Error'), 'ORIGIN_REDIRECT_REJECTED');
+    assert.equal(fetch.mock.callCount(), 1);
+  });
+}
+
+test('an origin redirect loop stops after three hops with a noncacheable error', async () => {
+  const fetch = mock.method(globalThis, 'fetch', () => new Response(null, {
+    status: 301, headers: { Location: '/index.html' },
+  }));
+  const response = await worker.fetch(new Request('https://site.example/', { method: 'HEAD' }), env);
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get('X-SEO-Error'), 'ORIGIN_REDIRECT_LIMIT');
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(fetch.mock.callCount(), 4);
+});

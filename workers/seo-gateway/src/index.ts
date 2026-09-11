@@ -44,10 +44,30 @@ function errorResponse(request: Request, status: number, code: string): Response
   return new Response(request.method === 'HEAD' ? null : label, { status, headers });
 }
 
-async function fetchOrigin(url: string, init: RequestInit): Promise<Response> {
+async function fetchOrigin(url: string, init: RequestInit, publicSite?: string): Promise<Response> {
+  const initialOrigin = new URL(url).origin;
+  const site = publicSite ? new URL(publicSite) : null;
+  const signal = AbortSignal.timeout(10_000);
   try {
-    return await fetch(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(10_000) });
+    for (let redirects = 0; ; redirects++) {
+      const response = await fetch(url, { ...init, redirect: 'manual', signal });
+      if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+      const location = response.headers.get('Location');
+      await response.body?.cancel().catch(() => undefined);
+      if (!location || redirects >= 3) throw new SeoGatewayError(502, 'ORIGIN_REDIRECT_LIMIT');
+      const target = new URL(location, url);
+      // GitHub Pages redirects its repository URL to the configured CNAME,
+      // sometimes over HTTP. Same-zone route fetches reach the backing origin.
+      const siteAlias = site && target.hostname === site.hostname &&
+        target.port === site.port && ['http:', 'https:'].includes(target.protocol);
+      if (target.username || target.password ||
+          (target.origin !== initialOrigin && !siteAlias)) {
+        throw new SeoGatewayError(502, 'ORIGIN_REDIRECT_REJECTED');
+      }
+      url = target.href;
+    }
   } catch (error) {
+    if (error instanceof SeoGatewayError) throw error;
     throw new SeoGatewayError(error instanceof Error && error.name === 'TimeoutError' ? 504 : 503, 'ORIGIN_UNAVAILABLE');
   }
 }
@@ -61,7 +81,8 @@ async function proxyResource(request: Request, env: Env, path: string, policy: R
   }
   // Deliberately do not send site cookies, bearer credentials or referrers to
   // public GitHub origins. Query strings are preserved only for actual files.
-  const response = await fetchOrigin(`${origin}${path}`, { method: request.method, headers });
+  const response = await fetchOrigin(`${origin}${path}`, { method: request.method, headers },
+    policy.origin === 'pages' ? siteOrigin(env) : undefined);
   const output = new Headers(response.headers);
   const mime = output.get('Content-Type');
   if (response.ok && policy.mime !== 'text/html; charset=utf-8' &&
@@ -85,7 +106,7 @@ async function servePage(request: Request, env: Env, meta: PostMeta): Promise<Re
   const response = await fetchOrigin(`${pagesOrigin(env)}/index.html`, {
     method: request.method,
     headers: { 'User-Agent': 'SEO-Gateway/2.0', Accept: 'text/html' },
-  });
+  }, siteOrigin(env));
   if (response.status !== 200) {
     // The page was resolved already. A missing shell is an origin failure, not
     // evidence that a published article has permanently disappeared.
