@@ -6,7 +6,7 @@ on:
       operation:
         description: 'Deploy workers or inspect the admin Access configuration'
         type: choice
-        options: [deploy, inspect-admin-access, export-state]
+        options: [deploy, inspect-admin-access, inspect-state, export-state]
         default: deploy
       export_public_key:
         description: 'RSA public key for encrypting a migration export'
@@ -26,6 +26,21 @@ permissions:
   contents: read
 
 jobs:
+  inspect-state:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'inspect-state'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+        working-directory: workers/api-gateway
+      - name: Inspect state transport without logging request data
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/diagnose-state-transport.mjs
   export-state:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'export-state'
     runs-on: ubuntu-latest
