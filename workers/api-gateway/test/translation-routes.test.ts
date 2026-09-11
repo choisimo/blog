@@ -137,13 +137,13 @@ describe('A02 translation HTTP contracts',()=>{
   expect(generations).toBe(1);
   expect((await env.DB.prepare('SELECT COUNT(*) n FROM translation_jobs').first<{n:number}>())?.n).toBe(1);
  });
- it.each([-1,0])('requires the complete pending-job reservation before AI at headroom offset %i',async(offset)=>{
+ it.each([[-1,0],[0,0],[-1,2]])('requires the complete pending-job reservation before AI at headroom offset %i after %i attempts',async(offset,priorAttempts)=>{
   const config={...bindings(),TRANSLATION_EXECUTION_ENABLED:'true'};
   const post=(await fetchPublishedPost(config,source.year,source.slug))!;
   const required=translationTokenBudget(post),oldBudget=required-4032;
   config.TRANSLATION_DAILY_TOKEN_BUDGET=String(required+offset);
   const admitted=await startTranslationJob(config,post,'en');
-  await env.DB.prepare('UPDATE translation_jobs SET token_budget=? WHERE id=?').bind(oldBudget,admitted.job.id).run();
+  await env.DB.prepare('UPDATE translation_jobs SET token_budget=?,attempts=? WHERE id=?').bind(oldBudget,priorAttempts,admitted.job.id).run();
   const fetchSource=vi.mocked(fetch).getMockImplementation()!;
   let generations=0;
   vi.mocked(fetch).mockImplementation(async(input,init)=>{
@@ -158,15 +158,16 @@ describe('A02 translation HTTP contracts',()=>{
   const result=await drainTranslationJobs(config);
   const job=await env.DB.prepare('SELECT status,attempts,token_budget,error_json,available_at FROM translation_jobs WHERE id=?')
     .bind(admitted.job.id).first<{status:string;attempts:number;token_budget:number;error_json:string;available_at:string}>();
-  expect(job?.attempts).toBe(1);
+  expect(job?.attempts).toBe(priorAttempts+1);
   expect((await env.DB.prepare('SELECT COUNT(*) n FROM translation_attempts').first<{n:number}>())?.n).toBe(1);
   if(offset<0) {
-   expect(result).toMatchObject({processed:0,failed:0,deferred:1});expect(generations).toBe(0);
-   expect(job).toMatchObject({status:'deferred',token_budget:oldBudget});
-   expect(JSON.parse(job!.error_json)).toMatchObject({code:'TRANSLATION_BUDGET',retryable:true});
-   expect(Date.parse(job!.available_at)).toBeGreaterThan(Date.now());
+   const exhausted=priorAttempts===2;
+   expect(result).toMatchObject({processed:0,failed:exhausted?1:0,deferred:exhausted?0:1});expect(generations).toBe(0);
+   expect(job).toMatchObject({status:exhausted?'failed':'deferred',token_budget:oldBudget});
+   expect(JSON.parse(job!.error_json)).toMatchObject({code:exhausted?'MAX_ATTEMPTS':'TRANSLATION_BUDGET',retryable:!exhausted});
+   if(!exhausted)expect(Date.parse(job!.available_at)).toBeGreaterThan(Date.now());
    expect((await env.DB.prepare('SELECT SUM(token_budget) tokens FROM translation_attempts').first<{tokens:number}>())?.tokens).toBe(oldBudget);
-   expect(await env.DB.prepare('SELECT status,consumer_id,locked_at FROM domain_outbox WHERE id=?').bind(admitted.job.outbox_id).first()).toEqual({status:'pending',consumer_id:null,locked_at:null});
+   expect(await env.DB.prepare('SELECT status,consumer_id,locked_at FROM domain_outbox WHERE id=?').bind(admitted.job.outbox_id).first()).toEqual({status:exhausted?'dead_letter':'pending',consumer_id:null,locked_at:null});
   } else {
    expect(result).toMatchObject({processed:1,failed:0,deferred:0});expect(generations).toBe(3);
    expect(job).toMatchObject({status:'succeeded',token_budget:required});

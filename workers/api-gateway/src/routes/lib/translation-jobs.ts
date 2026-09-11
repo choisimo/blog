@@ -155,8 +155,12 @@ export async function drainTranslationJobs(env:Env, options:{limit?:number;allow
       if (!cached || job.force_refresh) {
         const reservation=await reserveTranslationExecutionBudget(env.DB,job,translationTokenBudget(source),policy.dailyTokenBudget);
         if (!reservation.ready) {
-          if (await settleTranslationJob(env.DB,job,{status:'deferred',nextAt:reservation.retryAt,
-            error:{code:'TRANSLATION_BUDGET',message:ERRORS.TRANSLATION_BUDGET,retryable:true}})) deferred++;
+          const retry=job.attempts<policy.maxAttempts;
+          const code=retry?'TRANSLATION_BUDGET':'MAX_ATTEMPTS';
+          if (await settleTranslationJob(env.DB,job,{status:retry?'deferred':'failed',nextAt:retry?reservation.retryAt:undefined,
+            error:{code,message:ERRORS[code],retryable:retry}})) {
+            if(retry)deferred++;else{failed++;await notifySettledJob(env,job,false);}
+          }
           continue;
         }
         job.token_budget=reservation.tokenBudget;
