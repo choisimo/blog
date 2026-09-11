@@ -11,6 +11,8 @@ import {
 } from "./config.js";
 import { requireBackendKey } from "./middleware/backendAuth.js";
 import { requireGatewaySignature } from "./middleware/gatewaySignature.js";
+import workerStateRouter from "./routes/workerState.js";
+import { workerStateStore } from "./services/worker-state-store.service.js";
 import { httpCache } from "./middleware/httpCache.js";
 import { httpRequestDuration, httpRequestsTotal } from "./lib/metrics.js";
 import { logger, enablePgLogs } from "./lib/logger.js";
@@ -111,6 +113,11 @@ function buildBackendReadinessChecks() {
         return { ok, status: ok ? "ok" : "failed" };
       },
     },
+    ...(process.env.WORKER_STATE_SQLITE_PATH ? [{
+      name: "worker_state",
+      required: true,
+      check: async () => ({ ok: true, status: "ok", detail: workerStateStore.health() }),
+    }] : []),
     {
       name: "chroma",
       required: config.features?.ragEnabled === true,
@@ -304,6 +311,10 @@ async function startServer() {
 
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: false }));
+
+  // Private database transport: signed gateway requests and backend key only.
+  // Keep it outside the public /api/v1 route registry and its user rate limiter.
+  app.use('/internal/state-db', workerStateRouter);
 
   app.use(PUBLIC_ROUTE_REGISTRY.map((entry) => entry.basePath), requireBackendKey);
   mountRouteRegistry(app, PUBLIC_ROUTE_REGISTRY);

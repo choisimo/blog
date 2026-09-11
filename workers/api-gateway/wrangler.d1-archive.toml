@@ -1,0 +1,10 @@
+# Retained source for encrypted, read-only migration exports. Never deploy this config.
+name = "blog-d1-archive"
+compatibility_date = "2025-01-01"
+account_id = "f6f11e2a4e5178d2f37476785018f761"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-db-prod"
+database_id = "e547f944-71a0-42b6-8af1-abc50f29df80"
+migrations_dir = "../migrations"

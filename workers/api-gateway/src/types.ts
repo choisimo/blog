@@ -2,6 +2,7 @@
 export type Env = {
   // Bindings
   DB: D1Database;
+  STATE_STORE_BACKEND?: 'd1' | 'origin';
   R2: R2Bucket;
   READER_IMAGES_R2?: R2Bucket; // Dedicated private bucket; never enable r2.dev/custom-domain public access.
   KV: KVNamespace;

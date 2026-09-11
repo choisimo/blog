@@ -1,8 +1,29 @@
 {
   "generatedBy": "tools/config-registry/generate.mjs",
   "valueCollection": false,
-  "totalKeys": 310,
+  "totalKeys": 312,
   "keys": [
+    {
+      "key": "STATE_STORE_BACKEND",
+      "owner": "data-platform",
+      "classification": "private-config",
+      "scopes": [
+        "api-gateway"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "wrangler-var"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "manual",
+      "deprecatedAliases": [],
+      "description": "State storage selection: d1 for local compatibility or origin for Kubernetes SQLite.",
+      "defaultValue": "d1",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
     {
       "key": "APP_ENV",
       "owner": "frontend-platform",
@@ -2740,6 +2761,31 @@
     },
     {
       "key": "SQLITE_PATH",
+      "owner": "infrastructure",
+      "classification": "private-config",
+      "scopes": [
+        "backend",
+        "k3s",
+        "infra",
+        "open-notebook",
+        "content-sync"
+      ],
+      "requiredIn": [],
+      "delivery": [
+        "k3s-configmap",
+        "process-env"
+      ],
+      "publicExposure": false,
+      "mutableAtRuntime": false,
+      "rotation": "not-secret",
+      "deprecatedAliases": [],
+      "description": "",
+      "valueType": "string",
+      "admin": {},
+      "publicExposureReason": null
+    },
+    {
+      "key": "WORKER_STATE_SQLITE_PATH",
       "owner": "infrastructure",
       "classification": "private-config",
       "scopes": [

@@ -359,6 +359,7 @@ const dataAndInfra = [
       'POSTGRES_DB',
       'POSTGRES_USER',
       'SQLITE_PATH',
+      'WORKER_STATE_SQLITE_PATH',
       'SQLITE_MIGRATIONS_DIR',
       'CHROMA_URL',
       'CHROMA_COLLECTION',
@@ -667,6 +668,11 @@ const deprecatedOrDenied = [
 ];
 
 export const CONFIG_REGISTRY = Object.freeze([
+  entry('STATE_STORE_BACKEND', {
+    owner: 'data-platform', classification: C.PRIVATE_CONFIG,
+    scopes: [S.API_GATEWAY], delivery: [D.WRANGLER_VAR],
+    defaultValue: 'd1', description: 'State storage selection: d1 for local compatibility or origin for Kubernetes SQLite.',
+  }),
   ...publicRuntimeKeys,
   ...coreSecrets,
   ...authAndAdmin,

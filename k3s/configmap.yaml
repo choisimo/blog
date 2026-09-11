@@ -33,6 +33,7 @@ data:
   CHROMA_URL: "http://chromadb:8000"
   CHROMA_COLLECTION: "blog-posts__qwen3-embedding-8b"
   SQLITE_PATH: "/app/.data/blog.db"
+  WORKER_STATE_SQLITE_PATH: "/app/.data/worker-state.db"
   SQLITE_MIGRATIONS_DIR: "/workers/migrations"
   REPO_ROOT: "/"
   CONTENT_PUBLIC_DIR: "/frontend/public"

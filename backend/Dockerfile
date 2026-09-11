@@ -12,6 +12,7 @@ RUN npm ci --omit=dev
 
 # Copy source
 COPY backend/src ./src
+COPY workers/migrations /app/workers/migrations
 
 ENV NODE_ENV=production
 EXPOSE 5080

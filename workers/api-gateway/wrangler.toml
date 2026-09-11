@@ -94,6 +94,7 @@ crons = ["0 6 * * *", "30 * * * *", "* * * * *"]
 # =============================================================================
 [env.production]
 name = "blog-api-gateway"
+d1_databases = [] # Production state lives on the Kubernetes API PVC.
 routes = [
   { pattern = "api.nodove.com/*", zone_name = "nodove.com" }
 ]
@@ -103,6 +104,7 @@ crons = ["0 6 * * *", "30 * * * *", "* * * * *"]
 
 [env.production.vars]
 ENV = "production"
+STATE_STORE_BACKEND = "origin"
 ALLOWED_ORIGINS = "https://noblog.nodove.com,https://blog.nodove.com,https://nodove.com"
 API_BASE_URL = "https://api.nodove.com"
 ASSETS_BASE_URL = "https://assets-b.nodove.com"
@@ -122,12 +124,6 @@ MEMBER_IMAGE_DAILY_LIMIT = "20"
 IMAGE_GLOBAL_DAILY_LIMIT = "500"
 FEATURE_AI_INLINE = "true"
 FEATURE_COMMENTS_ENABLED = "true"
-
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "blog-db-prod"
-database_id = "e547f944-71a0-42b6-8af1-abc50f29df80"
-migrations_dir = "../migrations"
 
 [[env.production.r2_buckets]]
 binding = "R2"

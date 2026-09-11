@@ -6,8 +6,12 @@ on:
       operation:
         description: 'Deploy workers or inspect the admin Access configuration'
         type: choice
-        options: [deploy, inspect-admin-access]
+        options: [deploy, inspect-admin-access, export-state]
         default: deploy
+      export_public_key:
+        description: 'RSA public key for encrypting a migration export'
+        type: string
+        required: false
   push:
     branches: [main]
     paths:
@@ -15,12 +19,44 @@ on:
       - 'shared/**'
       - 'scripts/worker-deploy-matrix.mjs'
       - 'scripts/ensure-reader-image-bucket.mjs'
+      - 'scripts/verify-backend-state.mjs'
       - '.github/workflows/deploy-workers.yml'
 
 permissions:
   contents: read
 
 jobs:
+  export-state:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'export-state'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+        working-directory: workers/api-gateway
+      - name: Export and encrypt existing D1 data
+        working-directory: workers/api-gateway
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          STATE_EXPORT_PUBLIC_KEY: ${{ inputs.export_public_key }}
+        run: |
+          umask 077
+          # Wrangler prints a signed plaintext download URL. Keep all its output
+          # private, including on failure, rather than putting it in public logs.
+          if ! npx wrangler d1 export blog-db-prod --config wrangler.d1-archive.toml --remote --output=/tmp/worker-state.sql > /tmp/state-export.log 2>&1; then
+            echo 'State export failed; no plaintext data or download URLs were published.'
+            exit 1
+          fi
+          node ../../scripts/seal-state-export.mjs /tmp/worker-state.sql /tmp/worker-state.sealed
+          rm /tmp/worker-state.sql
+      - uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-worker-state
+          path: /tmp/worker-state.sealed
+          retention-days: 1
   inspect-admin-access:
     if: github.event_name == 'workflow_dispatch' && inputs.operation == 'inspect-admin-access'
     runs-on: ubuntu-latest
@@ -35,7 +71,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/inspect-admin-access.mjs
   build-matrix:
-    if: github.event_name != 'workflow_dispatch' || inputs.operation != 'inspect-admin-access'
+    if: github.event_name != 'workflow_dispatch' || inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -109,8 +145,28 @@ jobs:
           }
           NODE
 
-      - name: Apply production D1 migrations
+      - name: Select production state store
+        id: state-store
         if: ${{ matrix.id == 'api-gateway' }}
+        working-directory: workers/${{ matrix.path }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const config = readFileSync('wrangler.toml', 'utf8');
+          const vars = config.split('[env.production.vars]')[1]?.split(/\n\[/)[0] || '';
+          appendFileSync(process.env.GITHUB_OUTPUT, `backend=${/STATE_STORE_BACKEND\s*=\s*"origin"/.test(vars)}\n`);
+          NODE
+
+      - name: Verify Kubernetes state schema
+        if: ${{ matrix.id == 'api-gateway' && steps.state-store.outputs.backend == 'true' }}
+        env:
+          BACKEND_ORIGIN: ${{ secrets.BACKEND_ORIGIN }}
+          BACKEND_KEY: ${{ secrets.BACKEND_KEY }}
+          GATEWAY_SIGNING_SECRET: ${{ secrets.GATEWAY_SIGNING_SECRET }}
+        run: node scripts/verify-backend-state.mjs
+
+      - name: Apply production D1 migrations
+        if: ${{ matrix.id == 'api-gateway' && steps.state-store.outputs.backend != 'true' }}
         working-directory: workers/${{ matrix.path }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -146,7 +202,7 @@ jobs:
           npm run migrations:apply:prod
 
       - name: Verify production D1 schema
-        if: ${{ matrix.id == 'api-gateway' }}
+        if: ${{ matrix.id == 'api-gateway' && steps.state-store.outputs.backend != 'true' }}
         working-directory: workers/${{ matrix.path }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

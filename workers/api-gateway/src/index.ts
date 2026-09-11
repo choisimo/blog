@@ -1,6 +1,7 @@
 import { rejectInvalidForwardedAccess } from './lib/forwarded-access';
 import { isPrivateReaderRenderPath } from './lib/reader-image-policy';
 import { cleanupReaderImages } from './lib/reader-image-retention';
+import { withBackendState } from './lib/backend-state-db';
 /**
  * Blog API Gateway - Unified Cloudflare Worker
  *
@@ -493,6 +494,6 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
 // =============================================================================
 
 export default {
-  fetch: app.fetch,
-  scheduled,
+  fetch: (request: Request, env: Env, ctx: ExecutionContext) => app.fetch(request, withBackendState(env), ctx),
+  scheduled: (event: ScheduledEvent, env: Env, ctx: ExecutionContext) => scheduled(event, withBackendState(env), ctx),
 };
