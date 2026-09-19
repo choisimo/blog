@@ -18,11 +18,13 @@ test('model rollout preserves credentials and embedding routes across both model
     const material = await webcrypto.subtle.importKey('raw', encode('fixture-encryption'), 'PBKDF2', false, ['deriveKey']);
     const key = await webcrypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, material,
       { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    for (const column of ['model_identifier', 'litellm_model']) {
+    for (const schema of ['model_identifier', 'litellm_model', 'both']) {
+      const column = schema === 'both' ? 'litellm_model' : schema;
       const db = new Database(':memory:');
       try {
         db.exec(readFileSync(new URL('../../workers/migrations/0011_ai_model_management.sql', import.meta.url), 'utf8').replaceAll('model_identifier', column));
         db.exec(readFileSync(new URL('../../workers/migrations/0014_secrets_management.sql', import.meta.url), 'utf8'));
+        if (schema === 'both') db.exec('ALTER TABLE ai_models ADD COLUMN model_identifier TEXT');
         db.exec(`CREATE TABLE config_variables (key TEXT,value TEXT,default_value TEXT,updated_at TEXT);
           INSERT INTO ai_providers (id,name,display_name) VALUES ('old','old','Old');
           INSERT INTO ai_models (id,provider_id,model_name,display_name,${column},max_tokens) VALUES
@@ -53,7 +55,7 @@ test('model rollout preserves credentials and embedding routes across both model
           writes.push({ path: url.pathname, body: options.body });
           return Response.json({ success: true });
         };
-        await import(`../../scripts/configure-mspark-only.mjs?schema=${column}`);
+        await import(`../../scripts/configure-mspark-only.mjs?schema=${schema}`);
         assert.deepEqual(db.prepare('SELECT model_name FROM ai_models WHERE is_enabled=1 ORDER BY model_name').all().map(row => row.model_name), ['embedding', 'nodove-mspark-1.3c']);
         assert.deepEqual(db.prepare('SELECT primary_model_id,fallback_model_ids,context_window_fallback_ids FROM ai_routes').get(), {
           primary_model_id: 'model_mspark_13c', fallback_model_ids: '[]', context_window_fallback_ids: '[]',
@@ -61,6 +63,9 @@ test('model rollout preserves credentials and embedding routes across both model
         assert.equal(db.prepare("SELECT encrypted_value FROM secrets WHERE key_name='AI_API_KEY'").get().encrypted_value, 'unchanged-ciphertext');
         assert.equal(writes.length, 2);
         assert.equal(JSON.parse(writes[1].body).name, 'AI_DEFAULT_MODEL');
+        if (schema === 'both') assert.deepEqual(db.prepare("SELECT model_identifier,litellm_model FROM ai_models WHERE id='model_mspark_13c'").get(), {
+          model_identifier: 'nodove-mspark-1.3c', litellm_model: 'nodove-mspark-1.3c',
+        });
       } finally { db.close(); }
     }
   } finally {

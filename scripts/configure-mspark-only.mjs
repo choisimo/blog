@@ -77,8 +77,8 @@ const apiBase = new URL(before.data.baseUrl);
 if (apiBase.protocol !== 'https:' || apiBase.host !== 'air.nodove.com') throw new Error('Unexpected AI server');
 const columns = await query([{ sql: "SELECT name FROM pragma_table_info('ai_models')", params: [] }]);
 const names = new Set(columns.results?.[0]?.results?.map(item => item.name));
-const identifier = names.has('model_identifier') ? 'model_identifier' : names.has('litellm_model') ? 'litellm_model' : null;
-if (!identifier) throw new Error('Unknown model registry schema');
+const identifiers = ['model_identifier', 'litellm_model'].filter(name => names.has(name));
+if (!identifiers.length) throw new Error('Unknown model registry schema');
 const iv = webcrypto.getRandomValues(new Uint8Array(12));
 const encrypted = await webcrypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(MODEL));
 
@@ -88,7 +88,7 @@ await query([
   { sql: "UPDATE config_variables SET value = ?, default_value = ?, updated_at = CURRENT_TIMESTAMP WHERE key = 'AI_SERVE_DEFAULT_MODEL'", params: [MODEL, MODEL] },
   { sql: "INSERT INTO ai_providers (id,name,display_name,api_base_url,api_key_env,is_enabled) VALUES ('prov_mspark_gateway','mspark-gateway','MSpark Gateway',?,'AI_API_KEY',1) ON CONFLICT(id) DO UPDATE SET api_base_url=excluded.api_base_url,api_key_env=excluded.api_key_env,is_enabled=1,updated_at=CURRENT_TIMESTAMP", params: [apiBase.href] },
   { sql: "UPDATE ai_models SET is_enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE max_tokens IS NULL OR max_tokens != 0", params: [] },
-  { sql: `INSERT INTO ai_models (id,provider_id,model_name,display_name,${identifier},is_enabled,priority,supports_streaming) VALUES ('model_mspark_13c','prov_mspark_gateway',?,'MSpark 1.3 Contributor',?,1,100,1) ON CONFLICT(id) DO UPDATE SET provider_id=excluded.provider_id,model_name=excluded.model_name,${identifier}=excluded.${identifier},is_enabled=1,updated_at=CURRENT_TIMESTAMP`, params: [MODEL, MODEL] },
+  { sql: `INSERT INTO ai_models (id,provider_id,model_name,display_name,${identifiers.join(',')},is_enabled,priority,supports_streaming) VALUES ('model_mspark_13c','prov_mspark_gateway',?,'MSpark 1.3 Contributor',${identifiers.map(() => '?').join(',')},1,100,1) ON CONFLICT(id) DO UPDATE SET provider_id=excluded.provider_id,model_name=excluded.model_name,${identifiers.map(name => `${name}=excluded.${name}`).join(',')},is_enabled=1,updated_at=CURRENT_TIMESTAMP`, params: [MODEL, ...identifiers.map(() => MODEL)] },
   { sql: "UPDATE ai_routes SET primary_model_id = 'model_mspark_13c', fallback_model_ids = '[]', context_window_fallback_ids = '[]', updated_at = CURRENT_TIMESTAMP", params: [] },
 ]);
 console.log('Origin default model and all text model routes set to mspark.');
