@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 process.env.APP_ENV = "test";
-process.env.AI_DEFAULT_MODEL = "gpt-5.3-codex-spark";
-process.env.AI_FALLBACK_MODELS = '["deepseek-v4-flash-free"]';
+process.env.AI_DEFAULT_MODEL = "nodove-mspark-1.3c";
+process.env.AI_FALLBACK_MODELS = '[]';
 process.env.AI_ENABLE_LEGACY_COMPLETIONS_FALLBACK = "false";
 
 const { OpenAICompatClient } = await import(
@@ -16,45 +16,38 @@ async function* createStream(chunks) {
   }
 }
 
-test("chat aggregates the Spark streaming response for synchronous callers", async () => {
+test("mspark synchronous calls use the native non-stream response", async () => {
   const client = new OpenAICompatClient({
     baseUrl: "https://air.example.test/v1",
     apiKey: "sk-test",
-    model: "gpt-5.3-codex-spark",
+    model: "nodove-mspark-1.3c",
   });
+  client._openai = { chat: { completions: { create: async payload => {
+    assert.equal(payload.model, "nodove-mspark-1.3c");
+    assert.equal(payload.stream, false);
+    return { model: payload.model, choices: [{ message: { content: "MSPARK_OK" }, finish_reason: "stop" }] };
+  } } } };
+  const result = await client.chat([{ role: "user", content: "Reply exactly MSPARK_OK" }]);
+  assert.equal(result.content, "MSPARK_OK");
+  assert.equal(result.model, "nodove-mspark-1.3c");
+  assert.equal(result.provider, "openai-compat");
+});
 
-  client._openai = {
-    chat: {
-      completions: {
-        create: async (payload) => {
-          assert.equal(payload.model, "gpt-5.3-codex-spark");
-          assert.equal(payload.stream, true);
-          return createStream([
-            {
-              model: payload.model,
-              choices: [{ delta: { content: "SPARK_" } }],
-            },
-            {
-              model: payload.model,
-              choices: [
-                { delta: { content: "OK" }, finish_reason: "stop" },
-              ],
-            },
-          ]);
-        },
-      },
-    },
-  };
-
-  const result = await client.chat(
-    [{ role: "user", content: "Reply exactly SPARK_OK" }],
-    { temperature: 0, maxTokens: 16 },
-  );
-
-  assert.equal(result.content, "SPARK_OK");
-  assert.equal(result.model, "gpt-5.3-codex-spark");
-  assert.equal(result.provider, "openai-compat-stream-aggregate");
-  assert.equal(result.finishReason, "stop");
+test("mspark-only configuration never tries another model after rejection", async () => {
+  const client = new OpenAICompatClient({ baseUrl: "https://air.example.test/v1", apiKey: "sk-test" });
+  const calls = [];
+  const rejected = Object.assign(new Error("Quota unavailable"), { status: 429 });
+  client._openai = { chat: { completions: { create: async payload => {
+    calls.push(payload.model);
+    throw rejected;
+  } } } };
+  await assert.rejects(client.chat([{ role: "user", content: "test" }]), error => error === rejected);
+  assert.deepEqual(calls, ["nodove-mspark-1.3c"]);
+  calls.length = 0;
+  await assert.rejects(async () => {
+    for await (const chunk of client.streamChat([{ role: "user", content: "test" }])) void chunk;
+  }, error => error === rejected);
+  assert.deepEqual(calls, ["nodove-mspark-1.3c"]);
 });
 
 test("chat retries a failed primary request with the configured Zen model", async () => {
