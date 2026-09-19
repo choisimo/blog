@@ -41,4 +41,8 @@ Final inspection found a live `blog-ai-legacy-completions-hotfix` ConfigMap moun
 
 The imported runtime model registry only had `litellm_model`, while the provider snapshot reads `model_identifier`, causing a 500 response. Added the canonical column and copied existing identifier values, retaining the legacy column. The configuration updater now fills both columns when both exist. The active registry contains only nodove-mspark-1.3c, and all four enabled routes point to it with empty fallback lists.
 
-Final acceptance after hotfix reload: pending.
+Final acceptance after hotfix reload (2026-09-19 10:42:17–10:42:31 KST): HTTP 200, text/event-stream, MSPARK_OK, session/text/done events and no errors. Both API and worker deployments are ready. Both mounted client files match the committed SHA-256 and contain no Codex Spark identifier.
+
+The live internal configuration and provider snapshot endpoints both return HTTP 200. The default and the sole enabled text model are nodove-mspark-1.3c. The default route has no model fallbacks. The first public verification is independently recorded on ai-1 as openai/muse-spark-1.3-contributor, status success, 447 total tokens, through http://opencode-go-pool:8082/v1/responses.
+
+The legacy schema compatibility and evidence follow-up is https://github.com/choisimo/blog/pull/196. No provider keys were changed.
