@@ -49,10 +49,6 @@ const DEFAULT_TIMEOUT = TIMEOUTS.DEFAULT; // 2 minutes
 const CIRCUIT_BREAKER_THRESHOLD = CIRCUIT_BREAKER.THRESHOLD;
 const CIRCUIT_BREAKER_RESET_TIME = CIRCUIT_BREAKER.RESET_TIME; // 30 seconds
 
-// The protected Spark route currently exposes Chat Completions as an SSE
-// stream. Aggregate that stream for callers using the synchronous chat API.
-const STREAM_AGGREGATION_MODELS = new Set(["gpt-5.3-codex-spark"]);
-
 function normalizeModelList(value) {
   let candidates = value;
 
@@ -178,44 +174,6 @@ export class OpenAICompatClient {
   }
 
   async _chatCompletionForModel(messages, options, model, isFallback) {
-    if (STREAM_AGGREGATION_MODELS.has(model)) {
-      const stream = await this._openai.chat.completions.create(
-        {
-          model,
-          messages,
-          temperature: options.temperature ?? 0.7,
-          max_tokens: options.maxTokens || options.max_tokens,
-          stream: true,
-        },
-        {
-          timeout: options.timeout || DEFAULT_TIMEOUT,
-        },
-      );
-
-      let content = "";
-      let responseModel = model;
-      let finishReason;
-      let usage;
-
-      for await (const chunk of stream) {
-        responseModel = chunk.model || responseModel;
-        finishReason =
-          chunk.choices?.[0]?.finish_reason ?? finishReason;
-        usage = chunk.usage ?? usage;
-        content += chunk.choices?.[0]?.delta?.content || "";
-      }
-
-      return {
-        content,
-        model: responseModel,
-        provider: isFallback
-          ? "openai-compat-fallback"
-          : "openai-compat-stream-aggregate",
-        usage,
-        finishReason,
-      };
-    }
-
     const response = await this._openai.chat.completions.create(
       {
         model,

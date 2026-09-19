@@ -9,7 +9,7 @@ const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'blog-generated-image-r
 const imagesDir = path.join(tempRoot, 'images');
 
 process.env.APP_ENV = 'production';
-process.env.AI_DEFAULT_MODEL = 'gpt-5.3-codex-spark';
+process.env.AI_DEFAULT_MODEL = 'nodove-mspark-1.3c';
 process.env.BACKEND_KEY = 'remote-storage-backend-key';
 process.env.WORKER_API_URL = 'https://api.example';
 process.env.ASSETS_BASE_URL = 'https://assets.example';

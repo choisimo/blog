@@ -54,7 +54,7 @@ CF_TEAM_DOMAIN=
 # -----------------------------------------------------------------------------
 # [Workers] AI / public runtime configuration secrets
 # -----------------------------------------------------------------------------
-AI_DEFAULT_MODEL=gpt-5.2
+AI_DEFAULT_MODEL=nodove-mspark-1.3c
 AI_VISION_MODEL=gpt-4o
 PERPLEXITY_MODEL=sonar
 API_BASE_URL=https://api.nodove.com
