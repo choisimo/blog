@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, webcrypto } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 // Run through the existing deployment workflow; never print credential values.
 const MODEL = 'nodove-mspark-1.3c';
@@ -95,6 +96,14 @@ await cloudflare(`storage/kv/namespaces/${KV_NAMESPACE}/values/config:ai_default
 // This updates the binding and starts a fresh Worker deployment, clearing the
 // old decrypted model cache without redeploying application source.
 await cloudflare(`workers/scripts/${WORKER}/secrets`, 'PUT', { name: 'AI_DEFAULT_MODEL', text: MODEL, type: 'secret_text' });
-const after = await effectiveConfig();
+let after = await effectiveConfig();
+const deadline = Date.now() + 6 * 60_000;
+while (after.data?.defaultModel !== MODEL && Date.now() < deadline) {
+  // Worker deployments and decrypted configuration caches converge separately.
+  // Poll only reads: never replay the state writes to wait for propagation.
+  console.log('Waiting for the effective Worker model to converge.');
+  await delay(10_000);
+  after = await effectiveConfig();
+}
 if (after.data?.defaultModel !== MODEL) throw new Error('Effective model has not converged to mspark; verify before retrying writes');
 console.log(JSON.stringify({ effectiveModel: after.data.defaultModel, apiHost: new URL(after.data.baseUrl).host }));
